@@ -1,0 +1,41 @@
+{
+  "name": "dvlp-ksef",
+  "version": "0.1.0",
+  "description": "Open-source KSeF (Polish National e-Invoice System) integration module with Dataverse backend and AI categorization",
+  "private": true,
+  "license": "MIT",
+  "author": "dvlp.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dvlp-dev/dvlp-ksef.git"
+  },
+  "keywords": [
+    "ksef",
+    "e-invoice",
+    "poland",
+    "dataverse",
+    "azure-functions",
+    "ai-categorization"
+  ],
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm run --parallel dev",
+    "build": "pnpm run --recursive build",
+    "test": "pnpm run --recursive test",
+    "typecheck": "pnpm run --recursive typecheck",
+    "lint": "pnpm run --recursive lint",
+    "lint:fix": "pnpm run --recursive lint:fix",
+    "clean": "pnpm run --recursive clean",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "husky": "^9.1.0",
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0"
+  }
+}

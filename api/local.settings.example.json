@@ -1,0 +1,19 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AZURE_TENANT_ID": "",
+    "AZURE_CLIENT_ID": "",
+    "AZURE_CLIENT_SECRET": "",
+    "DATAVERSE_URL": "",
+    "AZURE_KEYVAULT_URL": "",
+    "KSEF_ENVIRONMENT": "test",
+    "KSEF_NIP": "",
+    "KSEF_TOKEN_SECRET_NAME": "ksef-token-primary"
+  },
+  "Host": {
+    "CORS": "*",
+    "CORSCredentials": false
+  }
+}
