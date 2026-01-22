@@ -1,6 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { initSession, terminateSession, getActiveSession, getSessionStatus } from '../lib/ksef/session'
-import { validateAuth, requireRole } from '../lib/auth/middleware'
+import { verifyAuth, requireRole } from '../lib/auth/middleware'
 
 /**
  * Start a new KSeF session
@@ -13,13 +13,14 @@ app.http('ksef-session-start', {
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
       // Validate authentication
-      const auth = await validateAuth(request)
-      if (!auth.isAuthenticated) {
-        return { status: 401, jsonBody: { error: 'Unauthorized' } }
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
       
       // Require admin role
-      if (!requireRole(auth, 'admin')) {
+      const roleCheck = requireRole(auth.user, 'Admin')
+      if (!roleCheck.success) {
         return { status: 403, jsonBody: { error: 'Forbidden: Admin role required' } }
       }
       
@@ -42,7 +43,7 @@ app.http('ksef-session-start', {
             referenceNumber: session.referenceNumber,
             nip: session.nip,
             createdAt: session.createdAt.toISOString(),
-            expiresAt: session.expiresAt.toISOString(),
+            expiresAt: session.expiresAt?.toISOString(),
             status: session.status,
           },
         },
@@ -70,9 +71,9 @@ app.http('ksef-session-status', {
   route: 'ksef/session',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await validateAuth(request)
-      if (!auth.isAuthenticated) {
-        return { status: 401, jsonBody: { error: 'Unauthorized' } }
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
       
       const session = getActiveSession()
@@ -87,7 +88,7 @@ app.http('ksef-session-status', {
             referenceNumber: session.referenceNumber,
             nip: session.nip,
             createdAt: session.createdAt.toISOString(),
-            expiresAt: session.expiresAt.toISOString(),
+            expiresAt: session.expiresAt?.toISOString(),
             status: session.status,
             invoicesProcessed: session.invoicesProcessed,
           } : null,
@@ -113,12 +114,13 @@ app.http('ksef-session-terminate', {
   route: 'ksef/session',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await validateAuth(request)
-      if (!auth.isAuthenticated) {
-        return { status: 401, jsonBody: { error: 'Unauthorized' } }
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
       
-      if (!requireRole(auth, 'admin')) {
+      const roleCheck = requireRole(auth.user, 'Admin')
+      if (!roleCheck.success) {
         return { status: 403, jsonBody: { error: 'Forbidden: Admin role required' } }
       }
       

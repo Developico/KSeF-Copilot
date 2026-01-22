@@ -3,16 +3,6 @@
  */
 
 /**
- * KSeF Session status
- */
-export interface KsefSession {
-  sessionToken: string
-  referenceNumber: string
-  createdAt: Date
-  expiresAt?: Date
-}
-
-/**
  * KSeF Invoice header (from list)
  */
 export interface KsefInvoiceHeader {

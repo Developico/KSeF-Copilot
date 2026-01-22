@@ -2,13 +2,20 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
-import { Header } from '@/components/layout/header'
+import { PageWrapper } from '@/components/layout/page-wrapper'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ 
+  subsets: ['latin'],
+  variable: '--font-inter',
+})
 
 export const metadata: Metadata = {
   title: 'dvlp-ksef | KSeF Integration',
   description: 'Open-source KSeF integration module with Dataverse backend',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({
@@ -18,12 +25,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pl" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.variable} antialiased`}>
         <Providers>
-          <div className="min-h-screen flex flex-col">
-            <Header />
-            <main className="flex-1 container py-6">{children}</main>
-          </div>
+          <PageWrapper>
+            {children}
+          </PageWrapper>
         </Providers>
       </body>
     </html>

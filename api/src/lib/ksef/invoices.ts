@@ -117,7 +117,7 @@ export async function getInvoiceStatus(
     throw new Error(`Failed to get invoice status: ${response.status} - ${error}`)
   }
   
-  return response.json()
+  return response.json() as Promise<KsefInvoiceStatusResponse>
 }
 
 /**
@@ -169,7 +169,7 @@ export async function queryInvoices(
     throw new Error(`Failed to query invoices: ${response.status} - ${error}`)
   }
   
-  return response.json()
+  return response.json() as Promise<KsefQueryInvoicesResponse>
 }
 
 /**

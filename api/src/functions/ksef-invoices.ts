@@ -8,7 +8,7 @@ import {
   downloadUPO,
   batchSendInvoices,
 } from '../lib/ksef/invoices'
-import { validateAuth, requireRole } from '../lib/auth/middleware'
+import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { KsefInvoice, KsefQueryInvoicesRequest } from '../lib/ksef/types'
 
 /**
@@ -21,12 +21,12 @@ app.http('ksef-invoice-send', {
   route: 'ksef/invoices/send',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await validateAuth(request)
-      if (!auth.isAuthenticated) {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
         return { status: 401, jsonBody: { error: 'Unauthorized' } }
       }
       
-      if (!requireRole(auth, 'admin')) {
+      if (!requireRole(auth.user, 'Admin').success) {
         return { status: 403, jsonBody: { error: 'Forbidden: Admin role required' } }
       }
       
@@ -70,12 +70,12 @@ app.http('ksef-invoice-batch', {
   route: 'ksef/invoices/batch',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await validateAuth(request)
-      if (!auth.isAuthenticated) {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
         return { status: 401, jsonBody: { error: 'Unauthorized' } }
       }
       
-      if (!requireRole(auth, 'admin')) {
+      if (!requireRole(auth.user, 'Admin').success) {
         return { status: 403, jsonBody: { error: 'Forbidden: Admin role required' } }
       }
       
@@ -121,8 +121,8 @@ app.http('ksef-invoice-get', {
   route: 'ksef/invoices/{ksefReferenceNumber}',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await validateAuth(request)
-      if (!auth.isAuthenticated) {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
         return { status: 401, jsonBody: { error: 'Unauthorized' } }
       }
       
@@ -161,8 +161,8 @@ app.http('ksef-invoice-status', {
   route: 'ksef/invoices/{elementReferenceNumber}/status',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await validateAuth(request)
-      if (!auth.isAuthenticated) {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
         return { status: 401, jsonBody: { error: 'Unauthorized' } }
       }
       
@@ -199,8 +199,8 @@ app.http('ksef-invoices-query', {
   route: 'ksef/invoices/query',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await validateAuth(request)
-      if (!auth.isAuthenticated) {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
         return { status: 401, jsonBody: { error: 'Unauthorized' } }
       }
       
@@ -238,12 +238,12 @@ app.http('ksef-sync-incoming', {
   route: 'ksef/sync/incoming',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await validateAuth(request)
-      if (!auth.isAuthenticated) {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
         return { status: 401, jsonBody: { error: 'Unauthorized' } }
       }
       
-      if (!requireRole(auth, 'admin')) {
+      if (!requireRole(auth.user, 'Admin').success) {
         return { status: 403, jsonBody: { error: 'Forbidden: Admin role required' } }
       }
       
@@ -289,8 +289,8 @@ app.http('ksef-invoice-upo', {
   route: 'ksef/invoices/{ksefReferenceNumber}/upo',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await validateAuth(request)
-      if (!auth.isAuthenticated) {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
         return { status: 401, jsonBody: { error: 'Unauthorized' } }
       }
       

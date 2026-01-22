@@ -12,7 +12,6 @@ import {
   KsefInitSessionResponse,
   KsefTerminateSessionResponse,
 } from './types'
-import { SignedXML } from 'xml-crypto'
 import * as crypto from 'crypto'
 
 // Active session storage (in-memory for now, should be in Dataverse for production)
@@ -83,7 +82,7 @@ async function requestAuthChallenge(nip: string): Promise<KsefAuthChallengeRespo
     throw new Error(`Failed to get auth challenge: ${response.status} - ${error}`)
   }
   
-  return response.json()
+  return response.json() as Promise<KsefAuthChallengeResponse>
 }
 
 /**
@@ -141,7 +140,7 @@ async function initSessionWithChallenge(
     throw new Error(`Failed to init session: ${response.status} - ${error}`)
   }
   
-  return response.json()
+  return response.json() as Promise<KsefInitSessionResponse>
 }
 
 /**
@@ -153,7 +152,7 @@ export function getActiveSession(): KsefSession | null {
   }
   
   // Check if session is expired
-  if (activeSession.expiresAt < new Date()) {
+  if (activeSession.expiresAt && activeSession.expiresAt < new Date()) {
     activeSession.status = 'expired'
     return null
   }
@@ -259,7 +258,7 @@ export async function ensureActiveSession(nip: string): Promise<KsefSession> {
   
   // Check if session is about to expire (less than 10 minutes)
   const tenMinutesFromNow = new Date(Date.now() + 10 * 60 * 1000)
-  if (session.expiresAt < tenMinutesFromNow) {
+  if (session.expiresAt && session.expiresAt < tenMinutesFromNow) {
     // Terminate old session and start new one
     await terminateSession()
     return initSession(nip)
