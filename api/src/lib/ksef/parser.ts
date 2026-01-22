@@ -1,5 +1,5 @@
-import { XMLParser } from 'fast-xml-parser'
-import { ParsedInvoice, ParsedInvoiceItem } from './types'
+import { XMLParser, XMLBuilder } from 'fast-xml-parser'
+import { ParsedInvoice, ParsedInvoiceItem, KsefInvoice, KsefInvoiceItem } from './types'
 
 /**
  * Parse FA(2) invoice XML from KSeF
@@ -130,4 +130,254 @@ export function validateParsedInvoice(invoice: ParsedInvoice): string[] {
   }
 
   return errors
+}
+
+/**
+ * Build FA(2) XML from invoice data for sending to KSeF
+ */
+export function buildInvoiceXml(invoice: KsefInvoice): string {
+  const today = new Date().toISOString().split('T')[0]
+  
+  // Calculate totals by VAT rate
+  const vatRates = groupByVatRate(invoice.items)
+  
+  const fa = {
+    Faktura: {
+      '@_xmlns': 'http://crd.gov.pl/wzor/2023/06/29/12648/',
+      Naglowek: {
+        KodFormularza: {
+          '@_kodSystemowy': 'FA (2)',
+          '@_wersjaSchemy': '1-0E',
+          '#text': 'FA',
+        },
+        WariantFormularza: 2,
+        DataWytworzeniaFa: today,
+        SystemInfo: 'KSeF Integration by Developico',
+      },
+      Podmiot1: {
+        DaneIdentyfikacyjne: {
+          NIP: invoice.seller.nip,
+          Nazwa: invoice.seller.name,
+        },
+        Adres: {
+          KodKraju: invoice.seller.address.country || 'PL',
+          AdresL1: formatAddressLine(invoice.seller.address),
+          AdresL2: `${invoice.seller.address.postalCode} ${invoice.seller.address.city}`,
+        },
+      },
+      Podmiot2: {
+        DaneIdentyfikacyjne: {
+          NIP: invoice.buyer.nip,
+          Nazwa: invoice.buyer.name,
+        },
+        Adres: {
+          KodKraju: invoice.buyer.address.country || 'PL',
+          AdresL1: formatAddressLine(invoice.buyer.address),
+          AdresL2: `${invoice.buyer.address.postalCode} ${invoice.buyer.address.city}`,
+        },
+      },
+      Fa: {
+        KodWaluty: invoice.currency || 'PLN',
+        P_1: invoice.invoiceDate,
+        P_2: invoice.invoiceNumber,
+        P_6: today, // Date of sale
+        ...buildVatSummary(vatRates),
+        P_15: calculateGrossTotal(invoice.items),
+        Adnotacje: {
+          P_16: 2, // Not split payment
+          P_17: 2, // Not self-billing
+          P_18: 2, // Not reverse charge
+          P_18A: 2, // Not margin scheme
+          P_19: 2, // No links to other invoices
+          P_22: 2, // Not cash register
+          P_23: 2, // Not simplified invoice
+          P_PMarzy: 2, // Not margin procedure
+        },
+        FaWiersz: invoice.items.map((item, index) => buildLineItem(item, index + 1)),
+      },
+      Stopka: {
+        Informacje: {
+          StopkaFaktury: invoice.notes || '',
+        },
+      },
+    },
+  }
+  
+  // Add payment info if provided
+  if (invoice.dueDate || invoice.bankAccount) {
+    (fa.Faktura.Fa as Record<string, unknown>).Platnosc = {
+      TerminPlatnosci: invoice.dueDate ? { Termin: invoice.dueDate } : undefined,
+      FormaPlatnosci: invoice.paymentMethod || 'przelew',
+      RachunekBankowy: invoice.bankAccount ? { NrRB: invoice.bankAccount } : undefined,
+    }
+  }
+  
+  const builder = new XMLBuilder({
+    ignoreAttributes: false,
+    attributeNamePrefix: '@_',
+    textNodeName: '#text',
+    format: true,
+    suppressEmptyNode: true,
+  })
+  
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' + builder.build(fa)
+}
+
+/**
+ * Parse invoice from XML (alias for backwards compatibility)
+ */
+export function parseInvoiceFromXml(xml: string): KsefInvoice {
+  const parsed = parseInvoiceXml(xml)
+  
+  // Convert ParsedInvoice to KsefInvoice format
+  return {
+    invoiceNumber: parsed.invoiceNumber,
+    invoiceDate: parsed.invoiceDate,
+    dueDate: parsed.dueDate,
+    seller: {
+      nip: parsed.supplier.nip,
+      name: parsed.supplier.name,
+      address: parseAddressFromString(parsed.supplier.address || ''),
+    },
+    buyer: {
+      nip: parsed.buyer.nip,
+      name: parsed.buyer.name,
+      address: parseAddressFromString(parsed.buyer.address || ''),
+    },
+    items: parsed.items.map((item, index) => ({
+      lineNumber: index + 1,
+      description: item.description,
+      quantity: item.quantity,
+      unit: item.unit || 'szt.',
+      unitPrice: item.unitPrice,
+      netAmount: item.netAmount,
+      vatRate: parseVatRate(item.vatRate),
+      vatAmount: item.vatAmount,
+      grossAmount: item.grossAmount,
+    })),
+    currency: 'PLN',
+  }
+}
+
+/**
+ * Group items by VAT rate for summary
+ */
+function groupByVatRate(items: KsefInvoiceItem[]): Map<number, { net: number; vat: number }> {
+  const rates = new Map<number, { net: number; vat: number }>()
+  
+  for (const item of items) {
+    const current = rates.get(item.vatRate) || { net: 0, vat: 0 }
+    rates.set(item.vatRate, {
+      net: current.net + item.netAmount,
+      vat: current.vat + item.vatAmount,
+    })
+  }
+  
+  return rates
+}
+
+/**
+ * Build VAT summary fields (P_13_1 to P_13_11)
+ */
+function buildVatSummary(vatRates: Map<number, { net: number; vat: number }>): Record<string, number> {
+  const summary: Record<string, number> = {}
+  
+  // P_13_1 - Net amount for 23%
+  // P_14_1 - VAT amount for 23%
+  // P_13_2 - Net amount for 8%
+  // etc.
+  
+  const rateMap: Record<number, number> = {
+    23: 1,
+    22: 1,
+    8: 2,
+    7: 2,
+    5: 3,
+    0: 4, // 0% (export)
+  }
+  
+  for (const [rate, amounts] of vatRates) {
+    const index = rateMap[rate] || 1
+    summary[`P_13_${index}`] = (summary[`P_13_${index}`] || 0) + amounts.net
+    summary[`P_14_${index}`] = (summary[`P_14_${index}`] || 0) + amounts.vat
+  }
+  
+  return summary
+}
+
+/**
+ * Build line item for FA(2) XML
+ */
+function buildLineItem(item: KsefInvoiceItem, lineNumber: number): Record<string, unknown> {
+  const line: Record<string, unknown> = {
+    NrWierszaFa: lineNumber,
+    P_7: item.description,
+    P_8A: item.quantity,
+    P_8B: item.unit,
+    P_9A: item.unitPrice,
+    P_11: item.netAmount,
+    P_12: formatVatRate(item.vatRate),
+  }
+  
+  if (item.pkwiu) {
+    line.PKWiU = item.pkwiu
+  }
+  
+  if (item.gtu) {
+    line.GTU = item.gtu
+  }
+  
+  return line
+}
+
+/**
+ * Calculate gross total from items
+ */
+function calculateGrossTotal(items: KsefInvoiceItem[]): number {
+  return items.reduce((sum, item) => sum + item.grossAmount, 0)
+}
+
+/**
+ * Format address line from address object
+ */
+function formatAddressLine(address: { street: string; buildingNumber: string; apartmentNumber?: string }): string {
+  let line = `${address.street} ${address.buildingNumber}`
+  if (address.apartmentNumber) {
+    line += `/${address.apartmentNumber}`
+  }
+  return line
+}
+
+/**
+ * Parse address from string (best effort)
+ */
+function parseAddressFromString(address: string): { street: string; buildingNumber: string; apartmentNumber?: string; postalCode: string; city: string; country: string } {
+  // Very basic parsing - in production this would need to be more robust
+  const parts = address.split(',').map(p => p.trim())
+  
+  return {
+    street: parts[0] || '',
+    buildingNumber: '',
+    postalCode: parts[1]?.split(' ')[0] || '',
+    city: parts[1]?.split(' ').slice(1).join(' ') || '',
+    country: 'PL',
+  }
+}
+
+/**
+ * Parse VAT rate from string to number
+ */
+function parseVatRate(rate: string): number {
+  if (rate === 'zw' || rate === 'ZW') return -1
+  if (rate === 'np' || rate === 'NP') return 0
+  return parseInt(rate, 10) || 23
+}
+
+/**
+ * Format VAT rate for XML
+ */
+function formatVatRate(rate: number): string {
+  if (rate === -1) return 'zw'
+  if (rate === 0) return 'np'
+  return rate.toString()
 }

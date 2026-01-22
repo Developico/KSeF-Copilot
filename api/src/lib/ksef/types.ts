@@ -149,3 +149,176 @@ export interface KsefStatusResponse {
   lastSync?: string
   error?: string
 }
+
+/**
+ * KSeF Session (extended)
+ */
+export interface KsefSession {
+  sessionId: string
+  referenceNumber: string
+  nip: string
+  sessionToken: string
+  createdAt: Date
+  expiresAt: Date
+  status: 'active' | 'expired' | 'terminated' | 'error'
+  terminatedAt?: Date
+  invoicesProcessed: number
+  errorMessage?: string
+}
+
+/**
+ * Session status response
+ */
+export interface KsefSessionStatus {
+  isActive: boolean
+  sessionId?: string
+  createdAt?: Date
+  expiresAt?: Date
+  invoicesProcessed?: number
+  reason?: string
+}
+
+/**
+ * Auth challenge response
+ */
+export interface KsefAuthChallengeResponse {
+  timestamp: string
+  challenge: string
+}
+
+/**
+ * Init session response
+ */
+export interface KsefInitSessionResponse {
+  timestamp: string
+  referenceNumber: string
+  sessionToken: {
+    token: string
+    context: {
+      contextIdentifier: {
+        type: string
+        identifier: string
+      }
+    }
+  }
+}
+
+/**
+ * Terminate session response
+ */
+export interface KsefTerminateSessionResponse {
+  timestamp: string
+  referenceNumber: string
+}
+
+/**
+ * Invoice to send to KSeF
+ */
+export interface KsefInvoice {
+  invoiceNumber: string
+  invoiceDate: string
+  dueDate?: string
+  seller: {
+    nip: string
+    name: string
+    address: {
+      street: string
+      buildingNumber: string
+      apartmentNumber?: string
+      postalCode: string
+      city: string
+      country: string
+    }
+  }
+  buyer: {
+    nip: string
+    name: string
+    address: {
+      street: string
+      buildingNumber: string
+      apartmentNumber?: string
+      postalCode: string
+      city: string
+      country: string
+    }
+  }
+  items: KsefInvoiceItem[]
+  currency: string
+  paymentMethod?: string
+  bankAccount?: string
+  notes?: string
+}
+
+/**
+ * Invoice line item
+ */
+export interface KsefInvoiceItem {
+  lineNumber: number
+  description: string
+  quantity: number
+  unit: string
+  unitPrice: number
+  netAmount: number
+  vatRate: number // 23, 8, 5, 0, -1 (zw)
+  vatAmount: number
+  grossAmount: number
+  pkwiu?: string
+  gtu?: string // GTU_01-GTU_13
+}
+
+/**
+ * Send invoice response
+ */
+export interface KsefSendInvoiceResponse {
+  timestamp: string
+  referenceNumber: string
+  elementReferenceNumber: string
+  ksefReferenceNumber?: string
+  invoiceHash: string
+}
+
+/**
+ * Get invoice response
+ */
+export interface KsefGetInvoiceResponse {
+  ksefReferenceNumber: string
+  invoiceXml: string
+  invoice: KsefInvoice
+}
+
+/**
+ * Invoice status response
+ */
+export interface KsefInvoiceStatusResponse {
+  timestamp: string
+  elementReferenceNumber: string
+  processingCode: number
+  processingDescription: string
+  ksefReferenceNumber?: string
+  acquisitionTimestamp?: string
+}
+
+/**
+ * Query invoices request
+ */
+export interface KsefQueryInvoicesRequest {
+  subjectType?: 'subject1' | 'subject2' // subject1 = seller (outgoing), subject2 = buyer (incoming)
+  type?: 'incremental' | 'range'
+  dateFrom?: string
+  dateTo?: string
+  pageSize?: number
+  pageOffset?: number
+}
+
+/**
+ * Query invoices response
+ */
+export interface KsefQueryInvoicesResponse {
+  timestamp: string
+  referenceNumber: string
+  invoiceHeaderList: KsefInvoiceHeader[]
+  numberOfElements: number
+  pageSize: number
+  pageOffset: number
+}
+

@@ -4,10 +4,50 @@
 
 Open-source module for integrating with Polish National e-Invoice System (KSeF) with Dataverse backend, AI categorization, and multi-tenant support.
 
-**Architecture:** Azure Functions + Static Web App + Dataverse + Entra ID  
+**Architecture:** Azure Functions + Static Web App + Dataverse Solution + Entra ID  
 **License:** MIT  
 **MVP:** 1 company, manual categorization  
 **Extended:** Multi-tenant, AI categorization, exports, notifications
+
+---
+
+## Deployment Philosophy
+
+> **Cel:** Maksymalna prostota wdrożenia dla klientów końcowych
+
+| Aspekt | Podejście |
+|--------|-----------|
+| **Backend (Dataverse)** | Managed Solution - import jednym kliknięciem |
+| **Frontend (Web)** | Azure Static Web App - deploy via GitHub Actions |
+| **API (Functions)** | Bundled z SWA lub osobny deploy via CLI |
+| **Konfiguracja** | Skrypty PowerShell + interaktywny wizard |
+| **Dokumentacja** | Krok po kroku z screenshotami |
+| **UI/UX** | Spójny z ekosystemem dvlp (styl planner) |
+
+### Artefakty wdrożeniowe
+
+```
+deployment/
+├── dataverse/
+│   ├── KSeFIntegration_1_0_0_managed.zip    # Managed Solution
+│   ├── KSeFIntegration_1_0_0_unmanaged.zip  # Unmanaged (dev)
+│   └── solution-config.json                  # Konfiguracja
+│
+├── scripts/
+│   ├── Install-KSeF.ps1                      # Główny skrypt instalacyjny
+│   ├── Configure-Azure.ps1                   # Setup Azure resources
+│   ├── Deploy-Functions.ps1                  # Deploy API
+│   └── Deploy-Web.ps1                        # Deploy frontend
+│
+├── templates/
+│   ├── azure-resources.bicep                 # IaC template
+│   └── github-workflow.yml                   # CI/CD template
+│
+└── docs/
+    ├── QUICK_START.md                        # 5-minute setup
+    ├── DEPLOYMENT_GUIDE.md                   # Full guide
+    └── TROUBLESHOOTING.md                    # Common issues
+```
 
 ---
 

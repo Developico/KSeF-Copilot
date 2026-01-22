@@ -1,9 +1,229 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { 
+  Building2, 
+  Key, 
+  Settings2, 
+  Plus, 
+  Trash2, 
+  Edit, 
+  CheckCircle, 
+  AlertCircle,
+  Shield,
+  Globe,
+  Folder,
+  RefreshCw,
+  Save,
+} from 'lucide-react'
+
+interface Company {
+  id: string
+  name: string
+  nip: string
+  isActive: boolean
+  environment: 'production' | 'test' | 'demo'
+  tokenStatus: 'valid' | 'expiring' | 'expired' | 'missing'
+  tokenExpiresAt?: string
+  lastSync?: string
+}
+
+interface CostCenter {
+  id: string
+  code: string
+  name: string
+  isActive: boolean
+}
+
+// Mock data
+const mockCompanies: Company[] = [
+  {
+    id: '1',
+    name: 'Developico Sp. z o.o.',
+    nip: '1234567890',
+    isActive: true,
+    environment: 'production',
+    tokenStatus: 'valid',
+    tokenExpiresAt: '2024-12-31',
+    lastSync: '2024-01-20T10:30:00Z',
+  },
+  {
+    id: '2',
+    name: 'Test Company S.A.',
+    nip: '0987654321',
+    isActive: true,
+    environment: 'test',
+    tokenStatus: 'expiring',
+    tokenExpiresAt: '2024-02-15',
+  },
+]
+
+const mockCostCenters: CostCenter[] = [
+  { id: '1', code: 'CONS', name: 'Consultants', isActive: true },
+  { id: '2', code: 'BACK', name: 'BackOffice', isActive: true },
+  { id: '3', code: 'MGMT', name: 'Management', isActive: true },
+  { id: '4', code: 'CARS', name: 'Cars', isActive: true },
+  { id: '5', code: 'LEGAL', name: 'Legal', isActive: true },
+  { id: '6', code: 'MKTG', name: 'Marketing', isActive: true },
+  { id: '7', code: 'SALES', name: 'Sales', isActive: true },
+  { id: '8', code: 'DELIV', name: 'Delivery', isActive: true },
+  { id: '9', code: 'FIN', name: 'Finance', isActive: true },
+  { id: '10', code: 'OTHER', name: 'Other', isActive: true },
+]
+
+function getTokenStatusBadge(status: Company['tokenStatus']) {
+  switch (status) {
+    case 'valid':
+      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+        <CheckCircle className="mr-1 h-3 w-3" />
+        Aktywny
+      </Badge>
+    case 'expiring':
+      return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+        <AlertCircle className="mr-1 h-3 w-3" />
+        Wygasa wkrótce
+      </Badge>
+    case 'expired':
+      return <Badge variant="destructive">
+        Wygasł
+      </Badge>
+    case 'missing':
+      return <Badge variant="secondary">
+        Brak
+      </Badge>
+    default:
+      return null
+  }
+}
+
+function getEnvironmentBadge(env: Company['environment']) {
+  switch (env) {
+    case 'production':
+      return <Badge>Produkcja</Badge>
+    case 'test':
+      return <Badge variant="outline">Test</Badge>
+    case 'demo':
+      return <Badge variant="secondary">Demo</Badge>
+    default:
+      return null
+  }
+}
 
 export default function SettingsPage() {
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [costCenters, setCostCenters] = useState<CostCenter[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAddCompanyOpen, setIsAddCompanyOpen] = useState(false)
+  const [isAddCostCenterOpen, setIsAddCostCenterOpen] = useState(false)
+  
+  // New company form
+  const [newCompanyName, setNewCompanyName] = useState('')
+  const [newCompanyNip, setNewCompanyNip] = useState('')
+  const [newCompanyEnv, setNewCompanyEnv] = useState<Company['environment']>('test')
+  
+  // New cost center form
+  const [newCostCenterCode, setNewCostCenterCode] = useState('')
+  const [newCostCenterName, setNewCostCenterName] = useState('')
+
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  async function loadSettings() {
+    try {
+      // TODO: Load from API
+      setCompanies(mockCompanies)
+      setCostCenters(mockCostCenters)
+    } catch (error) {
+      console.error('Failed to load settings:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function addCompany() {
+    if (!newCompanyName || !newCompanyNip) return
+    
+    const newCompany: Company = {
+      id: Date.now().toString(),
+      name: newCompanyName,
+      nip: newCompanyNip,
+      isActive: true,
+      environment: newCompanyEnv,
+      tokenStatus: 'missing',
+    }
+    
+    setCompanies([...companies, newCompany])
+    setNewCompanyName('')
+    setNewCompanyNip('')
+    setNewCompanyEnv('test')
+    setIsAddCompanyOpen(false)
+  }
+
+  async function addCostCenter() {
+    if (!newCostCenterCode || !newCostCenterName) return
+    
+    const newCC: CostCenter = {
+      id: Date.now().toString(),
+      code: newCostCenterCode.toUpperCase(),
+      name: newCostCenterName,
+      isActive: true,
+    }
+    
+    setCostCenters([...costCenters, newCC])
+    setNewCostCenterCode('')
+    setNewCostCenterName('')
+    setIsAddCostCenterOpen(false)
+  }
+
+  async function deleteCompany(id: string) {
+    setCompanies(companies.filter(c => c.id !== id))
+  }
+
+  async function deleteCostCenter(id: string) {
+    setCostCenters(costCenters.filter(c => c.id !== id))
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Ustawienia</h1>
         <p className="text-muted-foreground">
@@ -11,93 +231,356 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* Company Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Dane firmy</CardTitle>
-          <CardDescription>
-            Informacje o spółce używanej do synchronizacji z KSeF
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="text-sm font-medium">NIP</label>
-              <input
-                type="text"
-                disabled
-                placeholder="Konfiguracja w .env"
-                className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Nazwa firmy</label>
-              <input
-                type="text"
-                disabled
-                placeholder="Konfiguracja w .env"
-                className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="companies">
+        <TabsList>
+          <TabsTrigger value="companies">
+            <Building2 className="mr-2 h-4 w-4" />
+            Firmy
+          </TabsTrigger>
+          <TabsTrigger value="costcenters">
+            <Folder className="mr-2 h-4 w-4" />
+            Centra kosztów
+          </TabsTrigger>
+          <TabsTrigger value="security">
+            <Shield className="mr-2 h-4 w-4" />
+            Bezpieczeństwo
+          </TabsTrigger>
+        </TabsList>
 
-      {/* KSeF Token Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Token KSeF</CardTitle>
-          <CardDescription>
-            Token autoryzacyjny przechowywany w Azure Key Vault
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Nazwa sekretu:</span>
-              <span className="font-mono text-sm">ksef-token-primary</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Status:</span>
-              <span className="text-muted-foreground">—</span>
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Token można odnowić w portalu KSeF i zaktualizować w Azure Key Vault.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* MPK Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Centra kosztów (MPK)</CardTitle>
-          <CardDescription>
-            Lista dostępnych centrów kosztów do kategoryzacji faktur
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-2 text-sm">
-            {[
-              'Consultants',
-              'BackOffice',
-              'Management',
-              'Cars',
-              'Legal',
-              'Marketing',
-              'Sales',
-              'Delivery',
-              'Finance',
-              'Other',
-            ].map((mpk) => (
-              <div key={mpk} className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-primary" />
-                <span>{mpk}</span>
+        {/* Companies Tab */}
+        <TabsContent value="companies" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Firmy</CardTitle>
+                <CardDescription>
+                  Zarządzaj firmami połączonymi z KSeF
+                </CardDescription>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <Dialog open={isAddCompanyOpen} onOpenChange={setIsAddCompanyOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Dodaj firmę
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Dodaj nową firmę</DialogTitle>
+                    <DialogDescription>
+                      Wprowadź dane firmy do połączenia z KSeF
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Nazwa firmy</label>
+                      <Input
+                        placeholder="np. Moja Firma Sp. z o.o."
+                        value={newCompanyName}
+                        onChange={(e) => setNewCompanyName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">NIP</label>
+                      <Input
+                        placeholder="1234567890"
+                        value={newCompanyNip}
+                        onChange={(e) => setNewCompanyNip(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Środowisko KSeF</label>
+                      <Select value={newCompanyEnv} onValueChange={(v) => setNewCompanyEnv(v as Company['environment'])}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="production">Produkcja</SelectItem>
+                          <SelectItem value="test">Test</SelectItem>
+                          <SelectItem value="demo">Demo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsAddCompanyOpen(false)}>
+                      Anuluj
+                    </Button>
+                    <Button onClick={addCompany}>
+                      <Save className="mr-2 h-4 w-4" />
+                      Zapisz
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Firma</TableHead>
+                    <TableHead>NIP</TableHead>
+                    <TableHead>Środowisko</TableHead>
+                    <TableHead>Token KSeF</TableHead>
+                    <TableHead>Ostatnia synchronizacja</TableHead>
+                    <TableHead className="w-[100px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {companies.map((company) => (
+                    <TableRow key={company.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{company.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-mono">{company.nip}</TableCell>
+                      <TableCell>{getEnvironmentBadge(company.environment)}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          {getTokenStatusBadge(company.tokenStatus)}
+                          {company.tokenExpiresAt && (
+                            <span className="text-xs text-muted-foreground">
+                              Wygasa: {new Date(company.tokenExpiresAt).toLocaleDateString('pl-PL')}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {company.lastSync ? (
+                          new Date(company.lastSync).toLocaleString('pl-PL')
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon">
+                            <Key className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteCompany(company.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Cost Centers Tab */}
+        <TabsContent value="costcenters" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Centra kosztów (MPK)</CardTitle>
+                <CardDescription>
+                  Lista dostępnych centrów kosztów do kategoryzacji faktur
+                </CardDescription>
+              </div>
+              <Dialog open={isAddCostCenterOpen} onOpenChange={setIsAddCostCenterOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Dodaj MPK
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Dodaj centrum kosztów</DialogTitle>
+                    <DialogDescription>
+                      Wprowadź kod i nazwę nowego centrum kosztów
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Kod</label>
+                      <Input
+                        placeholder="np. IT"
+                        value={newCostCenterCode}
+                        onChange={(e) => setNewCostCenterCode(e.target.value)}
+                        className="uppercase"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Nazwa</label>
+                      <Input
+                        placeholder="np. Dział IT"
+                        value={newCostCenterName}
+                        onChange={(e) => setNewCostCenterName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsAddCostCenterOpen(false)}>
+                      Anuluj
+                    </Button>
+                    <Button onClick={addCostCenter}>
+                      <Save className="mr-2 h-4 w-4" />
+                      Zapisz
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Kod</TableHead>
+                    <TableHead>Nazwa</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[100px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {costCenters.map((cc) => (
+                    <TableRow key={cc.id}>
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono">
+                          {cc.code}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">{cc.name}</TableCell>
+                      <TableCell>
+                        {cc.isActive ? (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            Aktywne
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">Nieaktywne</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteCostCenter(cc.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Security Tab */}
+        <TabsContent value="security" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                Azure Key Vault
+              </CardTitle>
+              <CardDescription>
+                Tokeny KSeF są bezpiecznie przechowywane w Azure Key Vault
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Key Vault URL:</span>
+                  <span className="font-mono text-sm">https://kv-ksef-*.vault.azure.net</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Schemat nazewnictwa:</span>
+                  <span className="font-mono text-sm">ksef-token-{'{NIP}'}</span>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Tokeny KSeF można odnowić w portalu KSeF i zaktualizować w Azure Key Vault.
+                Upewnij się, że aplikacja ma odpowiednie uprawnienia do odczytu sekretów.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                Środowiska KSeF
+              </CardTitle>
+              <CardDescription>
+                Adresy API dla różnych środowisk KSeF
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 text-sm">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="font-medium">Produkcja</span>
+                    <p className="text-xs text-muted-foreground">Oficjalne środowisko</p>
+                  </div>
+                  <code className="bg-muted px-2 py-1 rounded text-xs">
+                    https://ksef.mf.gov.pl/api
+                  </code>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="font-medium">Test</span>
+                    <p className="text-xs text-muted-foreground">Środowisko testowe</p>
+                  </div>
+                  <code className="bg-muted px-2 py-1 rounded text-xs">
+                    https://ksef-test.mf.gov.pl/api
+                  </code>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="font-medium">Demo</span>
+                    <p className="text-xs text-muted-foreground">Środowisko demonstracyjne</p>
+                  </div>
+                  <code className="bg-muted px-2 py-1 rounded text-xs">
+                    https://ksef-demo.mf.gov.pl/api
+                  </code>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Uprawnienia
+              </CardTitle>
+              <CardDescription>
+                Role i uprawnienia w aplikacji
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 text-sm">
+                <div className="flex justify-between items-center p-3 border rounded-lg">
+                  <div>
+                    <span className="font-medium">Administrator KSeF</span>
+                    <p className="text-xs text-muted-foreground">
+                      Pełny dostęp: sesje, wysyłanie, pobieranie, konfiguracja
+                    </p>
+                  </div>
+                  <Badge>ksef.admin</Badge>
+                </div>
+                <div className="flex justify-between items-center p-3 border rounded-lg">
+                  <div>
+                    <span className="font-medium">Przeglądający</span>
+                    <p className="text-xs text-muted-foreground">
+                      Tylko odczyt: przeglądanie faktur i statusów
+                    </p>
+                  </div>
+                  <Badge variant="outline">ksef.reader</Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
