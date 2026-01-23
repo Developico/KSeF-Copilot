@@ -10,7 +10,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'dvlp-ksef | KSeF Integration',
+  title: 'Developico KSeF',
   description: 'Open-source KSeF integration module with Dataverse backend',
   icons: {
     icon: '/favicon.svg',

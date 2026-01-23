@@ -137,7 +137,7 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Footer with version */}
       {!isCollapsed && (
         <div className="border-t p-4">
-          <p className="text-xs text-muted-foreground">dvlp-ksef v0.1.0</p>
+          <p className="text-xs text-muted-foreground">Developico KSeF v0.1.0</p>
         </div>
       )}
     </aside>
