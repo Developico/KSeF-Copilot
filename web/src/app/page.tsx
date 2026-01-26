@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge'
 import { 
   FileText, 
   RefreshCw, 
-  CheckCircle, 
   AlertCircle, 
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -16,72 +15,46 @@ import {
   Zap
 } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
-
-interface DashboardStats {
-  totalInvoices: number
-  pendingPayment: number
-  paid: number
-  incoming: number
-  outgoing: number
-  lastSyncAt?: string
-  ksefConnected: boolean
-  activeCompanies: number
-}
+import { useKsefStatus, useInvoices, useRunSync } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
 
 export default function HomePage() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalInvoices: 0,
-    pendingPayment: 0,
-    paid: 0,
-    incoming: 0,
+  const { toast } = useToast()
+  const { data: ksefStatus, isLoading: isStatusLoading } = useKsefStatus()
+  const { data: invoicesData, isLoading: isInvoicesLoading, refetch: refetchInvoices } = useInvoices()
+  const syncMutation = useRunSync()
+
+  const isLoading = isStatusLoading || isInvoicesLoading
+  const isSyncing = syncMutation.isPending
+
+  // Calculate stats from invoices
+  const invoices = invoicesData?.invoices || []
+  const stats = {
+    totalInvoices: invoices.length,
+    pendingPayment: invoices.filter(i => i.paymentStatus === 'pending').length,
+    paid: invoices.filter(i => i.paymentStatus === 'paid').length,
+    incoming: invoices.length, // All invoices from sync are incoming (cost invoices)
     outgoing: 0,
-    ksefConnected: false,
-    activeCompanies: 0,
-  })
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSyncing, setIsSyncing] = useState(false)
-
-  useEffect(() => {
-    loadStats()
-  }, [])
-
-  async function loadStats() {
-    try {
-      // TODO: Load from API
-      // const response = await fetch('/api/stats')
-      // const data = await response.json()
-      // setStats(data)
-      
-      // Mock data for now
-      setStats({
-        totalInvoices: 156,
-        pendingPayment: 12,
-        paid: 144,
-        incoming: 89,
-        outgoing: 67,
-        lastSyncAt: new Date().toISOString(),
-        ksefConnected: true,
-        activeCompanies: 3,
-      })
-    } catch (error) {
-      console.error('Failed to load stats:', error)
-    } finally {
-      setIsLoading(false)
-    }
+    lastSyncAt: ksefStatus?.lastSync,
+    ksefConnected: ksefStatus?.isConnected || false,
+    activeCompanies: 1,
   }
 
   async function handleSync() {
-    setIsSyncing(true)
     try {
-      // TODO: Trigger sync
-      // await fetch('/api/ksef/sync/incoming', { method: 'POST' })
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      await loadStats()
+      const result = await syncMutation.mutateAsync(undefined)
+      await refetchInvoices()
+      toast({
+        title: 'Synchronizacja zakończona',
+        description: `Zaimportowano ${result.imported} faktur`,
+        variant: 'success',
+      })
     } catch (error) {
-      console.error('Sync failed:', error)
-    } finally {
-      setIsSyncing(false)
+      toast({
+        title: 'Błąd synchronizacji',
+        description: error instanceof Error ? error.message : 'Nieznany błąd',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -126,6 +99,21 @@ export default function HomePage() {
         </Card>
       )}
 
+      {/* Sync Error */}
+      {syncMutation.isError && (
+        <Card className="border-destructive/50 bg-destructive/10">
+          <CardContent className="flex items-center gap-4 py-4">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-destructive">Błąd synchronizacji</p>
+              <p className="text-xs text-muted-foreground">
+                {syncMutation.error instanceof Error ? syncMutation.error.message : 'Unknown error'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Quick Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -138,7 +126,7 @@ export default function HomePage() {
               {isLoading ? '—' : stats.totalInvoices}
             </div>
             <p className="text-xs text-muted-foreground">
-              W tym miesiącu
+              W systemie
             </p>
           </CardContent>
         </Card>
@@ -160,15 +148,15 @@ export default function HomePage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Wychodzące</CardTitle>
+            <CardTitle className="text-sm font-medium">Opłacone</CardTitle>
             <ArrowUpFromLine className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? '—' : stats.outgoing}
+            <div className="text-2xl font-bold text-green-600">
+              {isLoading ? '—' : stats.paid}
             </div>
             <p className="text-xs text-muted-foreground">
-              Faktury sprzedaży
+              Zakończone płatności
             </p>
           </CardContent>
         </Card>
@@ -203,7 +191,7 @@ export default function HomePage() {
           </CardHeader>
           <CardContent>
             <Button asChild className="w-full">
-              <Link href="/invoices?direction=incoming">
+              <Link href="/invoices">
                 Przeglądaj faktury
               </Link>
             </Button>
@@ -253,15 +241,53 @@ export default function HomePage() {
       <Card>
         <CardHeader>
           <CardTitle>Ostatnia aktywność</CardTitle>
-          <CardDescription>Ostatnio przetworzone faktury</CardDescription>
+          <CardDescription>Ostatnio zaimportowane faktury</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {isLoading ? (
-              <p className="text-sm text-muted-foreground">Ładowanie...</p>
-            ) : (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : invoices.length === 0 ? (
               <div className="text-sm text-muted-foreground text-center py-8">
-                Brak ostatniej aktywności. Uruchom synchronizację, aby pobrać faktury.
+                Brak faktur w systemie. Uruchom synchronizację, aby pobrać faktury.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {invoices.slice(0, 5).map((invoice) => (
+                  <Link 
+                    key={invoice.id} 
+                    href={`/invoices/${invoice.id}`}
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <ArrowDownToLine className="h-4 w-4 text-blue-500" />
+                      <div>
+                        <p className="text-sm font-medium">{invoice.invoiceNumber}</p>
+                        <p className="text-xs text-muted-foreground">{invoice.supplierName}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">
+                        {new Intl.NumberFormat('pl-PL', {
+                          style: 'currency',
+                          currency: 'PLN',
+                        }).format(invoice.grossAmount)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(invoice.invoiceDate).toLocaleDateString('pl-PL')}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+                {invoices.length > 5 && (
+                  <div className="text-center pt-2">
+                    <Button variant="link" asChild>
+                      <Link href="/invoices">Zobacz wszystkie ({invoices.length})</Link>
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -12,7 +12,8 @@ import {
   ChevronLeft, 
   ChevronRight,
   LayoutDashboard,
-  Building2
+  Building2,
+  BarChart3
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -36,6 +37,11 @@ const navigationItems: NavigationItem[] = [
     name: 'Faktury',
     icon: FileText,
     href: '/invoices',
+  },
+  {
+    name: 'Raporty',
+    icon: BarChart3,
+    href: '/reports',
   },
   {
     name: 'Synchronizacja',

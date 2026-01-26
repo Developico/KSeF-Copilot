@@ -3,13 +3,23 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "node",
-    "AZURE_TENANT_ID": "",
-    "AZURE_CLIENT_ID": "",
-    "AZURE_CLIENT_SECRET": "",
-    "DATAVERSE_URL": "",
-    "AZURE_KEYVAULT_URL": "",
+    
+    "_comment_entra": "=== Entra ID (Azure AD) Configuration ===",
+    "AZURE_TENANT_ID": "<your-tenant-id>",
+    "AZURE_CLIENT_ID": "<your-client-id>",
+    "AZURE_CLIENT_SECRET": "<your-client-secret>",
+    
+    "_comment_dataverse": "=== Dataverse Configuration ===",
+    "DATAVERSE_URL": "https://<org>.crm4.dynamics.com",
+    "DATAVERSE_ENTITY_INVOICES": "dvlp_ksefinvoices",
+    "DATAVERSE_ENTITY_SETTINGS": "dvlp_ksefsettings",
+    
+    "_comment_keyvault": "=== Key Vault Configuration ===",
+    "AZURE_KEYVAULT_URL": "https://<vault-name>.vault.azure.net",
+    
+    "_comment_ksef": "=== KSeF Configuration ===",
     "KSEF_ENVIRONMENT": "test",
-    "KSEF_NIP": "",
+    "KSEF_NIP": "<company-nip>",
     "KSEF_TOKEN_SECRET_NAME": "ksef-token-primary"
   },
   "Host": {

@@ -184,7 +184,7 @@ export async function terminateSession(): Promise<KsefTerminateSessionResponse> 
     throw new Error(`Failed to terminate session: ${response.status} - ${error}`)
   }
   
-  const result: KsefTerminateSessionResponse = await response.json()
+  const result = await response.json() as KsefTerminateSessionResponse
   
   // Clear session
   activeSession = {

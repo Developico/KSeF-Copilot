@@ -78,6 +78,7 @@ dvlp-ksef/
 - Azure subscription
 - Dataverse environment
 - KSeF account (test/demo/prod)
+- Azure Entra ID app registration
 
 ### Installation
 
@@ -88,12 +89,49 @@ cd dvlp-ksef
 
 # Install dependencies
 pnpm install
+```
+
+### API Configuration
+
+```bash
+# Navigate to API directory
+cd api
+
+# Copy environment template
+cp local.settings.example.json local.settings.json
+
+# Edit local.settings.json with your configuration:
+# - AZURE_TENANT_ID
+# - AZURE_CLIENT_ID  
+# - AZURE_CLIENT_SECRET
+# - DATAVERSE_URL
+# - AZURE_KEYVAULT_URL
+# - KSEF_ENVIRONMENT (test/demo/prod)
+# - KSEF_NIP
+```
+
+### Web App Configuration
+
+```bash
+# Navigate to Web directory
+cd web
 
 # Copy environment template
 cp .env.example .env.local
 
-# Edit .env.local with your configuration
+# Edit .env.local:
+# - NEXT_PUBLIC_AZURE_CLIENT_ID - Azure app registration client ID
+# - NEXT_PUBLIC_AZURE_TENANT_ID - Azure tenant ID
+# - NEXT_PUBLIC_API_BASE_URL - API URL (default: http://localhost:7071/api)
 ```
+
+### Azure Entra ID Setup
+
+1. Create App Registration in Azure Portal
+2. Add redirect URI: `http://localhost:3000` (development)
+3. Enable "ID tokens" under Authentication
+4. Add API permissions for Microsoft Dataverse
+5. Copy Client ID and Tenant ID to environment files
 
 ### Development
 

@@ -1,4 +1,6 @@
 export * from './client'
 export * from './config'
+export * from './invoices'
 export * from './parser'
+export * from './session'
 export * from './types'

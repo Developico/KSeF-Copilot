@@ -47,7 +47,7 @@ export async function sendInvoice(
     throw new Error(`Failed to send invoice: ${response.status} - ${error}`)
   }
   
-  const result: KsefSendInvoiceResponse = await response.json()
+  const result = await response.json() as KsefSendInvoiceResponse
   
   return {
     ...result,

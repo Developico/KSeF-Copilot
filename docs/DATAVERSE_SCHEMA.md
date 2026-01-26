@@ -10,7 +10,7 @@ Specyfikacja modelu danych dla integracji z Krajowym Systemem e-Faktur (KSeF).
    - [dvlp_ksefsetting](#dvlp_ksefsetting)
    - [dvlp_ksefsession](#dvlp_ksefsession)
    - [dvlp_ksefsynclog](#dvlp_ksefsynclog)
-   - [Rozszerzenie tabeli Invoice](#rozszerzenie-tabeli-invoice)
+   - [dvlp_ksefinvoice](#dvlp_ksefinvoice)
 4. [Option Sets (Choices)](#option-sets-choices)
 5. [Relacje](#relacje)
 6. [Role bezpieczeństwa](#role-bezpieczeństwa)
@@ -36,13 +36,13 @@ Specyfikacja modelu danych dla integracji z Krajowym Systemem e-Faktur (KSeF).
 │           │    1:N                │    1:N                       │
 │           ▼                       ▼                              │
 │  ┌─────────────────────────────────────────┐                    │
-│  │           Invoice (extended)             │                    │
-│  │  + dvlp_ksefreferencenumber             │                    │
-│  │  + dvlp_ksefstatus                      │                    │
-│  │  + dvlp_ksefsentat                      │                    │
-│  │  + dvlp_ksefupo                         │                    │
-│  │  + dvlp_ksefrawxml                      │                    │
-│  │  + dvlp_ksefdirection                   │                    │
+│  │          dvlp_ksefinvoice               │                    │
+│  │  (pełna tabela faktur KSeF)             │                    │
+│  │  + Dane podstawowe faktury              │                    │
+│  │  + Dane sprzedawcy/nabywcy              │                    │
+│  │  + Pozycje i sumy                       │                    │
+│  │  + Metadane KSeF                        │                    │
+│  │  + Status płatności                     │                    │
 │  └─────────────────────────────────────────┘                    │
 │                        │                                         │
 │                        │ 1:N                                     │
@@ -184,34 +184,203 @@ OptionValuePrefix: 10000
 
 ---
 
-### Rozszerzenie tabeli Invoice
+### dvlp_ksefinvoice
 
-Pola dodawane do istniejącej tabeli faktur (np. `invoice` lub custom `dvlp_invoice`).
+**Nazwa wyświetlana:** Faktura KSeF / KSeF Invoice  
+**Nazwa logiczna:** `dvlp_ksefinvoice`  
+**Nazwa zestawu:** `dvlp_ksefinvoices`  
+**Typ własności:** Organization  
+**Opis:** Faktury kosztowe pobrane z Krajowego Systemu e-Faktur (KSeF)
 
-#### Nowe atrybuty
+#### Konfiguracja tabeli
+
+| Ustawienie | Wartość | Opis |
+|------------|---------|------|
+| Track changes | ✅ | Śledzenie zmian dla synchronizacji |
+| Enable auditing | ✅ | Audyt zmian |
+| Enable for mobile | ❌ | Tylko desktop/web |
+| Enable activities | ❌ | Bez aktywności |
+| Enable notes | ✅ | Notatki/załączniki |
+| Enable connections | ❌ | Bez połączeń |
+| Enable queues | ❌ | Bez kolejek |
+| Enable duplicate detection | ✅ | Wykrywanie duplikatów |
+| Enable for offline | ❌ | Bez trybu offline |
+| Enable quick create | ✅ | Szybkie tworzenie |
+| Primary image | ❌ | Bez obrazka |
+| Color | #2E7D32 | Zielony (faktury) |
+| Icon | 📄 | Ikona dokumentu |
+
+#### Atrybuty - Klucz główny i nazwa
 
 | Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
 |----------------|-------------------|-----|----------|------|
-| `dvlp_ksefreferencenumber` | Numer referencyjny KSeF | String(50) | ❌ | Unikalny numer z KSeF |
-| `dvlp_ksefstatus` | Status KSeF | OptionSet | ❌ | Status w systemie KSeF |
-| `dvlp_ksefdirection` | Kierunek | OptionSet | ❌ | incoming/outgoing |
-| `dvlp_ksefsentat` | Wysłano do KSeF | DateTime | ❌ | Czas wysłania |
-| `dvlp_ksefacceptedat` | Zaakceptowano w KSeF | DateTime | ❌ | Czas akceptacji |
-| `dvlp_ksefupo` | UPO | String(500) | ❌ | Urzędowe Poświadczenie Odbioru |
-| `dvlp_ksefrawxml` | XML faktury | Memo | ❌ | Surowy XML FA(2) |
-| `dvlp_ksefhash` | Hash faktury | String(64) | ❌ | SHA-256 dla weryfikacji |
-| `dvlp_ksefsessionid` | Sesja wysyłki | Lookup | ❌ | Sesja w której wysłano |
-| `dvlp_kseferrormessage` | Błąd KSeF | String(2000) | ❌ | Komunikat błędu |
-| `dvlp_ksefretrycount` | Próby wysyłki | Integer | ❌ | Licznik ponowień |
-| `dvlp_kseflastretryat` | Ostatnia próba | DateTime | ❌ | Czas ostatniej próby |
-| `dvlp_categoryid` | Kategoria | Lookup | ❌ | Kategoria kosztowa |
+| `dvlp_ksefinvoiceid` | ID | Uniqueidentifier | Auto | Klucz główny (GUID) |
+| `dvlp_name` | Numer faktury | String(100) | ✅ | Primary Name - numer faktury od wystawcy |
 
-#### Indeksy na tabeli Invoice
+#### Atrybuty - Dane podstawowe faktury
 
-| Nazwa | Atrybuty | Typ |
-|-------|----------|-----|
-| `idx_ksefreference` | `dvlp_ksefreferencenumber` | Unique |
-| `idx_ksefstatus_direction` | `dvlp_ksefstatus`, `dvlp_ksefdirection` | Non-unique |
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_invoicedate` | Data wystawienia | Date | ✅ | Data wystawienia faktury |
+| `dvlp_saledate` | Data sprzedaży | Date | ❌ | Data sprzedaży/wykonania usługi |
+| `dvlp_duedate` | Termin płatności | Date | ❌ | Data zapadalności |
+| `dvlp_invoicetype` | Typ faktury | OptionSet | ✅ | Typ dokumentu (VAT, korygująca, zaliczkowa) |
+| `dvlp_description` | Opis | String(500) | ❌ | Dodatkowy opis/komentarz |
+
+#### Atrybuty - Dane sprzedawcy
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_sellernip` | NIP sprzedawcy | String(10) | ✅ | Numer NIP sprzedawcy |
+| `dvlp_sellername` | Nazwa sprzedawcy | String(500) | ✅ | Pełna nazwa/firma sprzedawcy |
+
+#### Atrybuty - Dane nabywcy
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_buyernip` | NIP nabywcy | String(10) | ✅ | Numer NIP nabywcy (nasz NIP) |
+
+#### Atrybuty - Kwoty
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_netamount` | Kwota netto | Decimal(12,2) | ✅ | Suma wartości netto |
+| `dvlp_vatamount` | Kwota VAT | Decimal(12,2) | ✅ | Suma podatku VAT |
+| `dvlp_grossamount` | Kwota brutto | Decimal(12,2) | ✅ | Suma wartości brutto |
+| `dvlp_currency` | Waluta | OptionSet | ✅ | Waluta faktury (PLN domyślnie) |
+
+#### Atrybuty - Status płatności
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_paymentstatus` | Status płatności | OptionSet | ✅ | pending/paid/overdue |
+| `dvlp_paidat` | Data płatności | DateTime | ❌ | Kiedy zapłacono |
+
+#### Atrybuty - Kategoryzacja
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_category` | Kategoria | String(100) | ❌ | Kategoria kosztowa (tekst) |
+| `dvlp_costcenter` | MPK | OptionSet | ❌ | Miejsce Powstawania Kosztów |
+
+#### Atrybuty - Metadane KSeF
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_ksefreferencenumber` | Numer referencyjny KSeF | String(50) | ❌ | Unikalny identyfikator z KSeF |
+| `dvlp_ksefstatus` | Status KSeF | OptionSet | ❌ | Status synchronizacji z KSeF |
+| `dvlp_ksefdirection` | Kierunek | OptionSet | ✅ | incoming / outgoing |
+| `dvlp_ksefdownloadedat` | Pobrano z KSeF | DateTime | ❌ | Kiedy pobrano z KSeF |
+| `dvlp_ksefrawxml` | XML faktury | Memo | ❌ | Surowy XML w formacie FA(2) |
+
+#### Atrybuty - Relacje
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_ksefsettingid` | Ustawienie KSeF | Lookup | ✅ | Konfiguracja firmy (per NIP) |
+| `dvlp_parentinvoiceid` | Faktura źródłowa | Lookup | ❌ | Dla korekt - oryginalna faktura |
+| `statecode` | Status | State | Auto | Active/Inactive |
+| `statuscode` | Status Reason | Status | Auto | Powód statusu |
+
+#### Klucze alternatywne
+
+| Nazwa | Atrybuty | Opis |
+|-------|----------|------|
+| `dvlp_ksefref_key` | `dvlp_ksefreferencenumber` | Unikalność numeru KSeF |
+| `dvlp_invoice_composite_key` | `dvlp_sellernip`, `dvlp_name`, `dvlp_invoicedate` | Unikalność faktury (NIP+numer+data) |
+
+#### Widoki (Views)
+
+| Nazwa | Typ | Filtr | Domyślne kolumny |
+|-------|-----|-------|------------------|
+| Wszystkie faktury | Public | - | Numer, Data, Sprzedawca, Brutto, Status płatności |
+| Aktywne faktury | Public | `statecode = 0` | Numer, Data, Sprzedawca, Brutto, Status |
+| Faktury do zapłaty | Public | `dvlp_paymentstatus = pending` | Numer, Data, Sprzedawca, Brutto, Termin |
+| Opłacone | Public | `dvlp_paymentstatus = paid` | Numer, Data, Sprzedawca, Brutto, Data płatności |
+| Przeterminowane | Public | `dvlp_paymentstatus = overdue` | Numer, Data, Sprzedawca, Brutto, Termin |
+| Faktury przychodzące | Public | `dvlp_ksefdirection = incoming` | Numer, Data, Sprzedawca, Brutto |
+| Błędy KSeF | Public | `dvlp_ksefstatus = error` | Numer, Data, Sprzedawca, Status KSeF |
+| Quick Find | QuickFind | - | Numer, Sprzedawca, NIP |
+
+#### Formularze (Forms)
+
+| Nazwa | Typ | Opis |
+|-------|-----|------|
+| Faktura KSeF | Main | Główny formularz edycji |
+| Faktura - Quick Create | Quick Create | Szybkie tworzenie |
+| Faktura - Card | Card | Widok karty |
+
+**Struktura głównego formularza (Main):**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ HEADER                                                           │
+│ [Numer faktury] [Status płatności] [Status KSeF]                │
+├─────────────────────────────────────────────────────────────────┤
+│ TAB: Ogólne                                                      │
+│ ┌─────────────────────────┬─────────────────────────┐           │
+│ │ SEKCJA: Dane faktury    │ SEKCJA: Sprzedawca      │           │
+│ │ - Numer faktury         │ - NIP sprzedawcy        │           │
+│ │ - Data wystawienia      │ - Nazwa sprzedawcy      │           │
+│ │ - Data sprzedaży        │                         │           │
+│ │ - Termin płatności      │                         │           │
+│ │ - Typ faktury           │                         │           │
+│ └─────────────────────────┴─────────────────────────┘           │
+│ ┌─────────────────────────┬─────────────────────────┐           │
+│ │ SEKCJA: Kwoty           │ SEKCJA: Płatność        │           │
+│ │ - Kwota netto           │ - Status płatności      │           │
+│ │ - Kwota VAT             │ - Data płatności        │           │
+│ │ - Kwota brutto          │                         │           │
+│ │ - Waluta                │                         │           │
+│ └─────────────────────────┴─────────────────────────┘           │
+├─────────────────────────────────────────────────────────────────┤
+│ TAB: Kategoryzacja                                               │
+│ - Kategoria                                                      │
+│ - MPK                                                            │
+├─────────────────────────────────────────────────────────────────┤
+│ TAB: KSeF                                                        │
+│ - Numer referencyjny KSeF                                        │
+│ - Status KSeF                                                    │
+│ - Kierunek                                                       │
+│ - Pobrano z KSeF                                                 │
+│ - XML faktury (read-only)                                        │
+├─────────────────────────────────────────────────────────────────┤
+│ TAB: Powiązania                                                  │
+│ - Faktura źródłowa (dla korekt)                                  │
+│ - Ustawienie KSeF                                                │
+├─────────────────────────────────────────────────────────────────┤
+│ FOOTER: Timeline/Notes                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Wykresy (Charts)
+
+| Nazwa | Typ | Opis |
+|-------|-----|------|
+| Faktury wg statusu płatności | Pie Chart | Podział: oczekujące/opłacone/przeterminowane |
+| Faktury miesięcznie | Bar Chart | Liczba faktur per miesiąc |
+| Kwoty miesięcznie | Line Chart | Suma brutto per miesiąc |
+| Top 10 dostawców | Horizontal Bar | Najwięksi dostawcy wg kwoty |
+| Faktury wg kategorii | Pie Chart | Podział kosztów na kategorie |
+
+#### Business Rules
+
+| Nazwa | Warunek | Akcja |
+|-------|---------|-------|
+| Blokuj edycję XML | `dvlp_ksefrawxml != null` | Lock field `dvlp_ksefrawxml` |
+| Auto-ustaw datę płatności | `dvlp_paymentstatus = paid AND dvlp_paidat = null` | Set `dvlp_paidat = Now()` |
+
+#### Indeksy
+
+| Nazwa | Atrybuty | Typ | Uzasadnienie |
+|-------|----------|-----|--------------|
+| `PK_ksefinvoice` | `dvlp_ksefinvoiceid` | Primary | Klucz główny |
+| `AK_ksefref` | `dvlp_ksefreferencenumber` | Unique | Wyszukiwanie po numerze KSeF |
+| `AK_composite` | `dvlp_sellernip`, `dvlp_name`, `dvlp_invoicedate` | Unique | Deduplikacja |
+| `IX_paymentstatus` | `dvlp_paymentstatus`, `dvlp_duedate` | Non-unique | Filtrowanie płatności |
+| `IX_sellernip` | `dvlp_sellernip` | Non-unique | Wyszukiwanie po dostawcy |
+| `IX_invoicedate` | `dvlp_invoicedate` | Non-unique | Sortowanie/filtrowanie dat |
+| `IX_ksefsetting` | `dvlp_ksefsettingid` | Non-unique | Relacja z konfiguracją |
 
 ---
 
@@ -313,6 +482,95 @@ Pola dodawane do istniejącej tabeli faktur (np. `invoice` lub custom `dvlp_invo
 
 ---
 
+### dvlp_paymentstatus
+
+**Nazwa wyświetlana:** Status płatności  
+**Typ:** Global OptionSet
+
+| Wartość | Label (EN) | Label (PL) | Kolor |
+|---------|------------|------------|-------|
+| 100000001 | Pending | Oczekuje | Yellow |
+| 100000002 | Paid | Opłacona | Green |
+| 100000003 | Overdue | Przeterminowana | Red |
+
+---
+
+### dvlp_invoicetype
+
+**Nazwa wyświetlana:** Typ faktury  
+**Typ:** Global OptionSet
+
+| Wartość | Label (EN) | Label (PL) |
+|---------|------------|------------|
+| 100000001 | VAT Invoice | Faktura VAT |
+| 100000002 | Corrective | Faktura korygująca |
+| 100000003 | Advance | Faktura zaliczkowa |
+
+---
+
+### dvlp_currency
+
+**Nazwa wyświetlana:** Waluta  
+**Typ:** Global OptionSet
+
+| Wartość | Label (EN) | Label (PL) |
+|---------|------------|------------|
+| 100000001 | PLN | PLN |
+| 100000002 | EUR | EUR |
+| 100000003 | USD | USD |
+
+---
+
+### dvlp_category
+
+**Nazwa wyświetlana:** Kategoria kosztowa  
+**Typ:** Global OptionSet
+
+| Wartość | Label (EN) | Label (PL) |
+|---------|------------|------------|
+| 100000001 | IT & Software | IT i oprogramowanie |
+| 100000002 | Office | Biuro |
+| 100000003 | Marketing | Marketing |
+| 100000004 | Travel | Podróże |
+| 100000005 | Utilities | Media |
+| 100000006 | Professional Services | Usługi profesjonalne |
+| 100000007 | Equipment | Sprzęt |
+| 100000008 | Materials | Materiały |
+| 100000009 | Other | Inne |
+
+---
+
+### dvlp_costcenter
+
+**Nazwa wyświetlana:** MPK (Miejsce Powstawania Kosztów)  
+**Typ:** Global OptionSet
+
+| Wartość | Label (EN) | Label (PL) |
+|---------|------------|------------|
+| 100000001 | General Administration | Administracja ogólna |
+| 100000002 | Sales | Sprzedaż |
+| 100000003 | Production | Produkcja |
+| 100000004 | R&D | Badania i rozwój |
+| 100000005 | IT | IT |
+| 100000006 | Marketing | Marketing |
+| 100000007 | HR | Kadry |
+| 100000008 | Finance | Finanse |
+
+---
+
+### dvlp_invoicesource
+
+**Nazwa wyświetlana:** Źródło faktury  
+**Typ:** Global OptionSet
+
+| Wartość | Label (EN) | Label (PL) | Opis |
+|---------|------------|------------|------|
+| 100000001 | KSeF Sync | Synchronizacja KSeF | Pobrano automatycznie z KSeF |
+| 100000002 | Manual | Ręczne | Wprowadzono ręcznie |
+| 100000003 | Import | Import | Zaimportowano z pliku |
+
+---
+
 ## Relacje
 
 ### Diagram relacji
@@ -322,11 +580,11 @@ dvlp_ksefsetting (1)
     │
     ├──── (N) dvlp_ksefsession
     │           │
-    │           └──── (N) Invoice (via dvlp_ksefsessionid)
+    │           └──── (N) dvlp_ksefinvoice (via dvlp_ksefsessionid)
     │
     ├──── (N) dvlp_ksefsynclog
     │
-    └──── (N) Invoice (via tenant NIP)
+    └──── (N) dvlp_ksefinvoice (via dvlp_ksefsettingid)
 ```
 
 ### Definicje relacji
@@ -335,8 +593,10 @@ dvlp_ksefsetting (1)
 |---------|-----|--------|-------|---------|
 | `dvlp_ksefsetting_sessions` | 1:N | dvlp_ksefsetting | dvlp_ksefsession | Delete: Cascade |
 | `dvlp_ksefsetting_synclogs` | 1:N | dvlp_ksefsetting | dvlp_ksefsynclog | Delete: Cascade |
+| `dvlp_ksefsetting_invoices` | 1:N | dvlp_ksefsetting | dvlp_ksefinvoice | Delete: Restrict |
 | `dvlp_ksefsession_synclogs` | 1:N | dvlp_ksefsession | dvlp_ksefsynclog | Delete: RemoveLink |
-| `dvlp_ksefsession_invoices` | 1:N | dvlp_ksefsession | Invoice | Delete: RemoveLink |
+| `dvlp_ksefsession_invoices` | 1:N | dvlp_ksefsession | dvlp_ksefinvoice | Delete: RemoveLink |
+| `dvlp_ksefinvoice_parent` | 1:N | dvlp_ksefinvoice | dvlp_ksefinvoice | Delete: RemoveLink |
 
 ---
 
@@ -351,6 +611,7 @@ Pełny dostęp do wszystkich operacji KSeF.
 | dvlp_ksefsetting | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org |
 | dvlp_ksefsession | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org |
 | dvlp_ksefsynclog | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org |
+| dvlp_ksefinvoice | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org |
 
 ### KSeF Reader
 
@@ -361,16 +622,29 @@ Dostęp tylko do odczytu.
 | dvlp_ksefsetting | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
 | dvlp_ksefsession | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
 | dvlp_ksefsynclog | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
+| dvlp_ksefinvoice | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
 
 ### KSeF Operator
 
-Może wykonywać synchronizację ale nie może zmieniać konfiguracji.
+Może wykonywać synchronizację i zarządzać fakturami, ale nie może zmieniać konfiguracji.
 
 | Tabela | Create | Read | Write | Delete | Append | AppendTo |
 |--------|--------|------|-------|--------|--------|----------|
 | dvlp_ksefsetting | ❌ | ✅ Org | ❌ | ❌ | ❌ | ✅ Org |
 | dvlp_ksefsession | ✅ Org | ✅ Org | ✅ Org | ❌ | ✅ Org | ✅ Org |
 | dvlp_ksefsynclog | ✅ Org | ✅ Org | ✅ Org | ❌ | ✅ Org | ✅ Org |
+| dvlp_ksefinvoice | ✅ Org | ✅ Org | ✅ Org | ❌ | ✅ Org | ✅ Org |
+
+### KSeF Approver
+
+Może akceptować faktury do płatności.
+
+| Tabela | Create | Read | Write | Delete | Append | AppendTo |
+|--------|--------|------|-------|--------|--------|----------|
+| dvlp_ksefsetting | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
+| dvlp_ksefsession | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
+| dvlp_ksefsynclog | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
+| dvlp_ksefinvoice | ❌ | ✅ Org | ✅ Org | ❌ | ❌ | ❌ |
 
 ---
 
@@ -385,16 +659,20 @@ Może wykonywać synchronizację ale nie może zmieniać konfiguracji.
 | dvlp_ksefsession | IX_NIP_Status | `dvlp_nip`, `dvlp_status` | Aktywne sesje dla NIP |
 | dvlp_ksefsession | IX_ExpiredAt | `dvlp_expiresat` | Czyszczenie wygasłych |
 | dvlp_ksefsynclog | IX_Setting_Date | `dvlp_ksefsettingid`, `dvlp_startedat` | Historia sync |
-| Invoice | IX_KSeFRef | `dvlp_ksefreferencenumber` | Wyszukiwanie po numerze KSeF |
-| Invoice | IX_KSeFStatus | `dvlp_ksefstatus`, `dvlp_ksefdirection` | Filtrowanie statusów |
+| dvlp_ksefinvoice | PK | `dvlp_ksefinvoiceid` | Klucz główny |
+| dvlp_ksefinvoice | AK_KSeFRef | `dvlp_ksefreferencenumber` | Wyszukiwanie po numerze KSeF |
+| dvlp_ksefinvoice | AK_Composite | `dvlp_sellernip`, `dvlp_name`, `dvlp_invoicedate` | Deduplikacja |
+| dvlp_ksefinvoice | IX_PaymentStatus | `dvlp_paymentstatus`, `dvlp_duedate` | Filtrowanie płatności |
+| dvlp_ksefinvoice | IX_SellerNIP | `dvlp_sellernip` | Wyszukiwanie po dostawcy |
+| dvlp_ksefinvoice | IX_InvoiceDate | `dvlp_invoicedate` | Sortowanie/filtrowanie dat |
 
 ### Partycjonowanie danych (Extended)
 
 Dla dużych wolumenów (>100k faktur):
 
 ```
-Partycja po: dvlp_ksefsentat (miesięcznie)
-Retencja: 7 lat (wymagania prawne)
+Partycja po: dvlp_invoicedate (miesięcznie)
+Retencja: 7 lat (wymagania prawne dla faktur)
 Archiwizacja: Po 2 latach do cold storage
 ```
 
@@ -405,35 +683,105 @@ Archiwizacja: Po 2 latach do cold storage
 ### Import początkowy
 
 1. **Ustawienia KSeF** - ręczna konfiguracja per firma
-2. **Istniejące faktury** - mapowanie pól jeśli migracja z innego systemu
+2. **Faktury KSeF** - tworzenie nowej tabeli `dvlp_ksefinvoice`
 
 ### Skrypt mapowania (przykład)
 
 ```javascript
-// Mapowanie statusów z systemu źródłowego
-const statusMapping = {
-  'NEW': 100000001,      // Draft
-  'SENT': 100000003,     // Sent
+// Mapowanie statusów KSeF
+const ksefStatusMapping = {
+  'NEW': 100000001,       // Draft
+  'SENT': 100000003,      // Sent
   'CONFIRMED': 100000004, // Accepted
-  'FAILED': 100000006    // Error
+  'FAILED': 100000006     // Error
 };
 
 // Mapowanie kierunku
 const directionMapping = {
-  'IN': 100000001,  // Incoming
-  'OUT': 100000002  // Outgoing
+  'IN': 100000001,   // Incoming
+  'OUT': 100000002   // Outgoing
+};
+
+// Mapowanie statusów płatności
+const paymentStatusMapping = {
+  'UNPAID': 100000001,    // Pending
+  'PAID': 100000002,      // Paid
+  'OVERDUE': 100000003    // Overdue
+};
+
+// Mapowanie typów faktur
+const invoiceTypeMapping = {
+  'VAT': 100000001,        // VAT Invoice
+  'CORRECTION': 100000002, // Corrective
+  'ADVANCE': 100000003     // Advance
+};
+
+// Mapowanie walut
+const currencyMapping = {
+  'PLN': 100000001,
+  'EUR': 100000002,
+  'USD': 100000003
 };
 ```
 
 ### Walidacja po migracji
 
 ```sql
--- Sprawdzenie spójności
+-- Sprawdzenie spójności - faktury z KSeF powinny mieć numer referencyjny
 SELECT COUNT(*) as total,
        SUM(CASE WHEN dvlp_ksefreferencenumber IS NULL THEN 1 ELSE 0 END) as missing_ref
-FROM Invoice
+FROM dvlp_ksefinvoice
 WHERE dvlp_ksefstatus IN (100000003, 100000004) -- Sent, Accepted
+
+-- Sprawdzenie duplikatów
+SELECT dvlp_sellernip, dvlp_name, dvlp_invoicedate, COUNT(*) as cnt
+FROM dvlp_ksefinvoice
+GROUP BY dvlp_sellernip, dvlp_name, dvlp_invoicedate
+HAVING COUNT(*) > 1
+
+-- Sprawdzenie relacji z konfiguracją
+SELECT i.dvlp_name, i.dvlp_buyernip
+FROM dvlp_ksefinvoice i
+LEFT JOIN dvlp_ksefsetting s ON i.dvlp_ksefsettingid = s.dvlp_ksefsettingid
+WHERE s.dvlp_ksefsettingid IS NULL
 ```
+
+---
+
+## Tworzenie tabeli - Kolejność kroków
+
+### 1. Utworzenie Global Option Sets
+
+Utwórz najpierw wszystkie globalne zestawy opcji:
+
+1. `dvlp_ksefenvironment` - Środowisko KSeF
+2. `dvlp_ksefstatus` - Status KSeF
+3. `dvlp_ksefdirection` - Kierunek faktury
+4. `dvlp_sessionstatus` - Status sesji
+5. `dvlp_sessiontype` - Typ sesji
+6. `dvlp_syncoperationtype` - Typ operacji synchronizacji
+7. `dvlp_syncstatus` - Status synchronizacji
+8. `dvlp_paymentstatus` - Status płatności
+9. `dvlp_invoicetype` - Typ faktury
+10. `dvlp_currency` - Waluta
+11. `dvlp_category` - Kategoria kosztowa
+12. `dvlp_costcenter` - MPK
+
+### 2. Utworzenie tabel w kolejności
+
+1. `dvlp_ksefsetting` - Ustawienia KSeF (bez relacji)
+2. `dvlp_ksefsession` - Sesje KSeF (z relacją do dvlp_ksefsetting)
+3. `dvlp_ksefinvoice` - Faktury KSeF (z relacją do dvlp_ksefsetting)
+4. `dvlp_ksefsynclog` - Logi synchronizacji (z relacjami do powyższych)
+
+### 3. Utworzenie kluczy alternatywnych
+
+- `dvlp_ksefsetting`: `dvlp_nip_key`
+- `dvlp_ksefinvoice`: `dvlp_ksefref_key`, `dvlp_invoice_composite_key`
+
+### 4. Utworzenie widoków, formularzy i wykresów
+
+Zgodnie ze specyfikacją dla każdej tabeli.
 
 ---
 
@@ -442,6 +790,8 @@ WHERE dvlp_ksefstatus IN (100000003, 100000004) -- Sent, Accepted
 | Wersja | Data | Opis zmian |
 |--------|------|------------|
 | 1.0.0 | 2026-01 | Wersja początkowa |
+| 1.1.0 | 2026-01 | Zmiana z rozszerzenia Invoice na nową tabelę dvlp_ksefinvoice |
+| 1.2.0 | 2026-01 | Uproszczenie struktury: 22 kolumny zamiast 50+, Decimal zamiast Currency, MPK/Kategoria jako OptionSet |
 
 ---
 

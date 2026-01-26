@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -33,7 +33,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Building2, 
   Key, 
-  Settings2, 
   Plus, 
   Trash2, 
   Edit, 
@@ -45,27 +44,22 @@ import {
   RefreshCw,
   Save,
 } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
+import { 
+  useCompanies, 
+  useCreateCompany, 
+  useDeleteCompany,
+  useCostCenters,
+  useCreateCostCenter,
+  useDeleteCostCenter,
+} from '@/hooks/use-api'
+import { KsefSetting, CostCenter } from '@/lib/api'
 
-interface Company {
-  id: string
-  name: string
-  nip: string
-  isActive: boolean
-  environment: 'production' | 'test' | 'demo'
-  tokenStatus: 'valid' | 'expiring' | 'expired' | 'missing'
-  tokenExpiresAt?: string
-  lastSync?: string
-}
+type TokenStatus = 'valid' | 'expiring' | 'expired' | 'missing'
+type Environment = 'production' | 'test' | 'demo'
 
-interface CostCenter {
-  id: string
-  code: string
-  name: string
-  isActive: boolean
-}
-
-// Mock data
-const mockCompanies: Company[] = [
+// Mock data for fallback
+const mockCompanies: KsefSetting[] = [
   {
     id: '1',
     name: 'Developico Sp. z o.o.',
@@ -100,7 +94,7 @@ const mockCostCenters: CostCenter[] = [
   { id: '10', code: 'OTHER', name: 'Other', isActive: true },
 ]
 
-function getTokenStatusBadge(status: Company['tokenStatus']) {
+function getTokenStatusBadge(status: TokenStatus) {
   switch (status) {
     case 'valid':
       return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -125,7 +119,7 @@ function getTokenStatusBadge(status: Company['tokenStatus']) {
   }
 }
 
-function getEnvironmentBadge(env: Company['environment']) {
+function getEnvironmentBadge(env: Environment) {
   switch (env) {
     case 'production':
       return <Badge>Produkcja</Badge>
@@ -139,78 +133,119 @@ function getEnvironmentBadge(env: Company['environment']) {
 }
 
 export default function SettingsPage() {
-  const [companies, setCompanies] = useState<Company[]>([])
-  const [costCenters, setCostCenters] = useState<CostCenter[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
+  
+  // API hooks
+  const { data: companiesData, isLoading: companiesLoading, error: companiesError } = useCompanies()
+  const { data: costCentersData, isLoading: costCentersLoading, error: costCentersError } = useCostCenters()
+  const createCompanyMutation = useCreateCompany()
+  const deleteCompanyMutation = useDeleteCompany()
+  const createCostCenterMutation = useCreateCostCenter()
+  const deleteCostCenterMutation = useDeleteCostCenter()
+  
+  // Use API data or fallback to mock
+  const companies = companiesData ?? mockCompanies
+  const costCenters = costCentersData ?? mockCostCenters
+  const isLoading = companiesLoading || costCentersLoading
+  
   const [isAddCompanyOpen, setIsAddCompanyOpen] = useState(false)
   const [isAddCostCenterOpen, setIsAddCostCenterOpen] = useState(false)
   
   // New company form
   const [newCompanyName, setNewCompanyName] = useState('')
   const [newCompanyNip, setNewCompanyNip] = useState('')
-  const [newCompanyEnv, setNewCompanyEnv] = useState<Company['environment']>('test')
+  const [newCompanyEnv, setNewCompanyEnv] = useState<Environment>('test')
   
   // New cost center form
   const [newCostCenterCode, setNewCostCenterCode] = useState('')
   const [newCostCenterName, setNewCostCenterName] = useState('')
 
-  useEffect(() => {
-    loadSettings()
-  }, [])
-
-  async function loadSettings() {
-    try {
-      // TODO: Load from API
-      setCompanies(mockCompanies)
-      setCostCenters(mockCostCenters)
-    } catch (error) {
-      console.error('Failed to load settings:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   async function addCompany() {
     if (!newCompanyName || !newCompanyNip) return
     
-    const newCompany: Company = {
-      id: Date.now().toString(),
-      name: newCompanyName,
-      nip: newCompanyNip,
-      isActive: true,
-      environment: newCompanyEnv,
-      tokenStatus: 'missing',
+    try {
+      await createCompanyMutation.mutateAsync({
+        name: newCompanyName,
+        nip: newCompanyNip,
+        environment: newCompanyEnv,
+        isActive: true,
+      })
+      toast({
+        variant: 'success',
+        title: 'Firma dodana',
+        description: `${newCompanyName} została dodana do listy`,
+      })
+      setNewCompanyName('')
+      setNewCompanyNip('')
+      setNewCompanyEnv('test')
+      setIsAddCompanyOpen(false)
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Błąd',
+        description: 'Nie udało się dodać firmy',
+      })
     }
-    
-    setCompanies([...companies, newCompany])
-    setNewCompanyName('')
-    setNewCompanyNip('')
-    setNewCompanyEnv('test')
-    setIsAddCompanyOpen(false)
   }
 
   async function addCostCenter() {
     if (!newCostCenterCode || !newCostCenterName) return
     
-    const newCC: CostCenter = {
-      id: Date.now().toString(),
-      code: newCostCenterCode.toUpperCase(),
-      name: newCostCenterName,
-      isActive: true,
+    try {
+      await createCostCenterMutation.mutateAsync({
+        code: newCostCenterCode.toUpperCase(),
+        name: newCostCenterName,
+        isActive: true,
+      })
+      toast({
+        variant: 'success',
+        title: 'MPK dodane',
+        description: `${newCostCenterCode.toUpperCase()} - ${newCostCenterName}`,
+      })
+      setNewCostCenterCode('')
+      setNewCostCenterName('')
+      setIsAddCostCenterOpen(false)
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Błąd',
+        description: 'Nie udało się dodać centrum kosztów',
+      })
     }
-    
-    setCostCenters([...costCenters, newCC])
-    setNewCostCenterCode('')
-    setNewCostCenterName('')
-    setIsAddCostCenterOpen(false)
   }
 
-  async function deleteCompany(id: string) {
-    setCompanies(companies.filter(c => c.id !== id))
+  async function deleteCompany(id: string, name: string) {
+    try {
+      await deleteCompanyMutation.mutateAsync(id)
+      toast({
+        variant: 'success',
+        title: 'Firma usunięta',
+        description: `${name} została usunięta`,
+      })
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Błąd',
+        description: 'Nie udało się usunąć firmy',
+      })
+    }
   }
 
-  async function deleteCostCenter(id: string) {
-    setCostCenters(costCenters.filter(c => c.id !== id))
+  async function deleteCostCenter(id: string, code: string) {
+    try {
+      await deleteCostCenterMutation.mutateAsync(id)
+      toast({
+        variant: 'success',
+        title: 'MPK usunięte',
+        description: `${code} zostało usunięte`,
+      })
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Błąd',
+        description: 'Nie udało się usunąć centrum kosztów',
+      })
+    }
   }
 
   if (isLoading) {
@@ -290,7 +325,7 @@ export default function SettingsPage() {
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Środowisko KSeF</label>
-                      <Select value={newCompanyEnv} onValueChange={(v) => setNewCompanyEnv(v as Company['environment'])}>
+                      <Select value={newCompanyEnv} onValueChange={(v) => setNewCompanyEnv(v as Environment)}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -339,7 +374,7 @@ export default function SettingsPage() {
                       <TableCell>{getEnvironmentBadge(company.environment)}</TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-1">
-                          {getTokenStatusBadge(company.tokenStatus)}
+                          {getTokenStatusBadge(company.tokenStatus ?? 'missing')}
                           {company.tokenExpiresAt && (
                             <span className="text-xs text-muted-foreground">
                               Wygasa: {new Date(company.tokenExpiresAt).toLocaleDateString('pl-PL')}
@@ -359,7 +394,12 @@ export default function SettingsPage() {
                           <Button variant="ghost" size="icon">
                             <Key className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteCompany(company.id)}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => deleteCompany(company.id, company.name)}
+                            disabled={deleteCompanyMutation.isPending}
+                          >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -460,7 +500,12 @@ export default function SettingsPage() {
                           <Button variant="ghost" size="icon">
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteCostCenter(cc.id)}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => deleteCostCenter(cc.id, cc.code)}
+                            disabled={deleteCostCenterMutation.isPending}
+                          >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>

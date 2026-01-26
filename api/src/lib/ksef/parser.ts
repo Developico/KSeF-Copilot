@@ -63,17 +63,17 @@ export function parseInvoiceXml(xml: string): ParsedInvoice {
   }
 
   return {
-    invoiceNumber: fa.P_2 || naglowek.NumerFaktury || '',
-    invoiceDate: fa.P_1 || naglowek.DataWystawienia || '',
+    invoiceNumber: String(fa.P_2 || naglowek.NumerFaktury || ''),
+    invoiceDate: String(fa.P_1 || naglowek.DataWystawienia || ''),
     dueDate,
     supplier: {
-      nip: supplierData.NIP || '',
-      name: supplierData.Nazwa || supplierData.PelnaNazwa || '',
+      nip: formatNip(supplierData.NIP),
+      name: String(supplierData.Nazwa || supplierData.PelnaNazwa || ''),
       address: formatAddress(supplierAddress),
     },
     buyer: {
-      nip: buyerData.NIP || '',
-      name: buyerData.Nazwa || buyerData.PelnaNazwa || '',
+      nip: formatNip(buyerData.NIP),
+      name: String(buyerData.Nazwa || buyerData.PelnaNazwa || ''),
       address: formatAddress(buyerAddress),
     },
     netAmount,
@@ -82,6 +82,15 @@ export function parseInvoiceXml(xml: string): ParsedInvoice {
     items,
     rawXml: xml,
   }
+}
+
+/**
+ * Format NIP to always be a 10-digit string with leading zeros
+ */
+function formatNip(nip: unknown): string {
+  if (!nip) return ''
+  const nipStr = String(nip).replace(/\D/g, '')
+  return nipStr.padStart(10, '0')
 }
 
 /**
