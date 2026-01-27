@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
 import { useTheme } from 'next-themes'
 import { Sun, Moon, User, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,17 +14,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ChangelogModal } from './changelog-modal'
-
-// Mock user for demo - will be replaced with real auth
-const mockUser = {
-  name: 'Jan Kowalski',
-  email: 'jan.kowalski@example.com',
-  avatar: null,
-  role: 'Administrator',
-}
+import { useAuth } from '@/components/auth/auth-provider'
 
 export function Header() {
   const { theme, setTheme } = useTheme()
+  const { user, logout, isAuthenticated } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [isChangelogOpen, setIsChangelogOpen] = useState(false)
   const [logoOk, setLogoOk] = useState(true)
@@ -57,10 +50,12 @@ export function Header() {
     }
   }
 
-  const handleLogout = () => {
-    // TODO: Implement real logout
-    console.log('Logout clicked')
+  const handleLogout = async () => {
+    await logout()
   }
+
+  // Get role display name
+  const roleDisplay = user?.primaryRole || 'Unauthorized'
 
   return (
     <>
@@ -118,24 +113,27 @@ export function Header() {
             )}
 
             {/* User Menu */}
-            {mounted && (
+            {mounted && isAuthenticated && user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="relative h-8 w-8 rounded-full bg-transparent hover:bg-accent focus:bg-accent focus:outline-none">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={mockUser.avatar || undefined} alt={mockUser.name} />
-                      <AvatarFallback>
-                        {mockUser.name?.charAt(0) || <User className="h-4 w-4" />}
-                      </AvatarFallback>
-                    </Avatar>
+                  <button 
+                    className="relative h-8 w-8 rounded-full bg-transparent hover:bg-accent focus:bg-accent focus:outline-none"
+                    title={`Menu użytkownika: ${user.name}`}
+                    aria-label={`Menu użytkownika: ${user.name}`}
+                  >
+                    <UserAvatar 
+                      name={user.name} 
+                      email={user.email} 
+                      size="md" 
+                    />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <div className="flex flex-col space-y-1 p-2">
-                    <p className="text-sm font-medium leading-none">{mockUser.name}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{mockUser.email}</p>
+                    <p className="text-sm font-medium leading-none">{user.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                     <p className="text-[10px] mt-2 text-muted-foreground uppercase tracking-wide">
-                      Rola: <span className="text-foreground">{mockUser.role}</span>
+                      Rola: <span className="text-foreground">{roleDisplay}</span>
                     </p>
                   </div>
                   <DropdownMenuSeparator />

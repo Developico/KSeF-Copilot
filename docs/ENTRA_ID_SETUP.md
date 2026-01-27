@@ -7,6 +7,8 @@ Instrukcja konfiguracji App Registration w Microsoft Entra ID do autentykacji AP
 1. [Przegląd](#przegląd)
 2. [Wymagania wstępne](#wymagania-wstępne)
 3. [Konfiguracja manualna](#konfiguracja-manualna)
+   - Krok 1-6: App Registration i Dataverse
+   - Krok 7-9: Grupy bezpieczeństwa dla Web App
 4. [Konfiguracja automatyczna (skrypt)](#konfiguracja-automatyczna)
 5. [Konfiguracja uprawnień Dataverse](#konfiguracja-uprawnień-dataverse)
 6. [Zmienne środowiskowe](#zmienne-środowiskowe)
@@ -95,29 +97,241 @@ Po utworzeniu, zapisz:
 5. **NATYCHMIAST skopiuj wartość secret** - nie będzie widoczna później!
    - To będzie `AZURE_CLIENT_SECRET`
 
-### Krok 4: Dodaj uprawnienia Dataverse API
+### Krok 4: Dodaj uprawnienia API
+
+#### 4.1 Uprawnienia Dataverse (dla Azure Functions API)
 
 1. W App Registration przejdź do **"API permissions"**
 2. Kliknij **"+ Add a permission"**
 3. Wybierz zakładkę **"APIs my organization uses"**
 4. Wyszukaj i wybierz **"Dataverse"** (lub "Common Data Service")
-5. Wybierz **"Delegated permissions"** lub **"Application permissions"**:
-   - Dla client credentials wybierz **Application permissions**
-   - Zaznacz: `user_impersonation`
-6. Kliknij **"Add permissions"**
-7. Kliknij **"Grant admin consent for [Organization]"**
+5. Wybierz **"Application permissions"** (dla client credentials flow)
+6. Zaznacz: `user_impersonation`
+7. Kliknij **"Add permissions"**
 
-### Krok 5: Utwórz Application User w Dataverse
+#### 4.2 Uprawnienia Microsoft Graph (dla Web App)
+
+1. Kliknij **"+ Add a permission"**
+2. Wybierz **"Microsoft Graph"**
+3. Wybierz **"Delegated permissions"** (dla user context)
+4. Dodaj następujące uprawnienia:
+
+| Uprawnienie | Opis | Wymagane |
+|-------------|------|----------|
+| `openid` | Logowanie OpenID Connect | ✅ Tak |
+| `profile` | Podstawowe dane profilu | ✅ Tak |
+| `email` | Adres email użytkownika | ✅ Tak |
+| `User.Read` | Odczyt profilu zalogowanego użytkownika | ✅ Tak |
+| `User.ReadBasic.All` | Odczyt podstawowych profili innych użytkowników (avatary) | ⚡ Opcjonalnie |
+| `GroupMember.Read.All` | Odczyt członkostwa w grupach (fallback dla >200 grup) | ⚡ Opcjonalnie |
+
+5. Kliknij **"Add permissions"**
+
+#### 4.3 Udziel Admin Consent
+
+1. Kliknij **"Grant admin consent for [Organization]"**
+2. Potwierdź w oknie dialogowym
+3. Wszystkie uprawnienia powinny mieć zielony znacznik ✅
+
+> ⚠️ **Uwaga:** `GroupMember.Read.All` wymaga Admin Consent i jest potrzebne tylko gdy użytkownicy mają >200 grup (groups overage scenario).
+
+### Krok 5: Utwórz dedykowaną rolę zabezpieczeń w Dataverse
+
+Przed utworzeniem Application User, należy przygotować dedykowaną rolę z pełnymi uprawnieniami do tabel KSeF.
+
+#### 5.1 Przejdź do ustawień zabezpieczeń
+
+1. Otwórz [Power Platform Admin Center](https://admin.powerplatform.microsoft.com)
+2. Wybierz odpowiednie **środowisko** (Environment)
+3. Kliknij **Settings** → **Users + permissions** → **Security roles**
+
+#### 5.2 Utwórz nową rolę
+
+1. Kliknij **"+ New role"**
+2. Wypełnij:
+   - **Role Name:** `DVLP-KSeF Application`
+   - **Business Unit:** pozostaw domyślną (root)
+   - **Description:** `Rola dla aplikacji KSeF API - pełny dostęp do tabel dvlp_ksef*`
+3. Kliknij **"Save"**
+
+#### 5.3 Skonfiguruj uprawnienia do tabel KSeF
+
+Po zapisaniu roli, przejdź do zakładki **"Custom Entities"** (lub "Custom Tables") i znajdź tabele KSeF:
+
+| Tabela | Create | Read | Write | Delete | Append | Append To |
+|--------|--------|------|-------|--------|--------|-----------|
+| `dvlp_ksefinvoice` (Faktura KSeF) | ✅ Organization | ✅ Organization | ✅ Organization | ✅ Organization | ✅ Organization | ✅ Organization |
+| `dvlp_ksefsetting` (Ustawienia KSeF) | ✅ Organization | ✅ Organization | ✅ Organization | ✅ Organization | ✅ Organization | ✅ Organization |
+| `dvlp_ksefsession` (Sesja KSeF) | ✅ Organization | ✅ Organization | ✅ Organization | ✅ Organization | ✅ Organization | ✅ Organization |
+| `dvlp_ksefsynclog` (Log synchronizacji) | ✅ Organization | ✅ Organization | ✅ Organization | ✅ Organization | ✅ Organization | ✅ Organization |
+
+**Dla każdej tabeli:**
+
+1. Znajdź tabelę na liście (mogą być w sekcji "Custom Entities" lub pod nazwą wyświetlaną)
+2. Kliknij na każdą ikonę uprawnienia, aż będzie pokazywać **pełne koło** (Organization level)
+3. Upewnij się, że wszystkie 6 uprawnień są ustawione na **Organization**:
+   - **Create** - tworzenie rekordów
+   - **Read** - odczyt rekordów
+   - **Write** - modyfikacja rekordów
+   - **Delete** - usuwanie rekordów
+   - **Append** - dołączanie do innych rekordów
+   - **Append To** - pozwalanie innym rekordom na dołączanie
+
+#### 5.4 Dodaj uprawnienia podstawowe
+
+W zakładce **"Core Records"** ustaw minimalne uprawnienia potrzebne do działania API:
+
+| Encja | Read | Opis |
+|-------|------|------|
+| User | ✅ Organization | Potrzebne do WhoAmI |
+| Business Unit | ✅ Organization | Kontekst organizacji |
+
+#### 5.5 Zapisz rolę
+
+1. Kliknij **"Save and Close"**
+2. Rola `DVLP-KSeF Application` jest gotowa do przypisania
+
+#### Wskazówki
+
+- **Organization level** oznacza dostęp do wszystkich rekordów w organizacji
+- Jeśli tabele KSeF nie są widoczne, upewnij się że solution został opublikowany
+- Możesz później zawęzić uprawnienia do **Business Unit** jeśli potrzebujesz izolacji danych
+
+### Krok 6: Utwórz Application User w Dataverse
 
 1. Przejdź do [Power Platform Admin Center](https://admin.powerplatform.microsoft.com)
 2. Wybierz odpowiednie środowisko → **Settings** → **Users + permissions** → **Application users**
 3. Kliknij **"+ New app user"**
 4. Wybierz utworzoną App Registration (`YOUR_APP_REGISTRATION`)
 5. Wybierz **Business Unit** (zwykle root)
-6. Przypisz role bezpieczeństwa:
-   - **KSeF Admin** (jeśli utworzona wcześniej)
-   - lub **System Administrator** (do testów)
+6. Przypisz rolę zabezpieczeń:
+   - **DVLP-KSeF Application** (utworzona w kroku 5)
 7. Kliknij **"Create"**
+
+### Krok 7: Utwórz grupy bezpieczeństwa dla Web App
+
+Grupy bezpieczeństwa kontrolują dostęp użytkowników do aplikacji webowej KSeF.
+
+#### 7.1 Utwórz grupę Administratorów
+
+1. Przejdź do [Entra ID Portal](https://entra.microsoft.com)
+2. Wybierz **Groups** → **All groups**
+3. Kliknij **"+ New group"**
+4. Wypełnij formularz:
+
+| Pole | Wartość |
+|------|---------|
+| Group type | **Security** |
+| Group name | `DVLP-KSeF-Administrators` |
+| Group description | `Administratorzy integracji KSeF - pełny dostęp` |
+| Microsoft Entra roles can be assigned | **No** |
+| Membership type | **Assigned** |
+
+5. Kliknij **"Create"**
+6. Po utworzeniu, kliknij **"Members"** → **"+ Add members"**
+7. Dodaj użytkowników-administratorów
+
+#### 7.2 Utwórz grupę Użytkowników
+
+1. Powtórz kroki 1-5 z następującymi danymi:
+
+| Pole | Wartość |
+|------|---------|
+| Group type | **Security** |
+| Group name | `DVLP-KSeF-Users` |
+| Group description | `Użytkownicy integracji KSeF - dostęp tylko do odczytu` |
+| Microsoft Entra roles can be assigned | **No** |
+| Membership type | **Assigned** |
+
+2. Dodaj użytkowników z dostępem tylko do odczytu
+
+#### 7.3 Skopiuj Object ID grup
+
+Po utworzeniu grup, skopiuj ich **Object ID**:
+
+1. Kliknij na utworzoną grupę
+2. W zakładce **Overview** znajdź **Object ID** (GUID)
+3. Skopiuj wartość
+
+**Zanotuj identyfikatory:**
+
+| Grupa | Object ID |
+|-------|-----------|
+| `DVLP-KSeF-Administrators` | `________________________________` |
+| `DVLP-KSeF-Users` | `________________________________` |
+
+### Krok 8: Włącz groups claim w tokenie
+
+Aby aplikacja webowa mogła odczytać przynależność użytkownika do grup, musisz włączyć groups claim.
+
+#### 8.1 Przejdź do Token configuration
+
+1. W [Azure Portal](https://portal.azure.com) przejdź do **App registrations**
+2. Wybierz aplikację dla Web App (np. `YOUR_WEB_APP` lub użyj tej samej `YOUR_APP_REGISTRATION`)
+3. Przejdź do **Token configuration**
+
+#### 8.2 Dodaj groups claim
+
+1. Kliknij **"+ Add groups claim"**
+2. W oknie dialogowym wybierz:
+
+| Opcja | Wartość |
+|-------|---------|
+| Security groups | ✅ Zaznacz |
+| Directory roles | ❌ Odznacz |
+| Groups assigned to the application | ❌ Odznacz (opcjonalnie) |
+
+3. W sekcji **Customize token properties by type**:
+
+**Dla ID tokens:**
+- ✅ **Group ID** (rekomendowane - zwraca Object ID grupy)
+
+4. Kliknij **"Add"**
+
+#### 8.3 Weryfikacja konfiguracji
+
+Po zapisaniu, w sekcji **Token configuration** powinieneś zobaczyć:
+
+```
+Groups claim
+├── ID token: groups (Group ID)
+└── Access token: groups (Group ID)
+```
+
+> ⚠️ **Uwaga:** Jeśli użytkownik należy do >200 grup, Azure nie zwróci ich w tokenie.
+> W takim przypadku token zawiera `_claim_sources` i wymaga dodatkowego wywołania Graph API.
+
+### Krok 9: Zapisz Object ID grup w zmiennych środowiskowych
+
+Dodaj Object ID grup do plików konfiguracyjnych:
+
+#### 9.1 Plik `.env.local` (root projektu)
+
+```bash
+# Security Groups (Entra ID) - Authorization
+NEXT_PUBLIC_ADMIN_GROUP=<object-id-grupy-DVLP-KSeF-Administrators>
+NEXT_PUBLIC_USER_GROUP=<object-id-grupy-DVLP-KSeF-Users>
+```
+
+#### 9.2 Plik `web/.env.local`
+
+```bash
+# Security Groups (Entra ID) - Authorization
+NEXT_PUBLIC_ADMIN_GROUP=<object-id-grupy-DVLP-KSeF-Administrators>
+NEXT_PUBLIC_USER_GROUP=<object-id-grupy-DVLP-KSeF-Users>
+```
+
+#### 9.3 Weryfikacja
+
+Po uzupełnieniu zmiennych, zrestartuj aplikację i sprawdź czy grupy są odczytywane z tokenu.
+
+### Hierarchia ról
+
+| Rola | Grupa | Uprawnienia |
+|------|-------|-------------|
+| **Admin** | `DVLP-KSeF-Administrators` | Pełny dostęp: synchronizacja, ustawienia, usuwanie |
+| **User** | `DVLP-KSeF-Users` | Tylko odczyt: przeglądanie faktur, raporty, eksport |
+| **Brak** | - | Odmowa dostępu do aplikacji |
 
 ---
 

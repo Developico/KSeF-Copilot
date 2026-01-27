@@ -39,17 +39,40 @@ export const msalConfig: Configuration = {
 }
 
 /**
- * Scopes for API access
+ * Scopes for login - basic user profile
  */
 export const loginRequest = {
-  scopes: ['openid', 'profile', 'email'],
+  scopes: ['openid', 'profile', 'email', 'User.Read'],
+}
+
+/**
+ * Scopes for Microsoft Graph API - user photos, groups fallback
+ */
+export const graphScopes = {
+  scopes: ['User.Read', 'User.ReadBasic.All'],
+}
+
+/**
+ * Scopes for groups fallback (when user has >200 groups)
+ * Requires admin consent
+ */
+export const groupsScopes = {
+  scopes: ['GroupMember.Read.All'],
 }
 
 /**
  * Scopes for accessing the KSeF API (Azure Functions)
  */
 export const apiScopes = {
-  scopes: [process.env.NEXT_PUBLIC_API_SCOPE || 'api://ksef-api/.default'],
+  scopes: process.env.NEXT_PUBLIC_API_SCOPE ? [process.env.NEXT_PUBLIC_API_SCOPE] : [],
+}
+
+/**
+ * Security groups configuration
+ */
+export const groupConfig = {
+  admin: process.env.NEXT_PUBLIC_ADMIN_GROUP || '',
+  user: process.env.NEXT_PUBLIC_USER_GROUP || '',
 }
 
 /**

@@ -20,7 +20,16 @@
     "_comment_ksef": "=== KSeF Configuration ===",
     "KSEF_ENVIRONMENT": "test",
     "KSEF_NIP": "<company-nip>",
-    "KSEF_TOKEN_SECRET_NAME": "ksef-token-primary"
+    "KSEF_TOKEN_SECRET_NAME": "ksef-token-primary",
+    
+    "_comment_openai": "=== Azure OpenAI Configuration (AI Categorization) ===",
+    "AZURE_OPENAI_DEPLOYMENT": "gpt-4o-mini",
+    "AZURE_OPENAI_API_VERSION": "2024-10-21",
+    "AZURE_OPENAI_ENDPOINT_SECRET_NAME": "AZURE-OPENAI-ENDPOINT",
+    "AZURE_OPENAI_KEY_SECRET_NAME": "AZURE-OPENAI-API-KEY",
+    
+    "_comment_features": "=== Feature Flags ===",
+    "FEATURE_AI_CATEGORIZATION": "false"
   },
   "Host": {
     "CORS": "*",

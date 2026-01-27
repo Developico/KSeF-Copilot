@@ -52,10 +52,12 @@ export interface Invoice {
   tags?: string[]
   rawXml?: string
   importedAt: string
-  // Extended (AI)
+  // Extended (AI Categorization)
   aiMpkSuggestion?: MPK
   aiCategorySuggestion?: string
+  aiDescription?: string
   aiConfidence?: number
+  aiProcessedAt?: string
 }
 
 /**
@@ -118,4 +120,47 @@ export interface InvoiceListParams {
   toDate?: string
   top?: number
   skip?: number
+}
+
+/**
+ * AI Categorization response from OpenAI
+ */
+export interface AICategorization {
+  mpk: MPK
+  category: string
+  description: string
+  confidence: number
+}
+
+/**
+ * Zod schema for AI categorization response
+ */
+export const AiCategorizationSchema = z.object({
+  mpk: z.nativeEnum(MPK),
+  category: z.string().max(100),
+  description: z.string().max(500),
+  confidence: z.number().min(0).max(1),
+})
+
+/**
+ * AI Categorization request
+ */
+export interface AiCategorizationRequest {
+  invoiceId: string
+  supplierName: string
+  supplierNip: string
+  items?: string[]
+  grossAmount?: number
+}
+
+/**
+ * Supplier category cache entry
+ */
+export interface SupplierCategoryCache {
+  supplierNip: string
+  supplierName: string
+  defaultMpk: MPK
+  defaultCategory: string
+  usageCount: number
+  lastUsed: string
 }

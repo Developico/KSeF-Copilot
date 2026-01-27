@@ -151,6 +151,11 @@ async function getAccessToken(): Promise<string | null> {
     return null
   }
 
+  // Skip token acquisition if API scope is not configured
+  if (apiScopes.scopes.length === 0) {
+    return null
+  }
+
   try {
     const msalInstance = getMsalInstance()
     const accounts = msalInstance.getAllAccounts()
