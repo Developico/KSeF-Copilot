@@ -11,8 +11,19 @@
     
     "_comment_dataverse": "=== Dataverse Configuration ===",
     "DATAVERSE_URL": "https://<org>.crm4.dynamics.com",
-    "DATAVERSE_ENTITY_INVOICES": "dvlp_ksefinvoices",
-    "DATAVERSE_ENTITY_SETTINGS": "dvlp_ksefsettings",
+    
+    "_comment_dv_entities": "=== Dataverse Entity Sets (optional - defaults below) ===",
+    "DV_ENTITY_INVOICE": "dvlp_ksefinvoices",
+    "DV_ENTITY_SETTING": "dvlp_ksefsettings",
+    "DV_ENTITY_SESSION": "dvlp_ksefsessions",
+    "DV_ENTITY_SYNCLOG": "dvlp_ksefsynclog",
+    
+    "_comment_dv_logging": "=== Dataverse Logging ===",
+    "DV_LOG_LEVEL": "error",
+    "DV_LOG_TRAFFIC": "false",
+    "DV_LOG_CONSOLE": "false",
+    "DV_LOG_FILE_MAX_MB": "5",
+    "DV_LOG_ALLOW_VERBOSE": "false",
     
     "_comment_keyvault": "=== Key Vault Configuration ===",
     "AZURE_KEYVAULT_URL": "https://<vault-name>.vault.azure.net",
