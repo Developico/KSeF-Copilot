@@ -58,12 +58,32 @@ export {
   mapDvSettingToApp,
   mapAppSettingToDv,
   mapDvSessionToApp,
+  mapDvSyncLogToApp,
   mapDvKsefStatusToApp,
   mapAppKsefStatusToDv,
   mapDvKsefDirectionToApp,
   mapAppKsefDirectionToDv,
 } from './mappers'
-export type { AppSetting, AppSession, AppKsefStatus, AppKsefDirection } from './mappers'
+export type { AppSetting, AppSession, AppSyncLog, AppKsefStatus, AppKsefDirection } from './mappers'
+
+// Services
+export {
+  InvoiceService,
+  invoiceService,
+  SettingService,
+  settingService,
+  SessionService,
+  sessionService,
+  SyncLogService,
+  syncLogService,
+} from './services'
+export type {
+  InvoiceFilters,
+  SettingCreate,
+  SettingUpdate,
+  SessionCreate,
+  SyncLogCreate,
+} from './services'
 
 // Legacy exports (for backward compatibility)
 export * from './entities'

@@ -5,7 +5,7 @@
  * Uses DV config for field name resolution.
  */
 
-import { DV, KSEF_STATUS, KSEF_DIRECTION, PAYMENT_STATUS, INVOICE_TYPE, CURRENCY, SESSION_STATUS, SESSION_TYPE, SYNC_STATUS, SYNC_OPERATION_TYPE, KSEF_ENVIRONMENT } from './config'
+import { DV, KSEF_STATUS, KSEF_DIRECTION, PAYMENT_STATUS, INVOICE_TYPE, CURRENCY, SESSION_STATUS, SESSION_TYPE, SYNC_STATUS, SYNC_DIRECTION, SYNC_OPERATION_TYPE, KSEF_ENVIRONMENT } from './config'
 import { logDataverseMapping } from './logger'
 import type { DvInvoice, DvSetting, DvSession, DvSyncLog } from '../../types/dataverse'
 import type { Invoice, PaymentStatus as AppPaymentStatus, MPK } from '../../types/invoice'
@@ -39,11 +39,11 @@ export function mapDvInvoiceToApp(raw: DvInvoice): Invoice {
     category: raw[s.category as keyof DvInvoice] as string | undefined,
     rawXml: raw[s.ksefRawXml as keyof DvInvoice] as string | undefined,
     importedAt: raw[s.createdOn as keyof DvInvoice] as string,
-    // AI fields
-    aiDescription: raw[s.aiDescription as keyof DvInvoice] as string | undefined,
-    aiCategorySuggestion: raw[s.aiCategory as keyof DvInvoice] as string | undefined,
-    aiConfidence: raw[s.aiConfidence as keyof DvInvoice] as number | undefined,
-    aiProcessedAt: raw[s.aiProcessedAt as keyof DvInvoice] as string | undefined,
+    // AI fields - not yet in Dataverse, will be added later
+    aiDescription: undefined,
+    aiCategorySuggestion: undefined,
+    aiConfidence: undefined,
+    aiProcessedAt: undefined,
   }
   
   logDataverseMapping('mapDvInvoiceToApp', raw, mapped)
@@ -72,11 +72,11 @@ export function mapAppInvoiceToDv(app: Partial<Invoice>): Record<string, unknown
   if (app.referenceNumber !== undefined) payload[s.ksefReferenceNumber] = app.referenceNumber
   if (app.rawXml !== undefined) payload[s.ksefRawXml] = app.rawXml
   
-  // AI fields
-  if (app.aiDescription !== undefined) payload[s.aiDescription] = app.aiDescription
-  if (app.aiCategorySuggestion !== undefined) payload[s.aiCategory] = app.aiCategorySuggestion
-  if (app.aiConfidence !== undefined) payload[s.aiConfidence] = app.aiConfidence
-  if (app.aiProcessedAt !== undefined) payload[s.aiProcessedAt] = app.aiProcessedAt
+  // AI fields - not yet in Dataverse, will be added later
+  // if (app.aiDescription !== undefined) payload[s.aiDescription] = app.aiDescription
+  // if (app.aiCategorySuggestion !== undefined) payload[s.aiCategory] = app.aiCategorySuggestion
+  // if (app.aiConfidence !== undefined) payload[s.aiConfidence] = app.aiConfidence
+  // if (app.aiProcessedAt !== undefined) payload[s.aiProcessedAt] = app.aiProcessedAt
   
   logDataverseMapping('mapAppInvoiceToDv', app, payload)
   return payload
@@ -183,6 +183,67 @@ export function mapDvSessionToApp(raw: DvSession): AppSession {
 }
 
 // ============================================================
+// SyncLog Mappers
+// ============================================================
+
+export interface AppSyncLog {
+  id: string
+  settingId: string
+  sessionId?: string
+  direction: 'incoming' | 'outgoing' | 'both'
+  startedAt: string
+  completedAt?: string
+  status: 'in-progress' | 'completed' | 'failed' | 'partial'
+  invoicesCreated: number
+  invoicesUpdated: number
+  invoicesFailed: number
+  pageFrom?: number
+  pageTo?: number
+  errorMessage?: string
+  createdAt: string
+}
+
+export function mapDvSyncLogToApp(raw: DvSyncLog): AppSyncLog {
+  const s = DV.syncLog
+  
+  return {
+    id: raw[s.id as keyof DvSyncLog] as string,
+    settingId: raw[s.settingLookup as keyof DvSyncLog] as string,
+    sessionId: raw[s.sessionLookup as keyof DvSyncLog] as string | undefined,
+    direction: mapDvSyncDirectionToApp(raw[s.direction as keyof DvSyncLog] as number),
+    startedAt: raw[s.startedAt as keyof DvSyncLog] as string,
+    completedAt: raw[s.completedAt as keyof DvSyncLog] as string | undefined,
+    status: mapDvSyncLogStatusToApp(raw[s.status as keyof DvSyncLog] as number),
+    invoicesCreated: (raw[s.invoicesCreated as keyof DvSyncLog] as number) || 0,
+    invoicesUpdated: (raw[s.invoicesUpdated as keyof DvSyncLog] as number) || 0,
+    invoicesFailed: (raw[s.invoicesFailed as keyof DvSyncLog] as number) || 0,
+    pageFrom: raw[s.pageFrom as keyof DvSyncLog] as number | undefined,
+    pageTo: raw[s.pageTo as keyof DvSyncLog] as number | undefined,
+    errorMessage: raw[s.errorMessage as keyof DvSyncLog] as string | undefined,
+    createdAt: raw[s.createdOn as keyof DvSyncLog] as string,
+  }
+}
+
+function mapDvSyncDirectionToApp(direction: number): 'incoming' | 'outgoing' | 'both' {
+  switch (direction) {
+    case SYNC_DIRECTION.INCOMING: return 'incoming'
+    case SYNC_DIRECTION.OUTGOING: return 'outgoing'
+    case SYNC_DIRECTION.BOTH:
+    default: return 'both'
+  }
+}
+
+function mapDvSyncLogStatusToApp(status: number): 'in-progress' | 'completed' | 'failed' | 'partial' {
+  switch (status) {
+    case SYNC_STATUS.IN_PROGRESS: return 'in-progress'
+    case SYNC_STATUS.COMPLETED: return 'completed'
+    case SYNC_STATUS.FAILED: return 'failed'
+    case SYNC_STATUS.PARTIAL:
+    default: return 'partial'
+  }
+}
+
+// ============================================================
 // Helper Mappers (OptionSet values)
 // ============================================================
 
@@ -224,8 +285,8 @@ function mapAppEnvironmentToDv(env: 'test' | 'demo' | 'production'): number {
 function mapDvSyncStatusToApp(status: number | undefined): 'success' | 'error' | undefined {
   if (status === undefined) return undefined
   switch (status) {
-    case SYNC_STATUS.SUCCESS: return 'success'
-    case SYNC_STATUS.ERROR:
+    case SYNC_STATUS.COMPLETED: return 'success'
+    case SYNC_STATUS.FAILED:
     case SYNC_STATUS.PARTIAL: return 'error'
     default: return undefined
   }

@@ -295,3 +295,158 @@ export function useDeleteCostCenter() {
     },
   })
 }
+
+// ============================================================================
+// Dataverse Settings
+// ============================================================================
+
+export function useDvSettings(activeOnly = false) {
+  return useQuery({
+    queryKey: queryKeys.dvSettings(activeOnly),
+    queryFn: async () => {
+      const response = await api.dvSettings.list(activeOnly)
+      return response.settings
+    },
+  })
+}
+
+export function useDvSetting(id: string) {
+  return useQuery({
+    queryKey: queryKeys.dvSetting(id),
+    queryFn: () => api.dvSettings.get(id),
+    enabled: Boolean(id),
+  })
+}
+
+export function useCreateDvSetting() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: Parameters<typeof api.dvSettings.create>[0]) =>
+      api.dvSettings.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dv', 'settings'] })
+    },
+  })
+}
+
+export function useUpdateDvSetting() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof api.dvSettings.update>[1] }) =>
+      api.dvSettings.update(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['dv', 'settings'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.dvSetting(id) })
+    },
+  })
+}
+
+export function useDeleteDvSetting() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => api.dvSettings.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dv', 'settings'] })
+    },
+  })
+}
+
+// ============================================================================
+// Dataverse Sessions
+// ============================================================================
+
+export function useDvSessions(settingId: string, activeOnly = false) {
+  return useQuery({
+    queryKey: queryKeys.dvSessions(settingId, activeOnly),
+    queryFn: async () => {
+      const response = await api.dvSessions.list(settingId, activeOnly)
+      return response.sessions
+    },
+    enabled: Boolean(settingId),
+  })
+}
+
+export function useDvActiveSession(nip: string) {
+  return useQuery({
+    queryKey: queryKeys.dvSessionActive(nip),
+    queryFn: () => api.dvSessions.getActive(nip),
+    enabled: Boolean(nip),
+  })
+}
+
+export function useDvSession(id: string) {
+  return useQuery({
+    queryKey: queryKeys.dvSession(id),
+    queryFn: () => api.dvSessions.get(id),
+    enabled: Boolean(id),
+  })
+}
+
+export function useTerminateDvSession() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => api.dvSessions.terminate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dv', 'sessions'] })
+    },
+  })
+}
+
+export function useCleanupDvSessions() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => api.dvSessions.cleanup(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dv', 'sessions'] })
+    },
+  })
+}
+
+// ============================================================================
+// Dataverse Sync
+// ============================================================================
+
+export function useStartDvSync() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: Parameters<typeof api.dvSync.start>[0]) =>
+      api.dvSync.start(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dv', 'sync'] })
+      queryClient.invalidateQueries({ queryKey: ['dv', 'settings'] })
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+  })
+}
+
+export function useDvSyncLogs(settingId?: string, limit = 50) {
+  return useQuery({
+    queryKey: queryKeys.dvSyncLogs(settingId, limit),
+    queryFn: async () => {
+      const response = await api.dvSync.getLogs(settingId, limit)
+      return response.logs
+    },
+  })
+}
+
+export function useDvSyncLog(id: string) {
+  return useQuery({
+    queryKey: queryKeys.dvSyncLog(id),
+    queryFn: () => api.dvSync.getLog(id),
+    enabled: Boolean(id),
+  })
+}
+
+export function useDvSyncStats(settingId: string) {
+  return useQuery({
+    queryKey: queryKeys.dvSyncStats(settingId),
+    queryFn: () => api.dvSync.getStats(settingId),
+    enabled: Boolean(settingId),
+  })
+}

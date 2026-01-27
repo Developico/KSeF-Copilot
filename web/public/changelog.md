@@ -6,6 +6,66 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.3.0] - 2026-01-27
+
+### ✨ Dodane - Integracja Dataverse
+
+- **CRUD Services dla Dataverse** - pełna warstwa dostępu do danych:
+  - `InvoiceService` - operacje CRUD na fakturach
+  - `SettingService` - zarządzanie konfiguracją firm (per NIP)
+  - `SessionService` - zarządzanie sesjami KSeF
+  - `SyncLogService` - historia i statystyki synchronizacji
+
+- **Nowe endpointy API** (Azure Functions):
+  - `GET/POST/PATCH/DELETE /api/settings` - zarządzanie ustawieniami firm
+  - `GET/POST /api/sessions` - zarządzanie sesjami Dataverse
+  - `POST /api/sync` - uruchamianie synchronizacji
+  - `GET /api/sync/logs`, `GET /api/sync/stats` - historia i statystyki
+
+- **React Query Hooks** dla Dataverse:
+  - `useDvSettings`, `useDvSetting`, `useCreateDvSetting`, `useUpdateDvSetting`
+  - `useDvSessions`, `useTerminateDvSession`
+  - `useStartDvSync`, `useDvSyncLogs`, `useDvSyncStats`
+
+- **Skrypty testowe**:
+  - `test-dataverse.ts` - weryfikacja połączenia z Dataverse
+  - `test-crud.ts` - testy CRUD dla Settings i Invoices
+  - `get-schema.ts` - inspekcja schematu encji Dataverse
+  - `list-entities.ts` - lista encji w Dataverse
+
+### 🔧 Zmiany
+
+- **Dataverse Config** - naprawione nazwy kolumn zgodnie z rzeczywistym schematem:
+  - `dvlp_direction` zamiast `dvlp_ksefdirection`
+  - `dvlp_invoicestatus` zamiast `dvlp_ksefstatus`
+  - `dvlp_downloadedat` zamiast `dvlp_ksefdownloadedat`
+  - `dvlp_ksefsynclogs` (z 's') jako entitySet
+
+- **Rozszerzone pola Invoice** - dodane brakujące kolumny:
+  - Seller: `sellerAddress`, `sellerCountry`, `sellerEmail`, `sellerPhone`, `sellerBank`
+  - Buyer: `buyerName`, `buyerAddress`, `buyerCountry`
+  - Amounts: `grossAmountPln`, `exchangeRate`, `paidAmount`
+  - VAT breakdown: `vat23Amount`, `vat8Amount`, `vat5Amount`, `vat0Amount`, `vatZwAmount`
+  - Payment: `paymentMethod`, `paymentReference`, `isOverdue`
+
+- **host.json** - wyłączone `dynamicConcurrencyEnabled` (wymaga Storage Emulator)
+
+### ✅ Zweryfikowane
+
+- Połączenie z Dataverse działa (WhoAmI API)
+- CRUD Settings - wszystkie operacje działają
+- CRUD Invoices - wszystkie operacje działają
+- Azure Functions uruchamiają się lokalnie (34 endpointy)
+- TypeScript kompiluje się bez błędów
+
+### 📝 Notatki
+
+> Integracja z KSeF API wymaga tokena autoryzacyjnego.
+> Endpointy API wymagają JWT z Entra ID.
+> Pola AI (aiDescription, aiCategory, etc.) zakomentowane - nie istnieją jeszcze w Dataverse.
+
+---
+
 ## [0.2.0] - 2026-01-27
 
 ### ✨ Dodane

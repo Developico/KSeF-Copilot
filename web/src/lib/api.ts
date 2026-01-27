@@ -370,6 +370,184 @@ export const api = {
         method: 'DELETE',
       }),
   },
+
+  // ============================================================================
+  // Dataverse-backed endpoints (new)
+  // ============================================================================
+
+  // Settings (Dataverse)
+  dvSettings: {
+    list: (activeOnly = false) => {
+      const params = new URLSearchParams()
+      if (activeOnly) params.append('activeOnly', 'true')
+      return apiFetch<{ settings: DvSetting[]; count: number }>(`/api/settings?${params}`)
+    },
+
+    get: (id: string) => apiFetch<DvSetting>(`/api/settings/${id}`),
+
+    create: (data: DvSettingCreate) =>
+      apiFetch<DvSetting>('/api/settings', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    update: (id: string, data: DvSettingUpdate) =>
+      apiFetch<DvSetting>(`/api/settings/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    delete: (id: string) =>
+      apiFetch<{ message: string; id: string }>(`/api/settings/${id}`, {
+        method: 'DELETE',
+      }),
+  },
+
+  // Sessions (Dataverse)
+  dvSessions: {
+    list: (settingId: string, activeOnly = false) => {
+      const params = new URLSearchParams()
+      params.append('settingId', settingId)
+      if (activeOnly) params.append('activeOnly', 'true')
+      return apiFetch<{ sessions: DvSession[]; count: number }>(`/api/sessions?${params}`)
+    },
+
+    getActive: (nip: string) =>
+      apiFetch<{ active: boolean; session: DvSession | null }>(`/api/sessions/active/${nip}`),
+
+    get: (id: string) => apiFetch<DvSession>(`/api/sessions/${id}`),
+
+    terminate: (id: string) =>
+      apiFetch<{ message: string; id: string }>(`/api/sessions/${id}/terminate`, {
+        method: 'POST',
+      }),
+
+    cleanup: () =>
+      apiFetch<{ message: string; expiredCount: number }>('/api/sessions/cleanup', {
+        method: 'POST',
+      }),
+  },
+
+  // Sync (Dataverse)
+  dvSync: {
+    start: (data: DvSyncStart) =>
+      apiFetch<DvSyncResult>('/api/sync', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    getLogs: (settingId?: string, limit = 50) => {
+      const params = new URLSearchParams()
+      if (settingId) params.append('settingId', settingId)
+      params.append('limit', String(limit))
+      return apiFetch<{ logs: DvSyncLog[]; count: number }>(`/api/sync/logs?${params}`)
+    },
+
+    getLog: (id: string) => apiFetch<DvSyncLog>(`/api/sync/logs/${id}`),
+
+    getStats: (settingId: string) =>
+      apiFetch<DvSyncStats>(`/api/sync/stats/${settingId}`),
+  },
+}
+
+// ============================================================================
+// Dataverse Types
+// ============================================================================
+
+export interface DvSetting {
+  id: string
+  nip: string
+  companyName: string
+  environment: 'test' | 'demo' | 'production'
+  autoSync: boolean
+  syncIntervalMinutes?: number
+  lastSyncAt?: string
+  lastSyncStatus?: 'success' | 'error'
+  keyVaultSecretName?: string
+  tokenExpiresAt?: string
+  isActive: boolean
+  invoicePrefix?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface DvSettingCreate {
+  nip: string
+  companyName: string
+  environment?: 'test' | 'demo' | 'production'
+  autoSync?: boolean
+  syncIntervalMinutes?: number
+  keyVaultSecretName?: string
+  invoicePrefix?: string
+}
+
+export interface DvSettingUpdate {
+  companyName?: string
+  environment?: 'test' | 'demo' | 'production'
+  autoSync?: boolean
+  syncIntervalMinutes?: number
+  keyVaultSecretName?: string
+  invoicePrefix?: string
+  isActive?: boolean
+}
+
+export interface DvSession {
+  id: string
+  sessionReference: string
+  settingId: string
+  nip: string
+  sessionType: 'interactive' | 'batch'
+  startedAt: string
+  expiresAt?: string
+  terminatedAt?: string
+  status: 'active' | 'expired' | 'terminated' | 'error'
+  invoicesProcessed: number
+  errorMessage?: string
+  createdAt: string
+}
+
+export interface DvSyncLog {
+  id: string
+  settingId: string
+  sessionId?: string
+  direction: 'incoming' | 'outgoing' | 'both'
+  startedAt: string
+  completedAt?: string
+  status: 'in-progress' | 'completed' | 'failed' | 'partial'
+  invoicesCreated: number
+  invoicesUpdated: number
+  invoicesFailed: number
+  pageFrom?: number
+  pageTo?: number
+  errorMessage?: string
+  createdAt: string
+}
+
+export interface DvSyncStart {
+  settingId: string
+  direction?: 'incoming' | 'outgoing' | 'both'
+  dateFrom?: string
+  dateTo?: string
+}
+
+export interface DvSyncResult {
+  syncLogId: string
+  status: 'completed' | 'failed'
+  total: number
+  processed: number
+  created: number
+  updated: number
+  failed: number
+  errors: Array<{ reference: string; error: string }>
+}
+
+export interface DvSyncStats {
+  totalSyncs: number
+  successfulSyncs: number
+  failedSyncs: number
+  totalInvoicesCreated: number
+  totalInvoicesUpdated: number
+  lastSyncAt: string | null
 }
 
 // ============================================================================
@@ -387,4 +565,16 @@ export const queryKeys = {
   companies: ['settings', 'companies'] as const,
   company: (id: string) => ['settings', 'companies', id] as const,
   costCenters: ['settings', 'costCenters'] as const,
+
+  // Dataverse query keys
+  dvSettings: (activeOnly?: boolean) => ['dv', 'settings', { activeOnly }] as const,
+  dvSetting: (id: string) => ['dv', 'settings', id] as const,
+  dvSessions: (settingId: string, activeOnly?: boolean) => 
+    ['dv', 'sessions', { settingId, activeOnly }] as const,
+  dvSessionActive: (nip: string) => ['dv', 'sessions', 'active', nip] as const,
+  dvSession: (id: string) => ['dv', 'sessions', id] as const,
+  dvSyncLogs: (settingId?: string, limit?: number) => 
+    ['dv', 'sync', 'logs', { settingId, limit }] as const,
+  dvSyncLog: (id: string) => ['dv', 'sync', 'logs', id] as const,
+  dvSyncStats: (settingId: string) => ['dv', 'sync', 'stats', settingId] as const,
 }

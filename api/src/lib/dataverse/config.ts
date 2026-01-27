@@ -85,17 +85,22 @@ export const DV = {
   // KSeF Sync Log (dvlp_ksefsynclog) - Sync operation history
   // ============================================================
   syncLog: {
-    entitySet: process.env.DV_ENTITY_SYNCLOG || 'dvlp_ksefsynclog',
+    entitySet: process.env.DV_ENTITY_SYNCLOG || 'dvlp_ksefsynclogs',
     id: process.env.DV_FIELD_SYNCLOG_ID || 'dvlp_ksefsynclogid',
     name: process.env.DV_FIELD_SYNCLOG_NAME || 'dvlp_name',
     settingLookup: process.env.DV_FIELD_SYNCLOG_SETTING || '_dvlp_ksefsettingid_value',
     sessionLookup: process.env.DV_FIELD_SYNCLOG_SESSION || '_dvlp_ksefsessionid_value',
     operationType: process.env.DV_FIELD_SYNCLOG_OPTYPE || 'dvlp_operationtype',
+    direction: process.env.DV_FIELD_SYNCLOG_DIRECTION || 'dvlp_direction',
     startedAt: process.env.DV_FIELD_SYNCLOG_STARTED || 'dvlp_startedat',
     completedAt: process.env.DV_FIELD_SYNCLOG_COMPLETED || 'dvlp_completedat',
     status: process.env.DV_FIELD_SYNCLOG_STATUS || 'dvlp_status',
     invoicesProcessed: process.env.DV_FIELD_SYNCLOG_PROCESSED || 'dvlp_invoicesprocessed',
+    invoicesCreated: process.env.DV_FIELD_SYNCLOG_CREATED || 'dvlp_invoicescreated',
+    invoicesUpdated: process.env.DV_FIELD_SYNCLOG_UPDATED || 'dvlp_invoicesupdated',
     invoicesFailed: process.env.DV_FIELD_SYNCLOG_FAILED || 'dvlp_invoicesfailed',
+    pageFrom: process.env.DV_FIELD_SYNCLOG_PAGEFROM || 'dvlp_pagefrom',
+    pageTo: process.env.DV_FIELD_SYNCLOG_PAGETO || 'dvlp_pageto',
     errorMessage: process.env.DV_FIELD_SYNCLOG_ERROR || 'dvlp_errormessage',
     requestPayload: process.env.DV_FIELD_SYNCLOG_REQUEST || 'dvlp_requestpayload',
     responsePayload: process.env.DV_FIELD_SYNCLOG_RESPONSE || 'dvlp_responsepayload',
@@ -124,35 +129,50 @@ export const DV = {
     // Seller data
     sellerNip: process.env.DV_FIELD_INVOICE_SELLER_NIP || 'dvlp_sellernip',
     sellerName: process.env.DV_FIELD_INVOICE_SELLER_NAME || 'dvlp_sellername',
+    sellerAddress: process.env.DV_FIELD_INVOICE_SELLER_ADDR || 'dvlp_selleraddress',
+    sellerCountry: process.env.DV_FIELD_INVOICE_SELLER_COUNTRY || 'dvlp_sellercountry',
+    sellerEmail: process.env.DV_FIELD_INVOICE_SELLER_EMAIL || 'dvlp_selleremail',
+    sellerPhone: process.env.DV_FIELD_INVOICE_SELLER_PHONE || 'dvlp_sellerphone',
+    sellerBank: process.env.DV_FIELD_INVOICE_SELLER_BANK || 'dvlp_sellerbank',
     
     // Buyer data
     buyerNip: process.env.DV_FIELD_INVOICE_BUYER_NIP || 'dvlp_buyernip',
+    buyerName: process.env.DV_FIELD_INVOICE_BUYER_NAME || 'dvlp_buyername',
+    buyerAddress: process.env.DV_FIELD_INVOICE_BUYER_ADDR || 'dvlp_buyeraddress',
+    buyerCountry: process.env.DV_FIELD_INVOICE_BUYER_COUNTRY || 'dvlp_buyercountry',
     
     // Amounts
     netAmount: process.env.DV_FIELD_INVOICE_NET || 'dvlp_netamount',
     vatAmount: process.env.DV_FIELD_INVOICE_VAT || 'dvlp_vatamount',
     grossAmount: process.env.DV_FIELD_INVOICE_GROSS || 'dvlp_grossamount',
+    grossAmountPln: process.env.DV_FIELD_INVOICE_GROSS_PLN || 'dvlp_grossamountpln',
     currency: process.env.DV_FIELD_INVOICE_CURRENCY || 'dvlp_currency',
+    exchangeRate: process.env.DV_FIELD_INVOICE_EXCHANGE_RATE || 'dvlp_exchangerate',
+    
+    // VAT breakdown
+    vat23Amount: process.env.DV_FIELD_INVOICE_VAT23 || 'dvlp_vat23amount',
+    vat8Amount: process.env.DV_FIELD_INVOICE_VAT8 || 'dvlp_vat8amount',
+    vat5Amount: process.env.DV_FIELD_INVOICE_VAT5 || 'dvlp_vat5amount',
+    vat0Amount: process.env.DV_FIELD_INVOICE_VAT0 || 'dvlp_vat0amount',
+    vatZwAmount: process.env.DV_FIELD_INVOICE_VATZW || 'dvlp_vatzwaamount',
     
     // Payment status
     paymentStatus: process.env.DV_FIELD_INVOICE_PAYSTATUS || 'dvlp_paymentstatus',
+    paymentMethod: process.env.DV_FIELD_INVOICE_PAYMETHOD || 'dvlp_paymentmethod',
+    paymentReference: process.env.DV_FIELD_INVOICE_PAYREF || 'dvlp_paymentreference',
+    paidAmount: process.env.DV_FIELD_INVOICE_PAIDAMOUNT || 'dvlp_paidamount',
     paidAt: process.env.DV_FIELD_INVOICE_PAIDAT || 'dvlp_paidat',
+    isOverdue: process.env.DV_FIELD_INVOICE_OVERDUE || 'dvlp_isoverdue',
     
     // Categorization
     category: process.env.DV_FIELD_INVOICE_CATEGORY || 'dvlp_category',
     costCenter: process.env.DV_FIELD_INVOICE_COSTCENTER || 'dvlp_costcenter',
     
-    // AI Categorization (future)
-    aiDescription: process.env.DV_FIELD_INVOICE_AI_DESC || 'dvlp_aidescription',
-    aiCategory: process.env.DV_FIELD_INVOICE_AI_CATEGORY || 'dvlp_aicategory',
-    aiConfidence: process.env.DV_FIELD_INVOICE_AI_CONFIDENCE || 'dvlp_aiconfidence',
-    aiProcessedAt: process.env.DV_FIELD_INVOICE_AI_PROCESSED || 'dvlp_aiprocessedat',
-    
     // KSeF metadata
     ksefReferenceNumber: process.env.DV_FIELD_INVOICE_KSEF_REF || 'dvlp_ksefreferencenumber',
-    ksefStatus: process.env.DV_FIELD_INVOICE_KSEF_STATUS || 'dvlp_ksefstatus',
-    ksefDirection: process.env.DV_FIELD_INVOICE_KSEF_DIR || 'dvlp_ksefdirection',
-    ksefDownloadedAt: process.env.DV_FIELD_INVOICE_KSEF_DOWNLOADED || 'dvlp_ksefdownloadedat',
+    invoiceStatus: process.env.DV_FIELD_INVOICE_STATUS || 'dvlp_invoicestatus',
+    direction: process.env.DV_FIELD_INVOICE_DIRECTION || 'dvlp_direction',
+    downloadedAt: process.env.DV_FIELD_INVOICE_DOWNLOADED || 'dvlp_downloadedat',
     ksefRawXml: process.env.DV_FIELD_INVOICE_KSEF_XML || 'dvlp_ksefrawxml',
     
     // Relations
@@ -215,9 +235,15 @@ export const SYNC_OPERATION_TYPE = {
 
 export const SYNC_STATUS = {
   IN_PROGRESS: 100000001,
-  SUCCESS: 100000002,
-  PARTIAL: 100000003,
-  ERROR: 100000004,
+  COMPLETED: 100000002,
+  FAILED: 100000003,
+  PARTIAL: 100000004,
+} as const
+
+export const SYNC_DIRECTION = {
+  INCOMING: 100000001,
+  OUTGOING: 100000002,
+  BOTH: 100000003,
 } as const
 
 export const PAYMENT_STATUS = {
@@ -258,6 +284,7 @@ export type SessionStatus = typeof SESSION_STATUS[keyof typeof SESSION_STATUS]
 export type SessionType = typeof SESSION_TYPE[keyof typeof SESSION_TYPE]
 export type SyncOperationType = typeof SYNC_OPERATION_TYPE[keyof typeof SYNC_OPERATION_TYPE]
 export type SyncStatus = typeof SYNC_STATUS[keyof typeof SYNC_STATUS]
+export type SyncDirectionType = typeof SYNC_DIRECTION[keyof typeof SYNC_DIRECTION]
 export type PaymentStatus = typeof PAYMENT_STATUS[keyof typeof PAYMENT_STATUS]
 export type InvoiceType = typeof INVOICE_TYPE[keyof typeof INVOICE_TYPE]
 export type Currency = typeof CURRENCY[keyof typeof CURRENCY]
