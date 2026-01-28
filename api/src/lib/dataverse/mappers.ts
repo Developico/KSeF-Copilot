@@ -5,14 +5,74 @@
  * Uses DV config for field name resolution.
  */
 
-import { DV, KSEF_STATUS, KSEF_DIRECTION, PAYMENT_STATUS, INVOICE_TYPE, CURRENCY, SESSION_STATUS, SESSION_TYPE, SYNC_STATUS, SYNC_DIRECTION, SYNC_OPERATION_TYPE, KSEF_ENVIRONMENT } from './config'
+import { DV, KSEF_STATUS, KSEF_DIRECTION, PAYMENT_STATUS, INVOICE_TYPE, CURRENCY, SESSION_STATUS, SESSION_TYPE, SYNC_STATUS, SYNC_DIRECTION, SYNC_OPERATION_TYPE, KSEF_ENVIRONMENT, INVOICE_SOURCE } from './config'
 import { logDataverseMapping } from './logger'
 import type { DvInvoice, DvSetting, DvSession, DvSyncLog } from '../../types/dataverse'
-import type { Invoice, PaymentStatus as AppPaymentStatus, MPK } from '../../types/invoice'
+import type { Invoice, PaymentStatus as AppPaymentStatus, MPK, InvoiceSource } from '../../types/invoice'
 
 // ============================================================
 // Invoice Mappers
 // ============================================================
+
+// MPK (Cost Center) Option Set values
+const COST_CENTER_VALUES = {
+  Consultants: 100000001,
+  BackOffice: 100000002,
+  Management: 100000003,
+  Cars: 100000004,
+  Legal: 100000005,
+  Marketing: 100000006,
+  Sales: 100000007,
+  Delivery: 100000008,
+  Finance: 100000009,
+  Other: 100000010,
+} as const
+
+/**
+ * Map Dataverse Cost Center (number) to MPK enum
+ */
+function mapDvCostCenterToMpk(value: number | undefined): MPK | undefined {
+  if (value === undefined) return undefined
+  
+  const mpkMap: Record<number, MPK> = {
+    100000001: 'Consultants',
+    100000002: 'BackOffice',
+    100000003: 'Management',
+    100000004: 'Cars',
+    100000005: 'Legal',
+    100000006: 'Marketing',
+    100000007: 'Sales',
+    100000008: 'Delivery',
+    100000009: 'Finance',
+    100000010: 'Other',
+  }
+  
+  return mpkMap[value] || 'Other'
+}
+
+/**
+ * Map MPK enum to Dataverse Cost Center (number)
+ */
+function mapMpkToDvCostCenter(mpk: MPK | undefined): number | undefined {
+  if (mpk === undefined) return undefined
+  return COST_CENTER_VALUES[mpk] || COST_CENTER_VALUES.Other
+}
+
+/**
+ * Map Dataverse Source to App Source
+ */
+function mapDvSourceToApp(value: number | undefined): InvoiceSource {
+  if (value === INVOICE_SOURCE.MANUAL) return 'Manual'
+  return 'KSeF'
+}
+
+/**
+ * Map App Source to Dataverse Source
+ */
+function mapAppSourceToDv(source: InvoiceSource | undefined): number {
+  if (source === 'Manual') return INVOICE_SOURCE.MANUAL
+  return INVOICE_SOURCE.KSEF
+}
 
 /**
  * Map Dataverse Invoice to App Invoice
@@ -39,11 +99,13 @@ export function mapDvInvoiceToApp(raw: DvInvoice): Invoice {
     category: raw[s.category as keyof DvInvoice] as string | undefined,
     rawXml: raw[s.ksefRawXml as keyof DvInvoice] as string | undefined,
     importedAt: raw[s.createdOn as keyof DvInvoice] as string,
-    // AI fields - not yet in Dataverse, will be added later
-    aiDescription: undefined,
-    aiCategorySuggestion: undefined,
-    aiConfidence: undefined,
-    aiProcessedAt: undefined,
+    source: mapDvSourceToApp(raw[s.source as keyof DvInvoice] as number | undefined),
+    // AI Categorization fields
+    aiMpkSuggestion: mapDvCostCenterToMpk(raw[s.aiMpkSuggestion as keyof DvInvoice] as number | undefined),
+    aiCategorySuggestion: raw[s.aiCategorySuggestion as keyof DvInvoice] as string | undefined,
+    aiDescription: raw[s.aiDescription as keyof DvInvoice] as string | undefined,
+    aiConfidence: raw[s.aiConfidence as keyof DvInvoice] as number | undefined,
+    aiProcessedAt: raw[s.aiProcessedAt as keyof DvInvoice] as string | undefined,
   }
   
   logDataverseMapping('mapDvInvoiceToApp', raw, mapped)
@@ -71,12 +133,14 @@ export function mapAppInvoiceToDv(app: Partial<Invoice>): Record<string, unknown
   if (app.category !== undefined) payload[s.category] = app.category
   if (app.referenceNumber !== undefined) payload[s.ksefReferenceNumber] = app.referenceNumber
   if (app.rawXml !== undefined) payload[s.ksefRawXml] = app.rawXml
+  if (app.source !== undefined) payload[s.source] = mapAppSourceToDv(app.source)
   
-  // AI fields - not yet in Dataverse, will be added later
-  // if (app.aiDescription !== undefined) payload[s.aiDescription] = app.aiDescription
-  // if (app.aiCategorySuggestion !== undefined) payload[s.aiCategory] = app.aiCategorySuggestion
-  // if (app.aiConfidence !== undefined) payload[s.aiConfidence] = app.aiConfidence
-  // if (app.aiProcessedAt !== undefined) payload[s.aiProcessedAt] = app.aiProcessedAt
+  // AI Categorization fields
+  if (app.aiMpkSuggestion !== undefined) payload[s.aiMpkSuggestion] = mapMpkToDvCostCenter(app.aiMpkSuggestion)
+  if (app.aiCategorySuggestion !== undefined) payload[s.aiCategorySuggestion] = app.aiCategorySuggestion
+  if (app.aiDescription !== undefined) payload[s.aiDescription] = app.aiDescription
+  if (app.aiConfidence !== undefined) payload[s.aiConfidence] = app.aiConfidence
+  if (app.aiProcessedAt !== undefined) payload[s.aiProcessedAt] = app.aiProcessedAt
   
   logDataverseMapping('mapAppInvoiceToDv', app, payload)
   return payload

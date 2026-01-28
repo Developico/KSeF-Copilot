@@ -168,6 +168,16 @@ export const DV = {
     category: process.env.DV_FIELD_INVOICE_CATEGORY || 'dvlp_category',
     costCenter: process.env.DV_FIELD_INVOICE_COSTCENTER || 'dvlp_costcenter',
     
+    // AI Categorization
+    aiMpkSuggestion: process.env.DV_FIELD_INVOICE_AI_MPK || 'dvlp_aimpksuggestion',
+    aiCategorySuggestion: process.env.DV_FIELD_INVOICE_AI_CATEGORY || 'dvlp_aicategorysuggestion',
+    aiDescription: process.env.DV_FIELD_INVOICE_AI_DESC || 'dvlp_aidescription',
+    aiConfidence: process.env.DV_FIELD_INVOICE_AI_CONFIDENCE || 'dvlp_aiconfidence',
+    aiProcessedAt: process.env.DV_FIELD_INVOICE_AI_PROCESSED || 'dvlp_aiprocessedat',
+    
+    // Source (KSeF vs Manual)
+    source: process.env.DV_FIELD_INVOICE_SOURCE || 'dvlp_source',
+    
     // KSeF metadata
     ksefReferenceNumber: process.env.DV_FIELD_INVOICE_KSEF_REF || 'dvlp_ksefreferencenumber',
     invoiceStatus: process.env.DV_FIELD_INVOICE_STATUS || 'dvlp_invoicestatus',
@@ -274,6 +284,11 @@ export const COST_CATEGORY = {
   EQUIPMENT: 100000007,
   MATERIALS: 100000008,
   OTHER: 100000009,
+} as const
+
+export const INVOICE_SOURCE = {
+  KSEF: 100000001,
+  MANUAL: 100000002,
 } as const
 
 // Type exports for type-safe usage

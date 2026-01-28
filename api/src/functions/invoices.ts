@@ -1,10 +1,10 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { listInvoices, getInvoiceById, updateInvoice, deleteInvoice } from '../lib/dataverse/invoices'
 import { verifyAuth, requireRole } from '../lib/auth/middleware'
-import { InvoiceUpdateSchema } from '../types/invoice'
+import { InvoiceUpdateSchema, InvoiceSource } from '../types/invoice'
 
 /**
- * GET /api/invoices - List all invoices
+ * GET /api/invoices - List all invoices with advanced filtering
  */
 export async function listInvoicesHandler(
   request: HttpRequest,
@@ -22,17 +22,34 @@ export async function listInvoicesHandler(
       return { status: 403, jsonBody: { error: 'Forbidden' } }
     }
 
-    // Parse query parameters
+    // Parse query parameters (extended with advanced filters)
     const url = new URL(request.url)
+    
+    // Parse mpkList as comma-separated values
+    const mpkListParam = url.searchParams.get('mpkList')
+    const mpkList = mpkListParam ? mpkListParam.split(',').filter(Boolean) : undefined
+
     const params = {
       tenantNip: url.searchParams.get('tenantNip') || undefined,
       paymentStatus: url.searchParams.get('paymentStatus') as 'pending' | 'paid' | undefined,
       mpk: url.searchParams.get('mpk') || undefined,
+      mpkList,
       category: url.searchParams.get('category') || undefined,
       fromDate: url.searchParams.get('fromDate') || undefined,
       toDate: url.searchParams.get('toDate') || undefined,
+      dueDateFrom: url.searchParams.get('dueDateFrom') || undefined,
+      dueDateTo: url.searchParams.get('dueDateTo') || undefined,
+      minAmount: url.searchParams.get('minAmount') ? parseFloat(url.searchParams.get('minAmount')!) : undefined,
+      maxAmount: url.searchParams.get('maxAmount') ? parseFloat(url.searchParams.get('maxAmount')!) : undefined,
+      supplierNip: url.searchParams.get('supplierNip') || undefined,
+      supplierName: url.searchParams.get('supplierName') || undefined,
+      source: url.searchParams.get('source') as InvoiceSource | undefined,
+      overdue: url.searchParams.get('overdue') === 'true',
+      search: url.searchParams.get('search') || undefined,
       top: parseInt(url.searchParams.get('top') || '100'),
       skip: parseInt(url.searchParams.get('skip') || '0'),
+      orderBy: url.searchParams.get('orderBy') as 'invoiceDate' | 'grossAmount' | 'supplierName' | 'dueDate' || 'invoiceDate',
+      orderDirection: url.searchParams.get('orderDirection') as 'asc' | 'desc' || 'desc',
     }
 
     const invoices = await listInvoices(params)

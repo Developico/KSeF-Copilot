@@ -28,6 +28,8 @@ export const InvoiceEntity = {
     tags: 'ksef_tags',
     rawXml: 'ksef_rawxml',
     importedAt: 'ksef_importedat',
+    source: 'ksef_source',
+    description: 'ksef_description',
     // AI fields (Extended)
     aiMpkSuggestion: 'ksef_aimpksuggestion',
     aiCategorySuggestion: 'ksef_aicategorysuggestion',
@@ -76,6 +78,14 @@ export const MpkValues = {
 } as const
 
 /**
+ * Invoice source choice values
+ */
+export const InvoiceSourceValues = {
+  KSeF: 100000001,
+  Manual: 100000002,
+} as const
+
+/**
  * Reverse lookup for choice values
  */
 export function getPaymentStatusKey(value: number): 'pending' | 'paid' {
@@ -88,4 +98,10 @@ export function getMpkKey(value: number): string {
   const entries = Object.entries(MpkValues)
   const found = entries.find(([, v]) => v === value)
   return found?.[0] || 'Other'
+}
+
+export function getInvoiceSourceKey(value: number): 'KSeF' | 'Manual' {
+  const entries = Object.entries(InvoiceSourceValues)
+  const found = entries.find(([, v]) => v === value)
+  return (found?.[0] as 'KSeF' | 'Manual') || 'KSeF'
 }

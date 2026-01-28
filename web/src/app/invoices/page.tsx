@@ -1,12 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -16,16 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   FileText,
-  Search,
-  Filter,
   Download,
   Eye,
   ArrowDownToLine,
@@ -33,21 +22,25 @@ import {
   Building2,
   RefreshCw,
   CheckCircle,
+  Plus,
+  AlertCircle,
 } from 'lucide-react'
 import { useInvoices, useMarkAsPaid } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
-import { Invoice } from '@/lib/api'
+import { Invoice, InvoiceListParams } from '@/lib/api'
 import { exportInvoicesToCsv } from '@/lib/export'
+import { InvoiceFilters } from '@/components/invoices/invoice-filters'
 
-function getPaymentStatusBadge(status: Invoice['paymentStatus']) {
-  switch (status) {
-    case 'paid':
-      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Opłacona</Badge>
-    case 'pending':
-      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Nieopłacona</Badge>
-    default:
-      return null
+function getPaymentStatusBadge(status: Invoice['paymentStatus'], dueDate?: string) {
+  const isOverdue = dueDate && new Date(dueDate) < new Date() && status === 'pending'
+  
+  if (status === 'paid') {
+    return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Opłacona</Badge>
   }
+  if (isOverdue) {
+    return <Badge variant="destructive">Zaległe</Badge>
+  }
+  return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Oczekuje</Badge>
 }
 
 function formatCurrency(amount: number, currency: string = 'PLN') {
@@ -59,38 +52,36 @@ function formatCurrency(amount: number, currency: string = 'PLN') {
 
 export default function InvoicesPage() {
   const { toast } = useToast()
-  const searchParams = useSearchParams()
-  const initialPaymentStatus = searchParams.get('paymentStatus') || 'all'
   
-  const [searchQuery, setSearchQuery] = useState('')
-  const [paymentFilter, setPaymentFilter] = useState<string>(initialPaymentStatus)
-  
-  const { data, isLoading, refetch } = useInvoices({
-    paymentStatus: paymentFilter !== 'all' ? paymentFilter as 'pending' | 'paid' : undefined,
+  const [filters, setFilters] = useState<InvoiceListParams>({
+    orderBy: 'invoiceDate',
+    orderDirection: 'desc',
+    top: 100,
   })
+  
+  const { data, isLoading, refetch } = useInvoices(filters)
   
   const markAsPaidMutation = useMarkAsPaid()
 
   const invoices = data?.invoices || []
 
-  const filteredInvoices = invoices.filter(invoice => {
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      return (
-        invoice.invoiceNumber.toLowerCase().includes(query) ||
-        invoice.supplierName.toLowerCase().includes(query) ||
-        invoice.referenceNumber.toLowerCase().includes(query) ||
-        invoice.supplierNip.includes(query)
-      )
-    }
-    return true
-  })
-
   const pendingCount = invoices.filter(i => i.paymentStatus === 'pending').length
   const paidCount = invoices.filter(i => i.paymentStatus === 'paid').length
+  const overdueCount = invoices.filter(i => 
+    i.paymentStatus === 'pending' && 
+    i.dueDate && 
+    new Date(i.dueDate) < new Date()
+  ).length
+
+  const handleFiltersChange = useCallback((newFilters: InvoiceListParams) => {
+    setFilters(prev => ({
+      ...newFilters,
+      top: prev.top,
+    }))
+  }, [])
 
   function handleExport() {
-    if (filteredInvoices.length === 0) {
+    if (invoices.length === 0) {
       toast({
         title: 'Brak danych',
         description: 'Nie ma faktur do wyeksportowania',
@@ -98,10 +89,10 @@ export default function InvoicesPage() {
       })
       return
     }
-    exportInvoicesToCsv(filteredInvoices)
+    exportInvoicesToCsv(invoices)
     toast({
       title: 'Eksport zakończony',
-      description: `Wyeksportowano ${filteredInvoices.length} faktur do pliku CSV`,
+      description: `Wyeksportowano ${invoices.length} faktur do pliku CSV`,
       variant: 'success',
     })
   }
@@ -134,6 +125,12 @@ export default function InvoicesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/invoices/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Dodaj fakturę
+            </Button>
+          </Link>
           <Button variant="outline" onClick={() => refetch()}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Odśwież
@@ -146,26 +143,47 @@ export default function InvoicesPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="cursor-pointer hover:bg-muted/50" onClick={() => setPaymentFilter('all')}>
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card 
+          className="cursor-pointer hover:bg-muted/50" 
+          onClick={() => setFilters(f => ({ ...f, paymentStatus: undefined, overdue: undefined }))}
+        >
           <CardContent className="flex items-center justify-between py-4">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-muted-foreground" />
               <span className="font-medium">Wszystkie</span>
             </div>
-            <Badge variant="secondary">{invoices.length}</Badge>
+            <Badge variant="secondary">{data?.count || 0}</Badge>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:bg-muted/50" onClick={() => setPaymentFilter('pending')}>
+        <Card 
+          className="cursor-pointer hover:bg-muted/50" 
+          onClick={() => setFilters(f => ({ ...f, paymentStatus: 'pending', overdue: undefined }))}
+        >
           <CardContent className="flex items-center justify-between py-4">
             <div className="flex items-center gap-2">
               <ArrowDownToLine className="h-5 w-5 text-orange-500" />
               <span className="font-medium">Do opłacenia</span>
             </div>
-            <Badge variant="destructive">{pendingCount}</Badge>
+            <Badge variant="secondary">{pendingCount}</Badge>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:bg-muted/50" onClick={() => setPaymentFilter('paid')}>
+        <Card 
+          className="cursor-pointer hover:bg-muted/50" 
+          onClick={() => setFilters(f => ({ ...f, overdue: true, paymentStatus: undefined }))}
+        >
+          <CardContent className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+              <span className="font-medium">Zaległe</span>
+            </div>
+            <Badge variant="destructive">{overdueCount}</Badge>
+          </CardContent>
+        </Card>
+        <Card 
+          className="cursor-pointer hover:bg-muted/50" 
+          onClick={() => setFilters(f => ({ ...f, paymentStatus: 'paid', overdue: undefined }))}
+        >
           <CardContent className="flex items-center justify-between py-4">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-500" />
@@ -176,33 +194,13 @@ export default function InvoicesPage() {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Advanced Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Szukaj po numerze, dostawcy lub numerze KSeF..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <Filter className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder="Płatność" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Wszystkie</SelectItem>
-                  <SelectItem value="pending">Nieopłacone</SelectItem>
-                  <SelectItem value="paid">Opłacone</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <InvoiceFilters 
+            filters={filters} 
+            onChange={handleFiltersChange}
+          />
         </CardContent>
       </Card>
 
@@ -213,12 +211,12 @@ export default function InvoicesPage() {
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : filteredInvoices.length === 0 ? (
+          ) : invoices.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <h3 className="text-lg font-medium">Brak faktur</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                {searchQuery || paymentFilter !== 'all'
+                {Object.keys(filters).length > 3
                   ? 'Brak faktur spełniających kryteria wyszukiwania'
                   : 'Uruchom synchronizację, aby pobrać faktury z KSeF'}
               </p>
@@ -240,7 +238,7 @@ export default function InvoicesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredInvoices.map((invoice) => (
+                {invoices.map((invoice) => (
                   <TableRow key={invoice.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -248,7 +246,7 @@ export default function InvoicesPage() {
                         <div>
                           <div className="font-medium">{invoice.invoiceNumber}</div>
                           <div className="text-xs text-muted-foreground font-mono">
-                            {invoice.referenceNumber.slice(0, 25)}...
+                            {invoice.referenceNumber?.slice(0, 25) || '-'}
                           </div>
                         </div>
                       </div>
@@ -274,7 +272,7 @@ export default function InvoicesPage() {
                       {formatCurrency(invoice.grossAmount)}
                     </TableCell>
                     <TableCell>
-                      {getPaymentStatusBadge(invoice.paymentStatus)}
+                      {getPaymentStatusBadge(invoice.paymentStatus, invoice.dueDate)}
                     </TableCell>
                     <TableCell>
                       {invoice.category ? (
@@ -312,9 +310,9 @@ export default function InvoicesPage() {
       </Card>
 
       {/* Pagination info */}
-      {filteredInvoices.length > 0 && (
+      {invoices.length > 0 && (
         <div className="text-sm text-muted-foreground text-center">
-          Wyświetlono {filteredInvoices.length} z {invoices.length} faktur
+          Wyświetlono {invoices.length} faktur
         </div>
       )}
     </div>

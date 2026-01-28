@@ -11,6 +11,51 @@ export interface ApiError {
   details?: unknown
 }
 
+// Dashboard Statistics Types
+export interface MonthlyStats {
+  month: string
+  netAmount: number
+  vatAmount: number
+  grossAmount: number
+  invoiceCount: number
+}
+
+export interface MpkStats {
+  mpk: string
+  netAmount: number
+  grossAmount: number
+  invoiceCount: number
+  percentage: number
+}
+
+export interface SupplierStats {
+  supplierNip: string
+  supplierName: string
+  grossAmount: number
+  invoiceCount: number
+}
+
+export interface PaymentStats {
+  pending: { count: number; grossAmount: number }
+  paid: { count: number; grossAmount: number }
+  overdue: { count: number; grossAmount: number }
+}
+
+export interface DashboardStats {
+  period: { from: string; to: string }
+  totals: {
+    invoiceCount: number
+    netAmount: number
+    vatAmount: number
+    grossAmount: number
+  }
+  monthly: MonthlyStats[]
+  byMpk: MpkStats[]
+  topSuppliers: SupplierStats[]
+  payments: PaymentStats
+}
+
+// Invoice Types
 export interface Invoice {
   id: string
   tenantNip: string
@@ -43,6 +88,13 @@ export interface Invoice {
   ksefAcceptedAt?: string
   xmlContent?: string
   items?: InvoiceItem[]
+  source?: 'KSeF' | 'Manual'
+  description?: string
+  // AI Suggestions
+  aiMpkSuggestion?: string
+  aiCategorySuggestion?: string
+  aiRationale?: string
+  aiConfidence?: number
 }
 
 export interface InvoiceItem {
@@ -142,6 +194,68 @@ export interface CostCenter {
   isActive: boolean
 }
 
+// Invoice List Parameters (extended with advanced filters)
+export interface InvoiceListParams {
+  tenantNip?: string
+  paymentStatus?: 'pending' | 'paid'
+  mpk?: string
+  mpkList?: string[]
+  category?: string
+  fromDate?: string
+  toDate?: string
+  dueDateFrom?: string
+  dueDateTo?: string
+  minAmount?: number
+  maxAmount?: number
+  supplierNip?: string
+  supplierName?: string
+  source?: 'KSeF' | 'Manual'
+  overdue?: boolean
+  search?: string
+  top?: number
+  skip?: number
+  orderBy?: 'invoiceDate' | 'grossAmount' | 'supplierName' | 'dueDate'
+  orderDirection?: 'asc' | 'desc'
+}
+
+export interface ManualInvoiceCreate {
+  tenantNip: string
+  tenantName: string
+  invoiceNumber: string
+  supplierNip: string
+  supplierName: string
+  invoiceDate: string
+  dueDate?: string
+  netAmount: number
+  vatAmount: number
+  grossAmount: number
+  description?: string
+  mpk?: string
+  category?: string
+}
+
+export interface Attachment {
+  id: string
+  invoiceId: string
+  fileName: string
+  mimeType: string
+  fileSize: number
+  createdOn: string
+}
+
+export interface AttachmentUpload {
+  fileName: string
+  mimeType: string
+  content: string // base64
+  description?: string
+}
+
+export interface AttachmentConfig {
+  maxSizeBytes: number
+  maxSizeMB: number
+  allowedMimeTypes: string[]
+}
+
 // ============================================================================
 // Auth helpers
 // ============================================================================
@@ -223,6 +337,17 @@ export const api = {
   // Health
   health: () => apiFetch<{ status: string }>('/api/health'),
 
+  // Dashboard
+  dashboard: {
+    stats: (params?: { fromDate?: string; toDate?: string; tenantNip?: string }) => {
+      const searchParams = new URLSearchParams()
+      if (params?.fromDate) searchParams.append('fromDate', params.fromDate)
+      if (params?.toDate) searchParams.append('toDate', params.toDate)
+      if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
+      return apiFetch<DashboardStats>(`/api/dashboard/stats?${searchParams}`)
+    },
+  },
+
   // KSeF Status & Session
   ksef: {
     status: () => apiFetch<KsefStatus>('/api/ksef/status'),
@@ -268,21 +393,16 @@ export const api = {
 
   // Invoices CRUD
   invoices: {
-    list: (params?: {
-      tenantNip?: string
-      paymentStatus?: 'pending' | 'paid'
-      mpk?: string
-      category?: string
-      fromDate?: string
-      toDate?: string
-      top?: number
-      skip?: number
-    }) => {
+    list: (params?: InvoiceListParams) => {
       const searchParams = new URLSearchParams()
       if (params) {
         Object.entries(params).forEach(([key, value]) => {
           if (value !== undefined) {
-            searchParams.append(key, String(value))
+            if (key === 'mpkList' && Array.isArray(value)) {
+              searchParams.append(key, value.join(','))
+            } else {
+              searchParams.append(key, String(value))
+            }
           }
         })
       }
@@ -316,6 +436,31 @@ export const api = {
           paymentStatus: 'paid',
           paymentDate: paymentDate || new Date().toISOString().split('T')[0],
         }),
+      }),
+
+    // Manual invoice creation
+    createManual: (data: ManualInvoiceCreate) =>
+      apiFetch<Invoice>('/api/invoices/manual', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    // Attachments
+    listAttachments: (invoiceId: string) =>
+      apiFetch<{ attachments: Attachment[]; count: number }>(`/api/invoices/${invoiceId}/attachments`),
+
+    uploadAttachment: (invoiceId: string, data: AttachmentUpload) =>
+      apiFetch<Attachment>(`/api/invoices/${invoiceId}/attachments`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    downloadAttachment: (attachmentId: string) =>
+      apiFetch<{ content: string }>(`/api/attachments/${attachmentId}/download`),
+
+    deleteAttachment: (attachmentId: string) =>
+      apiFetch<void>(`/api/attachments/${attachmentId}`, {
+        method: 'DELETE',
       }),
   },
 
@@ -560,8 +705,14 @@ export const queryKeys = {
   ksefSession: ['ksef', 'session'] as const,
   syncPreview: (params?: { dateFrom?: string; dateTo?: string }) =>
     ['sync', 'preview', params] as const,
-  invoices: (params?: Record<string, unknown>) => ['invoices', params] as const,
+  
+  // Dashboard
+  dashboardStats: (params?: { fromDate?: string; toDate?: string }) =>
+    ['dashboard', 'stats', params] as const,
+  
+  invoices: (params?: InvoiceListParams) => ['invoices', params] as const,
   invoice: (id: string) => ['invoices', id] as const,
+  invoiceAttachments: (id: string) => ['invoices', id, 'attachments'] as const,
   companies: ['settings', 'companies'] as const,
   company: (id: string) => ['settings', 'companies', id] as const,
   costCenters: ['settings', 'costCenters'] as const,

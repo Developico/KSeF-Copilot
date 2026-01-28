@@ -11,6 +11,16 @@ export const PaymentStatus = {
 export type PaymentStatus = (typeof PaymentStatus)[keyof typeof PaymentStatus]
 
 /**
+ * Invoice source enum
+ */
+export const InvoiceSource = {
+  KSeF: 'KSeF',
+  Manual: 'Manual',
+} as const
+
+export type InvoiceSource = (typeof InvoiceSource)[keyof typeof InvoiceSource]
+
+/**
  * MPK (Cost Center) enum
  */
 export const MPK = {
@@ -52,6 +62,7 @@ export interface Invoice {
   tags?: string[]
   rawXml?: string
   importedAt: string
+  source: InvoiceSource
   // Extended (AI Categorization)
   aiMpkSuggestion?: MPK
   aiCategorySuggestion?: string
@@ -86,12 +97,18 @@ export const InvoiceUpdateSchema = z.object({
   tags: z.array(z.string()).optional(),
   paymentStatus: z.enum(['pending', 'paid']).optional(),
   paymentDate: z.string().date().optional(),
+  // AI Categorization fields
+  aiMpkSuggestion: z.nativeEnum(MPK).optional(),
+  aiCategorySuggestion: z.string().max(100).optional(),
+  aiDescription: z.string().max(500).optional(),
+  aiConfidence: z.number().min(0).max(1).optional(),
+  aiProcessedAt: z.string().optional(),
 })
 
 export type InvoiceUpdate = z.infer<typeof InvoiceUpdateSchema>
 
 /**
- * Invoice create (from KSeF import)
+ * Invoice create (from KSeF import or manual entry)
  */
 export interface InvoiceCreate {
   tenantNip: string
@@ -106,20 +123,58 @@ export interface InvoiceCreate {
   vatAmount: number
   grossAmount: number
   rawXml?: string
+  source?: InvoiceSource
+  // Manual entry fields
+  description?: string
+  mpk?: string
+  category?: string
 }
 
 /**
- * Invoice list query parameters
+ * Zod schema for manual invoice creation
+ */
+export const ManualInvoiceCreateSchema = z.object({
+  tenantNip: z.string().regex(/^\d{10}$/, 'NIP musi mieć 10 cyfr'),
+  tenantName: z.string().min(1).max(255),
+  invoiceNumber: z.string().min(1).max(100),
+  supplierNip: z.string().regex(/^\d{10}$/, 'NIP musi mieć 10 cyfr'),
+  supplierName: z.string().min(1).max(255),
+  invoiceDate: z.string().date(),
+  dueDate: z.string().date().optional(),
+  netAmount: z.number().min(0),
+  vatAmount: z.number().min(0),
+  grossAmount: z.number().min(0),
+  description: z.string().max(500).optional(),
+  mpk: z.nativeEnum(MPK).optional(),
+  category: z.string().max(50).optional(),
+})
+
+export type ManualInvoiceCreate = z.infer<typeof ManualInvoiceCreateSchema>
+
+/**
+ * Invoice list query parameters (extended with advanced filters)
  */
 export interface InvoiceListParams {
   tenantNip?: string
   paymentStatus?: PaymentStatus
   mpk?: string
+  mpkList?: string[] // Multiple MPKs
   category?: string
   fromDate?: string
   toDate?: string
+  dueDateFrom?: string
+  dueDateTo?: string
+  minAmount?: number
+  maxAmount?: number
+  supplierNip?: string
+  supplierName?: string
+  source?: InvoiceSource
+  overdue?: boolean
+  search?: string // Full-text search
   top?: number
   skip?: number
+  orderBy?: 'invoiceDate' | 'grossAmount' | 'supplierName' | 'dueDate'
+  orderDirection?: 'asc' | 'desc'
 }
 
 /**

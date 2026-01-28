@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, queryKeys, Invoice, SyncResult, KsefSetting, CostCenter } from '../lib/api'
+import { api, queryKeys, Invoice, InvoiceListParams, SyncResult, KsefSetting, CostCenter } from '../lib/api'
 
 // ============================================================================
 // KSeF Status & Session
@@ -98,16 +98,7 @@ export function useImportInvoices() {
 // Invoices
 // ============================================================================
 
-export function useInvoices(params?: {
-  tenantNip?: string
-  paymentStatus?: 'pending' | 'paid'
-  mpk?: string
-  category?: string
-  fromDate?: string
-  toDate?: string
-  top?: number
-  skip?: number
-}) {
+export function useInvoices(params?: InvoiceListParams) {
   return useQuery({
     queryKey: queryKeys.invoices(params),
     queryFn: () => api.invoices.list(params),
