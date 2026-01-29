@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -53,6 +54,7 @@ import {
   useCreateCostCenter,
   useDeleteCostCenter,
 } from '@/hooks/use-api'
+import { useCompanyContext } from '@/contexts/company-context'
 import { KsefSetting, CostCenter } from '@/lib/api'
 
 type TokenStatus = 'valid' | 'expiring' | 'expired' | 'missing'
@@ -62,17 +64,17 @@ type Environment = 'production' | 'test' | 'demo'
 const mockCompanies: KsefSetting[] = [
   {
     id: '1',
-    name: 'Developico Sp. z o.o.',
+    companyName: 'Developico Sp. z o.o.',
     nip: '1234567890',
     isActive: true,
     environment: 'production',
     tokenStatus: 'valid',
     tokenExpiresAt: '2024-12-31',
-    lastSync: '2024-01-20T10:30:00Z',
+    lastSyncAt: '2024-01-20T10:30:00Z',
   },
   {
     id: '2',
-    name: 'Test Company S.A.',
+    companyName: 'Test Company S.A.',
     nip: '0987654321',
     isActive: true,
     environment: 'test',
@@ -135,6 +137,9 @@ function getEnvironmentBadge(env: Environment) {
 export default function SettingsPage() {
   const { toast } = useToast()
   
+  // Company context
+  const { selectedCompany, setSelectedCompany } = useCompanyContext()
+  
   // API hooks
   const { data: companiesData, isLoading: companiesLoading, error: companiesError } = useCompanies()
   const { data: costCentersData, isLoading: costCentersLoading, error: costCentersError } = useCostCenters()
@@ -155,35 +160,54 @@ export default function SettingsPage() {
   const [newCompanyName, setNewCompanyName] = useState('')
   const [newCompanyNip, setNewCompanyNip] = useState('')
   const [newCompanyEnv, setNewCompanyEnv] = useState<Environment>('test')
+  const [newCompanyManualOnly, setNewCompanyManualOnly] = useState(false)
+  const [newCompanyPrefix, setNewCompanyPrefix] = useState('')
+  const [newCompanyAutoSync, setNewCompanyAutoSync] = useState(false)
   
   // New cost center form
   const [newCostCenterCode, setNewCostCenterCode] = useState('')
   const [newCostCenterName, setNewCostCenterName] = useState('')
+
+  // Handle company selection
+  const handleSelectCompany = (company: KsefSetting) => {
+    setSelectedCompany(company)
+    toast({
+      title: 'Firma wybrana',
+      description: `Aktywna firma: ${company.companyName}`,
+    })
+  }
 
   async function addCompany() {
     if (!newCompanyName || !newCompanyNip) return
     
     try {
       await createCompanyMutation.mutateAsync({
-        name: newCompanyName,
+        companyName: newCompanyName,
         nip: newCompanyNip,
-        environment: newCompanyEnv,
+        environment: newCompanyManualOnly ? 'test' : newCompanyEnv, // manual-only doesn't need real env
         isActive: true,
+        autoSync: newCompanyManualOnly ? false : newCompanyAutoSync,
+        invoicePrefix: newCompanyPrefix || undefined,
       })
       toast({
         variant: 'success',
         title: 'Firma dodana',
         description: `${newCompanyName} została dodana do listy`,
       })
+      // Reset form
       setNewCompanyName('')
       setNewCompanyNip('')
       setNewCompanyEnv('test')
+      setNewCompanyManualOnly(false)
+      setNewCompanyPrefix('')
+      setNewCompanyAutoSync(false)
       setIsAddCompanyOpen(false)
     } catch (error) {
+      console.error('Failed to add company:', error)
       toast({
         variant: 'destructive',
         title: 'Błąd',
-        description: 'Nie udało się dodać firmy',
+        description: error instanceof Error ? error.message : 'Nie udało się dodać firmy',
       })
     }
   }
@@ -299,16 +323,16 @@ export default function SettingsPage() {
                     Dodaj firmę
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="sm:max-w-[500px]">
                   <DialogHeader>
                     <DialogTitle>Dodaj nową firmę</DialogTitle>
                     <DialogDescription>
-                      Wprowadź dane firmy do połączenia z KSeF
+                      Wprowadź dane firmy i wybierz tryb pracy
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Nazwa firmy</label>
+                      <label className="text-sm font-medium">Nazwa firmy *</label>
                       <Input
                         placeholder="np. Moja Firma Sp. z o.o."
                         value={newCompanyName}
@@ -316,32 +340,87 @@ export default function SettingsPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">NIP</label>
+                      <label className="text-sm font-medium">NIP *</label>
                       <Input
                         placeholder="1234567890"
                         value={newCompanyNip}
-                        onChange={(e) => setNewCompanyNip(e.target.value)}
+                        onChange={(e) => setNewCompanyNip(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        maxLength={10}
                       />
                     </div>
+                    
+                    {/* Manual only checkbox */}
+                    <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
+                      <Checkbox 
+                        id="manualOnly" 
+                        checked={newCompanyManualOnly}
+                        onCheckedChange={(checked) => setNewCompanyManualOnly(checked === true)}
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <label 
+                          htmlFor="manualOnly" 
+                          className="text-sm font-medium cursor-pointer"
+                        >
+                          Tylko faktury ręczne
+                        </label>
+                        <p className="text-xs text-muted-foreground">
+                          Bez połączenia z KSeF – faktury wprowadzane wyłącznie ręcznie
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* KSeF options - shown only if not manual-only */}
+                    {!newCompanyManualOnly && (
+                      <>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Środowisko KSeF</label>
+                          <Select value={newCompanyEnv} onValueChange={(v) => setNewCompanyEnv(v as Environment)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="production">Produkcja</SelectItem>
+                              <SelectItem value="test">Test</SelectItem>
+                              <SelectItem value="demo">Demo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            Wybierz środowisko odpowiadające Twojemu tokenowi KSeF
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="autoSync" 
+                            checked={newCompanyAutoSync}
+                            onCheckedChange={(checked) => setNewCompanyAutoSync(checked === true)}
+                          />
+                          <label htmlFor="autoSync" className="text-sm font-medium cursor-pointer">
+                            Automatyczna synchronizacja z KSeF
+                          </label>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Invoice prefix - always visible */}
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Środowisko KSeF</label>
-                      <Select value={newCompanyEnv} onValueChange={(v) => setNewCompanyEnv(v as Environment)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="production">Produkcja</SelectItem>
-                          <SelectItem value="test">Test</SelectItem>
-                          <SelectItem value="demo">Demo</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <label className="text-sm font-medium">Prefiks faktur (opcjonalnie)</label>
+                      <Input
+                        placeholder="np. FV-"
+                        value={newCompanyPrefix}
+                        onChange={(e) => setNewCompanyPrefix(e.target.value.slice(0, 10))}
+                        maxLength={10}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Dodawany na początku numerów faktur przy ręcznym wprowadzaniu
+                      </p>
                     </div>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setIsAddCompanyOpen(false)}>
                       Anuluj
                     </Button>
-                    <Button onClick={addCompany}>
+                    <Button onClick={addCompany} disabled={!newCompanyName || !newCompanyNip || newCompanyNip.length !== 10}>
                       <Save className="mr-2 h-4 w-4" />
                       Zapisz
                     </Button>
@@ -358,16 +437,21 @@ export default function SettingsPage() {
                     <TableHead>Środowisko</TableHead>
                     <TableHead>Token KSeF</TableHead>
                     <TableHead>Ostatnia synchronizacja</TableHead>
-                    <TableHead className="w-[100px]"></TableHead>
+                    <TableHead className="w-[150px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {companies.map((company) => (
-                    <TableRow key={company.id}>
+                  {companies.map((company) => {
+                    const isSelected = selectedCompany?.id === company.id
+                    return (
+                    <TableRow key={company.id} className={isSelected ? 'bg-accent/50' : ''}>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Building2 className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{company.name}</span>
+                          <span className="font-medium">{company.companyName}</span>
+                          {isSelected && (
+                            <Badge variant="secondary" className="text-xs">Aktywna</Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="font-mono">{company.nip}</TableCell>
@@ -383,29 +467,39 @@ export default function SettingsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {company.lastSync ? (
-                          new Date(company.lastSync).toLocaleString('pl-PL')
+                        {company.lastSyncAt ? (
+                          new Date(company.lastSyncAt).toLocaleString('pl-PL')
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          {!isSelected && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleSelectCompany(company)}
+                            >
+                              Wybierz
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon">
                             <Key className="h-4 w-4" />
                           </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            onClick={() => deleteCompany(company.id, company.name)}
-                            disabled={deleteCompanyMutation.isPending}
+                            onClick={() => deleteCompany(company.id, company.companyName)}
+                            disabled={deleteCompanyMutation.isPending || isSelected}
+                            title={isSelected ? 'Nie można usunąć aktywnej firmy' : 'Usuń firmę'}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )})}
                 </TableBody>
               </Table>
             </CardContent>

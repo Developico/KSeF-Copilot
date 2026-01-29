@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
@@ -13,8 +13,10 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/hooks/use-toast'
 import { api, queryKeys, ManualInvoiceCreate } from '@/lib/api'
+import { useSelectedCompany } from '@/contexts/company-context'
 import { 
   FileText, 
   Upload, 
@@ -26,6 +28,7 @@ import {
   FileUp,
   Trash2,
   Loader2,
+  AlertCircle,
 } from 'lucide-react'
 
 // MPK options (must match backend)
@@ -55,6 +58,17 @@ const CATEGORY_OPTIONS = [
   'Inne',
 ]
 
+// VAT rate options
+const VAT_RATES = [
+  { value: '23', label: '23%', rate: 0.23 },
+  { value: '8', label: '8%', rate: 0.08 },
+  { value: '5', label: '5%', rate: 0.05 },
+  { value: '0', label: '0%', rate: 0 },
+  { value: 'zw', label: 'zw (zwolniony)', rate: 0 },
+  { value: 'np', label: 'np (nie podlega)', rate: 0 },
+  { value: 'oo', label: 'oo (odwrotne obciążenie)', rate: 0 },
+]
+
 interface FileAttachment {
   file: File
   preview?: string
@@ -69,6 +83,7 @@ interface FormData {
   invoiceDate: string
   dueDate: string
   netAmount: string
+  vatRate: string
   vatAmount: string
   grossAmount: string
   description: string
@@ -85,6 +100,7 @@ const initialFormData: FormData = {
   invoiceDate: new Date().toISOString().split('T')[0],
   dueDate: '',
   netAmount: '',
+  vatRate: '23',
   vatAmount: '',
   grossAmount: '',
   description: '',
@@ -96,10 +112,22 @@ export function ManualInvoiceForm() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const { selectedCompany, isLoading: isLoadingCompany } = useSelectedCompany()
   
   const [formData, setFormData] = useState<FormData>(initialFormData)
   const [attachments, setAttachments] = useState<FileAttachment[]>([])
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
+
+  // Sync form with selected company from context
+  useEffect(() => {
+    if (selectedCompany) {
+      setFormData(prev => ({
+        ...prev,
+        tenantNip: selectedCompany.nip,
+        tenantName: selectedCompany.companyName,
+      }))
+    }
+  }, [selectedCompany])
 
   // Create invoice mutation
   const createMutation = useMutation({
@@ -170,18 +198,51 @@ export function ManualInvoiceForm() {
     }
   }
 
-  // Auto-calculate gross from net + vat
-  const handleAmountChange = (field: 'netAmount' | 'vatAmount', value: string) => {
-    const newData = { ...formData, [field]: value }
+  // Auto-calculate VAT and gross from net + VAT rate
+  const calculateAmounts = (netValue: string, vatRateValue: string) => {
+    const net = parseFloat(netValue) || 0
+    const rateConfig = VAT_RATES.find(r => r.value === vatRateValue)
+    const rate = rateConfig?.rate ?? 0.23
     
-    const net = parseFloat(newData.netAmount) || 0
-    const vat = parseFloat(newData.vatAmount) || 0
+    const vat = net * rate
+    const gross = net + vat
     
-    if (net > 0 || vat > 0) {
-      newData.grossAmount = (net + vat).toFixed(2)
+    return {
+      vatAmount: vat > 0 ? vat.toFixed(2) : '',
+      grossAmount: gross > 0 ? gross.toFixed(2) : '',
     }
-    
-    setFormData(newData)
+  }
+
+  const handleNetAmountChange = (value: string) => {
+    const calculated = calculateAmounts(value, formData.vatRate)
+    setFormData(prev => ({
+      ...prev,
+      netAmount: value,
+      ...calculated,
+    }))
+    if (value && parseFloat(value) >= 0) {
+      setErrors(prev => ({ ...prev, netAmount: undefined }))
+    }
+  }
+
+  const handleVatRateChange = (rate: string) => {
+    const calculated = calculateAmounts(formData.netAmount, rate)
+    setFormData(prev => ({
+      ...prev,
+      vatRate: rate,
+      ...calculated,
+    }))
+  }
+
+  // Handle manual VAT amount override
+  const handleVatAmountManual = (value: string) => {
+    const net = parseFloat(formData.netAmount) || 0
+    const vat = parseFloat(value) || 0
+    setFormData(prev => ({
+      ...prev,
+      vatAmount: value,
+      grossAmount: (net + vat).toFixed(2),
+    }))
   }
 
   // Handle file drop
@@ -246,11 +307,14 @@ export function ManualInvoiceForm() {
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof FormData, string>> = {}
 
-    if (!formData.tenantNip || !/^\d{10}$/.test(formData.tenantNip)) {
-      newErrors.tenantNip = 'NIP nabywcy musi mieć 10 cyfr'
-    }
-    if (!formData.tenantName.trim()) {
-      newErrors.tenantName = 'Nazwa nabywcy jest wymagana'
+    // Company comes from context now - check if we have it
+    if (!selectedCompany) {
+      toast({
+        title: 'Brak wybranej firmy',
+        description: 'Wybierz firmę w nagłówku aplikacji',
+        variant: 'destructive',
+      })
+      return false
     }
     if (!formData.invoiceNumber.trim()) {
       newErrors.invoiceNumber = 'Numer faktury jest wymagany'
@@ -267,8 +331,10 @@ export function ManualInvoiceForm() {
     if (!formData.netAmount || parseFloat(formData.netAmount) < 0) {
       newErrors.netAmount = 'Kwota netto musi być >= 0'
     }
-    if (!formData.vatAmount || parseFloat(formData.vatAmount) < 0) {
-      newErrors.vatAmount = 'Kwota VAT musi być >= 0'
+    // VAT amount is auto-calculated but can be manually overridden
+    // Only validate if user entered a negative value
+    if (formData.vatAmount && parseFloat(formData.vatAmount) < 0) {
+      newErrors.vatAmount = 'Kwota VAT nie może być ujemna'
     }
 
     setErrors(newErrors)
@@ -288,9 +354,10 @@ export function ManualInvoiceForm() {
       return
     }
 
+    // Use company from context
     const data: ManualInvoiceCreate = {
-      tenantNip: formData.tenantNip,
-      tenantName: formData.tenantName,
+      tenantNip: selectedCompany!.nip,
+      tenantName: selectedCompany!.companyName,
       invoiceNumber: formData.invoiceNumber,
       supplierNip: formData.supplierNip,
       supplierName: formData.supplierName,
@@ -310,40 +377,17 @@ export function ManualInvoiceForm() {
   return (
     <form onSubmit={handleSubmit}>
       <div className="space-y-6">
-        {/* Buyer section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Nabywca
-            </CardTitle>
-            <CardDescription>Dane Twojej firmy</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">NIP *</label>
-                <Input
-                  placeholder="0000000000"
-                  value={formData.tenantNip}
-                  onChange={(e) => handleChange('tenantNip', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  className={errors.tenantNip ? 'border-red-500' : ''}
-                />
-                {errors.tenantNip && <p className="text-sm text-red-500">{errors.tenantNip}</p>}
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Nazwa firmy *</label>
-                <Input
-                  placeholder="Nazwa firmy"
-                  value={formData.tenantName}
-                  onChange={(e) => handleChange('tenantName', e.target.value)}
-                  className={errors.tenantName ? 'border-red-500' : ''}
-                />
-                {errors.tenantName && <p className="text-sm text-red-500">{errors.tenantName}</p>}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* No company selected warning */}
+        {!isLoadingCompany && !selectedCompany && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Nie wybrano firmy. Wybierz firmę w nagłówku aplikacji lub{' '}
+              <a href="/settings" className="underline font-medium">dodaj nową firmę</a>{' '}
+              w ustawieniach.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Supplier section */}
         <Card>
@@ -445,8 +489,8 @@ export function ManualInvoiceForm() {
               Kwoty
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Netto (PLN) *</label>
                 <Input
@@ -455,23 +499,41 @@ export function ManualInvoiceForm() {
                   min="0"
                   placeholder="0.00"
                   value={formData.netAmount}
-                  onChange={(e) => handleAmountChange('netAmount', e.target.value)}
+                  onChange={(e) => handleNetAmountChange(e.target.value)}
                   className={errors.netAmount ? 'border-red-500' : ''}
                 />
                 {errors.netAmount && <p className="text-sm text-red-500">{errors.netAmount}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">VAT (PLN) *</label>
+                <label className="text-sm font-medium">Stawka VAT</label>
+                <Select value={formData.vatRate} onValueChange={handleVatRateChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Wybierz stawkę" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VAT_RATES.map((rate) => (
+                      <SelectItem key={rate.value} value={rate.value}>
+                        {rate.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">VAT (PLN)</label>
                 <Input
                   type="number"
                   step="0.01"
                   min="0"
                   placeholder="0.00"
                   value={formData.vatAmount}
-                  onChange={(e) => handleAmountChange('vatAmount', e.target.value)}
+                  onChange={(e) => handleVatAmountManual(e.target.value)}
                   className={errors.vatAmount ? 'border-red-500' : ''}
                 />
                 {errors.vatAmount && <p className="text-sm text-red-500">{errors.vatAmount}</p>}
+                <p className="text-xs text-muted-foreground">
+                  Wyliczone automatycznie, możesz zmienić ręcznie
+                </p>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Brutto (PLN)</label>
@@ -481,9 +543,12 @@ export function ManualInvoiceForm() {
                   min="0"
                   placeholder="0.00"
                   value={formData.grossAmount}
-                  onChange={(e) => handleChange('grossAmount', e.target.value)}
-                  className="bg-muted"
+                  readOnly
+                  className="bg-muted cursor-not-allowed"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Wyliczone automatycznie
+                </p>
               </div>
             </div>
           </CardContent>

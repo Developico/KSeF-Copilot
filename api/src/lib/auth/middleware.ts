@@ -1,11 +1,27 @@
 import { HttpRequest } from '@azure/functions'
 import { AuthResult, AuthUser, RoleCheckResult } from '../../types/api'
 
+// Allow bypassing auth in development
+const DEV_MODE = process.env.NODE_ENV !== 'production' && process.env.SKIP_AUTH === 'true'
+
 /**
  * Verify JWT token from Authorization header
  * In production, this should validate against Entra ID
  */
 export async function verifyAuth(request: HttpRequest): Promise<AuthResult> {
+  // Development mode - bypass auth
+  if (DEV_MODE) {
+    return {
+      success: true,
+      user: {
+        id: 'dev-user',
+        email: 'dev@localhost',
+        name: 'Dev User',
+        roles: ['Admin'],
+      },
+    }
+  }
+
   const authHeader = request.headers.get('authorization')
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

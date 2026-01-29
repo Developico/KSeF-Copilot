@@ -12,7 +12,6 @@ import {
   ChevronLeft, 
   ChevronRight,
   LayoutDashboard,
-  Building2,
   BarChart3
 } from 'lucide-react'
 
@@ -47,12 +46,6 @@ const navigationItems: NavigationItem[] = [
     name: 'Synchronizacja',
     icon: RefreshCw,
     href: '/sync',
-  },
-  {
-    name: 'Firmy',
-    icon: Building2,
-    href: '/companies',
-    disabled: true,
   },
   {
     name: 'Ustawienia',

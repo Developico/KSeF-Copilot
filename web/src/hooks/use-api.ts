@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, queryKeys, Invoice, InvoiceListParams, SyncResult, KsefSetting, CostCenter } from '../lib/api'
+import { useCompanyContext } from '@/contexts/company-context'
 
 // ============================================================================
 // KSeF Status & Session
@@ -202,11 +203,12 @@ export function useCreateCompany() {
   return useMutation({
     mutationFn: (data: {
       nip: string
-      name: string
+      companyName: string
       environment: 'test' | 'demo' | 'production'
       isActive?: boolean
       autoSync?: boolean
       syncInterval?: number
+      invoicePrefix?: string
     }) => api.settings.createCompany(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.companies })
@@ -439,5 +441,175 @@ export function useDvSyncStats(settingId: string) {
     queryKey: queryKeys.dvSyncStats(settingId),
     queryFn: () => api.dvSync.getStats(settingId),
     enabled: Boolean(settingId),
+  })
+}
+
+// ============================================================================
+// Context-aware hooks (use selected company automatically)
+// ============================================================================
+
+/**
+ * Hook that returns invoices filtered by currently selected company.
+ * Automatically adds tenantNip from company context.
+ */
+export function useContextInvoices(params?: Omit<InvoiceListParams, 'tenantNip'>) {
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+  
+  const fullParams: InvoiceListParams = {
+    ...params,
+    tenantNip: selectedCompany?.nip,
+  }
+  
+  return useQuery({
+    queryKey: ['invoices', 'context', selectedCompany?.nip, params],
+    queryFn: () => api.invoices.list(fullParams),
+    enabled: !companyLoading && Boolean(selectedCompany),
+  })
+}
+
+/**
+ * Hook that returns dashboard stats for currently selected company.
+ * Automatically adds tenantNip from company context.
+ */
+export function useContextDashboardStats(params?: { fromDate?: string; toDate?: string }) {
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+  
+  return useQuery({
+    queryKey: ['dashboard', 'stats', 'context', selectedCompany?.nip, params],
+    queryFn: () => api.dashboard.stats({ 
+      ...params, 
+      tenantNip: selectedCompany?.nip 
+    }),
+    enabled: !companyLoading && Boolean(selectedCompany),
+  })
+}
+
+/**
+ * Hook for creating invoice with currently selected company's NIP.
+ */
+export function useContextCreateInvoice() {
+  const queryClient = useQueryClient()
+  const { selectedCompany } = useCompanyContext()
+
+  return useMutation({
+    mutationFn: (data: Parameters<typeof api.invoices.createManual>[0]) => {
+      // Override tenantNip with selected company
+      const invoiceData = {
+        ...data,
+        tenantNip: selectedCompany?.nip || data.tenantNip,
+        tenantName: selectedCompany?.companyName || data.tenantName,
+      }
+      return api.invoices.createManual(invoiceData)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+  })
+}
+
+/**
+ * Hook for sync operations with currently selected company.
+ */
+export function useContextRunSync() {
+  const queryClient = useQueryClient()
+  const { selectedCompany } = useCompanyContext()
+
+  return useMutation({
+    mutationFn: (params?: { dateFrom?: string; dateTo?: string }) =>
+      api.sync.run({ ...params, nip: selectedCompany?.nip }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['sync'] })
+    },
+  })
+}
+
+/**
+ * Hook for sync preview with currently selected company.
+ */
+export function useContextSyncPreview(params?: {
+  dateFrom?: string
+  dateTo?: string
+  enabled?: boolean
+}) {
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+  const { enabled = true, ...queryParams } = params || {}
+
+  return useQuery({
+    queryKey: ['sync', 'preview', 'context', selectedCompany?.nip, queryParams],
+    queryFn: () => api.sync.preview({ ...queryParams, nip: selectedCompany?.nip }),
+    enabled: enabled && !companyLoading && Boolean(selectedCompany),
+  })
+}
+
+/**
+ * Hook for Dataverse sync with currently selected company.
+ */
+export function useContextStartDvSync() {
+  const queryClient = useQueryClient()
+  const { selectedCompany } = useCompanyContext()
+
+  return useMutation({
+    mutationFn: (params?: { dateFrom?: string; dateTo?: string; pageSize?: number }) => {
+      if (!selectedCompany?.id) {
+        throw new Error('Brak wybranej firmy')
+      }
+      return api.dvSync.start({
+        settingId: selectedCompany.id,
+        ...params,
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dv', 'sync'] })
+      queryClient.invalidateQueries({ queryKey: ['dv', 'settings'] })
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+  })
+}
+
+/**
+ * Hook for getting KSeF status for currently selected company.
+ */
+export function useContextKsefStatus() {
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+
+  return useQuery({
+    queryKey: ['ksef', 'status', 'context', selectedCompany?.nip],
+    queryFn: () => api.ksef.status(),
+    enabled: !companyLoading && Boolean(selectedCompany),
+    refetchInterval: 60000,
+  })
+}
+
+/**
+ * Hook for getting Dataverse sessions for currently selected company.
+ */
+export function useContextDvSessions(activeOnly = false) {
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+
+  return useQuery({
+    queryKey: ['dv', 'sessions', 'context', selectedCompany?.id, { activeOnly }],
+    queryFn: async () => {
+      if (!selectedCompany?.id) return []
+      const response = await api.dvSessions.list(selectedCompany.id, activeOnly)
+      return response.sessions
+    },
+    enabled: !companyLoading && Boolean(selectedCompany?.id),
+  })
+}
+
+/**
+ * Hook for getting sync logs for currently selected company.
+ */
+export function useContextDvSyncLogs(limit = 50) {
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+
+  return useQuery({
+    queryKey: ['dv', 'sync', 'logs', 'context', selectedCompany?.id, { limit }],
+    queryFn: async () => {
+      const response = await api.dvSync.getLogs(selectedCompany?.id, limit)
+      return response.logs
+    },
+    enabled: !companyLoading && Boolean(selectedCompany),
   })
 }

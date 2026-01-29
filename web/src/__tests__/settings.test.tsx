@@ -3,11 +3,35 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import SettingsPage from '@/app/settings/page'
 
+// Mock company context
+const mockSelectedCompany = {
+  id: '1',
+  companyName: 'Test Company',
+  nip: '1234567890',
+  isActive: true,
+  environment: 'test' as const,
+  tokenStatus: 'valid' as const,
+}
+
+vi.mock('@/contexts/company-context', () => ({
+  useCompanyContext: () => ({
+    selectedCompany: mockSelectedCompany,
+    setSelectedCompany: vi.fn(),
+    companies: [mockSelectedCompany],
+    isLoading: false,
+    hasCompanies: true,
+  }),
+  useSelectedCompany: () => ({
+    selectedCompany: mockSelectedCompany,
+    isLoading: false,
+  }),
+}))
+
 // Mock use-api hooks
 const mockCompanies = [
   {
     id: '1',
-    name: 'Test Company',
+    companyName: 'Test Company',
     nip: '1234567890',
     isActive: true,
     environment: 'test' as const,

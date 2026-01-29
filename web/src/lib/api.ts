@@ -175,16 +175,19 @@ export interface SyncResult {
 export interface KsefSetting {
   id: string
   nip: string
-  name: string
+  companyName: string
   environment: 'test' | 'demo' | 'production'
   autoSync?: boolean
-  syncInterval?: number
-  lastSync?: string
+  syncIntervalMinutes?: number
+  lastSyncAt?: string
   lastSyncStatus?: 'success' | 'error'
   keyVaultSecretName?: string
   tokenExpiresAt?: string
   tokenStatus?: 'valid' | 'expiring' | 'expired' | 'missing'
   isActive: boolean
+  invoicePrefix?: string
+  // Computed property for backward compatibility
+  name?: string
 }
 
 export interface CostCenter {
@@ -467,31 +470,31 @@ export const api = {
   // Settings
   settings: {
     // KSeF Settings (companies)
-    listCompanies: () => apiFetch<{ settings: KsefSetting[] }>('/api/settings/ksef'),
+    listCompanies: () => apiFetch<{ settings: KsefSetting[] }>('/api/settings'),
     
-    getCompany: (id: string) => apiFetch<KsefSetting>(`/api/settings/ksef/${id}`),
+    getCompany: (id: string) => apiFetch<KsefSetting>(`/api/settings/${id}`),
     
     createCompany: (data: {
       nip: string
-      name: string
+      companyName: string
       environment: 'test' | 'demo' | 'production'
       isActive?: boolean
       autoSync?: boolean
       syncInterval?: number
     }) =>
-      apiFetch<KsefSetting>('/api/settings/ksef', {
+      apiFetch<KsefSetting>('/api/settings', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
     
     updateCompany: (id: string, data: Partial<KsefSetting>) =>
-      apiFetch<KsefSetting>(`/api/settings/ksef/${id}`, {
+      apiFetch<KsefSetting>(`/api/settings/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
     
     deleteCompany: (id: string) =>
-      apiFetch<void>(`/api/settings/ksef/${id}`, {
+      apiFetch<void>(`/api/settings/${id}`, {
         method: 'DELETE',
       }),
 
