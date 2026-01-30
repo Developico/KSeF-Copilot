@@ -43,18 +43,18 @@ import {
   Plus,
 } from 'lucide-react'
 
-// MPK options (must match backend)
+// MPK options (values from Dataverse option set)
 const MPK_OPTIONS = [
-  { value: 'Consultants', label: 'Konsultanci' },
-  { value: 'BackOffice', label: 'Back Office' },
-  { value: 'Management', label: 'Zarząd' },
-  { value: 'Cars', label: 'Samochody' },
-  { value: 'Legal', label: 'Prawny' },
-  { value: 'Marketing', label: 'Marketing' },
-  { value: 'Sales', label: 'Sprzedaż' },
-  { value: 'Delivery', label: 'Realizacja' },
-  { value: 'Finance', label: 'Finanse' },
-  { value: 'Other', label: 'Inne' },
+  'Consultants',
+  'BackOffice',
+  'Management',
+  'Cars',
+  'Legal',
+  'Marketing',
+  'Sales',
+  'Delivery',
+  'Finance',
+  'Other',
 ]
 
 // Default category suggestions
@@ -753,9 +753,9 @@ export function ManualInvoiceForm() {
                     <SelectValue placeholder="Wybierz MPK..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {MPK_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
+                    {MPK_OPTIONS.map((mpk) => (
+                      <SelectItem key={mpk} value={mpk}>
+                        {mpk}
                       </SelectItem>
                     ))}
                   </SelectContent>

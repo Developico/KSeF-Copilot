@@ -33,25 +33,25 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Building2, 
-  Key, 
   Plus, 
   Trash2, 
   Edit, 
-  CheckCircle, 
   AlertCircle,
-  Shield,
-  Globe,
+  CheckCircle,
   Folder,
   RefreshCw,
   Save,
+  Settings,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { 
   useCompanies, 
   useCreateCompany, 
+  useUpdateCompany,
   useDeleteCompany,
   useCostCenters,
   useCreateCostCenter,
+  useUpdateCostCenter,
   useDeleteCostCenter,
 } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
@@ -144,8 +144,10 @@ export default function SettingsPage() {
   const { data: companiesData, isLoading: companiesLoading, error: companiesError } = useCompanies()
   const { data: costCentersData, isLoading: costCentersLoading, error: costCentersError } = useCostCenters()
   const createCompanyMutation = useCreateCompany()
+  const updateCompanyMutation = useUpdateCompany()
   const deleteCompanyMutation = useDeleteCompany()
   const createCostCenterMutation = useCreateCostCenter()
+  const updateCostCenterMutation = useUpdateCostCenter()
   const deleteCostCenterMutation = useDeleteCostCenter()
   
   // Use API data or fallback to mock
@@ -155,6 +157,16 @@ export default function SettingsPage() {
   
   const [isAddCompanyOpen, setIsAddCompanyOpen] = useState(false)
   const [isAddCostCenterOpen, setIsAddCostCenterOpen] = useState(false)
+  const [editingCostCenter, setEditingCostCenter] = useState<CostCenter | null>(null)
+  const [editCostCenterCode, setEditCostCenterCode] = useState('')
+  const [editCostCenterName, setEditCostCenterName] = useState('')
+  
+  // Edit company state
+  const [editingCompany, setEditingCompany] = useState<KsefSetting | null>(null)
+  const [editCompanyName, setEditCompanyName] = useState('')
+  const [editCompanyEnv, setEditCompanyEnv] = useState<Environment>('test')
+  const [editCompanyPrefix, setEditCompanyPrefix] = useState('')
+  const [editCompanyAutoSync, setEditCompanyAutoSync] = useState(false)
   
   // New company form
   const [newCompanyName, setNewCompanyName] = useState('')
@@ -255,6 +267,42 @@ export default function SettingsPage() {
     }
   }
 
+  function openEditCompany(company: KsefSetting) {
+    setEditingCompany(company)
+    setEditCompanyName(company.companyName)
+    setEditCompanyEnv(company.environment as Environment)
+    setEditCompanyPrefix(company.invoicePrefix || '')
+    setEditCompanyAutoSync(company.autoSync || false)
+  }
+
+  async function saveCompany() {
+    if (!editingCompany || !editCompanyName) return
+    
+    try {
+      await updateCompanyMutation.mutateAsync({
+        id: editingCompany.id,
+        data: {
+          companyName: editCompanyName,
+          environment: editCompanyEnv,
+          invoicePrefix: editCompanyPrefix || undefined,
+          autoSync: editCompanyAutoSync,
+        },
+      })
+      toast({
+        variant: 'success',
+        title: 'Firma zaktualizowana',
+        description: `Dane firmy ${editCompanyName} zostały zapisane`,
+      })
+      setEditingCompany(null)
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Błąd',
+        description: error instanceof Error ? error.message : 'Nie udało się zaktualizować firmy',
+      })
+    }
+  }
+
   async function deleteCostCenter(id: string, code: string) {
     try {
       await deleteCostCenterMutation.mutateAsync(id)
@@ -272,6 +320,38 @@ export default function SettingsPage() {
     }
   }
 
+  function openEditCostCenter(cc: CostCenter) {
+    setEditingCostCenter(cc)
+    setEditCostCenterCode(cc.code)
+    setEditCostCenterName(cc.name)
+  }
+
+  async function saveCostCenter() {
+    if (!editingCostCenter || !editCostCenterCode || !editCostCenterName) return
+    
+    try {
+      await updateCostCenterMutation.mutateAsync({
+        id: editingCostCenter.id,
+        data: {
+          code: editCostCenterCode,
+          name: editCostCenterName,
+        },
+      })
+      toast({
+        variant: 'success',
+        title: 'MPK zaktualizowane',
+        description: `${editCostCenterCode} - ${editCostCenterName}`,
+      })
+      setEditingCostCenter(null)
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Błąd',
+        description: 'Nie udało się zaktualizować centrum kosztów',
+      })
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -284,7 +364,10 @@ export default function SettingsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Ustawienia</h1>
+        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+          <Settings className="h-7 w-7" />
+          Ustawienia
+        </h1>
         <p className="text-muted-foreground">
           Konfiguracja integracji z KSeF
         </p>
@@ -299,10 +382,6 @@ export default function SettingsPage() {
           <TabsTrigger value="costcenters">
             <Folder className="mr-2 h-4 w-4" />
             Centra kosztów
-          </TabsTrigger>
-          <TabsTrigger value="security">
-            <Shield className="mr-2 h-4 w-4" />
-            Bezpieczeństwo
           </TabsTrigger>
         </TabsList>
 
@@ -484,8 +563,13 @@ export default function SettingsPage() {
                               Wybierz
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon">
-                            <Key className="h-4 w-4" />
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => openEditCompany(company)}
+                            title="Edytuj firmę"
+                          >
+                            <Edit className="h-4 w-4" />
                           </Button>
                           <Button 
                             variant="ghost" 
@@ -504,71 +588,118 @@ export default function SettingsPage() {
               </Table>
             </CardContent>
           </Card>
+
+          {/* Edit Company Dialog */}
+          <Dialog open={!!editingCompany} onOpenChange={(open) => !open && setEditingCompany(null)}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Edytuj firmę</DialogTitle>
+                <DialogDescription>
+                  Zmień dane firmy. NIP nie może być zmieniony.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">NIP</label>
+                  <Input
+                    value={editingCompany?.nip || ''}
+                    disabled
+                    className="font-mono bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    NIP nie może być zmieniony po utworzeniu
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Nazwa firmy</label>
+                  <Input
+                    placeholder="np. Moja Firma Sp. z o.o."
+                    value={editCompanyName}
+                    onChange={(e) => setEditCompanyName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Środowisko KSeF</label>
+                  <Select value={editCompanyEnv} onValueChange={(v) => setEditCompanyEnv(v as Environment)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="production">Produkcja</SelectItem>
+                      <SelectItem value="test">Test</SelectItem>
+                      <SelectItem value="demo">Demo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Prefiks faktur</label>
+                  <Input
+                    placeholder="np. MF"
+                    value={editCompanyPrefix}
+                    onChange={(e) => setEditCompanyPrefix(e.target.value.toUpperCase())}
+                    maxLength={10}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Dodawany na początku numerów faktur przy ręcznym wprowadzaniu
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="edit-autosync"
+                    checked={editCompanyAutoSync}
+                    onCheckedChange={(checked) => setEditCompanyAutoSync(checked === true)}
+                  />
+                  <label htmlFor="edit-autosync" className="text-sm font-medium cursor-pointer">
+                    Automatyczna synchronizacja z KSeF
+                  </label>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditingCompany(null)}>
+                  Anuluj
+                </Button>
+                <Button 
+                  onClick={saveCompany} 
+                  disabled={!editCompanyName || updateCompanyMutation.isPending}
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  Zapisz
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* Cost Centers Tab */}
         <TabsContent value="costcenters" className="space-y-6 mt-6">
+          {/* Info about read-only cost centers */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-blue-800">
+              <p className="font-medium mb-1">Centra kosztów są zdefiniowane w Dataverse</p>
+              <p className="text-blue-700">
+                MPK są powiązane z opcjami (option set) w Microsoft Dataverse i nie mogą być edytowane 
+                z poziomu aplikacji. Aby dodać, zmienić lub usunąć centrum kosztów, skontaktuj się 
+                z administratorem systemu.
+              </p>
+            </div>
+          </div>
+
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <div>
                 <CardTitle>Centra kosztów (MPK)</CardTitle>
                 <CardDescription>
                   Lista dostępnych centrów kosztów do kategoryzacji faktur
                 </CardDescription>
               </div>
-              <Dialog open={isAddCostCenterOpen} onOpenChange={setIsAddCostCenterOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Dodaj MPK
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Dodaj centrum kosztów</DialogTitle>
-                    <DialogDescription>
-                      Wprowadź kod i nazwę nowego centrum kosztów
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Kod</label>
-                      <Input
-                        placeholder="np. IT"
-                        value={newCostCenterCode}
-                        onChange={(e) => setNewCostCenterCode(e.target.value)}
-                        className="uppercase"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Nazwa</label>
-                      <Input
-                        placeholder="np. Dział IT"
-                        value={newCostCenterName}
-                        onChange={(e) => setNewCostCenterName(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsAddCostCenterOpen(false)}>
-                      Anuluj
-                    </Button>
-                    <Button onClick={addCostCenter}>
-                      <Save className="mr-2 h-4 w-4" />
-                      Zapisz
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Kod</TableHead>
-                    <TableHead>Nazwa</TableHead>
+                    <TableHead>Wartość (Dataverse)</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -579,7 +710,6 @@ export default function SettingsPage() {
                           {cc.code}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-medium">{cc.name}</TableCell>
                       <TableCell>
                         {cc.isActive ? (
                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -589,133 +719,10 @@ export default function SettingsPage() {
                           <Badge variant="secondary">Nieaktywne</Badge>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => deleteCostCenter(cc.id, cc.code)}
-                            disabled={deleteCostCenterMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Security Tab */}
-        <TabsContent value="security" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Key className="h-5 w-5" />
-                Azure Key Vault
-              </CardTitle>
-              <CardDescription>
-                Tokeny KSeF są bezpiecznie przechowywane w Azure Key Vault
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Key Vault URL:</span>
-                  <span className="font-mono text-sm">https://kv-ksef-*.vault.azure.net</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Schemat nazewnictwa:</span>
-                  <span className="font-mono text-sm">ksef-token-{'{NIP}'}</span>
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Tokeny KSeF można odnowić w portalu KSeF i zaktualizować w Azure Key Vault.
-                Upewnij się, że aplikacja ma odpowiednie uprawnienia do odczytu sekretów.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                Środowiska KSeF
-              </CardTitle>
-              <CardDescription>
-                Adresy API dla różnych środowisk KSeF
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 text-sm">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <span className="font-medium">Produkcja</span>
-                    <p className="text-xs text-muted-foreground">Oficjalne środowisko</p>
-                  </div>
-                  <code className="bg-muted px-2 py-1 rounded text-xs">
-                    https://ksef.mf.gov.pl/api
-                  </code>
-                </div>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <span className="font-medium">Test</span>
-                    <p className="text-xs text-muted-foreground">Środowisko testowe</p>
-                  </div>
-                  <code className="bg-muted px-2 py-1 rounded text-xs">
-                    https://ksef-test.mf.gov.pl/api
-                  </code>
-                </div>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <span className="font-medium">Demo</span>
-                    <p className="text-xs text-muted-foreground">Środowisko demonstracyjne</p>
-                  </div>
-                  <code className="bg-muted px-2 py-1 rounded text-xs">
-                    https://ksef-demo.mf.gov.pl/api
-                  </code>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Uprawnienia
-              </CardTitle>
-              <CardDescription>
-                Role i uprawnienia w aplikacji
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 text-sm">
-                <div className="flex justify-between items-center p-3 border rounded-lg">
-                  <div>
-                    <span className="font-medium">Administrator KSeF</span>
-                    <p className="text-xs text-muted-foreground">
-                      Pełny dostęp: sesje, wysyłanie, pobieranie, konfiguracja
-                    </p>
-                  </div>
-                  <Badge>ksef.admin</Badge>
-                </div>
-                <div className="flex justify-between items-center p-3 border rounded-lg">
-                  <div>
-                    <span className="font-medium">Przeglądający</span>
-                    <p className="text-xs text-muted-foreground">
-                      Tylko odczyt: przeglądanie faktur i statusów
-                    </p>
-                  </div>
-                  <Badge variant="outline">ksef.reader</Badge>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>

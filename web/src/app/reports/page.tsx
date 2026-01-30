@@ -232,7 +232,10 @@ export default function ReportsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Raporty</h1>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <BarChart3 className="h-7 w-7" />
+            Raporty
+          </h1>
           <p className="text-muted-foreground">
             Analizy i statystyki faktur kosztowych
           </p>

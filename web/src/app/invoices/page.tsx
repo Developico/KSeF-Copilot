@@ -35,6 +35,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Invoice, InvoiceListParams } from '@/lib/api'
 import { exportInvoicesToCsv } from '@/lib/export'
 import { InvoiceFilters } from '@/components/invoices/invoice-filters'
+import { DocumentScannerModal } from '@/components/documents'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -118,26 +119,37 @@ export default function InvoicesPage() {
     top: 100,
   })
   
+  // Description status filter (client-side)
+  const [descriptionFilter, setDescriptionFilter] = useState<DescriptionStatus | null>(null)
+  
+  // Document scanner modal state
+  const [scannerOpen, setScannerOpen] = useState(false)
+  
   const { data, isLoading, refetch } = useInvoices(filters)
   
   const markAsPaidMutation = useMarkAsPaid()
   const deleteInvoiceMutation = useDeleteInvoice()
   const updateInvoiceMutation = useUpdateInvoice()
 
-  const invoices = data?.invoices || []
+  // Apply client-side description filter
+  const allInvoices = data?.invoices || []
+  const invoices = descriptionFilter
+    ? allInvoices.filter(i => getDescriptionStatus(i) === descriptionFilter)
+    : allInvoices
 
-  const pendingCount = invoices.filter(i => i.paymentStatus === 'pending').length
-  const paidCount = invoices.filter(i => i.paymentStatus === 'paid').length
-  const overdueCount = invoices.filter(i => 
+  // Counts based on allInvoices (before description filter) for KPI display
+  const pendingCount = allInvoices.filter(i => i.paymentStatus === 'pending').length
+  const paidCount = allInvoices.filter(i => i.paymentStatus === 'paid').length
+  const overdueCount = allInvoices.filter(i => 
     i.paymentStatus === 'pending' && 
     i.dueDate && 
     new Date(i.dueDate) < new Date()
   ).length
 
-  // Description status counts
-  const notDescribedCount = invoices.filter(i => getDescriptionStatus(i) === 'not_described').length
-  const aiSuggestedCount = invoices.filter(i => getDescriptionStatus(i) === 'ai_suggested').length
-  const describedCount = invoices.filter(i => getDescriptionStatus(i) === 'described').length
+  // Description status counts (based on allInvoices)
+  const notDescribedCount = allInvoices.filter(i => getDescriptionStatus(i) === 'not_described').length
+  const aiSuggestedCount = allInvoices.filter(i => getDescriptionStatus(i) === 'ai_suggested').length
+  const describedCount = allInvoices.filter(i => getDescriptionStatus(i) === 'described').length
 
   const handleFiltersChange = useCallback((newFilters: InvoiceListParams) => {
     setFilters(prev => ({
@@ -225,22 +237,23 @@ export default function InvoicesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Faktury</h1>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <FileText className="h-7 w-7" />
+            Faktury
+          </h1>
           <p className="text-muted-foreground">
             Przeglądaj i zarządzaj fakturami kosztowymi z KSeF
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/invoices/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Dodaj fakturę
-            </Button>
-          </Link>
+          <Button onClick={() => setScannerOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Dodaj fakturę
+          </Button>
           <Button variant="outline" onClick={() => refetch()}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Odśwież
@@ -252,98 +265,94 @@ export default function InvoicesPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card 
-          className="cursor-pointer hover:bg-muted/50" 
-          onClick={() => setFilters(f => ({ ...f, paymentStatus: undefined, overdue: undefined }))}
-        >
-          <CardContent className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-muted-foreground" />
-              <span className="font-medium">Wszystkie</span>
-            </div>
-            <Badge variant="secondary">{data?.count || 0}</Badge>
-          </CardContent>
-        </Card>
-        <Card 
-          className="cursor-pointer hover:bg-muted/50" 
-          onClick={() => setFilters(f => ({ ...f, paymentStatus: 'pending', overdue: undefined }))}
-        >
-          <CardContent className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-2">
-              <ArrowDownToLine className="h-5 w-5 text-orange-500" />
-              <span className="font-medium">Do opłacenia</span>
-            </div>
-            <Badge variant="secondary">{pendingCount}</Badge>
-          </CardContent>
-        </Card>
-        <Card 
-          className="cursor-pointer hover:bg-muted/50" 
-          onClick={() => setFilters(f => ({ ...f, overdue: true, paymentStatus: undefined }))}
-        >
-          <CardContent className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-500" />
-              <span className="font-medium">Zaległe</span>
-            </div>
-            <Badge variant="destructive">{overdueCount}</Badge>
-          </CardContent>
-        </Card>
-        <Card 
-          className="cursor-pointer hover:bg-muted/50" 
-          onClick={() => setFilters(f => ({ ...f, paymentStatus: 'paid', overdue: undefined }))}
-        >
-          <CardContent className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span className="font-medium">Opłacone</span>
-            </div>
-            <Badge className="bg-green-100 text-green-800">{paidCount}</Badge>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Description Status Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="cursor-pointer hover:bg-muted/50 border-red-200 dark:border-red-900">
-          <CardContent className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-2">
-              <FileQuestion className="h-5 w-5 text-red-500" />
-              <span className="font-medium">Bez opisu</span>
-            </div>
-            <Badge variant="destructive">{notDescribedCount}</Badge>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:bg-muted/50 border-purple-200 dark:border-purple-900">
-          <CardContent className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-500" />
-              <span className="font-medium">Propozycja AI</span>
-            </div>
-            <Badge className="bg-purple-100 text-purple-800">{aiSuggestedCount}</Badge>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:bg-muted/50 border-green-200 dark:border-green-900">
-          <CardContent className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-2">
-              <FileCheck className="h-5 w-5 text-green-500" />
-              <span className="font-medium">Opisane</span>
-            </div>
-            <Badge className="bg-green-100 text-green-800">{describedCount}</Badge>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Advanced Filters */}
+      {/* Quick Filters - Compact Horizontal Bar */}
       <Card>
-        <CardContent className="pt-6">
-          <InvoiceFilters 
-            filters={filters} 
-            onChange={handleFiltersChange}
-          />
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center justify-between">
+            {/* All filter buttons spread evenly */}
+            <Button
+              variant={!filters.paymentStatus && !filters.overdue ? "default" : "ghost"}
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => setFilters(f => ({ ...f, paymentStatus: undefined, overdue: undefined }))}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Wszystkie
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5">{data?.count || 0}</Badge>
+            </Button>
+            <Button
+              variant={filters.paymentStatus === 'pending' && !filters.overdue ? "default" : "ghost"}
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => setFilters(f => ({ ...f, paymentStatus: 'pending', overdue: undefined }))}
+            >
+              <ArrowDownToLine className="h-3.5 w-3.5 text-orange-500" />
+              Do opłacenia
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5">{pendingCount}</Badge>
+            </Button>
+            <Button
+              variant={filters.overdue ? "default" : "ghost"}
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => setFilters(f => ({ ...f, overdue: true, paymentStatus: undefined }))}
+            >
+              <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+              Zaległe
+              <Badge variant="destructive" className="ml-1 h-5 px-1.5">{overdueCount}</Badge>
+            </Button>
+            <Button
+              variant={filters.paymentStatus === 'paid' ? "default" : "ghost"}
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => setFilters(f => ({ ...f, paymentStatus: 'paid', overdue: undefined }))}
+            >
+              <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+              Opłacone
+              <Badge className="ml-1 h-5 px-1.5 bg-green-100 text-green-800">{paidCount}</Badge>
+            </Button>
+            
+            {/* Separator */}
+            <div className="h-6 w-px bg-border" />
+            
+            <Button
+              variant={descriptionFilter === 'not_described' ? "default" : "ghost"}
+              size="sm"
+              className={descriptionFilter === 'not_described' ? "h-8 gap-1.5" : "h-8 gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50"}
+              onClick={() => setDescriptionFilter(f => f === 'not_described' ? null : 'not_described')}
+            >
+              <FileQuestion className="h-3.5 w-3.5" />
+              Bez opisu
+              <Badge variant="destructive" className="ml-1 h-5 px-1.5">{notDescribedCount}</Badge>
+            </Button>
+            <Button
+              variant={descriptionFilter === 'ai_suggested' ? "default" : "ghost"}
+              size="sm"
+              className={descriptionFilter === 'ai_suggested' ? "h-8 gap-1.5" : "h-8 gap-1.5 text-purple-600 hover:text-purple-700 hover:bg-purple-50"}
+              onClick={() => setDescriptionFilter(f => f === 'ai_suggested' ? null : 'ai_suggested')}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Propozycja AI
+              <Badge className="ml-1 h-5 px-1.5 bg-purple-100 text-purple-800">{aiSuggestedCount}</Badge>
+            </Button>
+            <Button
+              variant={descriptionFilter === 'described' ? "default" : "ghost"}
+              size="sm"
+              className={descriptionFilter === 'described' ? "h-8 gap-1.5" : "h-8 gap-1.5 text-green-600 hover:text-green-700 hover:bg-green-50"}
+              onClick={() => setDescriptionFilter(f => f === 'described' ? null : 'described')}
+            >
+              <FileCheck className="h-3.5 w-3.5" />
+              Opisane
+              <Badge className="ml-1 h-5 px-1.5 bg-green-100 text-green-800">{describedCount}</Badge>
+            </Button>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Search & Advanced Filters */}
+      <InvoiceFilters 
+        filters={filters} 
+        onChange={handleFiltersChange}
+      />
 
       {/* Table */}
       <Card>
@@ -483,6 +492,22 @@ export default function InvoicesPage() {
           Wyświetlono {invoices.length} faktur
         </div>
       )}
+
+      {/* Document Scanner Modal */}
+      <DocumentScannerModal
+        open={scannerOpen}
+        onOpenChange={(open) => {
+          setScannerOpen(open)
+          if (!open) {
+            // Refresh list after closing (in case invoice was created)
+            refetch()
+          }
+        }}
+        onSkipToManual={() => {
+          setScannerOpen(false)
+          router.push('/invoices/new')
+        }}
+      />
     </div>
   )
 }

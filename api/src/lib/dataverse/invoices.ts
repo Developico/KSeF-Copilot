@@ -324,6 +324,14 @@ function mapToDataverse(data: InvoiceCreate): Record<string, unknown> {
       ? MpkValues[data.mpk as keyof typeof MpkValues]
       : null,
     [f.category]: data.category,
+    // AI suggestion fields
+    [f.aiMpkSuggestion]: data.aiMpkSuggestion && data.aiMpkSuggestion in MpkValues
+      ? MpkValues[data.aiMpkSuggestion as keyof typeof MpkValues]
+      : null,
+    [f.aiCategorySuggestion]: data.aiCategorySuggestion,
+    [f.aiDescription]: data.aiDescription,
+    [f.aiConfidence]: data.aiConfidence,
+    [f.aiProcessedAt]: data.aiConfidence ? new Date().toISOString() : null,
   }
 }
 

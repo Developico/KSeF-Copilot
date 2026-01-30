@@ -6,6 +6,35 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.4.0] - 2026-01-30
+
+### ✨ Dodane
+
+- **Ikony przy tytułach stron** - każda strona ma teraz ikonę obok tytułu (Dashboard, Faktury, Raporty, Synchronizacja, Ustawienia), konsystentnie z projektem planner
+- **Podpis "Cost analysis"** w nagłówku aplikacji pod tytułem "C-Level KSeF"
+- **Filtry statusu opisu faktur** - trzy nowe interaktywne filtry:
+  - "Bez opisu" - faktury bez MPK i kategorii
+  - "Propozycja AI" - faktury z sugestiami AI oczekującymi na akceptację
+  - "Opisane" - faktury z ustawionym MPK lub kategorią
+- **Edycja danych firmy** - możliwość edycji nazwy, środowiska i ustawień synchronizacji w Ustawieniach
+- **Unikalność NIP per środowisko** - ten sam NIP może być dodany w różnych środowiskach (test/demo/production)
+
+### 🔧 Zmiany
+
+- **Zoptymalizowany widok Faktur** - kompaktowy pasek KPI zamiast dwóch rzędów kafli:
+  - Wszystkie 7 filtrów (4 płatności + 3 opisu) w jednej linii
+  - Przyciski rozłożone równomiernie na całą szerokość
+  - Zmniejszone spacingi dla większej przestrzeni na listę faktur
+- **Uproszczone etykiety MPK** - usunięte polskie tłumaczenia, wyświetlane bezpośrednio wartości z Dataverse
+- **Naprawione mapowanie środowisk** - poprawione wartości KSEF_ENVIRONMENT (TEST=100000000, DEMO=100000001, PRODUCTION=100000002)
+
+### 🗑️ Usunięte
+
+- **Zakładka Bezpieczeństwo** w Ustawieniach (zawierała tylko statyczne informacje referencyjne)
+- **Floating Action Button** (FAB) do skanowania dokumentów - funkcja zintegrowana z przyciskiem "Dodaj fakturę"
+
+---
+
 ## [0.3.0] - 2026-01-27
 
 ### ✨ Dodane - Integracja Dataverse

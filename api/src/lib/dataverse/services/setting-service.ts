@@ -99,16 +99,36 @@ export class SettingService {
   }
 
   /**
+   * Get setting by NIP and environment combination (unique key)
+   */
+  async getByNipAndEnvironment(nip: string, environment: number): Promise<AppSetting | null> {
+    const s = DV.setting
+    const filter = `${s.nip} eq '${nip}' and ${s.environment} eq ${environment}`
+    logDataverseInfo('SettingService.getByNipAndEnvironment', 'Fetching setting by NIP and environment', { nip, environment })
+
+    try {
+      const response = await dataverseClient.list<DvSetting>(this.entitySet, `$filter=${filter}&$top=1`)
+      if (response.value.length === 0) return null
+      return mapDvSettingToApp(response.value[0])
+    } catch (error) {
+      logDataverseError('SettingService.getByNipAndEnvironment', error)
+      throw error
+    }
+  }
+
+  /**
    * Create new setting
    */
   async create(data: SettingCreate): Promise<AppSetting> {
     logDataverseInfo('SettingService.create', 'Creating setting', { nip: data.nip, companyName: data.companyName })
 
     try {
-      // Check if NIP already exists
-      const existing = await this.getByNip(data.nip)
+      // Check if NIP + environment combination already exists
+      const envKey = data.environment.toUpperCase() as keyof typeof KSEF_ENVIRONMENT
+      const environmentValue = KSEF_ENVIRONMENT[envKey]
+      const existing = await this.getByNipAndEnvironment(data.nip, environmentValue)
       if (existing) {
-        throw new Error(`Setting for NIP ${data.nip} already exists`)
+        throw new Error(`Setting for NIP ${data.nip} in this environment already exists`)
       }
 
       const s = DV.setting

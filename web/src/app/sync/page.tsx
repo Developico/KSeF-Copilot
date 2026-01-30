@@ -160,7 +160,10 @@ export default function SyncPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Synchronizacja KSeF</h1>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <RefreshCw className="h-7 w-7" />
+            Synchronizacja KSeF
+          </h1>
           <p className="text-muted-foreground">
             Pobierz nowe faktury z Krajowego Systemu e-Faktur
           </p>

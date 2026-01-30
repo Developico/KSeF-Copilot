@@ -237,6 +237,11 @@ export interface ManualInvoiceCreate {
   description?: string
   mpk?: string
   category?: string
+  // AI suggestion fields (from document extraction)
+  aiMpkSuggestion?: string
+  aiCategorySuggestion?: string
+  aiDescription?: string
+  aiConfidence?: number
 }
 
 // ============================================================================
@@ -693,6 +698,15 @@ export const api = {
     getStats: (settingId: string) =>
       apiFetch<DvSyncStats>(`/api/sync/stats/${settingId}`),
   },
+
+  // Document Extraction
+  documents: {
+    extract: (data: DocumentExtractRequest) =>
+      apiFetch<ExtractionResult>('/api/documents/extract', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  },
 }
 
 // ============================================================================
@@ -833,4 +847,68 @@ export const queryKeys = {
     ['dv', 'sync', 'logs', { settingId, limit }] as const,
   dvSyncLog: (id: string) => ['dv', 'sync', 'logs', id] as const,
   dvSyncStats: (settingId: string) => ['dv', 'sync', 'stats', settingId] as const,
+}
+
+// ============================================================================
+// Document Extraction Types
+// ============================================================================
+
+export interface ExtractedAddress {
+  street?: string
+  buildingNumber?: string
+  apartmentNumber?: string
+  postalCode?: string
+  city?: string
+  country?: string
+}
+
+export interface ExtractedItem {
+  description: string
+  quantity?: number
+  unit?: string
+  netPrice?: number
+  vatRate?: number
+  netAmount?: number
+  vatAmount?: number
+  grossAmount?: number
+}
+
+export interface ExtractedInvoiceData {
+  invoiceNumber?: string
+  issueDate?: string
+  dueDate?: string
+  supplierName?: string
+  supplierNip?: string
+  supplierAddress?: ExtractedAddress
+  supplierBankAccount?: string
+  buyerName?: string
+  buyerNip?: string
+  buyerAddress?: ExtractedAddress
+  netAmount?: number
+  vatAmount?: number
+  grossAmount?: number
+  currency?: string
+  items?: ExtractedItem[]
+  paymentMethod?: string
+  bankAccountNumber?: string
+  suggestedMpk?: string
+  suggestedCategory?: string
+  suggestedDescription?: string
+}
+
+export interface ExtractionResult {
+  success: boolean
+  data?: ExtractedInvoiceData
+  confidence: number
+  extractedAt: string
+  sourceType: 'pdf' | 'image'
+  processingTimeMs?: number
+  rawText?: string
+  error?: string
+}
+
+export interface DocumentExtractRequest {
+  fileName: string
+  mimeType: string
+  content: string // base64
 }

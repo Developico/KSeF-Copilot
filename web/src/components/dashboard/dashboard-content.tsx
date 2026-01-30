@@ -47,19 +47,6 @@ const COLORS = [
   '#6366f1', // indigo
 ]
 
-const MPK_LABELS: Record<string, string> = {
-  Consultants: 'Konsultanci',
-  BackOffice: 'Back Office',
-  Management: 'Zarząd',
-  Cars: 'Samochody',
-  Legal: 'Prawny',
-  Marketing: 'Marketing',
-  Sales: 'Sprzedaż',
-  Delivery: 'Realizacja',
-  Finance: 'Finanse',
-  Other: 'Inne',
-}
-
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('pl-PL', {
     style: 'currency',
@@ -112,7 +99,7 @@ export function DashboardContent() {
 
   const mpkData = stats.byMpk.map(m => ({
     ...m,
-    name: MPK_LABELS[m.mpk] || m.mpk,
+    name: m.mpk,
   }))
 
   return (

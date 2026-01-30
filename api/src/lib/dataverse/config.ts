@@ -205,9 +205,9 @@ export const DV = {
 // ============================================================
 
 export const KSEF_ENVIRONMENT = {
-  TEST: 100000001,
-  DEMO: 100000002,
-  PRODUCTION: 100000003,
+  TEST: 100000000,
+  DEMO: 100000001,
+  PRODUCTION: 100000002,
 } as const
 
 export const KSEF_STATUS = {

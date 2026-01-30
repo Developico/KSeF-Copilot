@@ -24,6 +24,7 @@ import {
   Save,
   ChevronDown,
   ChevronUp,
+  Eye,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -47,6 +48,12 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -55,26 +62,19 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
-// MPK options (must match backend)
+// MPK options (values from Dataverse option set)
 const MPK_OPTIONS = [
-  { value: 'Consultants', label: 'Konsultanci' },
-  { value: 'BackOffice', label: 'Back Office' },
-  { value: 'Management', label: 'Zarząd' },
-  { value: 'Cars', label: 'Samochody' },
-  { value: 'Legal', label: 'Prawny' },
-  { value: 'Marketing', label: 'Marketing' },
-  { value: 'Sales', label: 'Sprzedaż' },
-  { value: 'Delivery', label: 'Realizacja' },
-  { value: 'Finance', label: 'Finanse' },
-  { value: 'Other', label: 'Inne' },
+  'Consultants',
+  'BackOffice',
+  'Management',
+  'Cars',
+  'Legal',
+  'Marketing',
+  'Sales',
+  'Delivery',
+  'Finance',
+  'Other',
 ]
-
-// Helper to get Polish label for MPK value
-function getMpkLabel(value: string | undefined): string {
-  if (!value) return '-'
-  const option = MPK_OPTIONS.find(opt => opt.value === value)
-  return option?.label || value
-}
 
 // ============================================================================
 // Helpers
@@ -152,6 +152,14 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   const [editNetAmount, setEditNetAmount] = useState('')
   const [editVatAmount, setEditVatAmount] = useState('')
   const [editGrossAmount, setEditGrossAmount] = useState('')
+  
+  // State for collapsible attachments
+  const [attachmentsExpanded, setAttachmentsExpanded] = useState(false)
+  
+  // State for attachment preview
+  const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null)
+  const [previewContent, setPreviewContent] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
 
   // Fetch invoice details
   const {
@@ -206,6 +214,39 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
       queryClient.invalidateQueries({ queryKey: ['attachments', invoiceId] })
     },
   })
+  
+  // Preview attachment handler
+  const handlePreview = useCallback(async (attachment: Attachment) => {
+    // Check if it's a previewable type
+    const previewableTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    if (!previewableTypes.includes(attachment.mimeType)) {
+      toast({
+        title: 'Informacja',
+        description: 'Ten typ pliku nie obsługuje podglądu. Użyj pobierania.',
+      })
+      return
+    }
+    
+    setPreviewAttachment(attachment)
+    setPreviewLoading(true)
+    setPreviewContent(null)
+    
+    try {
+      const result = await api.invoices.downloadAttachment(attachment.id)
+      // Create data URL from base64
+      const dataUrl = `data:${attachment.mimeType};base64,${result.content}`
+      setPreviewContent(dataUrl)
+    } catch (error) {
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się pobrać podglądu załącznika',
+        variant: 'destructive',
+      })
+      setPreviewAttachment(null)
+    } finally {
+      setPreviewLoading(false)
+    }
+  }, [toast])
 
   // Mark as paid mutation
   const markPaidMutation = useMutation({
@@ -504,8 +545,6 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
     new Date(invoice.dueDate) < new Date() && 
     invoice.paymentStatus === 'pending'
 
-  // State for collapsible attachments
-  const [attachmentsExpanded, setAttachmentsExpanded] = useState(false)
   const hasAttachments = (attachmentsData?.attachments?.length || 0) > 0
 
   return (
@@ -743,9 +782,9 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                         <SelectValue placeholder="Wybierz MPK..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {MPK_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
+                        {MPK_OPTIONS.map((mpk) => (
+                          <SelectItem key={mpk} value={mpk}>
+                            {mpk}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -775,7 +814,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground text-xs">MPK</span>
-                  <p className="font-medium">{getMpkLabel(invoice.mpk)}</p>
+                  <p className="font-medium">{invoice.mpk || '-'}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground text-xs">Kategoria</span>
@@ -895,10 +934,19 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                         <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="flex-1 truncate">{attachment.fileName}</span>
                         <span className="text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDownload(attachment)}>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6" 
+                          onClick={() => handlePreview(attachment)}
+                          title="Podgląd"
+                        >
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDownload(attachment)} title="Pobierz">
                           <Download className="h-3 w-3" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteMutation.mutate(attachment.id)}>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteMutation.mutate(attachment.id)} title="Usuń">
                           <Trash2 className="h-3 w-3 text-red-500" />
                         </Button>
                       </div>
@@ -943,7 +991,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                         <div className="p-3 bg-white dark:bg-background rounded-lg border">
                           <span className="text-xs text-muted-foreground">Sugerowane MPK</span>
                           <p className="font-medium text-purple-700 dark:text-purple-400">
-                            {getMpkLabel(invoice.aiMpkSuggestion)}
+                            {invoice.aiMpkSuggestion}
                           </p>
                         </div>
                       )}
@@ -1019,6 +1067,46 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
           </div>
         </div>
       </div>
+      
+      {/* Attachment Preview Dialog */}
+      <Dialog open={!!previewAttachment} onOpenChange={(open) => !open && setPreviewAttachment(null)}>
+        <DialogContent className="!max-w-5xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              {previewAttachment?.fileName}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto min-h-[500px]">
+            {previewLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">Ładowanie podglądu...</p>
+                </div>
+              </div>
+            ) : previewContent && previewAttachment ? (
+              previewAttachment.mimeType === 'application/pdf' ? (
+                <iframe
+                  src={previewContent}
+                  title="Podgląd PDF"
+                  className="w-full h-full min-h-[500px]"
+                />
+              ) : previewAttachment.mimeType.startsWith('image/') ? (
+                <img
+                  src={previewContent}
+                  alt={previewAttachment.fileName}
+                  className="max-w-full max-h-full object-contain mx-auto"
+                />
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  Ten typ pliku nie obsługuje podglądu.
+                </p>
+              )
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

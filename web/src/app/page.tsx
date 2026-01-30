@@ -12,7 +12,8 @@ import {
   Clock,
   TrendingUp,
   Building2,
-  Zap
+  Zap,
+  LayoutDashboard,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useKsefStatus, useInvoices, useRunSync } from '@/hooks/use-api'
@@ -63,7 +64,10 @@ export default function HomePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <LayoutDashboard className="h-7 w-7" />
+            Dashboard
+          </h1>
           <p className="text-muted-foreground">
             Zarządzaj fakturami kosztowymi z KSeF
           </p>

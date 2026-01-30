@@ -86,7 +86,8 @@ export function Header() {
                 )}
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-base sm:text-lg font-semibold">C-Level KSeF</h1>
+                <h1 className="text-base sm:text-lg font-semibold leading-tight">C-Level KSeF</h1>
+                <p className="text-xs text-muted-foreground">Cost analysis</p>
               </div>
             </div>
           </div>

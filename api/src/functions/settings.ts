@@ -13,7 +13,7 @@
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { verifyAuth, requireRole } from '../lib/auth/middleware'
-import { settingService } from '../lib/dataverse'
+import { settingService, KSEF_ENVIRONMENT } from '../lib/dataverse'
 import type { SettingCreate, SettingUpdate } from '../lib/dataverse'
 import { z } from 'zod'
 
@@ -71,6 +71,167 @@ app.http('settings-list', {
       return {
         status: 500,
         jsonBody: { error: 'Failed to list settings' },
+      }
+    }
+  },
+})
+
+/**
+ * GET /api/settings/costcenters - List all cost centers (MPK)
+ * 
+ * Returns the static list of available cost centers.
+ * Note: This route MUST be registered BEFORE settings/{id} to avoid being matched as an ID.
+ */
+app.http('settings-costcenters-list', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  route: 'settings/costcenters',
+  handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    try {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      const roleCheck = requireRole(auth.user, 'Reader')
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: 'Forbidden' } }
+      }
+
+      // Return static cost centers list - values match Dataverse option set
+      const costCenters = [
+        { id: '1', code: 'Consultants', isActive: true },
+        { id: '2', code: 'BackOffice', isActive: true },
+        { id: '3', code: 'Management', isActive: true },
+        { id: '4', code: 'Cars', isActive: true },
+        { id: '5', code: 'Legal', isActive: true },
+        { id: '6', code: 'Marketing', isActive: true },
+        { id: '7', code: 'Sales', isActive: true },
+        { id: '8', code: 'Delivery', isActive: true },
+        { id: '9', code: 'Finance', isActive: true },
+        { id: '10', code: 'Other', isActive: true },
+      ]
+
+      return {
+        status: 200,
+        jsonBody: { costCenters },
+      }
+    } catch (error) {
+      context.error('Failed to list cost centers:', error)
+      return {
+        status: 500,
+        jsonBody: { error: 'Failed to list cost centers' },
+      }
+    }
+  },
+})
+
+/**
+ * PATCH /api/settings/costcenters/:id - Update cost center (currently read-only)
+ * 
+ * Note: Cost centers are tied to Dataverse option set and cannot be edited from the app.
+ * This endpoint returns an informational error.
+ */
+app.http('settings-costcenters-update', {
+  methods: ['PATCH'],
+  authLevel: 'anonymous',
+  route: 'settings/costcenters/{id}',
+  handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    try {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      const roleCheck = requireRole(auth.user, 'Admin')
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Admin role required' } }
+      }
+
+      // Cost centers are tied to Dataverse option set - read-only from app
+      return {
+        status: 400,
+        jsonBody: { 
+          error: 'Centra kosztów (MPK) są powiązane z opcjami w Dataverse i nie mogą być edytowane z poziomu aplikacji. Skontaktuj się z administratorem systemu.' 
+        },
+      }
+    } catch (error) {
+      context.error('Failed to update cost center:', error)
+      return {
+        status: 500,
+        jsonBody: { error: 'Failed to update cost center' },
+      }
+    }
+  },
+})
+
+/**
+ * POST /api/settings/costcenters - Create cost center (currently read-only)
+ */
+app.http('settings-costcenters-create', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  route: 'settings/costcenters',
+  handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    try {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      const roleCheck = requireRole(auth.user, 'Admin')
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Admin role required' } }
+      }
+
+      // Cost centers are tied to Dataverse option set - read-only from app
+      return {
+        status: 400,
+        jsonBody: { 
+          error: 'Centra kosztów (MPK) są powiązane z opcjami w Dataverse i nie mogą być dodawane z poziomu aplikacji. Skontaktuj się z administratorem systemu.' 
+        },
+      }
+    } catch (error) {
+      context.error('Failed to create cost center:', error)
+      return {
+        status: 500,
+        jsonBody: { error: 'Failed to create cost center' },
+      }
+    }
+  },
+})
+
+/**
+ * DELETE /api/settings/costcenters/:id - Delete cost center (currently read-only)
+ */
+app.http('settings-costcenters-delete', {
+  methods: ['DELETE'],
+  authLevel: 'anonymous',
+  route: 'settings/costcenters/{id}',
+  handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    try {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      const roleCheck = requireRole(auth.user, 'Admin')
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Admin role required' } }
+      }
+
+      // Cost centers are tied to Dataverse option set - read-only from app
+      return {
+        status: 400,
+        jsonBody: { 
+          error: 'Centra kosztów (MPK) są powiązane z opcjami w Dataverse i nie mogą być usuwane z poziomu aplikacji. Skontaktuj się z administratorem systemu.' 
+        },
+      }
+    } catch (error) {
+      context.error('Failed to delete cost center:', error)
+      return {
+        status: 500,
+        jsonBody: { error: 'Failed to delete cost center' },
       }
     }
   },
@@ -152,12 +313,13 @@ app.http('settings-create', {
         }
       }
 
-      // Check if NIP already exists
-      const existing = await settingService.getByNip(validation.data.nip)
+      // Check if NIP + environment combination already exists
+      const environmentValue = KSEF_ENVIRONMENT[validation.data.environment.toUpperCase() as keyof typeof KSEF_ENVIRONMENT]
+      const existing = await settingService.getByNipAndEnvironment(validation.data.nip, environmentValue)
       if (existing) {
         return {
           status: 409,
-          jsonBody: { error: 'Setting for this NIP already exists', existingId: existing.id },
+          jsonBody: { error: 'Setting for this NIP in this environment already exists', existingId: existing.id },
         }
       }
 

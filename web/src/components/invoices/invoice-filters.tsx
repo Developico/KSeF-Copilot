@@ -42,22 +42,6 @@ import { InvoiceListParams } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 // ============================================================================
-// MPK Labels (Polish translations)
-// ============================================================================
-const MPK_LABELS: Record<string, string> = {
-  Consultants: 'Konsultanci',
-  BackOffice: 'Back Office',
-  Management: 'Zarząd',
-  Cars: 'Samochody',
-  Legal: 'Prawny',
-  Marketing: 'Marketing',
-  Sales: 'Sprzedaż',
-  Delivery: 'Realizacja',
-  Finance: 'Finanse',
-  Other: 'Inne',
-}
-
-// ============================================================================
 // Types
 // ============================================================================
 
@@ -381,7 +365,7 @@ export function InvoiceFilters({
                     <SelectItem value="all">Wszystkie</SelectItem>
                     {availableMpks.map((mpk) => (
                       <SelectItem key={mpk} value={mpk}>
-                        {MPK_LABELS[mpk] || mpk}
+                        {mpk}
                       </SelectItem>
                     ))}
                   </SelectContent>

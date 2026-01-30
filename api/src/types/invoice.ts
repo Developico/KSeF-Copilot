@@ -140,6 +140,11 @@ export interface InvoiceCreate {
   description?: string
   mpk?: string
   category?: string
+  // AI suggestion fields (from document extraction)
+  aiMpkSuggestion?: string
+  aiCategorySuggestion?: string
+  aiDescription?: string
+  aiConfidence?: number
 }
 
 /**
@@ -159,6 +164,11 @@ export const ManualInvoiceCreateSchema = z.object({
   description: z.string().max(500).optional(),
   mpk: z.nativeEnum(MPK).optional(),
   category: z.string().max(50).optional(),
+  // AI suggestion fields (populated from document extraction)
+  aiMpkSuggestion: z.nativeEnum(MPK).optional(),
+  aiCategorySuggestion: z.string().max(50).optional(),
+  aiDescription: z.string().max(500).optional(),
+  aiConfidence: z.number().min(0).max(1).optional(),
 })
 
 export type ManualInvoiceCreate = z.infer<typeof ManualInvoiceCreateSchema>
