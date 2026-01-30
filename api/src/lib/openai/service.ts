@@ -12,6 +12,7 @@
 
 import OpenAI from 'openai'
 import { getSecret } from '../keyvault/secrets'
+import { getLearningContextForSupplier, getAllLearningContexts } from '../ai/feedback'
 import { 
   type AICategorization, 
   type AiCategorizationRequest,
@@ -42,15 +43,31 @@ interface OpenAIConfig {
  */
 async function getOpenAIConfig(): Promise<OpenAIConfig> {
   // Try Key Vault first (production)
-  let endpoint = await getSecret(KV_OPENAI_ENDPOINT).catch(() => undefined)
-  let apiKey = await getSecret(KV_OPENAI_API_KEY).catch(() => undefined)
+  let endpoint: string | undefined
+  let apiKey: string | undefined
+  
+  try {
+    endpoint = await getSecret(KV_OPENAI_ENDPOINT)
+    console.log('[OpenAI] Got endpoint from Key Vault:', endpoint ? 'OK' : 'not found')
+  } catch (kvError) {
+    console.warn('[OpenAI] Key Vault error for endpoint:', kvError instanceof Error ? kvError.message : kvError)
+  }
+  
+  try {
+    apiKey = await getSecret(KV_OPENAI_API_KEY)
+    console.log('[OpenAI] Got API key from Key Vault:', apiKey ? 'OK' : 'not found')
+  } catch (kvError) {
+    console.warn('[OpenAI] Key Vault error for API key:', kvError instanceof Error ? kvError.message : kvError)
+  }
 
   // Fallback to environment variables (development)
   if (!endpoint) {
     endpoint = process.env.AZURE_OPENAI_ENDPOINT
+    if (endpoint) console.log('[OpenAI] Using endpoint from environment')
   }
   if (!apiKey) {
     apiKey = process.env.AZURE_OPENAI_API_KEY
+    if (apiKey) console.log('[OpenAI] Using API key from environment')
   }
 
   const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini'
@@ -102,9 +119,12 @@ async function getOpenAIClient(): Promise<OpenAI> {
 }
 
 /**
- * Build categorization prompt for invoice
+ * Build categorization prompt for invoice with optional learning context
  */
-function buildCategorizationPrompt(request: AiCategorizationRequest): string {
+function buildCategorizationPrompt(
+  request: AiCategorizationRequest,
+  learningContext?: { supplierHint?: string; examples?: string }
+): string {
   const itemsList = request.items?.length 
     ? `\n- Pozycje: ${request.items.join(', ')}`
     : ''
@@ -113,13 +133,22 @@ function buildCategorizationPrompt(request: AiCategorizationRequest): string {
     ? `\n- Kwota brutto: ${request.grossAmount.toFixed(2)} PLN`
     : ''
 
+  // Add learning hints if available
+  const learningHint = learningContext?.supplierHint
+    ? `\n\nWAŻNE - Historia kategoryzacji dla tego dostawcy:\n${learningContext.supplierHint}`
+    : ''
+  
+  const examplesSection = learningContext?.examples
+    ? `\n\nPrzykłady kategoryzacji z historii firmy:\n${learningContext.examples}`
+    : ''
+
   return `Jesteś asystentem kategoryzującym faktury kosztowe dla polskiej firmy IT/konsultingowej.
 
 Na podstawie danych faktury, przypisz:
 1. MPK (centrum kosztów) - jedno z: ${Object.values(MPK).join(', ')}
 2. Kategorię - krótki opis typu kosztu (max 50 znaków)
 3. Opis - krótki opis czego dotyczy faktura (max 200 znaków)
-4. Pewność (confidence) - liczba 0.0-1.0 jak pewny jesteś kategoryzacji
+4. Pewność (confidence) - liczba 0.0-1.0 jak pewny jesteś kategoryzacji${learningHint}${examplesSection}
 
 Dane faktury:
 - Dostawca: ${request.supplierName}
@@ -165,13 +194,45 @@ function parseCategorizationResponse(content: string): AICategorization {
 }
 
 /**
- * Categorize single invoice using AI
+ * Categorize single invoice using AI with learning from feedback
  */
 export async function categorizeInvoice(
-  request: AiCategorizationRequest
+  request: AiCategorizationRequest,
+  tenantNip?: string
 ): Promise<AICategorization> {
   const client = await getOpenAIClient()
-  const prompt = buildCategorizationPrompt(request)
+  
+  // Build learning context from feedback history
+  let learningContext: { supplierHint?: string; examples?: string } | undefined
+  
+  if (tenantNip) {
+    try {
+      // Get specific supplier context
+      const supplierContext = await getLearningContextForSupplier(tenantNip, request.supplierNip)
+      if (supplierContext && supplierContext.sampleCount >= 2) {
+        learningContext = {
+          supplierHint: `Dla "${supplierContext.supplierName}" użytkownicy zazwyczaj wybierają: MPK="${supplierContext.preferredMpk}", Kategoria="${supplierContext.preferredCategory}" (pewność: ${Math.round(supplierContext.confidence * 100)}%, na podstawie ${supplierContext.sampleCount} faktur)`
+        }
+      }
+      
+      // Get general examples from other suppliers
+      const allContexts = await getAllLearningContexts(tenantNip, 5)
+      const otherExamples = allContexts
+        .filter(c => c.supplierNip !== request.supplierNip && c.sampleCount >= 2)
+        .slice(0, 3)
+        .map(c => `- "${c.supplierName}" → MPK: ${c.preferredMpk}, Kategoria: ${c.preferredCategory}`)
+        .join('\n')
+      
+      if (otherExamples) {
+        learningContext = learningContext || {}
+        learningContext.examples = otherExamples
+      }
+    } catch (error) {
+      console.warn('[OpenAI] Failed to get learning context:', error)
+    }
+  }
+
+  const prompt = buildCategorizationPrompt(request, learningContext)
 
   const response = await client.chat.completions.create({
     model: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini',
@@ -195,6 +256,7 @@ export async function categorizeInvoice(
     result: {
       mpk: categorization.mpk,
       category: categorization.category,
+      description: categorization.description,
       confidence: categorization.confidence,
     },
     tokens: response.usage,

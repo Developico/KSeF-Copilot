@@ -93,8 +93,10 @@ export interface Invoice {
   // AI Suggestions
   aiMpkSuggestion?: string
   aiCategorySuggestion?: string
+  aiDescription?: string
   aiRationale?: string
   aiConfidence?: number
+  aiProcessedAt?: string
 }
 
 export interface InvoiceItem {
@@ -237,6 +239,57 @@ export interface ManualInvoiceCreate {
   category?: string
 }
 
+// ============================================================================
+// GUS/REGON Types
+// ============================================================================
+
+export interface GusCompanyData {
+  nip: string
+  regon: string
+  nazwa: string
+  adres: string
+  miejscowosc: string
+  kodPocztowy: string
+  ulica: string
+  nrBudynku: string
+  nrLokalu?: string
+  email?: string
+  telefon?: string
+  www?: string
+  pkd?: string
+  pkdNazwa?: string
+  typ: string
+  aktywny: boolean
+}
+
+export interface GusLookupResponse {
+  success: boolean
+  data?: GusCompanyData
+  error?: string
+  errorCode?: string
+}
+
+export interface GusSearchResult {
+  nip: string
+  regon: string
+  nazwa: string
+  adres: string
+  miejscowosc: string
+}
+
+export interface GusSearchResponse {
+  success: boolean
+  results: GusSearchResult[]
+  totalCount: number
+  error?: string
+}
+
+export interface GusValidateResponse {
+  valid: boolean
+  nip?: string
+  error?: string
+}
+
 export interface Attachment {
   id: string
   invoiceId: string
@@ -340,6 +393,24 @@ export const api = {
   // Health
   health: () => apiFetch<{ status: string }>('/api/health'),
 
+  // GUS/REGON API
+  gus: {
+    lookup: (nip: string) =>
+      apiFetch<GusLookupResponse>('/api/gus/lookup', {
+        method: 'POST',
+        body: JSON.stringify({ nip: nip.replace(/\D/g, '') }),
+      }),
+
+    search: (query: string, type: 'nip' | 'regon' | 'krs' | 'name' = 'name') =>
+      apiFetch<GusSearchResponse>('/api/gus/search', {
+        method: 'POST',
+        body: JSON.stringify({ query, type }),
+      }),
+
+    validate: (nip: string) =>
+      apiFetch<GusValidateResponse>(`/api/gus/validate/${nip.replace(/\D/g, '')}`),
+  },
+
   // Dashboard
   dashboard: {
     stats: (params?: { fromDate?: string; toDate?: string; tenantNip?: string }) => {
@@ -417,10 +488,20 @@ export const api = {
     update: (id: string, data: {
       mpk?: string
       category?: string
+      description?: string
       project?: string
       tags?: string[]
       paymentStatus?: 'pending' | 'paid'
       paymentDate?: string
+      // Fields for manual invoices
+      supplierName?: string
+      supplierNip?: string
+      invoiceNumber?: string
+      invoiceDate?: string
+      dueDate?: string
+      netAmount?: number
+      vatAmount?: number
+      grossAmount?: number
     }) =>
       apiFetch<Invoice>(`/api/invoices/${id}`, {
         method: 'PATCH',
@@ -464,6 +545,22 @@ export const api = {
     deleteAttachment: (attachmentId: string) =>
       apiFetch<void>(`/api/attachments/${attachmentId}`, {
         method: 'DELETE',
+      }),
+
+    // AI Categorization
+    categorizeWithAI: (invoiceId: string) =>
+      apiFetch<{
+        invoiceId: string
+        categorization: {
+          mpk: string
+          category: string
+          description: string
+          confidence: number
+        }
+        message: string
+      }>('/api/ai/categorize', {
+        method: 'POST',
+        body: JSON.stringify({ invoiceId }),
       }),
   },
 
@@ -719,6 +816,11 @@ export const queryKeys = {
   companies: ['settings', 'companies'] as const,
   company: (id: string) => ['settings', 'companies', id] as const,
   costCenters: ['settings', 'costCenters'] as const,
+
+  // GUS/REGON query keys
+  gusLookup: (nip: string) => ['gus', 'lookup', nip] as const,
+  gusSearch: (query: string) => ['gus', 'search', query] as const,
+  recentSuppliers: (tenantNip?: string) => ['suppliers', 'recent', tenantNip] as const,
 
   // Dataverse query keys
   dvSettings: (activeOnly?: boolean) => ['dv', 'settings', { activeOnly }] as const,

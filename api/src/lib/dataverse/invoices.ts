@@ -119,7 +119,9 @@ export async function listInvoices(params: InvoiceListParams = {}): Promise<Invo
   const orderByField = getOrderByField(orderBy)
   const orderClause = `${orderByField} ${orderDirection}`
 
-  let path = `${InvoiceEntity.entitySet}?$top=${top}&$skip=${skip}&$orderby=${orderClause}`
+  // Note: Dataverse doesn't support $skip, only $top for pagination
+  // For proper pagination, use @odata.nextLink from response
+  let path = `${InvoiceEntity.entitySet}?$top=${top}&$orderby=${orderClause}`
 
   if (filters.length > 0) {
     path += `&$filter=${filters.join(' and ')}`
@@ -204,6 +206,10 @@ export async function updateInvoice(id: string, data: InvoiceUpdate): Promise<In
     body[InvoiceEntity.fields.category] = data.category
   }
 
+  if (data.description !== undefined) {
+    body[InvoiceEntity.fields.description] = data.description
+  }
+
   if (data.project !== undefined) {
     body[InvoiceEntity.fields.project] = data.project
   }
@@ -276,11 +282,17 @@ function mapFromDataverse(record: DataverseInvoice): Invoice {
     rawXml: record[f.rawXml] as string | undefined,
     importedAt: record[f.importedAt] as string,
     source: getInvoiceSourceKey(record[f.source] as number),
+    // Description field
+    description: record[f.description] as string | undefined,
+    // AI categorization fields
     aiMpkSuggestion: record[f.aiMpkSuggestion]
       ? getMpkKey(record[f.aiMpkSuggestion] as number) as Invoice['mpk']
       : undefined,
     aiCategorySuggestion: record[f.aiCategorySuggestion] as string | undefined,
+    aiDescription: record[f.aiDescription] as string | undefined,
+    aiRationale: record[f.aiRationale] as string | undefined,
     aiConfidence: record[f.aiConfidence] as number | undefined,
+    aiProcessedAt: record[f.aiProcessedAt] as string | undefined,
   }
 }
 
@@ -295,6 +307,7 @@ function mapToDataverse(data: InvoiceCreate): Record<string, unknown> {
     [f.tenantName]: data.tenantName,
     [f.referenceNumber]: data.referenceNumber,
     [f.invoiceNumber]: data.invoiceNumber,
+    [f.invoiceNumberField]: data.invoiceNumber, // Also save to dedicated field
     [f.supplierNip]: data.supplierNip,
     [f.supplierName]: data.supplierName,
     [f.invoiceDate]: data.invoiceDate,

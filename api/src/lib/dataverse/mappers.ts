@@ -14,19 +14,9 @@ import type { Invoice, PaymentStatus as AppPaymentStatus, MPK, InvoiceSource } f
 // Invoice Mappers
 // ============================================================
 
-// MPK (Cost Center) Option Set values
-const COST_CENTER_VALUES = {
-  Consultants: 100000001,
-  BackOffice: 100000002,
-  Management: 100000003,
-  Cars: 100000004,
-  Legal: 100000005,
-  Marketing: 100000006,
-  Sales: 100000007,
-  Delivery: 100000008,
-  Finance: 100000009,
-  Other: 100000010,
-} as const
+// MPK (Cost Center) Option Set values - MUST match Dataverse exactly!
+// Accepted Values: 100000000,100000001,100000002,100000003,100000005,100000006,100000007,100000008,100000009,100000100
+import { MpkValues } from './entities'
 
 /**
  * Map Dataverse Cost Center (number) to MPK enum
@@ -34,20 +24,9 @@ const COST_CENTER_VALUES = {
 function mapDvCostCenterToMpk(value: number | undefined): MPK | undefined {
   if (value === undefined) return undefined
   
-  const mpkMap: Record<number, MPK> = {
-    100000001: 'Consultants',
-    100000002: 'BackOffice',
-    100000003: 'Management',
-    100000004: 'Cars',
-    100000005: 'Legal',
-    100000006: 'Marketing',
-    100000007: 'Sales',
-    100000008: 'Delivery',
-    100000009: 'Finance',
-    100000010: 'Other',
-  }
-  
-  return mpkMap[value] || 'Other'
+  // Reverse lookup from MpkValues
+  const entry = Object.entries(MpkValues).find(([, v]) => v === value)
+  return entry ? (entry[0] as MPK) : 'Other'
 }
 
 /**
@@ -55,7 +34,7 @@ function mapDvCostCenterToMpk(value: number | undefined): MPK | undefined {
  */
 function mapMpkToDvCostCenter(mpk: MPK | undefined): number | undefined {
   if (mpk === undefined) return undefined
-  return COST_CENTER_VALUES[mpk] || COST_CENTER_VALUES.Other
+  return MpkValues[mpk as keyof typeof MpkValues] ?? MpkValues.Other
 }
 
 /**
@@ -95,8 +74,9 @@ export function mapDvInvoiceToApp(raw: DvInvoice): Invoice {
     grossAmount: raw[s.grossAmount as keyof DvInvoice] as number,
     paymentStatus: mapDvPaymentStatusToApp(raw[s.paymentStatus as keyof DvInvoice] as number),
     paymentDate: raw[s.paidAt as keyof DvInvoice] as string | undefined,
-    mpk: raw[s.costCenter as keyof DvInvoice] as MPK | undefined,
+    mpk: mapDvCostCenterToMpk(raw[s.costCenter as keyof DvInvoice] as number | undefined),
     category: raw[s.category as keyof DvInvoice] as string | undefined,
+    description: raw[s.description as keyof DvInvoice] as string | undefined,
     rawXml: raw[s.ksefRawXml as keyof DvInvoice] as string | undefined,
     importedAt: raw[s.createdOn as keyof DvInvoice] as string,
     source: mapDvSourceToApp(raw[s.source as keyof DvInvoice] as number | undefined),
@@ -104,6 +84,7 @@ export function mapDvInvoiceToApp(raw: DvInvoice): Invoice {
     aiMpkSuggestion: mapDvCostCenterToMpk(raw[s.aiMpkSuggestion as keyof DvInvoice] as number | undefined),
     aiCategorySuggestion: raw[s.aiCategorySuggestion as keyof DvInvoice] as string | undefined,
     aiDescription: raw[s.aiDescription as keyof DvInvoice] as string | undefined,
+    aiRationale: raw[s.aiRationale as keyof DvInvoice] as string | undefined,
     aiConfidence: raw[s.aiConfidence as keyof DvInvoice] as number | undefined,
     aiProcessedAt: raw[s.aiProcessedAt as keyof DvInvoice] as string | undefined,
   }
@@ -131,6 +112,7 @@ export function mapAppInvoiceToDv(app: Partial<Invoice>): Record<string, unknown
   if (app.paymentStatus !== undefined) payload[s.paymentStatus] = mapAppPaymentStatusToDv(app.paymentStatus)
   if (app.paymentDate !== undefined) payload[s.paidAt] = app.paymentDate
   if (app.category !== undefined) payload[s.category] = app.category
+  if (app.description !== undefined) payload[s.description] = app.description
   if (app.referenceNumber !== undefined) payload[s.ksefReferenceNumber] = app.referenceNumber
   if (app.rawXml !== undefined) payload[s.ksefRawXml] = app.rawXml
   if (app.source !== undefined) payload[s.source] = mapAppSourceToDv(app.source)
@@ -139,6 +121,7 @@ export function mapAppInvoiceToDv(app: Partial<Invoice>): Record<string, unknown
   if (app.aiMpkSuggestion !== undefined) payload[s.aiMpkSuggestion] = mapMpkToDvCostCenter(app.aiMpkSuggestion)
   if (app.aiCategorySuggestion !== undefined) payload[s.aiCategorySuggestion] = app.aiCategorySuggestion
   if (app.aiDescription !== undefined) payload[s.aiDescription] = app.aiDescription
+  if (app.aiRationale !== undefined) payload[s.aiRationale] = app.aiRationale
   if (app.aiConfidence !== undefined) payload[s.aiConfidence] = app.aiConfidence
   if (app.aiProcessedAt !== undefined) payload[s.aiProcessedAt] = app.aiProcessedAt
   

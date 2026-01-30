@@ -12,8 +12,11 @@ import {
   ChevronLeft, 
   ChevronRight,
   LayoutDashboard,
-  BarChart3
+  BarChart3,
+  PanelLeftClose,
+  PanelLeft
 } from 'lucide-react'
+import { CompanySelector } from './company-selector'
 
 interface SidebarProps {
   className?: string
@@ -66,20 +69,6 @@ export function Sidebar({ className }: SidebarProps) {
         className
       )}
     >
-      {/* Collapse toggle button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute -right-3 top-6 z-10 h-6 w-6 rounded-full border bg-background shadow-sm"
-        onClick={() => setIsCollapsed(!isCollapsed)}
-      >
-        {isCollapsed ? (
-          <ChevronRight className="h-3 w-3" />
-        ) : (
-          <ChevronLeft className="h-3 w-3" />
-        )}
-      </Button>
-
       {/* Navigation */}
       <nav className="flex-1 space-y-1 p-2 pt-4">
         <ul className="space-y-1">
@@ -130,15 +119,40 @@ export function Sidebar({ className }: SidebarProps) {
               </li>
             )
           })}
+
+          {/* Separator */}
+          <li className="pt-2">
+            <div className="border-t mx-2" />
+          </li>
+
+          {/* Collapse toggle as menu item */}
+          <li className="pt-2">
+            <Button
+              variant="ghost"
+              className={cn(
+                'w-full justify-start h-10 text-muted-foreground hover:text-foreground',
+                isCollapsed && 'px-2 justify-center'
+              )}
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              title={isCollapsed ? 'Rozwiń menu' : 'Zwiń menu'}
+            >
+              {isCollapsed ? (
+                <PanelLeft className="h-4 w-4" />
+              ) : (
+                <>
+                  <PanelLeftClose className="h-4 w-4 mr-3" />
+                  <span>Zwiń menu</span>
+                </>
+              )}
+            </Button>
+          </li>
         </ul>
       </nav>
 
-      {/* Footer with version */}
-      {!isCollapsed && (
-        <div className="border-t p-4">
-          <p className="text-xs text-muted-foreground">Developico KSeF v0.1.0</p>
-        </div>
-      )}
+      {/* Footer with Company Selector */}
+      <div className="border-t p-2">
+        <CompanySelector collapsed={isCollapsed} />
+      </div>
     </aside>
   )
 }

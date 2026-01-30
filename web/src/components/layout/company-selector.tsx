@@ -72,26 +72,32 @@ function CompanyItem({
   )
 }
 
-export function CompanySelector() {
+interface CompanySelectorProps {
+  collapsed?: boolean
+}
+
+export function CompanySelector({ collapsed = false }: CompanySelectorProps) {
   const { selectedCompany, companies, isLoading, setSelectedCompany, hasCompanies } = useCompanyContext()
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2">
+      <div className={cn("flex items-center gap-2", collapsed && "justify-center")}>
         <Skeleton className="h-8 w-8 rounded" />
-        <div className="hidden sm:block">
-          <Skeleton className="h-4 w-32 mb-1" />
-          <Skeleton className="h-3 w-20" />
-        </div>
+        {!collapsed && (
+          <div>
+            <Skeleton className="h-4 w-32 mb-1" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+        )}
       </div>
     )
   }
 
   if (!hasCompanies) {
     return (
-      <div className="flex items-center gap-2 text-muted-foreground">
+      <div className={cn("flex items-center gap-2 text-muted-foreground", collapsed && "justify-center")}>
         <Building2 className="h-5 w-5" />
-        <span className="text-sm hidden sm:inline">Brak firm</span>
+        {!collapsed && <span className="text-sm">Brak firm</span>}
       </div>
     )
   }
@@ -103,13 +109,17 @@ export function CompanySelector() {
       <DropdownMenuTrigger asChild>
         <Button 
           variant="ghost" 
-          className="flex items-center gap-2 h-auto py-1.5 px-2 max-w-[280px]"
+          className={cn(
+            "flex items-center gap-2 h-auto py-2 px-2 w-full",
+            collapsed ? "justify-center" : "justify-start"
+          )}
+          title={collapsed && selectedCompany ? `${selectedCompany.companyName} (${selectedCompany.nip})` : undefined}
         >
           <Building2 className="h-5 w-5 shrink-0 text-primary" />
-          {selectedCompany ? (
-            <div className="flex flex-col items-start min-w-0 hidden sm:flex">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-sm truncate max-w-[160px]">
+          {!collapsed && selectedCompany && (
+            <div className="flex flex-col items-start min-w-0 flex-1">
+              <div className="flex items-center gap-2 w-full">
+                <span className="font-medium text-sm truncate flex-1 text-left">
                   {selectedCompany.companyName}
                 </span>
                 {envBadge && (
@@ -125,13 +135,14 @@ export function CompanySelector() {
                 NIP: {selectedCompany.nip}
               </span>
             </div>
-          ) : (
-            <span className="text-sm text-muted-foreground hidden sm:inline">Wybierz firmę</span>
           )}
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          {!collapsed && !selectedCompany && (
+            <span className="text-sm text-muted-foreground">Wybierz firmę</span>
+          )}
+          {!collapsed && <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[300px]">
+      <DropdownMenuContent align={collapsed ? "end" : "start"} side={collapsed ? "right" : "top"} className="w-[300px]">
         <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wide">
           Wybierz firmę
         </DropdownMenuLabel>

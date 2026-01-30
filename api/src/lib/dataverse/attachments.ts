@@ -130,10 +130,11 @@ export async function uploadAttachment(data: AttachmentCreate): Promise<Attachme
   }
 
   // Create annotation (note) in Dataverse
-  // Use the correct entity set name from our schema
-  const entitySetName = InvoiceEntity.entitySet.replace('_', '')
+  // The entity logical name is derived from entitySet (remove trailing 's')
+  // dvlp_ksefinvoices -> dvlp_ksefinvoice
+  const entityLogicalName = InvoiceEntity.entitySet.replace(/s$/, '')
   const annotationBody = {
-    'objectid_ksef_invoice@odata.bind': `/${InvoiceEntity.entitySet}(${invoiceId})`,
+    [`objectid_${entityLogicalName}@odata.bind`]: `/${InvoiceEntity.entitySet}(${invoiceId})`,
     subject: fileName,
     filename: fileName,
     mimetype: finalMimeType,

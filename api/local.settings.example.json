@@ -33,6 +33,10 @@
     "KSEF_NIP": "<company-nip>",
     "KSEF_TOKEN_SECRET_NAME": "ksef-token-primary",
     
+    "_comment_gus": "=== GUS/REGON API Configuration ===",
+    "GUS_API_URL": "https://wyszukiwarkaregon.stat.gov.pl/wsBIR/UslugaBIRzewnPubl.svc",
+    "GUS_API_KEY": "<your-gus-api-key-or-test>",
+    
     "_comment_openai": "=== Azure OpenAI Configuration (AI Categorization) ===",
     "AZURE_OPENAI_DEPLOYMENT": "gpt-4o-mini",
     "AZURE_OPENAI_API_VERSION": "2024-10-21",

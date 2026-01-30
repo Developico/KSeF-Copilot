@@ -1,10 +1,11 @@
 import { SecretClient } from '@azure/keyvault-secrets'
-import { DefaultAzureCredential } from '@azure/identity'
+import { DefaultAzureCredential, AzureCliCredential, ChainedTokenCredential } from '@azure/identity'
 
 let secretClient: SecretClient | null = null
 
 /**
  * Get or create Key Vault SecretClient
+ * Uses Azure CLI credentials first (for local dev), then DefaultAzureCredential
  */
 function getSecretClient(): SecretClient {
   if (!secretClient) {
@@ -14,7 +15,12 @@ function getSecretClient(): SecretClient {
       throw new Error('AZURE_KEYVAULT_URL environment variable is required')
     }
 
-    const credential = new DefaultAzureCredential()
+    // For local development: prefer Azure CLI credentials over environment variables
+    // This allows using personal account which has Key Vault access
+    const credential = new ChainedTokenCredential(
+      new AzureCliCredential(),
+      new DefaultAzureCredential()
+    )
     secretClient = new SecretClient(vaultUrl, credential)
   }
 

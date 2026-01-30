@@ -14,9 +14,15 @@ import {
   SelectValue 
 } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { useToast } from '@/hooks/use-toast'
 import { api, queryKeys, ManualInvoiceCreate } from '@/lib/api'
 import { useSelectedCompany } from '@/contexts/company-context'
+import { useGusLookup, validateNipChecksum, formatNipDisplay } from '@/hooks/use-gus-lookup'
+import { SupplierLookupDialog, SupplierData } from './supplier-lookup-dialog'
 import { 
   FileText, 
   Upload, 
@@ -29,6 +35,12 @@ import {
   Trash2,
   Loader2,
   AlertCircle,
+  Search,
+  CheckCircle2,
+  ExternalLink,
+  Check,
+  ChevronsUpDown,
+  Plus,
 } from 'lucide-react'
 
 // MPK options (must match backend)
@@ -45,8 +57,8 @@ const MPK_OPTIONS = [
   { value: 'Other', label: 'Inne' },
 ]
 
-// Category suggestions
-const CATEGORY_OPTIONS = [
+// Default category suggestions
+const DEFAULT_CATEGORIES = [
   'IT / Oprogramowanie',
   'Biuro',
   'Marketing',
@@ -117,6 +129,95 @@ export function ManualInvoiceForm() {
   const [formData, setFormData] = useState<FormData>(initialFormData)
   const [attachments, setAttachments] = useState<FileAttachment[]>([])
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
+  
+  // GUS lookup state
+  const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false)
+  const [gusDataLoaded, setGusDataLoaded] = useState(false)
+  
+  // Category combobox state
+  const [categoryOpen, setCategoryOpen] = useState(false)
+  const [customCategories, setCustomCategories] = useState<string[]>([])
+  const [categoryInput, setCategoryInput] = useState('')
+  
+  // All available categories (default + custom)
+  const allCategories = [...DEFAULT_CATEGORIES, ...customCategories]
+  
+  // GUS lookup hook
+  const {
+    lookup: gusLookup,
+    data: gusData,
+    isLoading: isGusLoading,
+    error: gusError,
+    isSuccess: isGusSuccess,
+    clear: clearGus,
+    validateNip,
+  } = useGusLookup({
+    autoLookup: false, // We'll trigger manually
+    onSuccess: (data) => {
+      // Auto-fill supplier name from GUS data
+      setFormData(prev => ({
+        ...prev,
+        supplierName: data.nazwa,
+      }))
+      setGusDataLoaded(true)
+      setErrors(prev => ({ ...prev, supplierName: undefined }))
+      toast({
+        title: 'Dane pobrane z GUS',
+        description: `Znaleziono: ${data.nazwa}`,
+      })
+    },
+    onError: (error) => {
+      setGusDataLoaded(false)
+      toast({
+        title: 'Błąd wyszukiwania GUS',
+        description: error,
+        variant: 'destructive',
+      })
+    },
+  })
+
+  // Handle supplier selection from dialog
+  const handleSupplierSelect = useCallback((supplier: SupplierData) => {
+    setFormData(prev => ({
+      ...prev,
+      supplierNip: supplier.nip.replace(/\D/g, ''),
+      supplierName: supplier.name,
+    }))
+    setGusDataLoaded(true)
+    setErrors(prev => ({ 
+      ...prev, 
+      supplierNip: undefined, 
+      supplierName: undefined 
+    }))
+  }, [])
+
+  // Handle NIP change with validation
+  const handleNipChange = useCallback((value: string) => {
+    const cleanNip = value.replace(/\D/g, '').slice(0, 10)
+    setFormData(prev => ({ ...prev, supplierNip: cleanNip }))
+    setGusDataLoaded(false)
+    clearGus()
+    
+    // Clear error on change
+    if (errors.supplierNip) {
+      setErrors(prev => ({ ...prev, supplierNip: undefined }))
+    }
+    
+    // Validate NIP when 10 digits
+    if (cleanNip.length === 10) {
+      const validation = validateNip(cleanNip)
+      if (!validation.valid && validation.error) {
+        setErrors(prev => ({ ...prev, supplierNip: validation.error }))
+      }
+    }
+  }, [errors.supplierNip, validateNip, clearGus])
+
+  // Trigger GUS lookup
+  const handleGusLookup = useCallback(() => {
+    if (formData.supplierNip.length === 10) {
+      gusLookup(formData.supplierNip)
+    }
+  }, [formData.supplierNip, gusLookup])
 
   // Sync form with selected company from context
   useEffect(() => {
@@ -375,6 +476,7 @@ export function ManualInvoiceForm() {
   }
 
   return (
+    <TooltipProvider>
     <form onSubmit={handleSubmit}>
       <div className="space-y-6">
         {/* No company selected warning */}
@@ -396,22 +498,77 @@ export function ManualInvoiceForm() {
               <Building2 className="h-5 w-5" />
               Sprzedawca
             </CardTitle>
-            <CardDescription>Dane dostawcy/sprzedawcy</CardDescription>
+            <CardDescription>
+              Dane dostawcy/sprzedawcy. Możesz wyszukać firmę w rejestrze REGON (GUS).
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Supplier lookup button */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsSupplierDialogOpen(true)}
+              className="w-full"
+            >
+              <Search className="h-4 w-4 mr-2" />
+              Wyszukaj dostawcę w rejestrze REGON lub historii faktur
+            </Button>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">NIP *</label>
-                <Input
-                  placeholder="0000000000"
-                  value={formData.supplierNip}
-                  onChange={(e) => handleChange('supplierNip', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  className={errors.supplierNip ? 'border-red-500' : ''}
-                />
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <Input
+                      placeholder="0000000000"
+                      value={formData.supplierNip}
+                      onChange={(e) => handleNipChange(e.target.value)}
+                      className={errors.supplierNip ? 'border-red-500' : ''}
+                    />
+                    {/* NIP validation indicator */}
+                    {formData.supplierNip.length === 10 && !errors.supplierNip && (
+                      <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
+                    )}
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleGusLookup}
+                        disabled={formData.supplierNip.length !== 10 || isGusLoading || !!errors.supplierNip}
+                      >
+                        {isGusLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ExternalLink className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Pobierz dane z rejestru REGON (GUS)</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 {errors.supplierNip && <p className="text-sm text-red-500">{errors.supplierNip}</p>}
+                {gusError && <p className="text-sm text-red-500">{gusError}</p>}
+                {formData.supplierNip.length > 0 && formData.supplierNip.length < 10 && (
+                  <p className="text-xs text-muted-foreground">
+                    Wpisz 10 cyfr NIP ({formData.supplierNip.length}/10)
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Nazwa firmy *</label>
+                <label className="text-sm font-medium flex items-center gap-2">
+                  Nazwa firmy *
+                  {gusDataLoaded && (
+                    <Badge variant="secondary" className="text-xs">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      z GUS
+                    </Badge>
+                  )}
+                </label>
                 <Input
                   placeholder="Nazwa dostawcy"
                   value={formData.supplierName}
@@ -421,8 +578,35 @@ export function ManualInvoiceForm() {
                 {errors.supplierName && <p className="text-sm text-red-500">{errors.supplierName}</p>}
               </div>
             </div>
+
+            {/* GUS data preview */}
+            {isGusSuccess && gusData && (
+              <Alert>
+                <CheckCircle2 className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="text-sm">
+                    <strong>{gusData.nazwa}</strong>
+                    {gusData.adres && <span className="text-muted-foreground"> • {gusData.adres}</span>}
+                    {gusData.pkdNazwa && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        PKD: {gusData.pkd} - {gusData.pkdNazwa}
+                      </div>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
           </CardContent>
         </Card>
+
+        {/* Supplier Lookup Dialog */}
+        <SupplierLookupDialog
+          open={isSupplierDialogOpen}
+          onOpenChange={setIsSupplierDialogOpen}
+          onSelect={handleSupplierSelect}
+          tenantNip={selectedCompany?.nip}
+          currentNip={formData.supplierNip}
+        />
 
         {/* Invoice details */}
         <Card>
@@ -579,18 +763,79 @@ export function ManualInvoiceForm() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Kategoria</label>
-                <Select value={formData.category} onValueChange={(v) => handleChange('category', v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Wybierz kategorię..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORY_OPTIONS.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={categoryOpen}
+                      className="w-full justify-between font-normal"
+                    >
+                      {formData.category || "Wybierz lub wpisz kategorię..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0" align="start">
+                    <Command shouldFilter={false}>
+                      <CommandInput
+                        placeholder="Szukaj lub dodaj kategorię..."
+                        value={categoryInput}
+                        onValueChange={setCategoryInput}
+                      />
+                      <CommandList>
+                        <CommandEmpty className="py-2 px-3">
+                          {categoryInput.trim() ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full justify-start gap-2"
+                              onClick={() => {
+                                const newCategory = categoryInput.trim()
+                                if (!allCategories.includes(newCategory)) {
+                                  setCustomCategories(prev => [...prev, newCategory])
+                                }
+                                handleChange('category', newCategory)
+                                setCategoryInput('')
+                                setCategoryOpen(false)
+                              }}
+                            >
+                              <Plus className="h-4 w-4" />
+                              Dodaj &quot;{categoryInput.trim()}&quot;
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">
+                              Wpisz nazwę nowej kategorii
+                            </span>
+                          )}
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {allCategories
+                            .filter(cat => 
+                              cat.toLowerCase().includes(categoryInput.toLowerCase())
+                            )
+                            .map((cat) => (
+                              <CommandItem
+                                key={cat}
+                                value={cat}
+                                onSelect={() => {
+                                  handleChange('category', cat)
+                                  setCategoryInput('')
+                                  setCategoryOpen(false)
+                                }}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${
+                                    formData.category === cat ? "opacity-100" : "opacity-0"
+                                  }`}
+                                />
+                                {cat}
+                              </CommandItem>
+                            ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           </CardContent>
@@ -693,5 +938,6 @@ export function ManualInvoiceForm() {
         </div>
       </div>
     </form>
+    </TooltipProvider>
   )
 }

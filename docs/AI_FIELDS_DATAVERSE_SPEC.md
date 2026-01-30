@@ -39,6 +39,7 @@ Dodanie 5 nowych pól do tabeli `dvlp_ksefinvoice` umożliwiających:
 │  ├── dvlp_aimpksuggestion (OptionSet) - sugestia MPK od AI      │
 │  ├── dvlp_aicategorysuggestion (String) - sugestia kategorii    │
 │  ├── dvlp_aidescription (String) - opis wygenerowany przez AI   │
+│  ├── dvlp_airationale (String) - uzasadnienie decyzji AI        │
 │  ├── dvlp_aiconfidence (Decimal) - pewność AI (0.0-1.0)         │
 │  └── dvlp_aiprocessedat (DateTime) - kiedy AI przetworzyło      │
 │                                                                  │
@@ -56,8 +57,9 @@ Dodanie 5 nowych pól do tabeli `dvlp_ksefinvoice` umożliwiających:
 | 1 | `dvlp_aimpksuggestion` | AI MPK Suggestion | Sugestia MPK (AI) | OptionSet (dvlp_costcenter) | ❌ | MPK zasugerowane przez AI |
 | 2 | `dvlp_aicategorysuggestion` | AI Category Suggestion | Sugestia kategorii (AI) | String(100) | ❌ | Kategoria zasugerowana przez AI |
 | 3 | `dvlp_aidescription` | AI Description | Opis (AI) | String(500) | ❌ | Krótki opis faktury wygenerowany przez AI |
-| 4 | `dvlp_aiconfidence` | AI Confidence | Pewność AI | Decimal(3,2) | ❌ | Poziom pewności AI (0.00-1.00) |
-| 5 | `dvlp_aiprocessedat` | AI Processed At | Przetworzono przez AI | DateTime | ❌ | Timestamp kiedy AI przetworzyło fakturę |
+| 4 | `dvlp_airationale` | AI Rationale | Uzasadnienie (AI) | String(500) | ❌ | Uzasadnienie decyzji kategoryzacji AI |
+| 5 | `dvlp_aiconfidence` | AI Confidence | Pewność AI | Decimal(3,2) | ❌ | Poziom pewności AI (0.00-1.00) |
+| 6 | `dvlp_aiprocessedat` | AI Processed At | Przetworzono przez AI | DateTime | ❌ | Timestamp kiedy AI przetworzyło fakturę |
 
 ---
 
@@ -335,13 +337,76 @@ await invoiceService.update(invoiceId, {
 - [ ] Pole `dvlp_aimpksuggestion` dodane jako Choice
 - [ ] Pole `dvlp_aicategorysuggestion` dodane jako Text(100)
 - [ ] Pole `dvlp_aidescription` dodane jako Text(500)
+- [ ] Pole `dvlp_airationale` dodane jako Text(500)
 - [ ] Pole `dvlp_aiconfidence` dodane jako Decimal(3,2)
 - [ ] Pole `dvlp_aiprocessedat` dodane jako DateTime
 - [ ] Formularz zaktualizowany z sekcją "Sugestie AI"
 - [ ] Widoki utworzone (do kategoryzacji, skategoryzowane, niska pewność)
 - [ ] Customizations opublikowane
+- [ ] Tabela `dvlp_aifeedback` utworzona (patrz sekcja poniżej)
 - [ ] Kod zaktualizowany (config.ts, mappers.ts, ai-categorize.ts)
 - [ ] Testy przeszły
+
+---
+
+## Tabela AI Feedback (dvlp_aifeedback)
+
+### Cel
+
+Tabela przechowuje historię interakcji użytkowników z sugestiami AI, umożliwiając:
+- Śledzenie jak często użytkownicy akceptują/modyfikują sugestie
+- Budowanie kontekstu dla promptów AI (few-shot learning)
+- Poprawę jakości kategoryzacji w czasie
+
+### Specyfikacja
+
+**Nazwa wyświetlana:** AI Feedback / Feedback AI  
+**Nazwa logiczna:** `dvlp_aifeedback`  
+**Nazwa zestawu:** `dvlp_aifeedbacks`  
+**Typ własności:** Organization
+
+### Atrybuty
+
+| # | Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|---|----------------|-------------------|-----|----------|------|
+| 1 | `dvlp_aifeedbackid` | ID | Uniqueidentifier | Auto | Klucz główny |
+| 2 | `dvlp_name` | Nazwa | String(100) | Auto | Auto-generated: "{Dostawca} - {Data}" |
+| 3 | `dvlp_invoiceid` | Faktura | Lookup (dvlp_ksefinvoice) | ✅ | Powiązanie z fakturą źródłową |
+| 4 | `dvlp_tenantnip` | NIP Firmy | String(10) | ✅ | NIP firmy (tenant) |
+| 5 | `dvlp_suppliernip` | NIP Dostawcy | String(15) | ✅ | NIP dostawcy |
+| 6 | `dvlp_suppliername` | Nazwa Dostawcy | String(250) | ✅ | Nazwa dostawcy |
+| 7 | `dvlp_invoicedescription` | Kontekst faktury | Memo(500) | ❌ | Fragment opisu faktury |
+| 8 | `dvlp_aimpksuggestion` | Sugestia MPK (AI) | String(50) | ❌ | MPK zasugerowane przez AI |
+| 9 | `dvlp_aicategorysuggestion` | Sugestia kategorii (AI) | String(100) | ❌ | Kategoria zasugerowana przez AI |
+| 10 | `dvlp_aiconfidence` | Pewność AI | Decimal(3,2) | ❌ | Poziom pewności AI |
+| 11 | `dvlp_usermpk` | Wybrane MPK | String(50) | ❌ | MPK wybrane przez użytkownika |
+| 12 | `dvlp_usercategory` | Wybrana kategoria | String(100) | ❌ | Kategoria wybrana przez użytkownika |
+| 13 | `dvlp_feedbacktype` | Typ feedbacku | OptionSet | ✅ | applied/modified/rejected |
+
+### Option Set - dvlp_feedbacktype
+
+| Wartość | Label (EN) | Label (PL) | Opis |
+|---------|------------|------------|------|
+| 100000000 | Applied | Zaakceptowano | Użytkownik zaakceptował sugestię AI bez zmian |
+| 100000001 | Modified | Zmieniono | Użytkownik zmienił sugestię AI |
+| 100000002 | Rejected | Odrzucono | Użytkownik odrzucił sugestię AI |
+
+### Indeksy
+
+| Nazwa | Atrybuty | Uzasadnienie |
+|-------|----------|--------------|
+| `IX_tenant_supplier` | `dvlp_tenantnip`, `dvlp_suppliernip` | Agregacja per dostawca dla uczenia |
+| `IX_createdon` | `createdon` | Sortowanie chronologiczne |
+
+### Jak działa uczenie
+
+1. Użytkownik klika "Kategoryzuj z AI" → AI generuje sugestię
+2. Użytkownik akceptuje lub modyfikuje sugestię
+3. Przy zapisie faktury system tworzy rekord w `dvlp_aifeedback`
+4. Przy kolejnej kategoryzacji tego samego dostawcy:
+   - System pobiera historię z `dvlp_aifeedback`
+   - Dodaje do promptu: "Dla dostawcy X użytkownicy zazwyczaj wybierają MPK=Y, Kategoria=Z"
+   - AI bierze to pod uwagę przy kategoryzacji
 
 ---
 
@@ -349,11 +414,13 @@ await invoiceService.update(invoiceId, {
 
 | Zadanie | Czas |
 |---------|------|
-| Utworzenie Option Set | 5 min |
-| Dodanie 5 pól | 15 min |
+| Utworzenie Option Set `dvlp_costcenter` | 5 min |
+| Dodanie 6 pól AI w `dvlp_ksefinvoice` | 15 min |
 | Aktualizacja formularza | 10 min |
 | Utworzenie widoków | 10 min |
+| **Utworzenie tabeli `dvlp_aifeedback`** | **15 min** |
+| **Utworzenie Option Set `dvlp_feedbacktype`** | **5 min** |
 | Publikacja | 2 min |
 | Aktualizacja kodu | 15 min |
 | Testy | 15 min |
-| **RAZEM** | **~1h 15min** |
+| **RAZEM** | **~1h 30min** |

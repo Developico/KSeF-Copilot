@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ChangelogModal } from './changelog-modal'
-import { CompanySelector } from './company-selector'
 import { useAuth } from '@/components/auth/auth-provider'
 
 export function Header() {
@@ -87,19 +86,16 @@ export function Header() {
                 )}
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-base sm:text-lg font-semibold">KSeF</h1>
-                <p className="text-xs text-muted-foreground">Developico</p>
+                <h1 className="text-base sm:text-lg font-semibold">C-Level KSeF</h1>
               </div>
-            </div>
-            
-            {/* Company Selector */}
-            <div className="ml-4 border-l pl-4">
-              <CompanySelector />
             </div>
           </div>
 
+          {/* Spacer */}
+          <div className="flex-1" />
+
           {/* Right side actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {/* Theme toggle */}
             {mounted && (
               <Button

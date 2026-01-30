@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -24,12 +25,69 @@ import {
   CheckCircle,
   Plus,
   AlertCircle,
+  Sparkles,
+  FileQuestion,
+  FileCheck,
+  Trash2,
 } from 'lucide-react'
-import { useInvoices, useMarkAsPaid } from '@/hooks/use-api'
+import { useInvoices, useMarkAsPaid, useDeleteInvoice, useUpdateInvoice } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
 import { Invoice, InvoiceListParams } from '@/lib/api'
 import { exportInvoicesToCsv } from '@/lib/export'
 import { InvoiceFilters } from '@/components/invoices/invoice-filters'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+
+// Description status types - simplified to 3 states
+type DescriptionStatus = 'not_described' | 'ai_suggested' | 'described'
+
+function getDescriptionStatus(invoice: Invoice): DescriptionStatus {
+  const hasDescription = !!(invoice.mpk || invoice.category)
+  const hasAiSuggestion = !!(invoice.aiMpkSuggestion || invoice.aiCategorySuggestion)
+  
+  if (hasDescription) {
+    return 'described' // Has MPK or category set
+  }
+  if (hasAiSuggestion) {
+    return 'ai_suggested' // Has AI suggestions waiting
+  }
+  return 'not_described' // Nothing set, no AI suggestions
+}
+
+function getDescriptionStatusBadge(status: DescriptionStatus) {
+  switch (status) {
+    case 'not_described':
+      return (
+        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 gap-1">
+          <FileQuestion className="h-3 w-3" />
+          Brak opisu
+        </Badge>
+      )
+    case 'ai_suggested':
+      return (
+        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
+          <Sparkles className="h-3 w-3" />
+          Propozycja AI
+        </Badge>
+      )
+    case 'described':
+      return (
+        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 gap-1">
+          <FileCheck className="h-3 w-3" />
+          Opisana
+        </Badge>
+      )
+  }
+}
 
 function getPaymentStatusBadge(status: Invoice['paymentStatus'], dueDate?: string) {
   const isOverdue = dueDate && new Date(dueDate) < new Date() && status === 'pending'
@@ -51,6 +109,7 @@ function formatCurrency(amount: number, currency: string = 'PLN') {
 }
 
 export default function InvoicesPage() {
+  const router = useRouter()
   const { toast } = useToast()
   
   const [filters, setFilters] = useState<InvoiceListParams>({
@@ -62,6 +121,8 @@ export default function InvoicesPage() {
   const { data, isLoading, refetch } = useInvoices(filters)
   
   const markAsPaidMutation = useMarkAsPaid()
+  const deleteInvoiceMutation = useDeleteInvoice()
+  const updateInvoiceMutation = useUpdateInvoice()
 
   const invoices = data?.invoices || []
 
@@ -72,6 +133,11 @@ export default function InvoicesPage() {
     i.dueDate && 
     new Date(i.dueDate) < new Date()
   ).length
+
+  // Description status counts
+  const notDescribedCount = invoices.filter(i => getDescriptionStatus(i) === 'not_described').length
+  const aiSuggestedCount = invoices.filter(i => getDescriptionStatus(i) === 'ai_suggested').length
+  const describedCount = invoices.filter(i => getDescriptionStatus(i) === 'described').length
 
   const handleFiltersChange = useCallback((newFilters: InvoiceListParams) => {
     setFilters(prev => ({
@@ -109,6 +175,50 @@ export default function InvoicesPage() {
       toast({
         title: 'Błąd',
         description: error instanceof Error ? error.message : 'Nie udało się oznaczyć faktury',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  async function handleTogglePaymentStatus(id: string, invoiceNumber: string, currentStatus: 'pending' | 'paid') {
+    const newStatus = currentStatus === 'paid' ? 'pending' : 'paid'
+    try {
+      await updateInvoiceMutation.mutateAsync({
+        id,
+        data: {
+          paymentStatus: newStatus,
+          paymentDate: newStatus === 'paid' ? new Date().toISOString().split('T')[0] : undefined,
+        },
+      })
+      toast({
+        title: newStatus === 'paid' ? 'Faktura opłacona' : 'Status zmieniony',
+        description: newStatus === 'paid' 
+          ? `Faktura ${invoiceNumber} została oznaczona jako opłacona`
+          : `Faktura ${invoiceNumber} została oznaczona jako nieopłacona`,
+        variant: 'success',
+      })
+    } catch (error) {
+      toast({
+        title: 'Błąd',
+        description: error instanceof Error ? error.message : 'Nie udało się zmienić statusu',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  async function handleDeleteInvoice(id: string, invoiceNumber: string) {
+    try {
+      await deleteInvoiceMutation.mutateAsync(id)
+      toast({
+        title: 'Faktura usunięta',
+        description: `Faktura ${invoiceNumber} została usunięta`,
+        variant: 'success',
+      })
+      refetch()
+    } catch (error) {
+      toast({
+        title: 'Błąd',
+        description: error instanceof Error ? error.message : 'Nie udało się usunąć faktury',
         variant: 'destructive',
       })
     }
@@ -194,6 +304,37 @@ export default function InvoicesPage() {
         </Card>
       </div>
 
+      {/* Description Status Stats */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="cursor-pointer hover:bg-muted/50 border-red-200 dark:border-red-900">
+          <CardContent className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-2">
+              <FileQuestion className="h-5 w-5 text-red-500" />
+              <span className="font-medium">Bez opisu</span>
+            </div>
+            <Badge variant="destructive">{notDescribedCount}</Badge>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:bg-muted/50 border-purple-200 dark:border-purple-900">
+          <CardContent className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-500" />
+              <span className="font-medium">Propozycja AI</span>
+            </div>
+            <Badge className="bg-purple-100 text-purple-800">{aiSuggestedCount}</Badge>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:bg-muted/50 border-green-200 dark:border-green-900">
+          <CardContent className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-2">
+              <FileCheck className="h-5 w-5 text-green-500" />
+              <span className="font-medium">Opisane</span>
+            </div>
+            <Badge className="bg-green-100 text-green-800">{describedCount}</Badge>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Advanced Filters */}
       <Card>
         <CardContent className="pt-6">
@@ -232,14 +373,17 @@ export default function InvoicesPage() {
                   <TableHead>Data wystawienia</TableHead>
                   <TableHead>Dostawca</TableHead>
                   <TableHead className="text-right">Kwota brutto</TableHead>
-                  <TableHead>Płatność</TableHead>
-                  <TableHead>Kategoria</TableHead>
-                  <TableHead className="w-[100px]"></TableHead>
+                  <TableHead>Status opisu</TableHead>
+                  <TableHead className="w-[120px] text-center">Akcje</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {invoices.map((invoice) => (
-                  <TableRow key={invoice.id}>
+                  <TableRow 
+                    key={invoice.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onDoubleClick={() => router.push(`/invoices/${invoice.id}`)}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <ArrowDownToLine className="h-4 w-4 text-blue-500" />
@@ -272,33 +416,57 @@ export default function InvoicesPage() {
                       {formatCurrency(invoice.grossAmount)}
                     </TableCell>
                     <TableCell>
-                      {getPaymentStatusBadge(invoice.paymentStatus, invoice.dueDate)}
+                      {getDescriptionStatusBadge(getDescriptionStatus(invoice))}
                     </TableCell>
                     <TableCell>
-                      {invoice.category ? (
-                        <Badge variant="outline">{invoice.category}</Badge>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        {invoice.paymentStatus === 'pending' && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => handleMarkAsPaid(invoice.id, invoice.invoiceNumber)}
-                            disabled={markAsPaidMutation.isPending}
-                            title="Oznacz jako opłacone"
-                          >
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          </Button>
-                        )}
+                      <div className="flex items-center justify-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleTogglePaymentStatus(invoice.id, invoice.invoiceNumber, invoice.paymentStatus)}
+                          disabled={updateInvoiceMutation.isPending}
+                          title={invoice.paymentStatus === 'paid' ? 'Oznacz jako nieopłacone' : 'Oznacz jako opłacone'}
+                        >
+                          <CheckCircle 
+                            className={`h-5 w-5 transition-colors ${invoice.paymentStatus === 'paid' ? 'text-green-500 fill-green-100' : 'text-gray-300'}`} 
+                          />
+                        </Button>
                         <Button variant="ghost" size="icon" asChild>
                           <Link href={`/invoices/${invoice.id}`}>
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
+                        {invoice.source === 'Manual' && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                title="Usuń fakturę"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Czy na pewno chcesz usunąć?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Faktura {invoice.invoiceNumber} zostanie trwale usunięta.
+                                  Tej operacji nie można cofnąć.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteInvoice(invoice.id, invoice.invoiceNumber)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Usuń
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

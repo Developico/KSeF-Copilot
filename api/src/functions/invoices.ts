@@ -2,6 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { listInvoices, getInvoiceById, updateInvoice, deleteInvoice } from '../lib/dataverse/invoices'
 import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { InvoiceUpdateSchema, InvoiceSource } from '../types/invoice'
+import { recordAIFeedback, determineFeedbackType } from '../lib/ai/feedback'
 
 /**
  * GET /api/invoices - List all invoices with advanced filtering
@@ -142,6 +143,30 @@ export async function updateInvoiceHandler(
     }
 
     const updated = await updateInvoice(id, parseResult.data)
+
+    // Record AI feedback if user is setting mpk/category and there was an AI suggestion
+    if (parseResult.data.mpk || parseResult.data.category) {
+      // Get original invoice to check AI suggestions
+      const originalInvoice = await getInvoiceById(id)
+      if (originalInvoice) {
+        const feedbackType = determineFeedbackType(
+          originalInvoice.aiMpkSuggestion,
+          originalInvoice.aiCategorySuggestion,
+          parseResult.data.mpk || originalInvoice.mpk,
+          parseResult.data.category || originalInvoice.category
+        )
+        
+        if (feedbackType) {
+          await recordAIFeedback(
+            originalInvoice,
+            parseResult.data.mpk || originalInvoice.mpk,
+            parseResult.data.category || originalInvoice.category,
+            feedbackType
+          )
+          context.log(`AI Feedback recorded: ${feedbackType} for invoice ${id}`)
+        }
+      }
+    }
 
     return {
       status: 200,

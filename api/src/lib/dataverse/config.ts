@@ -172,6 +172,7 @@ export const DV = {
     aiMpkSuggestion: process.env.DV_FIELD_INVOICE_AI_MPK || 'dvlp_aimpksuggestion',
     aiCategorySuggestion: process.env.DV_FIELD_INVOICE_AI_CATEGORY || 'dvlp_aicategorysuggestion',
     aiDescription: process.env.DV_FIELD_INVOICE_AI_DESC || 'dvlp_aidescription',
+    aiRationale: process.env.DV_FIELD_INVOICE_AI_RATIONALE || 'dvlp_airationale',
     aiConfidence: process.env.DV_FIELD_INVOICE_AI_CONFIDENCE || 'dvlp_aiconfidence',
     aiProcessedAt: process.env.DV_FIELD_INVOICE_AI_PROCESSED || 'dvlp_aiprocessedat',
     

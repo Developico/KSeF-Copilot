@@ -11,6 +11,7 @@ Specyfikacja modelu danych dla integracji z Krajowym Systemem e-Faktur (KSeF).
    - [dvlp_ksefsession](#dvlp_ksefsession)
    - [dvlp_ksefsynclog](#dvlp_ksefsynclog)
    - [dvlp_ksefinvoice](#dvlp_ksefinvoice)
+   - [dvlp_aifeedback](#dvlp_aifeedback)
 4. [Option Sets (Choices)](#option-sets-choices)
 5. [Relacje](#relacje)
 6. [Role bezpieczeństwa](#role-bezpieczeństwa)
@@ -50,6 +51,13 @@ Specyfikacja modelu danych dla integracji z Krajowym Systemem e-Faktur (KSeF).
 │  ┌─────────────────────────────────────────┐                    │
 │  │          dvlp_ksefsynclog               │                    │
 │  │      (historia synchronizacji)          │                    │
+│  └─────────────────────────────────────────┘                    │
+│                                                                  │
+│  ┌─────────────────────────────────────────┐                    │
+│  │          dvlp_aifeedback                │                    │
+│  │    (feedback dla uczenia AI)            │                    │
+│  │  + Sugestie AI vs wybory użytkownika    │                    │
+│  │  + Historia poprawek per dostawca       │                    │
 │  └─────────────────────────────────────────┘                    │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -384,6 +392,98 @@ OptionValuePrefix: 10000
 
 ---
 
+### dvlp_aifeedback
+
+**Nazwa wyświetlana:** AI Feedback / Feedback AI  
+**Nazwa logiczna:** `dvlp_aifeedback`  
+**Nazwa zestawu:** `dvlp_aifeedbacks`  
+**Typ własności:** Organization  
+**Opis:** Historia poprawek użytkowników do sugestii AI - używana do uczenia modelu
+
+#### Cel
+
+Tabela przechowuje informacje o tym jak użytkownicy reagują na sugestie AI:
+- **applied** - użytkownik zaakceptował sugestię AI bez zmian
+- **modified** - użytkownik zmienił sugestię AI na inną wartość
+- **rejected** - użytkownik odrzucił sugestię i ustawił własną wartość
+
+Te dane są wykorzystywane do budowania kontekstu w promptach AI (few-shot learning).
+
+#### Atrybuty - Główne
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_aifeedbackid` | ID | Uniqueidentifier | Auto | Klucz główny |
+| `dvlp_name` | Nazwa | String(100) | Auto | Auto: "{SupplierName} - {Date}" |
+| `dvlp_invoiceid` | Faktura | Lookup (dvlp_ksefinvoice) | ✅ | PowiązaniNIP e z fakturą źródłową |
+| `dvlp_tenantnip` | NIP Firmy | String(10) | ✅ | NIP firmy (tenant) |
+| `dvlp_suppliernip` | NIP Dostawcy | String(15) | ✅ | NIP dostawcy |
+| `dvlp_suppliername` | Nazwa Dostawcy | String(250) | ✅ | Nazwa dostawcy |
+| `dvlp_invoicedescription` | Kontekst faktury | Memo(500) | ❌ | Fragment opisu/pozycji faktury |
+
+#### Atrybuty - Sugestie AI
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_aimpksuggestion` | Sugestia MPK (AI) | String(50) | ❌ | MPK zasugerowane przez AI |
+| `dvlp_aicategorysuggestion` | Sugestia kategorii (AI) | String(100) | ❌ | Kategoria zasugerowana przez AI |
+| `dvlp_aiconfidence` | Pewność AI | Decimal(3,2) | ❌ | Poziom pewności AI (0.00-1.00) |
+
+#### Atrybuty - Wybory użytkownika
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_usermpk` | Wybrane MPK | String(50) | ❌ | MPK wybrane przez użytkownika |
+| `dvlp_usercategory` | Wybrana kategoria | String(100) | ❌ | Kategoria wybrana przez użytkownika |
+| `dvlp_feedbacktype` | Typ feedbacku | OptionSet | ✅ | applied/modified/rejected |
+
+#### Atrybuty - Systemowe
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `createdon` | Utworzono | DateTime | Auto | Data utworzenia rekordu |
+| `createdby` | Utworzył | Lookup (User) | Auto | Użytkownik który zapisał feedback |
+| `statecode` | Status | State | Auto | Active/Inactive |
+| `statuscode` | Status Reason | Status | Auto | Powód statusu |
+
+#### Option Set - dvlp_feedbacktype
+
+**Nazwa wyświetlana:** Typ Feedback AI  
+**Typ:** Local OptionSet (lub Global)
+
+| Wartość | Label (EN) | Label (PL) | Kolor | Opis |
+|---------|------------|------------|-------|------|
+| 100000000 | Applied | Zaakceptowano | Green | Użytkownik zaakceptował sugestię AI |
+| 100000001 | Modified | Zmieniono | Orange | Użytkownik zmienił sugestię AI |
+| 100000002 | Rejected | Odrzucono | Red | Użytkownik odrzucił sugestię AI |
+
+#### Indeksy
+
+| Nazwa | Atrybuty | Typ | Uzasadnienie |
+|-------|----------|-----|--------------|
+| `PK_aifeedback` | `dvlp_aifeedbackid` | Primary | Klucz główny |
+| `IX_tenant_supplier` | `dvlp_tenantnip`, `dvlp_suppliernip` | Non-unique | Agregacja per dostawca |
+| `IX_createdon` | `createdon` | Non-unique | Sortowanie chronologiczne |
+| `IX_feedbacktype` | `dvlp_feedbacktype` | Non-unique | Filtrowanie typów feedbacku |
+
+#### Widoki (Views)
+
+| Nazwa | Typ | Filtr | Domyślne kolumny |
+|-------|-----|-------|------------------|
+| Wszystkie feedbacki | Public | - | Dostawca, Sugestia AI, Wybór usera, Typ, Data |
+| Zaakceptowane | Public | `feedbacktype = applied` | Dostawca, MPK, Kategoria |
+| Zmienione | Public | `feedbacktype = modified` | Dostawca, Sugestia AI, Wybór usera |
+| Per dostawca | Public | GROUP BY suppliernip | Dostawca, Count, Avg confidence |
+
+#### Bezpieczeństwo
+
+- **Read**: Wszyscy użytkownicy KSeF
+- **Create**: System (via API) przy zapisie faktury
+- **Update**: Brak (rekordy są immutable)
+- **Delete**: Admin only
+
+---
+
 ## Option Sets (Choices)
 
 ### dvlp_ksefenvironment
@@ -585,6 +685,8 @@ dvlp_ksefsetting (1)
     ├──── (N) dvlp_ksefsynclog
     │
     └──── (N) dvlp_ksefinvoice (via dvlp_ksefsettingid)
+                    │
+                    └──── (N) dvlp_aifeedback (via dvlp_invoiceid)
 ```
 
 ### Definicje relacji
@@ -597,6 +699,7 @@ dvlp_ksefsetting (1)
 | `dvlp_ksefsession_synclogs` | 1:N | dvlp_ksefsession | dvlp_ksefsynclog | Delete: RemoveLink |
 | `dvlp_ksefsession_invoices` | 1:N | dvlp_ksefsession | dvlp_ksefinvoice | Delete: RemoveLink |
 | `dvlp_ksefinvoice_parent` | 1:N | dvlp_ksefinvoice | dvlp_ksefinvoice | Delete: RemoveLink |
+| `dvlp_ksefinvoice_feedbacks` | 1:N | dvlp_ksefinvoice | dvlp_aifeedback | Delete: Cascade |
 
 ---
 

@@ -58,6 +58,7 @@ export interface Invoice {
   paymentDate?: string
   mpk?: MPK
   category?: string
+  description?: string
   project?: string
   tags?: string[]
   rawXml?: string
@@ -67,6 +68,7 @@ export interface Invoice {
   aiMpkSuggestion?: MPK
   aiCategorySuggestion?: string
   aiDescription?: string
+  aiRationale?: string
   aiConfidence?: number
   aiProcessedAt?: string
 }
@@ -93,10 +95,20 @@ export interface KsefInvoice {
 export const InvoiceUpdateSchema = z.object({
   mpk: z.nativeEnum(MPK).optional(),
   category: z.string().max(50).optional(),
+  description: z.string().max(500).optional(),
   project: z.string().max(100).optional(),
   tags: z.array(z.string()).optional(),
   paymentStatus: z.enum(['pending', 'paid']).optional(),
   paymentDate: z.string().date().optional(),
+  // Fields editable only for manual invoices
+  supplierName: z.string().max(200).optional(),
+  supplierNip: z.string().max(20).optional(),
+  invoiceNumber: z.string().max(100).optional(),
+  invoiceDate: z.string().date().optional(),
+  dueDate: z.string().date().optional(),
+  netAmount: z.number().positive().optional(),
+  vatAmount: z.number().min(0).optional(),
+  grossAmount: z.number().positive().optional(),
   // AI Categorization fields
   aiMpkSuggestion: z.nativeEnum(MPK).optional(),
   aiCategorySuggestion: z.string().max(100).optional(),
