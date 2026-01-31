@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
@@ -29,13 +29,16 @@ import {
   FileQuestion,
   FileCheck,
   Trash2,
+  Filter,
 } from 'lucide-react'
 import { useInvoices, useMarkAsPaid, useDeleteInvoice, useUpdateInvoice } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
 import { Invoice, InvoiceListParams } from '@/lib/api'
 import { exportInvoicesToCsv } from '@/lib/export'
 import { InvoiceFilters } from '@/components/invoices/invoice-filters'
+import { InvoiceMobileCard } from '@/components/invoices/invoice-mobile-card'
 import { DocumentScannerModal } from '@/components/documents'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -113,6 +116,16 @@ export default function InvoicesPage() {
   const router = useRouter()
   const { toast } = useToast()
   
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false)
+  
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+  
   const [filters, setFilters] = useState<InvoiceListParams>({
     orderBy: 'invoiceDate',
     orderDirection: 'desc',
@@ -124,6 +137,9 @@ export default function InvoicesPage() {
   
   // Document scanner modal state
   const [scannerOpen, setScannerOpen] = useState(false)
+  
+  // Mobile filters drawer state
+  const [filtersDrawerOpen, setFiltersDrawerOpen] = useState(false)
   
   const { data, isLoading, refetch } = useInvoices(filters)
   
@@ -239,33 +255,127 @@ export default function InvoicesPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <FileText className="h-7 w-7" />
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+            <FileText className="h-6 w-6 md:h-7 md:w-7" />
             Faktury
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm md:text-base">
             Przeglądaj i zarządzaj fakturami kosztowymi z KSeF
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => setScannerOpen(true)}>
+          {/* Mobile: Filters button */}
+          {isMobile && (
+            <Sheet open={filtersDrawerOpen} onOpenChange={setFiltersDrawerOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filtry
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="h-[80vh] overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>Filtry</SheetTitle>
+                </SheetHeader>
+                <div className="py-4 space-y-4">
+                  {/* Quick filters in drawer */}
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Status płatności</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant={!filters.paymentStatus && !filters.overdue ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => { setFilters(f => ({ ...f, paymentStatus: undefined, overdue: undefined })); setFiltersDrawerOpen(false) }}
+                      >
+                        Wszystkie <Badge variant="secondary" className="ml-1">{data?.count || 0}</Badge>
+                      </Button>
+                      <Button
+                        variant={filters.paymentStatus === 'pending' && !filters.overdue ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => { setFilters(f => ({ ...f, paymentStatus: 'pending', overdue: undefined })); setFiltersDrawerOpen(false) }}
+                      >
+                        Do opłacenia <Badge variant="secondary" className="ml-1">{pendingCount}</Badge>
+                      </Button>
+                      <Button
+                        variant={filters.overdue ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => { setFilters(f => ({ ...f, overdue: true, paymentStatus: undefined })); setFiltersDrawerOpen(false) }}
+                      >
+                        Zaległe <Badge variant="destructive" className="ml-1">{overdueCount}</Badge>
+                      </Button>
+                      <Button
+                        variant={filters.paymentStatus === 'paid' ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => { setFilters(f => ({ ...f, paymentStatus: 'paid', overdue: undefined })); setFiltersDrawerOpen(false) }}
+                      >
+                        Opłacone <Badge className="ml-1 bg-green-100 text-green-800">{paidCount}</Badge>
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Status opisu</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant={descriptionFilter === 'not_described' ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => { setDescriptionFilter(f => f === 'not_described' ? null : 'not_described'); setFiltersDrawerOpen(false) }}
+                      >
+                        <FileQuestion className="h-3.5 w-3.5 mr-1" />
+                        Bez opisu <Badge variant="destructive" className="ml-1">{notDescribedCount}</Badge>
+                      </Button>
+                      <Button
+                        variant={descriptionFilter === 'ai_suggested' ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => { setDescriptionFilter(f => f === 'ai_suggested' ? null : 'ai_suggested'); setFiltersDrawerOpen(false) }}
+                      >
+                        <Sparkles className="h-3.5 w-3.5 mr-1" />
+                        Propozycja AI <Badge className="ml-1 bg-purple-100 text-purple-800">{aiSuggestedCount}</Badge>
+                      </Button>
+                      <Button
+                        variant={descriptionFilter === 'described' ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => { setDescriptionFilter(f => f === 'described' ? null : 'described'); setFiltersDrawerOpen(false) }}
+                      >
+                        <FileCheck className="h-3.5 w-3.5 mr-1" />
+                        Opisane <Badge className="ml-1 bg-green-100 text-green-800">{describedCount}</Badge>
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Advanced filters */}
+                  <div className="pt-4 border-t">
+                    <InvoiceFilters 
+                      filters={filters} 
+                      onChange={handleFiltersChange}
+                    />
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+          )}
+          
+          <Button onClick={() => setScannerOpen(true)} size={isMobile ? "sm" : "default"}>
             <Plus className="mr-2 h-4 w-4" />
-            Dodaj fakturę
+            {!isMobile && "Dodaj fakturę"}
           </Button>
-          <Button variant="outline" onClick={() => refetch()}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Odśwież
+          <Button variant="outline" onClick={() => refetch()} size={isMobile ? "sm" : "default"}>
+            <RefreshCw className="h-4 w-4" />
+            {!isMobile && <span className="ml-2">Odśwież</span>}
           </Button>
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" />
-            Eksportuj
-          </Button>
+          {!isMobile && (
+            <Button variant="outline" onClick={handleExport}>
+              <Download className="mr-2 h-4 w-4" />
+              Eksportuj
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Quick Filters - Compact Horizontal Bar */}
+      {/* Quick Filters - Desktop only */}
+      {!isMobile && (
       <Card>
         <CardContent className="py-3 px-4">
           <div className="flex items-center justify-between">
@@ -347,14 +457,51 @@ export default function InvoicesPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
-      {/* Search & Advanced Filters */}
-      <InvoiceFilters 
-        filters={filters} 
-        onChange={handleFiltersChange}
-      />
+      {/* Search & Advanced Filters - Desktop only */}
+      {!isMobile && (
+        <InvoiceFilters 
+          filters={filters} 
+          onChange={handleFiltersChange}
+        />
+      )}
 
-      {/* Table */}
+      {/* Mobile: Card view / Desktop: Table */}
+      {isMobile ? (
+        // Mobile card view
+        <div className="space-y-3">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : invoices.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-medium">Brak faktur</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Uruchom synchronizację, aby pobrać faktury z KSeF
+                </p>
+                <Button asChild className="mt-4">
+                  <Link href="/sync">Przejdź do synchronizacji</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            invoices.map((invoice) => (
+              <InvoiceMobileCard
+                key={invoice.id}
+                invoice={invoice}
+                onTogglePaymentStatus={handleTogglePaymentStatus}
+                onDelete={invoice.source === 'Manual' ? handleDeleteInvoice : undefined}
+                isUpdating={updateInvoiceMutation.isPending}
+              />
+            ))
+          )}
+        </div>
+      ) : (
+      // Desktop table view
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
@@ -382,6 +529,8 @@ export default function InvoicesPage() {
                   <TableHead>Data wystawienia</TableHead>
                   <TableHead>Dostawca</TableHead>
                   <TableHead className="text-right">Kwota brutto</TableHead>
+                  <TableHead>MPK</TableHead>
+                  <TableHead>Kategoria</TableHead>
                   <TableHead>Status opisu</TableHead>
                   <TableHead className="w-[120px] text-center">Akcje</TableHead>
                 </TableRow>
@@ -423,6 +572,34 @@ export default function InvoicesPage() {
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(invoice.grossAmount)}
+                    </TableCell>
+                    <TableCell>
+                      {invoice.mpk ? (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          {invoice.mpk}
+                        </Badge>
+                      ) : invoice.aiMpkSuggestion ? (
+                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          {invoice.aiMpkSuggestion}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {invoice.category ? (
+                        <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
+                          {invoice.category}
+                        </Badge>
+                      ) : invoice.aiCategorySuggestion ? (
+                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          {invoice.aiCategorySuggestion}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {getDescriptionStatusBadge(getDescriptionStatus(invoice))}
@@ -485,6 +662,7 @@ export default function InvoicesPage() {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* Pagination info */}
       {invoices.length > 0 && (

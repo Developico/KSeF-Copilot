@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,6 +26,7 @@ import {
   Clock,
   FileText,
   ArrowDownToLine,
+  Building2,
 } from 'lucide-react'
 import {
   useKsefStatus,
@@ -47,6 +48,16 @@ export default function SyncPage() {
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0])
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set())
   const [syncLog, setSyncLog] = useState<string[]>([])
+
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false)
+  
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Queries
   const { data: status, isLoading: isLoadingStatus } = useKsefStatus()
@@ -157,20 +168,20 @@ export default function SyncPage() {
         <p className="text-muted-foreground">Brak uprawnień do synchronizacji faktur.</p>
       </div>
     }>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <RefreshCw className="h-7 w-7" />
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+            <RefreshCw className="h-6 w-6 md:h-7 md:w-7" />
             Synchronizacja KSeF
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm md:text-base">
             Pobierz nowe faktury z Krajowego Systemu e-Faktur
           </p>
         </div>
 
         {/* Status and Session */}
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2">
           {/* KSeF Status */}
           <Card>
             <CardHeader>
@@ -300,7 +311,7 @@ export default function SyncPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
@@ -329,6 +340,7 @@ export default function SyncPage() {
                   onClick={handlePreview} 
                   disabled={!session || isLoadingPreview}
                   className="w-full"
+                  size={isMobile ? "sm" : "default"}
                 >
                   {isLoadingPreview ? (
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
@@ -343,13 +355,14 @@ export default function SyncPage() {
                   onClick={handleSyncAll} 
                   disabled={!session || isSyncing}
                   className="w-full"
+                  size={isMobile ? "sm" : "default"}
                 >
                   {isSyncing ? (
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Download className="mr-2 h-4 w-4" />
                   )}
-                  {isSyncing ? 'Synchronizacja...' : 'Synchronizuj wszystko'}
+                  {isSyncing ? 'Sync...' : (isMobile ? 'Sync wszystko' : 'Synchronizuj wszystko')}
                 </Button>
               </div>
             </div>
@@ -365,9 +378,9 @@ export default function SyncPage() {
         {/* Invoice Preview */}
         {previewData && previewData.invoices.length > 0 && (
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <CardTitle>Znalezione faktury</CardTitle>
+                <CardTitle className="text-lg md:text-xl">Znalezione faktury</CardTitle>
                 <CardDescription>
                   {newInvoices.length > 0 
                     ? `${newInvoices.length} nowych faktur do zaimportowania z ${previewData.total} znalezionych`
@@ -378,17 +391,84 @@ export default function SyncPage() {
                 <Button 
                   onClick={handleImportSelected}
                   disabled={importMutation.isPending}
+                  size={isMobile ? "sm" : "default"}
                 >
                   {importMutation.isPending ? (
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <CheckCircle className="mr-2 h-4 w-4" />
                   )}
-                  Importuj wybrane ({selectedInvoices.size})
+                  Importuj ({selectedInvoices.size})
                 </Button>
               )}
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className={isMobile ? "px-3" : "p-0"}>
+              {isMobile ? (
+                // Mobile: Card view
+                <div className="space-y-3">
+                  {/* Select all on mobile */}
+                  {newInvoices.length > 0 && (
+                    <div className="flex items-center gap-2 pb-2 border-b">
+                      <Checkbox 
+                        checked={selectedInvoices.size === newInvoices.length}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                      <span className="text-sm text-muted-foreground">Zaznacz wszystkie nowe</span>
+                    </div>
+                  )}
+                  {previewData.invoices.map((invoice) => (
+                    <div 
+                      key={invoice.ksefReferenceNumber}
+                      className="border rounded-lg p-3 space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2">
+                          <Checkbox 
+                            checked={selectedInvoices.has(invoice.ksefReferenceNumber)}
+                            onCheckedChange={() => toggleInvoiceSelection(invoice.ksefReferenceNumber)}
+                            disabled={invoice.alreadyImported}
+                            className="mt-1"
+                          />
+                          <div>
+                            <p className="font-medium">{invoice.invoiceNumber}</p>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              {invoice.ksefReferenceNumber.slice(0, 20)}...
+                            </p>
+                          </div>
+                        </div>
+                        {invoice.alreadyImported ? (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 shrink-0">
+                            <CheckCircle className="mr-1 h-3 w-3" />
+                            Zaimportowana
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 shrink-0">
+                            Nowa
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <span>{invoice.supplierName}</span>
+                        <span className="text-muted-foreground">({invoice.supplierNip})</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          {new Date(invoice.invoiceDate).toLocaleDateString('pl-PL')}
+                        </div>
+                        <span className="font-bold">
+                          {new Intl.NumberFormat('pl-PL', {
+                            style: 'currency',
+                            currency: 'PLN',
+                          }).format(invoice.grossAmount)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                // Desktop: Table view
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -455,6 +535,7 @@ export default function SyncPage() {
                   ))}
                 </TableBody>
               </Table>
+              )}
             </CardContent>
           </Card>
         )}

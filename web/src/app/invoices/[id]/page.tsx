@@ -11,7 +11,7 @@ export default function InvoiceDetailPage({ params }: PageProps) {
   const resolvedParams = use(params)
   
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto py-4 md:py-6 px-2 md:px-4">
       <InvoiceDetailContent invoiceId={resolvedParams.id} />
     </div>
   )

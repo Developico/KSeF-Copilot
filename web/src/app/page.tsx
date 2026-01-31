@@ -60,26 +60,26 @@ export default function HomePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <LayoutDashboard className="h-7 w-7" />
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+            <LayoutDashboard className="h-6 w-6 md:h-7 md:w-7" />
             Dashboard
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm md:text-base">
             Zarządzaj fakturami kosztowymi z KSeF
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={stats.ksefConnected ? 'default' : 'destructive'}>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant={stats.ksefConnected ? 'default' : 'destructive'} className="text-xs">
             <Zap className="mr-1 h-3 w-3" />
-            {stats.ksefConnected ? 'Połączono z KSeF' : 'Brak połączenia'}
+            {stats.ksefConnected ? 'KSeF OK' : 'Brak'}
           </Badge>
-          <Button onClick={handleSync} disabled={isSyncing}>
+          <Button onClick={handleSync} disabled={isSyncing} size="sm">
             <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-            {isSyncing ? 'Synchronizacja...' : 'Synchronizuj'}
+            {isSyncing ? 'Sync...' : 'Sync'}
           </Button>
         </div>
       </div>
@@ -119,7 +119,7 @@ export default function HomePage() {
       )}
 
       {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Wszystkie faktury</CardTitle>
@@ -182,7 +182,7 @@ export default function HomePage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

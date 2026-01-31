@@ -550,33 +550,33 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   return (
     <div className="space-y-4">
       {/* Header - Compact */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 sm:gap-4">
           <Link href="/invoices">
             <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Powrót do listy
+              <ArrowLeft className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Powrót do listy</span>
             </Button>
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold">{invoice.invoiceNumber}</h1>
-            <p className="text-muted-foreground">{invoice.supplierName}</p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold truncate">{invoice.invoiceNumber}</h1>
+            <p className="text-muted-foreground text-sm truncate">{invoice.supplierName}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {invoice.paymentStatus === 'pending' && (
             <Button
               onClick={() => markPaidMutation.mutate()}
               disabled={markPaidMutation.isPending}
               size="sm"
             >
-              <Check className="h-4 w-4 mr-2" />
-              Oznacz jako opłacone
+              <Check className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Oznacz opłacone</span>
             </Button>
           )}
           <Badge
             variant={invoice.paymentStatus === 'paid' ? 'default' : isOverdue ? 'destructive' : 'secondary'}
-            className="text-sm px-3 py-1"
+            className="text-xs sm:text-sm px-2 sm:px-3 py-1"
           >
             {invoice.paymentStatus === 'paid' ? 'Opłacona' : isOverdue ? 'Zaległe' : 'Oczekuje'}
           </Badge>

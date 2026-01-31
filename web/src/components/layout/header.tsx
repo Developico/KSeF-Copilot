@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useTheme } from 'next-themes'
-import { Sun, Moon, User, LogOut } from 'lucide-react'
+import { Sun, Moon, User, LogOut, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import {
@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ChangelogModal } from './changelog-modal'
+import { MobileSidebar } from './mobile-sidebar'
 import { useAuth } from '@/components/auth/auth-provider'
 
 export function Header() {
@@ -22,6 +23,7 @@ export function Header() {
   const [mounted, setMounted] = useState(false)
   const [isChangelogOpen, setIsChangelogOpen] = useState(false)
   const [logoOk, setLogoOk] = useState(true)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Easter egg state - triple click on logo to open changelog
   const [clickCount, setClickCount] = useState(0)
@@ -63,6 +65,17 @@ export function Header() {
         <div className="flex h-16 items-center justify-between px-4">
           {/* Logo & Title */}
           <div className="flex items-center gap-2">
+            {/* Hamburger menu - mobile only */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden h-9 w-9"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Otwórz menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            
             {/* Logo - Easter Egg: Triple click to show changelog */}
             <div 
               className="flex items-center gap-3 select-none cursor-pointer hover:opacity-80 transition-opacity"
@@ -166,6 +179,12 @@ export function Header() {
       <ChangelogModal
         isOpen={isChangelogOpen}
         onClose={() => setIsChangelogOpen(false)}
+      />
+
+      {/* Mobile Sidebar Drawer */}
+      <MobileSidebar 
+        open={mobileMenuOpen} 
+        onOpenChange={setMobileMenuOpen} 
       />
     </>
   )

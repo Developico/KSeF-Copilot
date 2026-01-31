@@ -361,20 +361,20 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Settings className="h-7 w-7" />
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+          <Settings className="h-6 w-6 md:h-7 md:w-7" />
           Ustawienia
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-sm md:text-base text-muted-foreground">
           Konfiguracja integracji z KSeF
         </p>
       </div>
 
       <Tabs defaultValue="companies">
-        <TabsList>
+        <TabsList className="w-full md:w-auto overflow-x-auto">
           <TabsTrigger value="companies">
             <Building2 className="mr-2 h-4 w-4" />
             Firmy
@@ -386,18 +386,18 @@ export default function SettingsPage() {
         </TabsList>
 
         {/* Companies Tab */}
-        <TabsContent value="companies" className="space-y-6 mt-6">
+        <TabsContent value="companies" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <CardTitle>Firmy</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-lg md:text-xl">Firmy</CardTitle>
+                <CardDescription className="text-sm">
                   Zarządzaj firmami połączonymi z KSeF
                 </CardDescription>
               </div>
               <Dialog open={isAddCompanyOpen} onOpenChange={setIsAddCompanyOpen}>
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button className="w-full sm:w-auto">
                     <Plus className="mr-2 h-4 w-4" />
                     Dodaj firmę
                   </Button>
@@ -508,84 +508,105 @@ export default function SettingsPage() {
               </Dialog>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Firma</TableHead>
-                    <TableHead>NIP</TableHead>
-                    <TableHead>Środowisko</TableHead>
-                    <TableHead>Token KSeF</TableHead>
-                    <TableHead>Ostatnia synchronizacja</TableHead>
-                    <TableHead className="w-[150px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {companies.map((company) => {
-                    const isSelected = selectedCompany?.id === company.id
-                    return (
-                    <TableRow key={company.id} className={isSelected ? 'bg-accent/50' : ''}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{company.companyName}</span>
-                          {isSelected && (
-                            <Badge variant="secondary" className="text-xs">Aktywna</Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono">{company.nip}</TableCell>
-                      <TableCell>{getEnvironmentBadge(company.environment)}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          {getTokenStatusBadge(company.tokenStatus ?? 'missing')}
-                          {company.tokenExpiresAt && (
-                            <span className="text-xs text-muted-foreground">
-                              Wygasa: {new Date(company.tokenExpiresAt).toLocaleDateString('pl-PL')}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {company.lastSyncAt ? (
-                          new Date(company.lastSyncAt).toLocaleString('pl-PL')
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {!isSelected && (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleSelectCompany(company)}
-                            >
-                              Wybierz
-                            </Button>
-                          )}
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => openEditCompany(company)}
-                            title="Edytuj firmę"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => deleteCompany(company.id, company.companyName)}
-                            disabled={deleteCompanyMutation.isPending || isSelected}
-                            title={isSelected ? 'Nie można usunąć aktywnej firmy' : 'Usuń firmę'}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Firma</TableHead>
+                      <TableHead className="hidden sm:table-cell">NIP</TableHead>
+                      <TableHead className="hidden md:table-cell">Środowisko</TableHead>
+                      <TableHead className="hidden lg:table-cell">Token KSeF</TableHead>
+                      <TableHead className="hidden lg:table-cell">Ostatnia synchronizacja</TableHead>
+                      <TableHead className="w-[100px] md:w-[150px]"></TableHead>
                     </TableRow>
-                  )})}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {companies.map((company) => {
+                      const isSelected = selectedCompany?.id === company.id
+                      return (
+                      <TableRow key={company.id} className={isSelected ? 'bg-accent/50' : ''}>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-muted-foreground hidden sm:block" />
+                              <span className="font-medium text-sm md:text-base">{company.companyName}</span>
+                              {isSelected && (
+                                <Badge variant="secondary" className="text-xs">Aktywna</Badge>
+                              )}
+                            </div>
+                            {/* Mobile: show NIP and env below company name */}
+                            <div className="flex gap-2 sm:hidden text-xs text-muted-foreground">
+                              <span className="font-mono">{company.nip}</span>
+                              {getEnvironmentBadge(company.environment)}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono hidden sm:table-cell">{company.nip}</TableCell>
+                        <TableCell className="hidden md:table-cell">{getEnvironmentBadge(company.environment)}</TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <div className="flex flex-col gap-1">
+                            {getTokenStatusBadge(company.tokenStatus ?? 'missing')}
+                            {company.tokenExpiresAt && (
+                              <span className="text-xs text-muted-foreground">
+                                Wygasa: {new Date(company.tokenExpiresAt).toLocaleDateString('pl-PL')}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {company.lastSyncAt ? (
+                            new Date(company.lastSyncAt).toLocaleString('pl-PL')
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1 justify-end">
+                            {!isSelected && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="hidden sm:flex"
+                                onClick={() => handleSelectCompany(company)}
+                              >
+                                Wybierz
+                              </Button>
+                            )}
+                            {!isSelected && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="sm:hidden"
+                                onClick={() => handleSelectCompany(company)}
+                                title="Wybierz firmę"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => openEditCompany(company)}
+                              title="Edytuj firmę"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => deleteCompany(company.id, company.companyName)}
+                              disabled={deleteCompanyMutation.isPending || isSelected}
+                              title={isSelected ? 'Nie można usunąć aktywnej firmy' : 'Usuń firmę'}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )})}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
 
@@ -671,11 +692,11 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* Cost Centers Tab */}
-        <TabsContent value="costcenters" className="space-y-6 mt-6">
+        <TabsContent value="costcenters" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
           {/* Info about read-only cost centers */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4 flex items-start gap-2 md:gap-3">
             <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-blue-800">
+            <div className="text-xs md:text-sm text-blue-800">
               <p className="font-medium mb-1">Centra kosztów są zdefiniowane w Dataverse</p>
               <p className="text-blue-700">
                 MPK są powiązane z opcjami (option set) w Microsoft Dataverse i nie mogą być edytowane 
@@ -688,14 +709,15 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <div>
-                <CardTitle>Centra kosztów (MPK)</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-lg md:text-xl">Centra kosztów (MPK)</CardTitle>
+                <CardDescription className="text-sm">
                   Lista dostępnych centrów kosztów do kategoryzacji faktur
                 </CardDescription>
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
+              <div className="overflow-x-auto">
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Wartość (Dataverse)</TableHead>
@@ -721,8 +743,9 @@ export default function SettingsPage() {
                       </TableCell>
                     </TableRow>
                   ))}
-                </TableBody>
-              </Table>
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

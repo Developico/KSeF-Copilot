@@ -64,7 +64,8 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'relative flex flex-col border-r bg-sidebar text-sidebar-foreground transition-all duration-300',
+        'relative flex-col border-r bg-sidebar text-sidebar-foreground transition-all duration-300',
+        'hidden md:flex', // Hide on mobile, show on md+
         isCollapsed ? 'w-16' : 'w-56',
         className
       )}

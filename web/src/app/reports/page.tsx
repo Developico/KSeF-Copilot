@@ -228,21 +228,21 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <BarChart3 className="h-7 w-7" />
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+            <BarChart3 className="h-6 w-6 md:h-7 md:w-7" />
             Raporty
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm md:text-base text-muted-foreground">
             Analizy i statystyki faktur kosztowych
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger className="w-[100px] md:w-[120px]">
               <Calendar className="mr-2 h-4 w-4" />
               <SelectValue />
             </SelectTrigger>
@@ -259,7 +259,7 @@ export default function ReportsPage() {
             </SelectContent>
           </Select>
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[120px] md:w-[140px]">
               <SelectValue placeholder="Miesiąc" />
             </SelectTrigger>
             <SelectContent>
@@ -278,22 +278,22 @@ export default function ReportsPage() {
               <SelectItem value="12">Grudzień</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={() => refetch()}>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="md:size-default">
             <RefreshCw className="mr-2 h-4 w-4" />
-            Odśwież
+            <span className="hidden sm:inline">Odśwież</span>
           </Button>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Wszystkie faktury</CardTitle>
+            <CardTitle className="text-xs md:text-sm font-medium">Wszystkie faktury</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{summary.count}</div>
+            <div className="text-xl md:text-2xl font-bold">{summary.count}</div>
             <p className="text-xs text-muted-foreground">
               {summary.uniqueSuppliers} dostawców
             </p>
@@ -301,23 +301,23 @@ export default function ReportsPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Suma brutto</CardTitle>
+            <CardTitle className="text-xs md:text-sm font-medium">Suma brutto</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(summary.total)}</div>
+            <div className="text-xl md:text-2xl font-bold">{formatCurrency(summary.total)}</div>
             <p className="text-xs text-muted-foreground">
-              Średnio {formatCurrency(summary.avgInvoice)} / faktura
+              <span className="hidden sm:inline">Średnio</span> {formatCurrency(summary.avgInvoice)}<span className="hidden sm:inline"> / faktura</span>
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Opłacone</CardTitle>
+            <CardTitle className="text-xs md:text-sm font-medium">Opłacone</CardTitle>
             <CreditCard className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(summary.paid)}</div>
+            <div className="text-xl md:text-2xl font-bold text-green-600">{formatCurrency(summary.paid)}</div>
             <p className="text-xs text-muted-foreground">
               {summary.count > 0 ? ((summary.paid / summary.total) * 100).toFixed(1) : 0}% całości
             </p>
@@ -325,11 +325,11 @@ export default function ReportsPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Do zapłaty</CardTitle>
+            <CardTitle className="text-xs md:text-sm font-medium">Do zapłaty</CardTitle>
             <CreditCard className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatCurrency(summary.pending)}</div>
+            <div className="text-xl md:text-2xl font-bold text-red-600">{formatCurrency(summary.pending)}</div>
             <p className="text-xs text-muted-foreground">
               {summary.count > 0 ? ((summary.pending / summary.total) * 100).toFixed(1) : 0}% całości
             </p>
@@ -338,7 +338,7 @@ export default function ReportsPage() {
       </div>
 
       <Tabs defaultValue="monthly">
-        <TabsList>
+        <TabsList className="w-full md:w-auto overflow-x-auto">
           <TabsTrigger value="monthly">
             <BarChart3 className="mr-2 h-4 w-4" />
             Miesięcznie
@@ -354,23 +354,23 @@ export default function ReportsPage() {
         </TabsList>
 
         {/* Monthly Chart */}
-        <TabsContent value="monthly" className="space-y-6 mt-6">
+        <TabsContent value="monthly" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Koszty miesięczne - {selectedYear}</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-lg md:text-xl">Koszty miesięczne - {selectedYear}</CardTitle>
+              <CardDescription className="text-sm">
                 Wartość brutto faktur w poszczególnych miesiącach
               </CardDescription>
             </CardHeader>
             <CardContent>
               {/* Simple Bar Chart */}
               <div className="space-y-4">
-                <div className="flex items-end gap-2 h-64">
+                <div className="flex items-end gap-1 md:gap-2 h-48 md:h-64">
                   {monthlyData.map((m) => (
                     <div key={m.monthKey} className="flex-1 flex flex-col items-center">
-                      <div className="w-full flex flex-col items-center justify-end h-48">
+                      <div className="w-full flex flex-col items-center justify-end h-36 md:h-48">
                         <div 
-                          className="w-full max-w-8 bg-primary rounded-t transition-all hover:bg-primary/80"
+                          className="w-full max-w-6 md:max-w-8 bg-primary rounded-t transition-all hover:bg-primary/80"
                           style={{ 
                             height: `${(m.totalGross / maxMonthlyGross) * 100}%`,
                             minHeight: m.totalGross > 0 ? '4px' : '0'
@@ -378,7 +378,7 @@ export default function ReportsPage() {
                           title={formatCurrency(m.totalGross)}
                         />
                       </div>
-                      <span className="text-xs text-muted-foreground mt-2">{m.month}</span>
+                      <span className="text-[10px] md:text-xs text-muted-foreground mt-1 md:mt-2">{m.month}</span>
                     </div>
                   ))}
                 </div>
@@ -397,31 +397,32 @@ export default function ReportsPage() {
           {/* Monthly Table */}
           <Card>
             <CardHeader>
-              <CardTitle>Szczegóły miesięczne</CardTitle>
+              <CardTitle className="text-lg md:text-xl">Szczegóły miesięczne</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Miesiąc</TableHead>
-                    <TableHead className="text-right">Liczba faktur</TableHead>
-                    <TableHead className="text-right">Netto</TableHead>
-                    <TableHead className="text-right">VAT</TableHead>
-                    <TableHead className="text-right">Brutto</TableHead>
-                    <TableHead className="text-right">Opłacone</TableHead>
-                    <TableHead className="text-right">Oczekujące</TableHead>
-                  </TableRow>
-                </TableHeader>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Miesiąc</TableHead>
+                      <TableHead className="text-right">Faktury</TableHead>
+                      <TableHead className="text-right hidden sm:table-cell">Netto</TableHead>
+                      <TableHead className="text-right hidden sm:table-cell">VAT</TableHead>
+                      <TableHead className="text-right">Brutto</TableHead>
+                      <TableHead className="text-right hidden md:table-cell">Opłacone</TableHead>
+                      <TableHead className="text-right hidden md:table-cell">Oczekujące</TableHead>
+                    </TableRow>
+                  </TableHeader>
                 <TableBody>
                   {monthlyData.filter(m => m.invoiceCount > 0).map((m) => (
                     <TableRow key={m.monthKey}>
-                      <TableCell className="font-medium">{m.month} {selectedYear}</TableCell>
+                      <TableCell className="font-medium text-sm">{m.month} {selectedYear}</TableCell>
                       <TableCell className="text-right">{m.invoiceCount}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(m.totalNet)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(m.totalVat)}</TableCell>
+                      <TableCell className="text-right hidden sm:table-cell">{formatCurrency(m.totalNet)}</TableCell>
+                      <TableCell className="text-right hidden sm:table-cell">{formatCurrency(m.totalVat)}</TableCell>
                       <TableCell className="text-right font-medium">{formatCurrency(m.totalGross)}</TableCell>
-                      <TableCell className="text-right text-green-600">{m.paidCount}</TableCell>
-                      <TableCell className="text-right text-red-600">{m.pendingCount}</TableCell>
+                      <TableCell className="text-right text-green-600 hidden md:table-cell">{m.paidCount}</TableCell>
+                      <TableCell className="text-right text-red-600 hidden md:table-cell">{m.pendingCount}</TableCell>
                     </TableRow>
                   ))}
                   {monthlyData.filter(m => m.invoiceCount > 0).length === 0 && (
@@ -433,76 +434,84 @@ export default function ReportsPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* Suppliers Tab */}
-        <TabsContent value="suppliers" className="space-y-6 mt-6">
+        <TabsContent value="suppliers" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Top 10 dostawców</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-lg md:text-xl">Top 10 dostawców</CardTitle>
+              <CardDescription className="text-sm">
                 Dostawcy z największą wartością faktur w wybranym okresie
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>#</TableHead>
-                    <TableHead>Dostawca</TableHead>
-                    <TableHead>NIP</TableHead>
-                    <TableHead className="text-right">Liczba faktur</TableHead>
-                    <TableHead className="text-right">Suma brutto</TableHead>
-                    <TableHead className="text-right">Średnia faktura</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {topSuppliers.map((supplier, idx) => (
-                    <TableRow key={supplier.nip}>
-                      <TableCell>
-                        <Badge variant={idx < 3 ? 'default' : 'outline'}>{idx + 1}</Badge>
-                      </TableCell>
-                      <TableCell className="font-medium">{supplier.name}</TableCell>
-                      <TableCell className="font-mono text-sm">{supplier.nip}</TableCell>
-                      <TableCell className="text-right">{supplier.invoiceCount}</TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(supplier.totalGross)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(supplier.avgInvoice)}</TableCell>
-                    </TableRow>
-                  ))}
-                  {topSuppliers.length === 0 && (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                        Brak danych o dostawcach
-                      </TableCell>
+                      <TableHead>#</TableHead>
+                      <TableHead>Dostawca</TableHead>
+                      <TableHead className="hidden md:table-cell">NIP</TableHead>
+                      <TableHead className="text-right hidden sm:table-cell">Faktury</TableHead>
+                      <TableHead className="text-right">Suma brutto</TableHead>
+                      <TableHead className="text-right hidden lg:table-cell">Średnia</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {topSuppliers.map((supplier, idx) => (
+                      <TableRow key={supplier.nip}>
+                        <TableCell>
+                          <Badge variant={idx < 3 ? 'default' : 'outline'}>{idx + 1}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-sm">{supplier.name}</span>
+                            <span className="text-xs text-muted-foreground md:hidden font-mono">{supplier.nip}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm hidden md:table-cell">{supplier.nip}</TableCell>
+                        <TableCell className="text-right hidden sm:table-cell">{supplier.invoiceCount}</TableCell>
+                        <TableCell className="text-right font-medium text-sm">{formatCurrency(supplier.totalGross)}</TableCell>
+                        <TableCell className="text-right hidden lg:table-cell">{formatCurrency(supplier.avgInvoice)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {topSuppliers.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          Brak danych o dostawcach
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* Categories Tab */}
-        <TabsContent value="categories" className="space-y-6 mt-6">
+        <TabsContent value="categories" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Podział wg kategorii</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-lg md:text-xl">Podział wg kategorii</CardTitle>
+              <CardDescription className="text-sm">
                 Rozkład kosztów według kategorii faktur
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 {categoryData.map((cat) => (
-                  <div key={cat.category} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{cat.category}</span>
-                        <Badge variant="outline">{cat.invoiceCount} faktur</Badge>
+                  <div key={cat.category} className="space-y-1 md:space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        <span className="font-medium text-sm truncate">{cat.category}</span>
+                        <Badge variant="outline" className="text-xs shrink-0">{cat.invoiceCount} faktur</Badge>
                       </div>
-                      <span className="font-medium">{formatCurrency(cat.totalGross)}</span>
+                      <span className="font-medium text-sm shrink-0">{formatCurrency(cat.totalGross)}</span>
                     </div>
                     <div className="h-2 bg-secondary rounded-full overflow-hidden">
                       <div 
