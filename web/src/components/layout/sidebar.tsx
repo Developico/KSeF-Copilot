@@ -10,12 +10,10 @@ import {
   FileText, 
   RefreshCw, 
   Settings, 
-  ChevronLeft, 
-  ChevronRight,
   LayoutDashboard,
   BarChart3,
   PanelLeftClose,
-  PanelLeft
+  PanelRightClose
 } from 'lucide-react'
 import { CompanySelector } from './company-selector'
 
@@ -142,7 +140,7 @@ export function Sidebar({ className }: SidebarProps) {
               title={isCollapsed ? t('expandMenu') : t('collapseMenu')}
             >
               {isCollapsed ? (
-                <PanelLeft className="h-4 w-4" />
+                <PanelRightClose className="h-4 w-4" />
               ) : (
                 <>
                   <PanelLeftClose className="h-4 w-4 mr-3" />

@@ -46,7 +46,8 @@
     "profile": "Profile",
     "logout": "Logout",
     "role": "Role",
-    "clickHint": "Click {count} more time{suffix}..."
+    "clickHint": "Click {count} more time{suffix}...",
+    "openMenu": "Open menu"
   },
   "dashboard": {
     "title": "Dashboard",
