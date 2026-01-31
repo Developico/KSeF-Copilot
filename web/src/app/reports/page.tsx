@@ -30,6 +30,7 @@ import {
   RefreshCw,
   FileText,
   CreditCard,
+  Folder,
 } from 'lucide-react'
 import { useInvoices } from '@/hooks/use-api'
 import { Invoice } from '@/lib/api'
@@ -62,6 +63,13 @@ interface SupplierData {
 
 interface CategoryData {
   category: string
+  invoiceCount: number
+  totalGross: number
+  percentage: number
+}
+
+interface MpkData {
+  mpk: string
   invoiceCount: number
   totalGross: number
   percentage: number
@@ -174,6 +182,31 @@ export default function ReportsPage() {
     return Object.entries(categories)
       .map(([category, data]) => ({
         category,
+        invoiceCount: data.count,
+        totalGross: data.total,
+        percentage: grandTotal > 0 ? (data.total / grandTotal) * 100 : 0,
+      }))
+      .sort((a, b) => b.totalGross - a.totalGross)
+  }, [filteredInvoices])
+
+  // MPK breakdown
+  const mpkData = useMemo<MpkData[]>(() => {
+    const mpks: Record<string, { count: number; total: number }> = {}
+    let grandTotal = 0
+    
+    filteredInvoices.forEach(inv => {
+      const mpk = inv.mpk || 'Nieprzypisane'
+      if (!mpks[mpk]) {
+        mpks[mpk] = { count: 0, total: 0 }
+      }
+      mpks[mpk].count++
+      mpks[mpk].total += inv.grossAmount
+      grandTotal += inv.grossAmount
+    })
+    
+    return Object.entries(mpks)
+      .map(([mpk, data]) => ({
+        mpk,
         invoiceCount: data.count,
         totalGross: data.total,
         percentage: grandTotal > 0 ? (data.total / grandTotal) * 100 : 0,
@@ -347,6 +380,10 @@ export default function ReportsPage() {
             <Building2 className="mr-2 h-4 w-4" />
             Dostawcy
           </TabsTrigger>
+          <TabsTrigger value="mpk">
+            <Folder className="mr-2 h-4 w-4" />
+            MPK
+          </TabsTrigger>
           <TabsTrigger value="categories">
             <PieChart className="mr-2 h-4 w-4" />
             Kategorie
@@ -483,6 +520,95 @@ export default function ReportsPage() {
                       <TableRow>
                         <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                           Brak danych o dostawcach
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* MPK Tab */}
+        <TabsContent value="mpk" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg md:text-xl">Podział wg MPK</CardTitle>
+              <CardDescription className="text-sm">
+                Rozkład kosztów według miejsc powstawania kosztów
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 md:space-y-4">
+                {mpkData.map((item, idx) => (
+                  <div key={item.mpk} className="space-y-1 md:space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        <Badge variant={item.mpk === 'Nieprzypisane' ? 'outline' : 'default'} className="shrink-0">
+                          {item.mpk}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">{item.invoiceCount} faktur</span>
+                      </div>
+                      <span className="font-medium text-sm shrink-0">{formatCurrency(item.totalGross)}</span>
+                    </div>
+                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all ${item.mpk === 'Nieprzypisane' ? 'bg-muted-foreground/50' : 'bg-blue-500'}`}
+                        style={{ width: `${item.percentage}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-muted-foreground text-right">
+                      {item.percentage.toFixed(1)}% całości
+                    </div>
+                  </div>
+                ))}
+                {mpkData.length === 0 && (
+                  <div className="text-center text-muted-foreground py-8">
+                    Brak danych o MPK
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* MPK Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg md:text-xl">Szczegóły MPK</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>MPK</TableHead>
+                      <TableHead className="text-right">Faktury</TableHead>
+                      <TableHead className="text-right">Suma brutto</TableHead>
+                      <TableHead className="text-right hidden sm:table-cell">Średnia</TableHead>
+                      <TableHead className="text-right">Udział</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mpkData.map((item) => (
+                      <TableRow key={item.mpk}>
+                        <TableCell>
+                          <Badge variant={item.mpk === 'Nieprzypisane' ? 'outline' : 'secondary'}>
+                            {item.mpk}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{item.invoiceCount}</TableCell>
+                        <TableCell className="text-right font-medium">{formatCurrency(item.totalGross)}</TableCell>
+                        <TableCell className="text-right hidden sm:table-cell">
+                          {formatCurrency(item.totalGross / item.invoiceCount)}
+                        </TableCell>
+                        <TableCell className="text-right">{item.percentage.toFixed(1)}%</TableCell>
+                      </TableRow>
+                    ))}
+                    {mpkData.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          Brak danych o MPK
                         </TableCell>
                       </TableRow>
                     )}

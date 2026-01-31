@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,10 +15,19 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   FileText,
   Download,
   Eye,
   ArrowDownToLine,
+  ArrowUp,
+  ArrowDown,
   Calendar,
   Building2,
   RefreshCw,
@@ -30,12 +39,16 @@ import {
   FileCheck,
   Trash2,
   Filter,
+  Folder,
+  Tag,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react'
 import { useInvoices, useMarkAsPaid, useDeleteInvoice, useUpdateInvoice } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
 import { Invoice, InvoiceListParams } from '@/lib/api'
 import { exportInvoicesToCsv } from '@/lib/export'
-import { InvoiceFilters } from '@/components/invoices/invoice-filters'
+import { InvoiceFilters, GroupBy, SortColumn, SortDirection } from '@/components/invoices/invoice-filters'
 import { InvoiceMobileCard } from '@/components/invoices/invoice-mobile-card'
 import { DocumentScannerModal } from '@/components/documents'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
@@ -112,18 +125,40 @@ function formatCurrency(amount: number, currency: string = 'PLN') {
   }).format(amount)
 }
 
+// ============================================================================
+// Grouping Types
+// ============================================================================
+
+interface InvoiceGroup {
+  key: string
+  label: string
+  invoices: Invoice[]
+  totalGross: number
+}
+
+const MONTH_NAMES_PL = [
+  'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
+  'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
+]
+
 export default function InvoicesPage() {
   const router = useRouter()
   const { toast } = useToast()
   
-  // Mobile detection
+  // Mobile detection - use sm breakpoint (640px) for card/table switch
   const [isMobile, setIsMobile] = useState(false)
+  // Tablet detection - between sm and lg (640px - 1024px) for filters layout
+  const [isTablet, setIsTablet] = useState(false)
   
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768)
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
+    const checkViewport = () => {
+      const width = window.innerWidth
+      setIsMobile(width < 640) // sm breakpoint
+      setIsTablet(width >= 640 && width < 1024) // between sm and lg
+    }
+    checkViewport()
+    window.addEventListener('resize', checkViewport)
+    return () => window.removeEventListener('resize', checkViewport)
   }, [])
   
   const [filters, setFilters] = useState<InvoiceListParams>({
@@ -140,6 +175,12 @@ export default function InvoicesPage() {
   
   // Mobile filters drawer state
   const [filtersDrawerOpen, setFiltersDrawerOpen] = useState(false)
+  
+  // Grouping and sorting state
+  const [groupBy, setGroupBy] = useState<GroupBy>('date')
+  const [sortColumn, setSortColumn] = useState<SortColumn>('invoiceDate')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   
   const { data, isLoading, refetch } = useInvoices(filters)
   
@@ -166,6 +207,141 @@ export default function InvoicesPage() {
   const notDescribedCount = allInvoices.filter(i => getDescriptionStatus(i) === 'not_described').length
   const aiSuggestedCount = allInvoices.filter(i => getDescriptionStatus(i) === 'ai_suggested').length
   const describedCount = allInvoices.filter(i => getDescriptionStatus(i) === 'described').length
+
+  // Extract unique MPKs and categories for filter dropdowns
+  const availableMpks = useMemo(() => {
+    const mpks = new Set<string>()
+    allInvoices.forEach(inv => {
+      if (inv.mpk) mpks.add(inv.mpk)
+      if (inv.aiMpkSuggestion) mpks.add(inv.aiMpkSuggestion)
+    })
+    return Array.from(mpks).sort((a, b) => a.localeCompare(b, 'pl'))
+  }, [allInvoices])
+
+  const availableCategories = useMemo(() => {
+    const categories = new Set<string>()
+    allInvoices.forEach(inv => {
+      if (inv.category) categories.add(inv.category)
+      if (inv.aiCategorySuggestion) categories.add(inv.aiCategorySuggestion)
+    })
+    return Array.from(categories).sort((a, b) => a.localeCompare(b, 'pl'))
+  }, [allInvoices])
+
+  // Sort invoices
+  const sortedInvoices = useMemo(() => {
+    const sorted = [...invoices]
+    const dirMultiplier = sortDirection === 'desc' ? -1 : 1
+    
+    sorted.sort((a, b) => {
+      let comparison = 0
+      switch (sortColumn) {
+        case 'invoiceNumber':
+          comparison = (a.invoiceNumber || '').localeCompare(b.invoiceNumber || '', 'pl', { numeric: true })
+          break
+        case 'invoiceDate':
+          const dateA = a.invoiceDate ? new Date(a.invoiceDate).getTime() : 0
+          const dateB = b.invoiceDate ? new Date(b.invoiceDate).getTime() : 0
+          comparison = dateA - dateB
+          break
+        case 'dueDate':
+          const dueA = a.dueDate ? new Date(a.dueDate).getTime() : 0
+          const dueB = b.dueDate ? new Date(b.dueDate).getTime() : 0
+          comparison = dueA - dueB
+          break
+        case 'grossAmount':
+          comparison = (a.grossAmount || 0) - (b.grossAmount || 0)
+          break
+        case 'supplierName':
+          comparison = (a.supplierName || '').localeCompare(b.supplierName || '', 'pl')
+          break
+        default:
+          comparison = 0
+      }
+      return comparison * dirMultiplier
+    })
+    
+    return sorted
+  }, [invoices, sortColumn, sortDirection])
+
+  // Group invoices
+  const groupedInvoices = useMemo<InvoiceGroup[]>(() => {
+    if (groupBy === 'none') {
+      return [{
+        key: 'all',
+        label: 'Wszystkie faktury',
+        invoices: sortedInvoices,
+        totalGross: sortedInvoices.reduce((sum, i) => sum + i.grossAmount, 0),
+      }]
+    }
+
+    const groups: Record<string, InvoiceGroup> = {}
+
+    for (const invoice of sortedInvoices) {
+      let key: string
+      let label: string
+
+      switch (groupBy) {
+        case 'date': {
+          const date = invoice.invoiceDate ? new Date(invoice.invoiceDate) : null
+          if (date) {
+            const year = date.getFullYear()
+            const month = date.getMonth()
+            key = `${year}-${String(month + 1).padStart(2, '0')}`
+            label = `${MONTH_NAMES_PL[month]} ${year}`
+          } else {
+            key = 'unknown'
+            label = 'Brak daty'
+          }
+          break
+        }
+        case 'mpk':
+          key = invoice.mpk || 'brak'
+          label = invoice.mpk || 'Brak MPK'
+          break
+        case 'category':
+          key = invoice.category || 'brak'
+          label = invoice.category || 'Brak kategorii'
+          break
+        default:
+          key = 'all'
+          label = 'Wszystkie'
+      }
+
+      if (!groups[key]) {
+        groups[key] = { key, label, invoices: [], totalGross: 0 }
+      }
+      groups[key].invoices.push(invoice)
+      groups[key].totalGross += invoice.grossAmount
+    }
+
+    // Sort groups - for date descending, for others alphabetically
+    const sortedGroups = Object.values(groups)
+    if (groupBy === 'date') {
+      sortedGroups.sort((a, b) => b.key.localeCompare(a.key)) // Newest first
+    } else {
+      sortedGroups.sort((a, b) => {
+        // 'brak' always at the end
+        if (a.key === 'brak') return 1
+        if (b.key === 'brak') return -1
+        return a.label.localeCompare(b.label, 'pl')
+      })
+    }
+
+    return sortedGroups
+  }, [sortedInvoices, groupBy])
+
+  // Toggle group collapse
+  const toggleGroupCollapse = useCallback((key: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }, [])
 
   const handleFiltersChange = useCallback((newFilters: InvoiceListParams) => {
     setFilters(prev => ({
@@ -345,6 +521,50 @@ export default function InvoicesPage() {
                     </div>
                   </div>
                   
+                  {/* Grouping & Sorting in mobile drawer */}
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">Grupowanie</p>
+                      <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="date">Data (miesiąc)</SelectItem>
+                          <SelectItem value="mpk">MPK</SelectItem>
+                          <SelectItem value="category">Kategoria</SelectItem>
+                          <SelectItem value="none">Brak grupowania</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">Sortowanie</p>
+                      <div className="flex gap-2">
+                        <Select value={sortColumn} onValueChange={(v) => setSortColumn(v as SortColumn)}>
+                          <SelectTrigger className="flex-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="invoiceDate">Data faktury</SelectItem>
+                            <SelectItem value="dueDate">Termin płatności</SelectItem>
+                            <SelectItem value="grossAmount">Kwota brutto</SelectItem>
+                            <SelectItem value="supplierName">Dostawca</SelectItem>
+                            <SelectItem value="invoiceNumber">Numer faktury</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select value={sortDirection} onValueChange={(v) => setSortDirection(v as SortDirection)}>
+                          <SelectTrigger className="w-[100px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="desc">Malejąco</SelectItem>
+                            <SelectItem value="asc">Rosnąco</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                  
                   {/* Advanced filters */}
                   <div className="pt-4 border-t">
                     <InvoiceFilters 
@@ -374,103 +594,113 @@ export default function InvoicesPage() {
         </div>
       </div>
 
-      {/* Quick Filters - Desktop only */}
+      {/* Quick Filters - Show on tablet and desktop */}
       {!isMobile && (
       <Card>
         <CardContent className="py-3 px-4">
-          <div className="flex items-center justify-between">
-            {/* All filter buttons spread evenly */}
-            <Button
-              variant={!filters.paymentStatus && !filters.overdue ? "default" : "ghost"}
-              size="sm"
-              className="h-8 gap-1.5"
-              onClick={() => setFilters(f => ({ ...f, paymentStatus: undefined, overdue: undefined }))}
-            >
-              <FileText className="h-3.5 w-3.5" />
-              Wszystkie
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5">{data?.count || 0}</Badge>
-            </Button>
-            <Button
-              variant={filters.paymentStatus === 'pending' && !filters.overdue ? "default" : "ghost"}
-              size="sm"
-              className="h-8 gap-1.5"
-              onClick={() => setFilters(f => ({ ...f, paymentStatus: 'pending', overdue: undefined }))}
-            >
-              <ArrowDownToLine className="h-3.5 w-3.5 text-orange-500" />
-              Do opłacenia
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5">{pendingCount}</Badge>
-            </Button>
-            <Button
-              variant={filters.overdue ? "default" : "ghost"}
-              size="sm"
-              className="h-8 gap-1.5"
-              onClick={() => setFilters(f => ({ ...f, overdue: true, paymentStatus: undefined }))}
-            >
-              <AlertCircle className="h-3.5 w-3.5 text-red-500" />
-              Zaległe
-              <Badge variant="destructive" className="ml-1 h-5 px-1.5">{overdueCount}</Badge>
-            </Button>
-            <Button
-              variant={filters.paymentStatus === 'paid' ? "default" : "ghost"}
-              size="sm"
-              className="h-8 gap-1.5"
-              onClick={() => setFilters(f => ({ ...f, paymentStatus: 'paid', overdue: undefined }))}
-            >
-              <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-              Opłacone
-              <Badge className="ml-1 h-5 px-1.5 bg-green-100 text-green-800">{paidCount}</Badge>
-            </Button>
+          {/* Tablet: 2 rows with wrapping / Desktop: single row */}
+          <div className={`flex items-center gap-2 ${isTablet ? 'flex-wrap justify-start' : 'justify-between'}`}>
+            {/* Payment status filters */}
+            <div className="flex items-center gap-1 lg:gap-2 flex-wrap">
+              <Button
+                variant={!filters.paymentStatus && !filters.overdue ? "default" : "ghost"}
+                size="sm"
+                className="h-8 gap-1 lg:gap-1.5"
+                onClick={() => setFilters(f => ({ ...f, paymentStatus: undefined, overdue: undefined }))}
+              >
+                <FileText className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Wszystkie</span>
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5">{data?.count || 0}</Badge>
+              </Button>
+              <Button
+                variant={filters.paymentStatus === 'pending' && !filters.overdue ? "default" : "ghost"}
+                size="sm"
+                className="h-8 gap-1 lg:gap-1.5"
+                onClick={() => setFilters(f => ({ ...f, paymentStatus: 'pending', overdue: undefined }))}
+              >
+                <ArrowDownToLine className="h-3.5 w-3.5 text-orange-500" />
+                <span className="hidden md:inline">Do opłacenia</span>
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5">{pendingCount}</Badge>
+              </Button>
+              <Button
+                variant={filters.overdue ? "default" : "ghost"}
+                size="sm"
+                className="h-8 gap-1 lg:gap-1.5"
+                onClick={() => setFilters(f => ({ ...f, overdue: true, paymentStatus: undefined }))}
+              >
+                <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+                <span className="hidden md:inline">Zaległe</span>
+                <Badge variant="destructive" className="ml-1 h-5 px-1.5">{overdueCount}</Badge>
+              </Button>
+              <Button
+                variant={filters.paymentStatus === 'paid' ? "default" : "ghost"}
+                size="sm"
+                className="h-8 gap-1 lg:gap-1.5"
+                onClick={() => setFilters(f => ({ ...f, paymentStatus: 'paid', overdue: undefined }))}
+              >
+                <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                <span className="hidden md:inline">Opłacone</span>
+                <Badge className="ml-1 h-5 px-1.5 bg-green-100 text-green-800">{paidCount}</Badge>
+              </Button>
+            </div>
             
-            {/* Separator */}
-            <div className="h-6 w-px bg-border" />
+            {/* Separator - hidden on tablet */}
+            <div className="h-6 w-px bg-border hidden lg:block" />
             
-            <Button
-              variant={descriptionFilter === 'not_described' ? "default" : "ghost"}
-              size="sm"
-              className={descriptionFilter === 'not_described' ? "h-8 gap-1.5" : "h-8 gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50"}
-              onClick={() => setDescriptionFilter(f => f === 'not_described' ? null : 'not_described')}
-            >
-              <FileQuestion className="h-3.5 w-3.5" />
-              Bez opisu
-              <Badge variant="destructive" className="ml-1 h-5 px-1.5">{notDescribedCount}</Badge>
-            </Button>
-            <Button
-              variant={descriptionFilter === 'ai_suggested' ? "default" : "ghost"}
-              size="sm"
-              className={descriptionFilter === 'ai_suggested' ? "h-8 gap-1.5" : "h-8 gap-1.5 text-purple-600 hover:text-purple-700 hover:bg-purple-50"}
-              onClick={() => setDescriptionFilter(f => f === 'ai_suggested' ? null : 'ai_suggested')}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Propozycja AI
-              <Badge className="ml-1 h-5 px-1.5 bg-purple-100 text-purple-800">{aiSuggestedCount}</Badge>
-            </Button>
-            <Button
-              variant={descriptionFilter === 'described' ? "default" : "ghost"}
-              size="sm"
-              className={descriptionFilter === 'described' ? "h-8 gap-1.5" : "h-8 gap-1.5 text-green-600 hover:text-green-700 hover:bg-green-50"}
-              onClick={() => setDescriptionFilter(f => f === 'described' ? null : 'described')}
-            >
-              <FileCheck className="h-3.5 w-3.5" />
-              Opisane
-              <Badge className="ml-1 h-5 px-1.5 bg-green-100 text-green-800">{describedCount}</Badge>
-            </Button>
+            {/* Description status filters */}
+            <div className="flex items-center gap-1 lg:gap-2 flex-wrap">
+              <Button
+                variant={descriptionFilter === 'not_described' ? "default" : "ghost"}
+                size="sm"
+                className={descriptionFilter === 'not_described' ? "h-8 gap-1 lg:gap-1.5" : "h-8 gap-1 lg:gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50"}
+                onClick={() => setDescriptionFilter(f => f === 'not_described' ? null : 'not_described')}
+              >
+                <FileQuestion className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline">Bez opisu</span>
+                <Badge variant="destructive" className="ml-1 h-5 px-1.5">{notDescribedCount}</Badge>
+              </Button>
+              <Button
+                variant={descriptionFilter === 'ai_suggested' ? "default" : "ghost"}
+                size="sm"
+                className={descriptionFilter === 'ai_suggested' ? "h-8 gap-1 lg:gap-1.5" : "h-8 gap-1 lg:gap-1.5 text-purple-600 hover:text-purple-700 hover:bg-purple-50"}
+                onClick={() => setDescriptionFilter(f => f === 'ai_suggested' ? null : 'ai_suggested')}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline">Propozycja AI</span>
+                <Badge className="ml-1 h-5 px-1.5 bg-purple-100 text-purple-800">{aiSuggestedCount}</Badge>
+              </Button>
+              <Button
+                variant={descriptionFilter === 'described' ? "default" : "ghost"}
+                size="sm"
+                className={descriptionFilter === 'described' ? "h-8 gap-1 lg:gap-1.5" : "h-8 gap-1 lg:gap-1.5 text-green-600 hover:text-green-700 hover:bg-green-50"}
+                onClick={() => setDescriptionFilter(f => f === 'described' ? null : 'described')}
+              >
+                <FileCheck className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline">Opisane</span>
+                <Badge className="ml-1 h-5 px-1.5 bg-green-100 text-green-800">{describedCount}</Badge>
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
       )}
 
-      {/* Search & Advanced Filters - Desktop only */}
+      {/* Search, Advanced Filters & Grouping - Desktop only */}
       {!isMobile && (
         <InvoiceFilters 
           filters={filters} 
           onChange={handleFiltersChange}
+          groupBy={groupBy}
+          onGroupByChange={setGroupBy}
+          availableMpks={availableMpks}
+          availableCategories={availableCategories}
         />
       )}
 
       {/* Mobile: Card view / Desktop: Table */}
       {isMobile ? (
-        // Mobile card view
-        <div className="space-y-3">
+        // Mobile card view with grouping
+        <div className="space-y-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -489,14 +719,45 @@ export default function InvoicesPage() {
               </CardContent>
             </Card>
           ) : (
-            invoices.map((invoice) => (
-              <InvoiceMobileCard
-                key={invoice.id}
-                invoice={invoice}
-                onTogglePaymentStatus={handleTogglePaymentStatus}
-                onDelete={invoice.source === 'Manual' ? handleDeleteInvoice : undefined}
-                isUpdating={updateInvoiceMutation.isPending}
-              />
+            groupedInvoices.map((group) => (
+              <div key={group.key} className="space-y-2">
+                {/* Group header */}
+                {groupBy !== 'none' && (
+                  <button
+                    onClick={() => toggleGroupCollapse(group.key)}
+                    className="w-full flex items-center justify-between px-3 py-2 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      {collapsedGroups.has(group.key) ? (
+                        <ChevronRight className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                      <span className="font-medium text-sm">{group.label}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {group.invoices.length}
+                      </Badge>
+                    </div>
+                    <span className="font-medium text-sm">
+                      {formatCurrency(group.totalGross)}
+                    </span>
+                  </button>
+                )}
+                {/* Invoices in group */}
+                {!collapsedGroups.has(group.key) && (
+                  <div className="space-y-2">
+                    {group.invoices.map((invoice) => (
+                      <InvoiceMobileCard
+                        key={invoice.id}
+                        invoice={invoice}
+                        onTogglePaymentStatus={handleTogglePaymentStatus}
+                        onDelete={invoice.source === 'Manual' ? handleDeleteInvoice : undefined}
+                        isUpdating={updateInvoiceMutation.isPending}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             ))
           )}
         </div>
@@ -525,18 +786,124 @@ export default function InvoicesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Numer faktury</TableHead>
-                  <TableHead>Data wystawienia</TableHead>
-                  <TableHead>Dostawca</TableHead>
-                  <TableHead className="text-right">Kwota brutto</TableHead>
-                  <TableHead>MPK</TableHead>
-                  <TableHead>Kategoria</TableHead>
-                  <TableHead>Status opisu</TableHead>
-                  <TableHead className="w-[120px] text-center">Akcje</TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50 select-none"
+                    onClick={() => {
+                      if (sortColumn === 'invoiceNumber') {
+                        setSortDirection(d => d === 'asc' ? 'desc' : 'asc')
+                      } else {
+                        setSortColumn('invoiceNumber')
+                        setSortDirection('asc')
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      Numer faktury
+                      {sortColumn === 'invoiceNumber' && (
+                        sortDirection === 'asc' 
+                          ? <ArrowUp className="h-3.5 w-3.5" />
+                          : <ArrowDown className="h-3.5 w-3.5" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="hidden lg:table-cell cursor-pointer hover:bg-muted/50 select-none"
+                    onClick={() => {
+                      if (sortColumn === 'invoiceDate') {
+                        setSortDirection(d => d === 'asc' ? 'desc' : 'asc')
+                      } else {
+                        setSortColumn('invoiceDate')
+                        setSortDirection('desc')
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      Data wystawienia
+                      {sortColumn === 'invoiceDate' && (
+                        sortDirection === 'asc' 
+                          ? <ArrowUp className="h-3.5 w-3.5" />
+                          : <ArrowDown className="h-3.5 w-3.5" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50 select-none"
+                    onClick={() => {
+                      if (sortColumn === 'supplierName') {
+                        setSortDirection(d => d === 'asc' ? 'desc' : 'asc')
+                      } else {
+                        setSortColumn('supplierName')
+                        setSortDirection('asc')
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      Dostawca
+                      {sortColumn === 'supplierName' && (
+                        sortDirection === 'asc' 
+                          ? <ArrowUp className="h-3.5 w-3.5" />
+                          : <ArrowDown className="h-3.5 w-3.5" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="text-right cursor-pointer hover:bg-muted/50 select-none"
+                    onClick={() => {
+                      if (sortColumn === 'grossAmount') {
+                        setSortDirection(d => d === 'asc' ? 'desc' : 'asc')
+                      } else {
+                        setSortColumn('grossAmount')
+                        setSortDirection('desc')
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      Kwota brutto
+                      {sortColumn === 'grossAmount' && (
+                        sortDirection === 'asc' 
+                          ? <ArrowUp className="h-3.5 w-3.5" />
+                          : <ArrowDown className="h-3.5 w-3.5" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead className="hidden xl:table-cell">MPK</TableHead>
+                  <TableHead className="hidden xl:table-cell">Kategoria</TableHead>
+                  <TableHead className="hidden md:table-cell">Status opisu</TableHead>
+                  <TableHead className="w-[100px] lg:w-[120px] text-center">Akcje</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {invoices.map((invoice) => (
+                {groupedInvoices.map((group) => (
+                  <>
+                    {/* Group header row */}
+                    {groupBy !== 'none' && (
+                      <TableRow 
+                        key={`group-${group.key}`}
+                        className="bg-muted/50 hover:bg-muted/70 cursor-pointer"
+                        onClick={() => toggleGroupCollapse(group.key)}
+                      >
+                        <TableCell colSpan={8}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {collapsedGroups.has(group.key) ? (
+                                <ChevronRight className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                              <span className="font-semibold">{group.label}</span>
+                              <Badge variant="secondary">
+                                {group.invoices.length} {group.invoices.length === 1 ? 'faktura' : group.invoices.length < 5 ? 'faktury' : 'faktur'}
+                              </Badge>
+                            </div>
+                            <span className="font-semibold">
+                              {formatCurrency(group.totalGross)}
+                            </span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {/* Invoice rows in group */}
+                    {!collapsedGroups.has(group.key) && group.invoices.map((invoice) => (
                   <TableRow 
                     key={invoice.id}
                     className="cursor-pointer hover:bg-muted/50"
@@ -544,16 +911,20 @@ export default function InvoicesPage() {
                   >
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <ArrowDownToLine className="h-4 w-4 text-blue-500" />
+                        <ArrowDownToLine className="h-4 w-4 text-blue-500 hidden sm:block" />
                         <div>
-                          <div className="font-medium">{invoice.invoiceNumber}</div>
-                          <div className="text-xs text-muted-foreground font-mono">
-                            {invoice.referenceNumber?.slice(0, 25) || '-'}
+                          <div className="font-medium text-sm">{invoice.invoiceNumber}</div>
+                          <div className="text-xs text-muted-foreground font-mono hidden sm:block">
+                            {invoice.referenceNumber?.slice(0, 20) || '-'}
+                          </div>
+                          {/* Show date on tablet when column is hidden */}
+                          <div className="text-xs text-muted-foreground lg:hidden">
+                            {new Date(invoice.invoiceDate).toLocaleDateString('pl-PL')}
                           </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         {new Date(invoice.invoiceDate).toLocaleDateString('pl-PL')}
@@ -561,19 +932,19 @@ export default function InvoicesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <Building2 className="h-4 w-4 text-muted-foreground hidden md:block" />
                         <div>
-                          <div className="font-medium">{invoice.supplierName}</div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="font-medium text-sm truncate max-w-[120px] md:max-w-[200px]">{invoice.supplierName}</div>
+                          <div className="text-xs text-muted-foreground hidden sm:block">
                             NIP: {invoice.supplierNip}
                           </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right font-medium">
+                    <TableCell className="text-right font-medium text-sm">
                       {formatCurrency(invoice.grossAmount)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden xl:table-cell">
                       {invoice.mpk ? (
                         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                           {invoice.mpk}
@@ -587,7 +958,7 @@ export default function InvoicesPage() {
                         <span className="text-muted-foreground text-sm">—</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden xl:table-cell">
                       {invoice.category ? (
                         <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
                           {invoice.category}
@@ -601,7 +972,7 @@ export default function InvoicesPage() {
                         <span className="text-muted-foreground text-sm">—</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       {getDescriptionStatusBadge(getDescriptionStatus(invoice))}
                     </TableCell>
                     <TableCell>
@@ -656,6 +1027,8 @@ export default function InvoicesPage() {
                       </div>
                     </TableCell>
                   </TableRow>
+                ))}
+                  </>
                 ))}
               </TableBody>
             </Table>

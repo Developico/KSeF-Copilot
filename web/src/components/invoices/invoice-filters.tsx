@@ -13,6 +13,9 @@ import {
   Building2,
   Tag,
   DollarSign,
+  Folder,
+  ArrowUpDown,
+  FileText,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -45,12 +48,23 @@ import { cn } from '@/lib/utils'
 // Types
 // ============================================================================
 
+export type GroupBy = 'date' | 'mpk' | 'category' | 'none'
+export type SortColumn = 'invoiceDate' | 'grossAmount' | 'supplierName' | 'dueDate' | 'invoiceNumber'
+export type SortDirection = 'asc' | 'desc'
+
 export interface InvoiceFiltersProps {
   filters: InvoiceListParams
   onChange: (filters: InvoiceListParams) => void
   availableMpks?: string[]
   availableCategories?: string[]
   className?: string
+  // Grouping & Sorting props
+  groupBy?: GroupBy
+  onGroupByChange?: (groupBy: GroupBy) => void
+  sortColumn?: SortColumn
+  onSortColumnChange?: (sortColumn: SortColumn) => void
+  sortDirection?: SortDirection
+  onSortDirectionChange?: (sortDirection: SortDirection) => void
 }
 
 // ============================================================================
@@ -61,12 +75,6 @@ const SOURCES = [
   { value: 'all', label: 'Wszystkie' },
   { value: 'KSeF', label: 'KSeF' },
   { value: 'Manual', label: 'Ręczne' },
-]
-
-const PAYMENT_STATUSES = [
-  { value: 'all', label: 'Wszystkie' },
-  { value: 'pending', label: 'Oczekujące' },
-  { value: 'paid', label: 'Opłacone' },
 ]
 
 const SORT_OPTIONS = [
@@ -86,12 +94,17 @@ export function InvoiceFilters({
   availableMpks = [],
   availableCategories = [],
   className,
+  groupBy,
+  onGroupByChange,
+  sortColumn,
+  onSortColumnChange,
+  sortDirection,
+  onSortDirectionChange,
 }: InvoiceFiltersProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
-  // Count active filters
+  // Count active filters (excluding payment status which is handled by quick buttons)
   const activeFilterCount = [
-    filters.paymentStatus,
     filters.source,
     filters.mpk || filters.mpkList?.length,
     filters.category,
@@ -123,60 +136,64 @@ export function InvoiceFilters({
   return (
     <div className={cn('space-y-4', className)}>
       {/* Quick Filters Row */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 lg:gap-3">
         {/* Search */}
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-[180px] lg:min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Szukaj po numerze, dostawcy..."
-            className="pl-9"
+            placeholder="Szukaj..."
+            className="pl-9 h-9"
             value={filters.search || ''}
             onChange={(e) => updateFilter('search', e.target.value || undefined)}
           />
         </div>
 
-        {/* Payment Status */}
-        <Select
-          value={filters.paymentStatus || 'all'}
-          onValueChange={(v) => updateFilter('paymentStatus', v === 'all' ? undefined : v as 'pending' | 'paid')}
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            {PAYMENT_STATUSES.map((s) => (
-              <SelectItem key={s.value} value={s.value}>
-                {s.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Source */}
-        <Select
-          value={filters.source || 'all'}
-          onValueChange={(v) => updateFilter('source', v === 'all' ? undefined : v as 'KSeF' | 'Manual')}
-        >
-          <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder="Źródło" />
-          </SelectTrigger>
-          <SelectContent>
-            {SOURCES.map((s) => (
-              <SelectItem key={s.value} value={s.value}>
-                {s.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Grouping - if handlers provided */}
+        {onGroupByChange && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground hidden sm:inline">Grupuj:</span>
+            <Select value={groupBy || 'date'} onValueChange={(v) => onGroupByChange(v as GroupBy)}>
+              <SelectTrigger className="w-[120px] lg:w-[140px] h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>Miesiąc</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="mpk">
+                  <div className="flex items-center gap-2">
+                    <Folder className="h-3.5 w-3.5" />
+                    <span>MPK</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="category">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-3.5 w-3.5" />
+                    <span>Kategoria</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="none">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>Brak</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Expand/Collapse */}
         <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
           <CollapsibleTrigger asChild>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-1 h-9">
               <Filter className="h-4 w-4" />
-              Więcej filtrów
+              <span className="hidden md:inline">Filtry</span>
               {activeFilterCount > 0 && (
-                <Badge variant="secondary" className="ml-1">
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5">
                   {activeFilterCount}
                 </Badge>
               )}
@@ -191,9 +208,9 @@ export function InvoiceFilters({
 
         {/* Clear Filters */}
         {activeFilterCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
+          <Button variant="ghost" size="sm" className="h-9" onClick={clearFilters}>
             <X className="h-4 w-4 mr-1" />
-            Wyczyść
+            <span className="hidden sm:inline">Wyczyść</span>
           </Button>
         )}
       </div>
@@ -201,7 +218,8 @@ export function InvoiceFilters({
       {/* Expanded Filters */}
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CollapsibleContent className="space-y-4 pt-4 border-t">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Row 1: Date filters and amounts */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Date Range */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
@@ -211,7 +229,7 @@ export function InvoiceFilters({
               <div className="flex gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="flex-1 justify-start text-left font-normal">
+                    <Button variant="outline" className="flex-1 justify-start text-left font-normal h-9 px-3">
                       {filters.fromDate
                         ? format(new Date(filters.fromDate), 'dd.MM.yyyy', { locale: pl })
                         : 'Od'}
@@ -230,7 +248,7 @@ export function InvoiceFilters({
                 </Popover>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="flex-1 justify-start text-left font-normal">
+                    <Button variant="outline" className="flex-1 justify-start text-left font-normal h-9 px-3">
                       {filters.toDate
                         ? format(new Date(filters.toDate), 'dd.MM.yyyy', { locale: pl })
                         : 'Do'}
@@ -259,7 +277,7 @@ export function InvoiceFilters({
               <div className="flex gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="flex-1 justify-start text-left font-normal">
+                    <Button variant="outline" className="flex-1 justify-start text-left font-normal h-9 px-3">
                       {filters.dueDateFrom
                         ? format(new Date(filters.dueDateFrom), 'dd.MM.yyyy', { locale: pl })
                         : 'Od'}
@@ -278,7 +296,7 @@ export function InvoiceFilters({
                 </Popover>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="flex-1 justify-start text-left font-normal">
+                    <Button variant="outline" className="flex-1 justify-start text-left font-normal h-9 px-3">
                       {filters.dueDateTo
                         ? format(new Date(filters.dueDateTo), 'dd.MM.yyyy', { locale: pl })
                         : 'Do'}
@@ -308,6 +326,7 @@ export function InvoiceFilters({
                 <Input
                   type="number"
                   placeholder="Od"
+                  className="h-9"
                   value={filters.minAmount || ''}
                   onChange={(e) =>
                     updateFilter('minAmount', e.target.value ? Number(e.target.value) : undefined)
@@ -316,6 +335,7 @@ export function InvoiceFilters({
                 <Input
                   type="number"
                   placeholder="Do"
+                  className="h-9"
                   value={filters.maxAmount || ''}
                   onChange={(e) =>
                     updateFilter('maxAmount', e.target.value ? Number(e.target.value) : undefined)
@@ -332,6 +352,7 @@ export function InvoiceFilters({
               </Label>
               <Input
                 placeholder="NIP lub nazwa"
+                className="h-9"
                 value={filters.supplierName || filters.supplierNip || ''}
                 onChange={(e) => {
                   const value = e.target.value
@@ -346,110 +367,80 @@ export function InvoiceFilters({
                 }}
               />
             </div>
-
-            {/* MPK */}
-            {availableMpks.length > 0 && (
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Tag className="h-4 w-4" />
-                  MPK
-                </Label>
-                <Select
-                  value={filters.mpk || 'all'}
-                  onValueChange={(v) => updateFilter('mpk', v === 'all' ? undefined : v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Wybierz MPK" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Wszystkie</SelectItem>
-                    {availableMpks.map((mpk) => (
-                      <SelectItem key={mpk} value={mpk}>
-                        {mpk}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Category */}
-            {availableCategories.length > 0 && (
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Tag className="h-4 w-4" />
-                  Kategoria
-                </Label>
-                <Select
-                  value={filters.category || 'all'}
-                  onValueChange={(v) => updateFilter('category', v === 'all' ? undefined : v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Wybierz kategorię" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Wszystkie</SelectItem>
-                    {availableCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Overdue Checkbox */}
-            <div className="space-y-2">
-              <Label>Opcje</Label>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="overdue"
-                  checked={filters.overdue || false}
-                  onCheckedChange={(checked) =>
-                    updateFilter('overdue', checked === true ? true : undefined)
-                  }
-                />
-                <label
-                  htmlFor="overdue"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Tylko zaległe
-                </label>
-              </div>
-            </div>
           </div>
 
-          {/* Sort Options */}
-          <div className="flex items-center gap-4 pt-2 border-t">
-            <Label className="whitespace-nowrap">Sortowanie:</Label>
-            <Select
-              value={filters.orderBy || 'invoiceDate'}
-              onValueChange={(v) => updateFilter('orderBy', v as InvoiceListParams['orderBy'])}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SORT_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={filters.orderDirection || 'desc'}
-              onValueChange={(v) => updateFilter('orderDirection', v as 'asc' | 'desc')}
-            >
-              <SelectTrigger className="w-[130px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="desc">Malejąco</SelectItem>
-                <SelectItem value="asc">Rosnąco</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Row 2: Dropdowns - equal width */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* MPK */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Folder className="h-4 w-4" />
+                MPK
+              </Label>
+              <Select
+                value={filters.mpk || 'all'}
+                onValueChange={(v) => updateFilter('mpk', v === 'all' ? undefined : v)}
+              >
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue placeholder="Wybierz MPK" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Wszystkie</SelectItem>
+                  {availableMpks.map((mpk) => (
+                    <SelectItem key={mpk} value={mpk}>
+                      {mpk}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Category */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Tag className="h-4 w-4" />
+                Kategoria
+              </Label>
+              <Select
+                value={filters.category || 'all'}
+                onValueChange={(v) => updateFilter('category', v === 'all' ? undefined : v)}
+              >
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue placeholder="Wybierz kategorię" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Wszystkie</SelectItem>
+                  {availableCategories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Source */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Źródło
+              </Label>
+              <Select
+                value={filters.source || 'all'}
+                onValueChange={(v) => updateFilter('source', v === 'all' ? undefined : v as 'KSeF' | 'Manual')}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Źródło" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SOURCES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CollapsibleContent>
       </Collapsible>
