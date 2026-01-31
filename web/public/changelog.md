@@ -6,6 +6,24 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.5.1] - 2026-01-31
+
+### 🔧 Zmiany - Modularyzacja promptów AI
+
+- **Wydzielone prompty do osobnych plików** - prompty AI przeniesione z kodu TypeScript do edytowalnych plików Markdown
+- **Nowa struktura `api/src/lib/prompts/`**:
+  - `categorization.prompt.md` - kategoryzacja faktur (MPK, kategoria)
+  - `vision-extraction.prompt.md` - ekstrakcja danych z obrazów faktur (GPT-4o Vision)
+  - `pdf-text-extraction.prompt.md` - ekstrakcja danych z PDF tekstowych
+  - `index.ts` - loader promptów z cache i systemem placeholderów `{{zmienna}}`
+- **Funkcje loadera**:
+  - `loadPrompt(name)` - ładowanie szablonu z pliku
+  - `fillPromptTemplate(template, vars)` - podstawianie zmiennych
+  - `preloadPrompts()` - pre-cache przy starcie aplikacji
+- **Korzyści**: łatwiejsza edycja promptów bez modyfikacji kodu, lepsze wersjonowanie, możliwość A/B testów
+
+---
+
 ## [0.5.0] - 2026-01-31
 
 ### ✨ Dodane - Wielojęzyczność (i18n)
