@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { 
   FileUp, 
   Loader2, 
@@ -50,6 +51,8 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
  */
 export function DocumentScannerModal({ open, onOpenChange, onSkipToManual }: DocumentScannerModalProps) {
   const { toast } = useToast()
+  const t = useTranslations('invoices')
+  const tCommon = useTranslations('common')
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const [step, setStep] = useState<ModalStep>('upload')
@@ -79,12 +82,12 @@ export function DocumentScannerModal({ open, onOpenChange, onSkipToManual }: Doc
       if (result.success) {
         setStep('preview')
       } else {
-        setErrorMessage(result.error || 'Nie udało się wyodrębnić danych')
+        setErrorMessage(result.error || t('scanner.extractionFailed'))
         setStep('error')
       }
     },
     onError: (error: Error) => {
-      setErrorMessage(error.message || 'Błąd przetwarzania dokumentu')
+      setErrorMessage(error.message || t('scanner.processingError'))
       setStep('error')
     },
   })
@@ -109,19 +112,19 @@ export function DocumentScannerModal({ open, onOpenChange, onSkipToManual }: Doc
   // Validate file
   const validateFile = useCallback((file: File): string | null => {
     if (!SUPPORTED_TYPES.includes(file.type)) {
-      return `Nieobsługiwany typ pliku: ${file.type}. Obsługiwane: PDF, JPEG, PNG, WebP, GIF`
+      return t('scanner.unsupportedType', { type: file.type })
     }
     if (file.size > MAX_FILE_SIZE) {
-      return `Plik zbyt duży (${(file.size / 1024 / 1024).toFixed(1)} MB). Maksymalnie: 10 MB`
+      return t('scanner.fileTooLarge', { size: (file.size / 1024 / 1024).toFixed(1) })
     }
     return null
-  }, [])
+  }, [t])
 
   // Process file
   const processFile = useCallback(async (file: File) => {
     const error = validateFile(file)
     if (error) {
-      toast({ title: 'Błąd', description: error, variant: 'destructive' })
+      toast({ title: tCommon('error'), description: error, variant: 'destructive' })
       return
     }
 
@@ -168,11 +171,11 @@ export function DocumentScannerModal({ open, onOpenChange, onSkipToManual }: Doc
   // Handle success (invoice created)
   const handleInvoiceCreated = useCallback(() => {
     toast({
-      title: 'Sukces',
-      description: 'Faktura została utworzona na podstawie dokumentu',
+      title: tCommon('success'),
+      description: t('scanner.invoiceCreated', { number: '' }),
     })
     handleOpenChange(false)
-  }, [toast, handleOpenChange])
+  }, [toast, handleOpenChange, t, tCommon])
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -180,16 +183,16 @@ export function DocumentScannerModal({ open, onOpenChange, onSkipToManual }: Doc
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileUp className="h-5 w-5" />
-            {step === 'upload' && 'Skanuj fakturę'}
-            {step === 'processing' && 'Analizuję dokument...'}
-            {step === 'preview' && 'Podgląd wyodrębnionych danych'}
-            {step === 'error' && 'Błąd ekstrakcji'}
+            {step === 'upload' && t('scanner.title')}
+            {step === 'processing' && t('scanner.titleProcessing')}
+            {step === 'preview' && t('scanner.titlePreview')}
+            {step === 'error' && t('scanner.titleError')}
           </DialogTitle>
           <DialogDescription>
-            {step === 'upload' && 'Przeciągnij plik PDF lub zdjęcie faktury'}
-            {step === 'processing' && 'Proszę czekać, AI analizuje dokument'}
-            {step === 'preview' && 'Sprawdź i popraw dane przed utworzeniem faktury'}
-            {step === 'error' && 'Nie udało się przetworzyć dokumentu'}
+            {step === 'upload' && t('scanner.descUpload')}
+            {step === 'processing' && t('scanner.descProcessing')}
+            {step === 'preview' && t('scanner.descPreview')}
+            {step === 'error' && t('scanner.descError')}
           </DialogDescription>
         </DialogHeader>
 
@@ -209,10 +212,10 @@ export function DocumentScannerModal({ open, onOpenChange, onSkipToManual }: Doc
               >
                 <FileUp className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">
-                  Przeciągnij plik tutaj
+                  {t('scanner.dropHere')}
                 </h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  lub kliknij aby wybrać
+                  {t('scanner.orClickToSelect')}
                 </p>
                 <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
@@ -221,7 +224,7 @@ export function DocumentScannerModal({ open, onOpenChange, onSkipToManual }: Doc
                   <span className="flex items-center gap-1">
                     <ImageIcon className="h-4 w-4" /> JPEG, PNG, WebP
                   </span>
-                  <span>max 10 MB</span>
+                  <span>{t('scanner.maxSize')}</span>
                 </div>
                 <input
                   ref={fileInputRef}
@@ -229,7 +232,7 @@ export function DocumentScannerModal({ open, onOpenChange, onSkipToManual }: Doc
                   accept=".pdf,image/jpeg,image/png,image/webp,image/gif"
                   className="hidden"
                   onChange={handleFileSelect}
-                  aria-label="Wybierz plik do importu"
+                  aria-label={t('scanner.selectFile')}
                 />
               </div>
               
@@ -244,7 +247,7 @@ export function DocumentScannerModal({ open, onOpenChange, onSkipToManual }: Doc
                     }}
                     className="text-muted-foreground hover:text-foreground"
                   >
-                    Pomiń import — wprowadź fakturę ręcznie
+                    {t('scanner.skipImport')}
                   </Button>
                 </div>
               )}
@@ -256,12 +259,12 @@ export function DocumentScannerModal({ open, onOpenChange, onSkipToManual }: Doc
             <div className="py-12 text-center">
               <Loader2 className="h-16 w-16 mx-auto text-primary animate-spin mb-4" />
               <h3 className="text-lg font-medium mb-2">
-                Analizuję {uploadedFile?.name}
+                {t('scanner.analyzing', { name: uploadedFile?.name ?? '' })}
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {uploadedFile?.type === 'application/pdf' 
-                  ? 'Wyodrębniam tekst i analizuję strukturę...'
-                  : 'Rozpoznaję tekst i dane z obrazu...'}
+                  ? t('scanner.extractingPdf')
+                  : t('scanner.extractingImage')}
               </p>
               <Progress value={undefined} className="w-64 mx-auto h-2" />
             </div>
@@ -288,17 +291,17 @@ export function DocumentScannerModal({ open, onOpenChange, onSkipToManual }: Doc
             <div className="py-12 text-center">
               <AlertCircle className="h-16 w-16 mx-auto text-destructive mb-4" />
               <h3 className="text-lg font-medium mb-2">
-                Nie udało się przetworzyć dokumentu
+                {t('scanner.processingFailed')}
               </h3>
               <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
                 {errorMessage}
               </p>
               <div className="flex items-center justify-center gap-3">
                 <Button variant="outline" onClick={() => handleOpenChange(false)}>
-                  Anuluj
+                  {tCommon('cancel')}
                 </Button>
                 <Button onClick={handleRetry}>
-                  Spróbuj ponownie
+                  {t('scanner.tryAgain')}
                 </Button>
               </div>
             </div>

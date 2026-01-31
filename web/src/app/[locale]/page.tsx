@@ -3,6 +3,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { useTranslations } from 'next-intl'
+import { useLocale } from 'next-intl'
 import { 
   FileText, 
   RefreshCw, 
@@ -15,11 +17,14 @@ import {
   Zap,
   LayoutDashboard,
 } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/i18n/navigation'
 import { useKsefStatus, useInvoices, useRunSync } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
 
 export default function HomePage() {
+  const t = useTranslations('dashboard')
+  const tCommon = useTranslations('common')
+  const locale = useLocale()
   const { toast } = useToast()
   const { data: ksefStatus, isLoading: isStatusLoading } = useKsefStatus()
   const { data: invoicesData, isLoading: isInvoicesLoading, refetch: refetchInvoices } = useInvoices()
@@ -46,18 +51,28 @@ export default function HomePage() {
       const result = await syncMutation.mutateAsync(undefined)
       await refetchInvoices()
       toast({
-        title: 'Synchronizacja zakończona',
-        description: `Zaimportowano ${result.imported} faktur`,
+        title: t('syncCompleted'),
+        description: t('syncCompletedDesc', { count: result.imported }),
         variant: 'success',
       })
     } catch (error) {
       toast({
-        title: 'Błąd synchronizacji',
-        description: error instanceof Error ? error.message : 'Nieznany błąd',
+        title: t('syncError'),
+        description: error instanceof Error ? error.message : tCommon('error'),
         variant: 'destructive',
       })
     }
   }
+
+  // Locale-aware formatting
+  const formatCurrency = (amount: number) => 
+    new Intl.NumberFormat(locale, { style: 'currency', currency: 'PLN' }).format(amount)
+  
+  const formatDate = (date: string) => 
+    new Date(date).toLocaleDateString(locale)
+  
+  const formatDateTime = (date: string) => 
+    new Date(date).toLocaleString(locale)
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -66,20 +81,20 @@ export default function HomePage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
             <LayoutDashboard className="h-6 w-6 md:h-7 md:w-7" />
-            Dashboard
+            {t('title')}
           </h1>
           <p className="text-muted-foreground text-sm md:text-base">
-            Zarządzaj fakturami kosztowymi z KSeF
+            {t('subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant={stats.ksefConnected ? 'default' : 'destructive'} className="text-xs">
             <Zap className="mr-1 h-3 w-3" />
-            {stats.ksefConnected ? 'KSeF OK' : 'Brak'}
+            {stats.ksefConnected ? t('ksefConnected') : t('ksefDisconnected')}
           </Badge>
           <Button onClick={handleSync} disabled={isSyncing} size="sm">
             <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-            {isSyncing ? 'Sync...' : 'Sync'}
+            {isSyncing ? t('syncing') : t('sync')}
           </Button>
         </div>
       </div>
@@ -90,14 +105,14 @@ export default function HomePage() {
           <CardContent className="flex items-center gap-4 py-4">
             <Clock className="h-5 w-5 text-primary" />
             <div className="flex-1">
-              <p className="text-sm font-medium">Ostatnia synchronizacja</p>
+              <p className="text-sm font-medium">{t('lastSync')}</p>
               <p className="text-xs text-muted-foreground">
-                {new Date(stats.lastSyncAt).toLocaleString('pl-PL')}
+                {formatDateTime(stats.lastSyncAt)}
               </p>
             </div>
             <Badge variant="outline">
               <Building2 className="mr-1 h-3 w-3" />
-              {stats.activeCompanies} firm
+              {t('companies', { count: stats.activeCompanies })}
             </Badge>
           </CardContent>
         </Card>
@@ -109,9 +124,9 @@ export default function HomePage() {
           <CardContent className="flex items-center gap-4 py-4">
             <AlertCircle className="h-5 w-5 text-destructive" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-destructive">Błąd synchronizacji</p>
+              <p className="text-sm font-medium text-destructive">{t('syncError')}</p>
               <p className="text-xs text-muted-foreground">
-                {syncMutation.error instanceof Error ? syncMutation.error.message : 'Unknown error'}
+                {syncMutation.error instanceof Error ? syncMutation.error.message : tCommon('error')}
               </p>
             </div>
           </CardContent>
@@ -122,7 +137,7 @@ export default function HomePage() {
       <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Wszystkie faktury</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('totalInvoices')}</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -130,14 +145,14 @@ export default function HomePage() {
               {isLoading ? '—' : stats.totalInvoices}
             </div>
             <p className="text-xs text-muted-foreground">
-              W systemie
+              {t('inSystem')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Przychodzące</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('incoming')}</CardTitle>
             <ArrowDownToLine className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
@@ -145,14 +160,14 @@ export default function HomePage() {
               {isLoading ? '—' : stats.incoming}
             </div>
             <p className="text-xs text-muted-foreground">
-              Faktury kosztowe
+              {t('costInvoices')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Opłacone</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('paid')}</CardTitle>
             <ArrowUpFromLine className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -160,14 +175,14 @@ export default function HomePage() {
               {isLoading ? '—' : stats.paid}
             </div>
             <p className="text-xs text-muted-foreground">
-              Zakończone płatności
+              {t('completedPayments')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Oczekujące</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('pendingPayment')}</CardTitle>
             <AlertCircle className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
@@ -175,7 +190,7 @@ export default function HomePage() {
               {isLoading ? '—' : stats.pendingPayment}
             </div>
             <p className="text-xs text-muted-foreground">
-              Do opłacenia
+              {t('toPay')}
             </p>
           </CardContent>
         </Card>
@@ -187,16 +202,16 @@ export default function HomePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ArrowDownToLine className="h-5 w-5 text-blue-500" />
-              Faktury przychodzące
+              {t('incomingInvoices')}
             </CardTitle>
             <CardDescription>
-              Przeglądaj i kategoryzuj faktury kosztowe pobrane z KSeF
+              {t('incomingInvoicesDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild className="w-full">
               <Link href="/invoices">
-                Przeglądaj faktury
+                {t('browseInvoices')}
               </Link>
             </Button>
           </CardContent>
@@ -206,16 +221,16 @@ export default function HomePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <RefreshCw className="h-5 w-5 text-primary" />
-              Synchronizacja
+              {t('synchronization')}
             </CardTitle>
             <CardDescription>
-              Pobierz nowe faktury z KSeF i zsynchronizuj status
+              {t('synchronizationDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline" className="w-full">
               <Link href="/sync">
-                Panel synchronizacji
+                {t('syncPanel')}
               </Link>
             </Button>
           </CardContent>
@@ -225,16 +240,16 @@ export default function HomePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-green-500" />
-              Raporty
+              {t('reports')}
             </CardTitle>
             <CardDescription>
-              Analizuj koszty i generuj zestawienia
+              {t('reportsDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline" className="w-full">
               <Link href="/reports">
-                Zobacz raporty
+                {t('viewReports')}
               </Link>
             </Button>
           </CardContent>
@@ -244,8 +259,8 @@ export default function HomePage() {
       {/* Recent Activity */}
       <Card>
         <CardHeader>
-          <CardTitle>Ostatnia aktywność</CardTitle>
-          <CardDescription>Ostatnio zaimportowane faktury</CardDescription>
+          <CardTitle>{t('recentActivity')}</CardTitle>
+          <CardDescription>{t('recentActivityDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -255,7 +270,7 @@ export default function HomePage() {
               </div>
             ) : invoices.length === 0 ? (
               <div className="text-sm text-muted-foreground text-center py-8">
-                Brak faktur w systemie. Uruchom synchronizację, aby pobrać faktury.
+                {t('noInvoices')}
               </div>
             ) : (
               <div className="space-y-2">
@@ -274,13 +289,10 @@ export default function HomePage() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">
-                        {new Intl.NumberFormat('pl-PL', {
-                          style: 'currency',
-                          currency: 'PLN',
-                        }).format(invoice.grossAmount)}
+                        {formatCurrency(invoice.grossAmount)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(invoice.invoiceDate).toLocaleDateString('pl-PL')}
+                        {formatDate(invoice.invoiceDate)}
                       </p>
                     </div>
                   </Link>
@@ -288,7 +300,7 @@ export default function HomePage() {
                 {invoices.length > 5 && (
                   <div className="text-center pt-2">
                     <Button variant="link" asChild>
-                      <Link href="/invoices">Zobacz wszystkie ({invoices.length})</Link>
+                      <Link href="/invoices">{t('viewAll', { count: invoices.length })}</Link>
                     </Button>
                   </div>
                 )}

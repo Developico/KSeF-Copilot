@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import SettingsPage from '@/app/settings/page'
+import SettingsPage from '@/app/[locale]/settings/page'
 
 // Mock company context
 const mockSelectedCompany = {

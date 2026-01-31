@@ -1,14 +1,14 @@
+'use client'
+
 import { ManualInvoiceForm } from '@/components/invoices/manual-invoice-form'
 import { FileText, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-
-export const metadata = {
-  title: 'Nowa faktura | Developico KSeF',
-  description: 'Ręczne dodawanie faktury',
-}
+import { useTranslations } from 'next-intl'
 
 export default function NewInvoicePage() {
+  const t = useTranslations('invoices')
+  
   return (
     <div className="container max-w-4xl py-6">
       <div className="flex items-center gap-4 mb-6">
@@ -20,10 +20,10 @@ export default function NewInvoicePage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <FileText className="h-6 w-6" />
-            Nowa faktura
+            {t('manualForm.pageTitle')}
           </h1>
           <p className="text-muted-foreground">
-            Ręczne wprowadzenie faktury spoza KSeF
+            {t('manualForm.pageSubtitle')}
           </p>
         </div>
       </div>

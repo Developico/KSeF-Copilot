@@ -2,7 +2,8 @@
 
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import Link from 'next/link'
+import { useTranslations } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -23,7 +24,7 @@ interface MobileSidebarProps {
 }
 
 type NavigationItem = {
-  name: string
+  nameKey: string
   icon: React.ElementType
   href: string
   disabled?: boolean
@@ -31,33 +32,36 @@ type NavigationItem = {
 
 const navigationItems: NavigationItem[] = [
   {
-    name: 'Dashboard',
+    nameKey: 'dashboard',
     icon: LayoutDashboard,
     href: '/',
   },
   {
-    name: 'Faktury',
+    nameKey: 'invoices',
     icon: FileText,
     href: '/invoices',
   },
   {
-    name: 'Raporty',
+    nameKey: 'reports',
     icon: BarChart3,
     href: '/reports',
   },
   {
-    name: 'Synchronizacja',
+    nameKey: 'sync',
     icon: RefreshCw,
     href: '/sync',
   },
   {
-    name: 'Ustawienia',
+    nameKey: 'settings',
     icon: Settings,
     href: '/settings',
   },
 ]
 
 export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
+  const t = useTranslations('navigation')
+  const tCommon = useTranslations('common')
+  const tHeader = useTranslations('header')
   const pathname = usePathname()
   const { user } = useAuth()
 
@@ -81,8 +85,8 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
             />
           </div>
           <div className="flex-1 min-w-0">
-            <SheetTitle className="text-lg font-semibold text-left">C-Level KSeF</SheetTitle>
-            <p className="text-xs text-muted-foreground">Cost analysis</p>
+            <SheetTitle className="text-lg font-semibold text-left">{tHeader('title')}</SheetTitle>
+            <p className="text-xs text-muted-foreground">{tHeader('subtitle')}</p>
           </div>
         </SheetHeader>
 
@@ -91,26 +95,27 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
           <ul className="space-y-1">
             {navigationItems.map((item) => {
               const Icon = item.icon
-              const isActive = pathname === item.href
+              const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+              const name = t(item.nameKey as 'dashboard' | 'invoices' | 'reports' | 'sync' | 'settings')
 
               if (item.disabled) {
                 return (
-                  <li key={item.name}>
+                  <li key={item.nameKey}>
                     <Button
                       variant="ghost"
                       className="w-full justify-start h-12 text-base opacity-50 cursor-not-allowed"
                       disabled
                     >
                       <Icon className="h-5 w-5 mr-3" />
-                      <span className="flex-1 text-left">{item.name}</span>
-                      <span className="text-xs text-muted-foreground">wkrótce</span>
+                      <span className="flex-1 text-left">{name}</span>
+                      <span className="text-xs text-muted-foreground">{tCommon('comingSoon')}</span>
                     </Button>
                   </li>
                 )
               }
 
               return (
-                <li key={item.name}>
+                <li key={item.nameKey}>
                   <Button
                     asChild
                     variant="ghost"
@@ -122,7 +127,7 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
                   >
                     <Link href={item.href}>
                       <Icon className="h-5 w-5 mr-3" />
-                      <span className="flex-1 text-left">{item.name}</span>
+                      <span className="flex-1 text-left">{name}</span>
                     </Link>
                   </Button>
                 </li>

@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -125,6 +126,7 @@ export function ManualInvoiceForm() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const { selectedCompany, isLoading: isLoadingCompany } = useSelectedCompany()
+  const t = useTranslations('invoices')
   
   const [formData, setFormData] = useState<FormData>(initialFormData)
   const [attachments, setAttachments] = useState<FileAttachment[]>([])
@@ -162,14 +164,14 @@ export function ManualInvoiceForm() {
       setGusDataLoaded(true)
       setErrors(prev => ({ ...prev, supplierName: undefined }))
       toast({
-        title: 'Dane pobrane z GUS',
-        description: `Znaleziono: ${data.nazwa}`,
+        title: t('manualForm.gusDataFetched'),
+        description: t('manualForm.gusFound', { name: data.nazwa }),
       })
     },
     onError: (error) => {
       setGusDataLoaded(false)
       toast({
-        title: 'Błąd wyszukiwania GUS',
+        title: t('manualForm.gusSearchError'),
         description: error,
         variant: 'destructive',
       })
@@ -249,8 +251,8 @@ export function ManualInvoiceForm() {
         } catch (error) {
           console.error('Failed to upload attachment:', error)
           toast({
-            title: 'Ostrzeżenie',
-            description: `Nie udało się wgrać załącznika: ${attachment.file.name}`,
+            title: t('manualForm.warning'),
+            description: t('manualForm.attachmentUploadFailed', { name: attachment.file.name }),
             variant: 'destructive',
           })
         }
@@ -260,16 +262,16 @@ export function ManualInvoiceForm() {
       queryClient.invalidateQueries({ queryKey: queryKeys.invoices() })
       
       toast({
-        title: 'Sukces',
-        description: 'Faktura została dodana',
+        title: t('manualForm.success'),
+        description: t('manualForm.invoiceAdded'),
       })
       
       router.push('/invoices')
     },
     onError: (error: Error) => {
       toast({
-        title: 'Błąd',
-        description: error.message || 'Nie udało się utworzyć faktury',
+        title: t('manualForm.validationError'),
+        description: error.message || t('manualForm.createError'),
         variant: 'destructive',
       })
     },
@@ -366,8 +368,8 @@ export function ManualInvoiceForm() {
       const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp']
       if (!validTypes.includes(file.type)) {
         toast({
-          title: 'Błąd',
-          description: `Nieobsługiwany typ pliku: ${file.name}`,
+          title: t('manualForm.validationError'),
+          description: t('manualForm.unsupportedFileType', { name: file.name }),
           variant: 'destructive',
         })
         return false
@@ -375,8 +377,8 @@ export function ManualInvoiceForm() {
       // Validate size (10 MB)
       if (file.size > 10 * 1024 * 1024) {
         toast({
-          title: 'Błąd',
-          description: `Plik zbyt duży: ${file.name} (max 10 MB)`,
+          title: t('manualForm.validationError'),
+          description: t('manualForm.fileTooLarge', { name: file.name }),
           variant: 'destructive',
         })
         return false
@@ -411,31 +413,31 @@ export function ManualInvoiceForm() {
     // Company comes from context now - check if we have it
     if (!selectedCompany) {
       toast({
-        title: 'Brak wybranej firmy',
-        description: 'Wybierz firmę w nagłówku aplikacji',
+        title: t('manualForm.noCompanySelected'),
+        description: t('manualForm.selectCompanyHint'),
         variant: 'destructive',
       })
       return false
     }
     if (!formData.invoiceNumber.trim()) {
-      newErrors.invoiceNumber = 'Numer faktury jest wymagany'
+      newErrors.invoiceNumber = t('manualForm.invoiceNumberRequired')
     }
     if (!formData.supplierNip || !/^\d{10}$/.test(formData.supplierNip)) {
-      newErrors.supplierNip = 'NIP sprzedawcy musi mieć 10 cyfr'
+      newErrors.supplierNip = t('manualForm.supplierNipRequired')
     }
     if (!formData.supplierName.trim()) {
-      newErrors.supplierName = 'Nazwa sprzedawcy jest wymagana'
+      newErrors.supplierName = t('manualForm.supplierNameRequired')
     }
     if (!formData.invoiceDate) {
-      newErrors.invoiceDate = 'Data faktury jest wymagana'
+      newErrors.invoiceDate = t('manualForm.invoiceDateRequired')
     }
     if (!formData.netAmount || parseFloat(formData.netAmount) < 0) {
-      newErrors.netAmount = 'Kwota netto musi być >= 0'
+      newErrors.netAmount = t('manualForm.netAmountRequired')
     }
     // VAT amount is auto-calculated but can be manually overridden
     // Only validate if user entered a negative value
     if (formData.vatAmount && parseFloat(formData.vatAmount) < 0) {
-      newErrors.vatAmount = 'Kwota VAT nie może być ujemna'
+      newErrors.vatAmount = t('manualForm.vatAmountNegative')
     }
 
     setErrors(newErrors)
@@ -448,8 +450,8 @@ export function ManualInvoiceForm() {
     
     if (!validate()) {
       toast({
-        title: 'Błąd walidacji',
-        description: 'Popraw błędy w formularzu',
+        title: t('manualForm.validationError'),
+        description: t('manualForm.fixFormErrors'),
         variant: 'destructive',
       })
       return
@@ -484,9 +486,9 @@ export function ManualInvoiceForm() {
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Nie wybrano firmy. Wybierz firmę w nagłówku aplikacji lub{' '}
-              <a href="/settings" className="underline font-medium">dodaj nową firmę</a>{' '}
-              w ustawieniach.
+              {t('manualForm.noCompanySelected')}. {t('manualForm.selectCompanyHint')}{' '}
+              <a href="/settings" className="underline font-medium">{t('manualForm.addNewCompany')}</a>{' '}
+              {t('manualForm.inSettings')}
             </AlertDescription>
           </Alert>
         )}
@@ -496,10 +498,10 @@ export function ManualInvoiceForm() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5" />
-              Sprzedawca
+              {t('manualForm.supplierSection')}
             </CardTitle>
             <CardDescription>
-              Dane dostawcy/sprzedawcy. Możesz wyszukać firmę w rejestrze REGON (GUS).
+              {t('manualForm.supplierDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -511,12 +513,12 @@ export function ManualInvoiceForm() {
               className="w-full"
             >
               <Search className="h-4 w-4 mr-2" />
-              Wyszukaj dostawcę w rejestrze REGON lub historii faktur
+              {t('manualForm.searchSupplier')}
             </Button>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">NIP *</label>
+                <label className="text-sm font-medium">{t('manualForm.nipLabel')}</label>
                 <div className="flex gap-2">
                   <div className="flex-1 relative">
                     <Input
@@ -547,7 +549,7 @@ export function ManualInvoiceForm() {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Pobierz dane z rejestru REGON (GUS)</p>
+                      <p>{t('manualForm.fetchFromGus')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -555,22 +557,22 @@ export function ManualInvoiceForm() {
                 {gusError && <p className="text-sm text-red-500">{gusError}</p>}
                 {formData.supplierNip.length > 0 && formData.supplierNip.length < 10 && (
                   <p className="text-xs text-muted-foreground">
-                    Wpisz 10 cyfr NIP ({formData.supplierNip.length}/10)
+                    {t('manualForm.nipDigits', { count: formData.supplierNip.length })}
                   </p>
                 )}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
-                  Nazwa firmy *
+                  {t('manualForm.companyName')}
                   {gusDataLoaded && (
                     <Badge variant="secondary" className="text-xs">
                       <CheckCircle2 className="h-3 w-3 mr-1" />
-                      z GUS
+                      {t('manualForm.fromGus')}
                     </Badge>
                   )}
                 </label>
                 <Input
-                  placeholder="Nazwa dostawcy"
+                  placeholder={t('supplier')}
                   value={formData.supplierName}
                   onChange={(e) => handleChange('supplierName', e.target.value)}
                   className={errors.supplierName ? 'border-red-500' : ''}
@@ -613,15 +615,15 @@ export function ManualInvoiceForm() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Dane faktury
+              {t('manualForm.invoiceSection')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Numer faktury *</label>
+                <label className="text-sm font-medium">{t('manualForm.invoiceNumberLabel')}</label>
                 <Input
-                  placeholder="FV/2024/001"
+                  placeholder={t('manualForm.invoiceNumberPlaceholder')}
                   value={formData.invoiceNumber}
                   onChange={(e) => handleChange('invoiceNumber', e.target.value)}
                   className={errors.invoiceNumber ? 'border-red-500' : ''}
@@ -631,7 +633,7 @@ export function ManualInvoiceForm() {
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  Data wystawienia *
+                  {t('manualForm.issueDateLabel')}
                 </label>
                 <Input
                   type="date"
@@ -644,7 +646,7 @@ export function ManualInvoiceForm() {
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  Termin płatności
+                  {t('manualForm.dueDateLabel')}
                 </label>
                 <Input
                   type="date"
@@ -655,9 +657,9 @@ export function ManualInvoiceForm() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Opis</label>
+              <label className="text-sm font-medium">{t('manualForm.descriptionLabel')}</label>
               <Input
-                placeholder="Krótki opis faktury"
+                placeholder={t('manualForm.descriptionPlaceholder')}
                 value={formData.description}
                 onChange={(e) => handleChange('description', e.target.value)}
               />
@@ -670,13 +672,13 @@ export function ManualInvoiceForm() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <DollarSign className="h-5 w-5" />
-              Kwoty
+              {t('manualForm.amountsSection')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Netto (PLN) *</label>
+                <label className="text-sm font-medium">{t('manualForm.netAmountLabel')}</label>
                 <Input
                   type="number"
                   step="0.01"
@@ -689,10 +691,10 @@ export function ManualInvoiceForm() {
                 {errors.netAmount && <p className="text-sm text-red-500">{errors.netAmount}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Stawka VAT</label>
+                <label className="text-sm font-medium">{t('manualForm.vatRateLabel')}</label>
                 <Select value={formData.vatRate} onValueChange={handleVatRateChange}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Wybierz stawkę" />
+                    <SelectValue placeholder={t('manualForm.vatRateSelect')} />
                   </SelectTrigger>
                   <SelectContent>
                     {VAT_RATES.map((rate) => (
@@ -704,7 +706,7 @@ export function ManualInvoiceForm() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">VAT (PLN)</label>
+                <label className="text-sm font-medium">{t('manualForm.vatAmountLabel')}</label>
                 <Input
                   type="number"
                   step="0.01"
@@ -716,11 +718,11 @@ export function ManualInvoiceForm() {
                 />
                 {errors.vatAmount && <p className="text-sm text-red-500">{errors.vatAmount}</p>}
                 <p className="text-xs text-muted-foreground">
-                  Wyliczone automatycznie, możesz zmienić ręcznie
+                  {t('manualForm.vatAutoCalculated')}
                 </p>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Brutto (PLN)</label>
+                <label className="text-sm font-medium">{t('manualForm.grossAmountLabel')}</label>
                 <Input
                   type="number"
                   step="0.01"
@@ -731,7 +733,7 @@ export function ManualInvoiceForm() {
                   className="bg-muted cursor-not-allowed"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Wyliczone automatycznie
+                  {t('manualForm.grossAutoCalculated')}
                 </p>
               </div>
             </div>
@@ -741,16 +743,16 @@ export function ManualInvoiceForm() {
         {/* Categorization */}
         <Card>
           <CardHeader>
-            <CardTitle>Kategoryzacja</CardTitle>
-            <CardDescription>Przypisz MPK i kategorię (opcjonalne)</CardDescription>
+            <CardTitle>{t('manualForm.categorizationSection')}</CardTitle>
+            <CardDescription>{t('manualForm.categorizationDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">MPK</label>
+                <label className="text-sm font-medium">{t('manualForm.mpkLabel')}</label>
                 <Select value={formData.mpk} onValueChange={(v) => handleChange('mpk', v)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Wybierz MPK..." />
+                    <SelectValue placeholder={t('manualForm.mpkPlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
                     {MPK_OPTIONS.map((mpk) => (
@@ -762,7 +764,7 @@ export function ManualInvoiceForm() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Kategoria</label>
+                <label className="text-sm font-medium">{t('manualForm.categoryLabel')}</label>
                 <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
                   <PopoverTrigger asChild>
                     <Button
@@ -771,14 +773,14 @@ export function ManualInvoiceForm() {
                       aria-expanded={categoryOpen}
                       className="w-full justify-between font-normal"
                     >
-                      {formData.category || "Wybierz lub wpisz kategorię..."}
+                      {formData.category || t('manualForm.categoryPlaceholder')}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[300px] p-0" align="start">
                     <Command shouldFilter={false}>
                       <CommandInput
-                        placeholder="Szukaj lub dodaj kategorię..."
+                        placeholder={t('manualForm.categorySearch')}
                         value={categoryInput}
                         onValueChange={setCategoryInput}
                       />
@@ -800,11 +802,11 @@ export function ManualInvoiceForm() {
                               }}
                             >
                               <Plus className="h-4 w-4" />
-                              Dodaj &quot;{categoryInput.trim()}&quot;
+                              {t('manualForm.categoryAdd', { name: categoryInput.trim() })}
                             </Button>
                           ) : (
                             <span className="text-muted-foreground text-sm">
-                              Wpisz nazwę nowej kategorii
+                              {t('manualForm.categoryTypeNew')}
                             </span>
                           )}
                         </CommandEmpty>
@@ -846,9 +848,9 @@ export function ManualInvoiceForm() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5" />
-              Załączniki
+              {t('manualForm.attachmentsSection')}
             </CardTitle>
-            <CardDescription>PDF lub zdjęcie faktury (opcjonalne, max 10 MB)</CardDescription>
+            <CardDescription>{t('manualForm.attachmentsDescription')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Drop zone */}
@@ -860,10 +862,10 @@ export function ManualInvoiceForm() {
             >
               <FileUp className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground">
-                Przeciągnij pliki tutaj lub <span className="text-primary">wybierz z dysku</span>
+                {t('manualForm.dropFilesHere')} <span className="text-primary">{t('manualForm.selectFromDisk')}</span>
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                PDF, JPEG, PNG, GIF, WebP (max 10 MB)
+                {t('manualForm.fileFormats')}
               </p>
               <input
                 id="file-input"
@@ -922,7 +924,7 @@ export function ManualInvoiceForm() {
             disabled={createMutation.isPending}
           >
             <X className="h-4 w-4 mr-2" />
-            Anuluj
+            {t('manualForm.cancel')}
           </Button>
           <Button
             type="submit"
@@ -933,7 +935,7 @@ export function ManualInvoiceForm() {
             ) : (
               <Save className="h-4 w-4 mr-2" />
             )}
-            Zapisz fakturę
+            {t('manualForm.saveInvoice')}
           </Button>
         </div>
       </div>

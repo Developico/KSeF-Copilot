@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -96,46 +97,51 @@ const mockCostCenters: CostCenter[] = [
   { id: '10', code: 'OTHER', name: 'Other', isActive: true },
 ]
 
-function getTokenStatusBadge(status: TokenStatus) {
-  switch (status) {
-    case 'valid':
-      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-        <CheckCircle className="mr-1 h-3 w-3" />
-        Aktywny
-      </Badge>
-    case 'expiring':
-      return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-        <AlertCircle className="mr-1 h-3 w-3" />
-        Wygasa wkrótce
-      </Badge>
-    case 'expired':
-      return <Badge variant="destructive">
-        Wygasł
-      </Badge>
-    case 'missing':
-      return <Badge variant="secondary">
-        Brak
-      </Badge>
-    default:
-      return null
-  }
-}
-
-function getEnvironmentBadge(env: Environment) {
-  switch (env) {
-    case 'production':
-      return <Badge>Produkcja</Badge>
-    case 'test':
-      return <Badge variant="outline">Test</Badge>
-    case 'demo':
-      return <Badge variant="secondary">Demo</Badge>
-    default:
-      return null
-  }
-}
-
 export default function SettingsPage() {
   const { toast } = useToast()
+  const t = useTranslations('settings')
+  const tCommon = useTranslations('common')
+  const locale = useLocale()
+
+  // Helper function to get token status badge with translations
+  const getTokenStatusBadge = (status: TokenStatus) => {
+    switch (status) {
+      case 'valid':
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+          <CheckCircle className="mr-1 h-3 w-3" />
+          {t('tokenValid')}
+        </Badge>
+      case 'expiring':
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+          <AlertCircle className="mr-1 h-3 w-3" />
+          {t('tokenExpiring')}
+        </Badge>
+      case 'expired':
+        return <Badge variant="destructive">
+          {t('tokenExpired')}
+        </Badge>
+      case 'missing':
+        return <Badge variant="secondary">
+          {t('tokenMissing')}
+        </Badge>
+      default:
+        return null
+    }
+  }
+
+  // Helper function to get environment badge with translations
+  const getEnvironmentBadge = (env: Environment) => {
+    switch (env) {
+      case 'production':
+        return <Badge>{t('production')}</Badge>
+      case 'test':
+        return <Badge variant="outline">{t('test')}</Badge>
+      case 'demo':
+        return <Badge variant="secondary">{t('demo')}</Badge>
+      default:
+        return null
+    }
+  }
   
   // Company context
   const { selectedCompany, setSelectedCompany } = useCompanyContext()
@@ -184,8 +190,8 @@ export default function SettingsPage() {
   const handleSelectCompany = (company: KsefSetting) => {
     setSelectedCompany(company)
     toast({
-      title: 'Firma wybrana',
-      description: `Aktywna firma: ${company.companyName}`,
+      title: t('companySelected'),
+      description: t('activeCompany', { name: company.companyName }),
     })
   }
 
@@ -203,8 +209,8 @@ export default function SettingsPage() {
       })
       toast({
         variant: 'success',
-        title: 'Firma dodana',
-        description: `${newCompanyName} została dodana do listy`,
+        title: t('companyAdded'),
+        description: t('companyAddedDesc', { name: newCompanyName }),
       })
       // Reset form
       setNewCompanyName('')
@@ -218,8 +224,8 @@ export default function SettingsPage() {
       console.error('Failed to add company:', error)
       toast({
         variant: 'destructive',
-        title: 'Błąd',
-        description: error instanceof Error ? error.message : 'Nie udało się dodać firmy',
+        title: tCommon('error'),
+        description: error instanceof Error ? error.message : t('addCompanyError'),
       })
     }
   }
@@ -235,7 +241,7 @@ export default function SettingsPage() {
       })
       toast({
         variant: 'success',
-        title: 'MPK dodane',
+        title: t('costCenterAdded'),
         description: `${newCostCenterCode.toUpperCase()} - ${newCostCenterName}`,
       })
       setNewCostCenterCode('')
@@ -244,8 +250,8 @@ export default function SettingsPage() {
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Błąd',
-        description: 'Nie udało się dodać centrum kosztów',
+        title: tCommon('error'),
+        description: t('addCostCenterError'),
       })
     }
   }
@@ -255,14 +261,14 @@ export default function SettingsPage() {
       await deleteCompanyMutation.mutateAsync(id)
       toast({
         variant: 'success',
-        title: 'Firma usunięta',
-        description: `${name} została usunięta`,
+        title: t('companyDeleted'),
+        description: t('companyDeletedDesc', { name }),
       })
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Błąd',
-        description: 'Nie udało się usunąć firmy',
+        title: tCommon('error'),
+        description: t('deleteCompanyError'),
       })
     }
   }
@@ -290,15 +296,15 @@ export default function SettingsPage() {
       })
       toast({
         variant: 'success',
-        title: 'Firma zaktualizowana',
-        description: `Dane firmy ${editCompanyName} zostały zapisane`,
+        title: t('companyUpdated'),
+        description: t('companyUpdatedDesc', { name: editCompanyName }),
       })
       setEditingCompany(null)
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Błąd',
-        description: error instanceof Error ? error.message : 'Nie udało się zaktualizować firmy',
+        title: tCommon('error'),
+        description: error instanceof Error ? error.message : t('updateCompanyError'),
       })
     }
   }
@@ -308,14 +314,14 @@ export default function SettingsPage() {
       await deleteCostCenterMutation.mutateAsync(id)
       toast({
         variant: 'success',
-        title: 'MPK usunięte',
-        description: `${code} zostało usunięte`,
+        title: t('costCenterDeleted'),
+        description: t('costCenterDeletedDesc', { code }),
       })
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Błąd',
-        description: 'Nie udało się usunąć centrum kosztów',
+        title: tCommon('error'),
+        description: t('deleteCostCenterError'),
       })
     }
   }
@@ -339,15 +345,15 @@ export default function SettingsPage() {
       })
       toast({
         variant: 'success',
-        title: 'MPK zaktualizowane',
+        title: t('costCenterUpdated'),
         description: `${editCostCenterCode} - ${editCostCenterName}`,
       })
       setEditingCostCenter(null)
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Błąd',
-        description: 'Nie udało się zaktualizować centrum kosztów',
+        title: tCommon('error'),
+        description: t('updateCostCenterError'),
       })
     }
   }
@@ -366,10 +372,10 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
           <Settings className="h-6 w-6 md:h-7 md:w-7" />
-          Ustawienia
+          {t('title')}
         </h1>
         <p className="text-sm md:text-base text-muted-foreground">
-          Konfiguracja integracji z KSeF
+          {t('subtitle')}
         </p>
       </div>
 
@@ -377,11 +383,11 @@ export default function SettingsPage() {
         <TabsList className="w-full md:w-auto overflow-x-auto">
           <TabsTrigger value="companies">
             <Building2 className="mr-2 h-4 w-4" />
-            Firmy
+            {t('companies')}
           </TabsTrigger>
           <TabsTrigger value="costcenters">
             <Folder className="mr-2 h-4 w-4" />
-            Centra kosztów
+            {t('costCenters')}
           </TabsTrigger>
         </TabsList>
 
@@ -390,38 +396,38 @@ export default function SettingsPage() {
           <Card>
             <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <CardTitle className="text-lg md:text-xl">Firmy</CardTitle>
+                <CardTitle className="text-lg md:text-xl">{t('companies')}</CardTitle>
                 <CardDescription className="text-sm">
-                  Zarządzaj firmami połączonymi z KSeF
+                  {t('companiesDescription')}
                 </CardDescription>
               </div>
               <Dialog open={isAddCompanyOpen} onOpenChange={setIsAddCompanyOpen}>
                 <DialogTrigger asChild>
                   <Button className="w-full sm:w-auto">
                     <Plus className="mr-2 h-4 w-4" />
-                    Dodaj firmę
+                    {t('addCompany')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[500px]">
                   <DialogHeader>
-                    <DialogTitle>Dodaj nową firmę</DialogTitle>
+                    <DialogTitle>{t('addNewCompany')}</DialogTitle>
                     <DialogDescription>
-                      Wprowadź dane firmy i wybierz tryb pracy
+                      {t('addNewCompanyDesc')}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Nazwa firmy *</label>
+                      <label className="text-sm font-medium">{t('companyName')} *</label>
                       <Input
-                        placeholder="np. Moja Firma Sp. z o.o."
+                        placeholder={t('companyNamePlaceholder')}
                         value={newCompanyName}
                         onChange={(e) => setNewCompanyName(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">NIP *</label>
+                      <label className="text-sm font-medium">{t('nip')} *</label>
                       <Input
-                        placeholder="1234567890"
+                        placeholder={t('nipPlaceholder')}
                         value={newCompanyNip}
                         onChange={(e) => setNewCompanyNip(e.target.value.replace(/\D/g, '').slice(0, 10))}
                         maxLength={10}
@@ -440,10 +446,10 @@ export default function SettingsPage() {
                           htmlFor="manualOnly" 
                           className="text-sm font-medium cursor-pointer"
                         >
-                          Tylko faktury ręczne
+                          {t('manualOnlyLabel')}
                         </label>
                         <p className="text-xs text-muted-foreground">
-                          Bez połączenia z KSeF – faktury wprowadzane wyłącznie ręcznie
+                          {t('manualOnlyDesc')}
                         </p>
                       </div>
                     </div>
@@ -452,19 +458,19 @@ export default function SettingsPage() {
                     {!newCompanyManualOnly && (
                       <>
                         <div className="space-y-2">
-                          <label className="text-sm font-medium">Środowisko KSeF</label>
+                          <label className="text-sm font-medium">{t('ksefEnvironment')}</label>
                           <Select value={newCompanyEnv} onValueChange={(v) => setNewCompanyEnv(v as Environment)}>
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="production">Produkcja</SelectItem>
-                              <SelectItem value="test">Test</SelectItem>
-                              <SelectItem value="demo">Demo</SelectItem>
+                              <SelectItem value="production">{t('production')}</SelectItem>
+                              <SelectItem value="test">{t('test')}</SelectItem>
+                              <SelectItem value="demo">{t('demo')}</SelectItem>
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-muted-foreground">
-                            Wybierz środowisko odpowiadające Twojemu tokenowi KSeF
+                            {t('ksefEnvironmentDesc')}
                           </p>
                         </div>
                         
@@ -475,7 +481,7 @@ export default function SettingsPage() {
                             onCheckedChange={(checked) => setNewCompanyAutoSync(checked === true)}
                           />
                           <label htmlFor="autoSync" className="text-sm font-medium cursor-pointer">
-                            Automatyczna synchronizacja z KSeF
+                            {t('autoSync')}
                           </label>
                         </div>
                       </>
@@ -483,25 +489,25 @@ export default function SettingsPage() {
 
                     {/* Invoice prefix - always visible */}
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Prefiks faktur (opcjonalnie)</label>
+                      <label className="text-sm font-medium">{t('invoicePrefix')}</label>
                       <Input
-                        placeholder="np. FV-"
+                        placeholder={t('invoicePrefixPlaceholder')}
                         value={newCompanyPrefix}
                         onChange={(e) => setNewCompanyPrefix(e.target.value.slice(0, 10))}
                         maxLength={10}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Dodawany na początku numerów faktur przy ręcznym wprowadzaniu
+                        {t('invoicePrefixDesc')}
                       </p>
                     </div>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setIsAddCompanyOpen(false)}>
-                      Anuluj
+                      {tCommon('cancel')}
                     </Button>
                     <Button onClick={addCompany} disabled={!newCompanyName || !newCompanyNip || newCompanyNip.length !== 10}>
                       <Save className="mr-2 h-4 w-4" />
-                      Zapisz
+                      {tCommon('save')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -512,11 +518,11 @@ export default function SettingsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Firma</TableHead>
-                      <TableHead className="hidden sm:table-cell">NIP</TableHead>
-                      <TableHead className="hidden md:table-cell">Środowisko</TableHead>
-                      <TableHead className="hidden lg:table-cell">Token KSeF</TableHead>
-                      <TableHead className="hidden lg:table-cell">Ostatnia synchronizacja</TableHead>
+                      <TableHead>{t('table.company')}</TableHead>
+                      <TableHead className="hidden sm:table-cell">{t('table.nip')}</TableHead>
+                      <TableHead className="hidden md:table-cell">{t('table.environment')}</TableHead>
+                      <TableHead className="hidden lg:table-cell">{t('table.ksefToken')}</TableHead>
+                      <TableHead className="hidden lg:table-cell">{t('table.lastSync')}</TableHead>
                       <TableHead className="w-[100px] md:w-[150px]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -531,7 +537,7 @@ export default function SettingsPage() {
                               <Building2 className="h-4 w-4 text-muted-foreground hidden sm:block" />
                               <span className="font-medium text-sm md:text-base">{company.companyName}</span>
                               {isSelected && (
-                                <Badge variant="secondary" className="text-xs">Aktywna</Badge>
+                                <Badge variant="secondary" className="text-xs">{t('selected')}</Badge>
                               )}
                             </div>
                             {/* Mobile: show NIP and env below company name */}
@@ -548,14 +554,14 @@ export default function SettingsPage() {
                             {getTokenStatusBadge(company.tokenStatus ?? 'missing')}
                             {company.tokenExpiresAt && (
                               <span className="text-xs text-muted-foreground">
-                                Wygasa: {new Date(company.tokenExpiresAt).toLocaleDateString('pl-PL')}
+                                {t('tokenExpiresAt')}: {new Date(company.tokenExpiresAt).toLocaleDateString(locale)}
                               </span>
                             )}
                           </div>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           {company.lastSyncAt ? (
-                            new Date(company.lastSyncAt).toLocaleString('pl-PL')
+                            new Date(company.lastSyncAt).toLocaleString(locale)
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
@@ -569,7 +575,7 @@ export default function SettingsPage() {
                                 className="hidden sm:flex"
                                 onClick={() => handleSelectCompany(company)}
                               >
-                                Wybierz
+                                {tCommon('select') || tCommon('actions')}
                               </Button>
                             )}
                             {!isSelected && (
@@ -578,7 +584,7 @@ export default function SettingsPage() {
                                 size="icon"
                                 className="sm:hidden"
                                 onClick={() => handleSelectCompany(company)}
-                                title="Wybierz firmę"
+                                title={t('companySelected')}
                               >
                                 <CheckCircle className="h-4 w-4" />
                               </Button>
@@ -587,7 +593,7 @@ export default function SettingsPage() {
                               variant="ghost" 
                               size="icon"
                               onClick={() => openEditCompany(company)}
-                              title="Edytuj firmę"
+                              title={t('editCompany')}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -596,7 +602,7 @@ export default function SettingsPage() {
                               size="icon" 
                               onClick={() => deleteCompany(company.id, company.companyName)}
                               disabled={deleteCompanyMutation.isPending || isSelected}
-                              title={isSelected ? 'Nie można usunąć aktywnej firmy' : 'Usuń firmę'}
+                              title={tCommon('delete')}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -614,54 +620,51 @@ export default function SettingsPage() {
           <Dialog open={!!editingCompany} onOpenChange={(open) => !open && setEditingCompany(null)}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>Edytuj firmę</DialogTitle>
+                <DialogTitle>{t('editCompany')}</DialogTitle>
                 <DialogDescription>
-                  Zmień dane firmy. NIP nie może być zmieniony.
+                  {t('nip')} {/* NIP cannot be changed */}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">NIP</label>
+                  <label className="text-sm font-medium">{t('nip')}</label>
                   <Input
                     value={editingCompany?.nip || ''}
                     disabled
                     className="font-mono bg-muted"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    NIP nie może być zmieniony po utworzeniu
-                  </p>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Nazwa firmy</label>
+                  <label className="text-sm font-medium">{t('companyName')}</label>
                   <Input
-                    placeholder="np. Moja Firma Sp. z o.o."
+                    placeholder={t('companyNamePlaceholder')}
                     value={editCompanyName}
                     onChange={(e) => setEditCompanyName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Środowisko KSeF</label>
+                  <label className="text-sm font-medium">{t('ksefEnvironment')}</label>
                   <Select value={editCompanyEnv} onValueChange={(v) => setEditCompanyEnv(v as Environment)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="production">Produkcja</SelectItem>
-                      <SelectItem value="test">Test</SelectItem>
-                      <SelectItem value="demo">Demo</SelectItem>
+                      <SelectItem value="production">{t('production')}</SelectItem>
+                      <SelectItem value="test">{t('test')}</SelectItem>
+                      <SelectItem value="demo">{t('demo')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Prefiks faktur</label>
+                  <label className="text-sm font-medium">{t('invoicePrefix')}</label>
                   <Input
-                    placeholder="np. MF"
+                    placeholder={t('invoicePrefixPlaceholder')}
                     value={editCompanyPrefix}
                     onChange={(e) => setEditCompanyPrefix(e.target.value.toUpperCase())}
                     maxLength={10}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Dodawany na początku numerów faktur przy ręcznym wprowadzaniu
+                    {t('invoicePrefixDesc')}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -671,20 +674,20 @@ export default function SettingsPage() {
                     onCheckedChange={(checked) => setEditCompanyAutoSync(checked === true)}
                   />
                   <label htmlFor="edit-autosync" className="text-sm font-medium cursor-pointer">
-                    Automatyczna synchronizacja z KSeF
+                    {t('autoSync')}
                   </label>
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setEditingCompany(null)}>
-                  Anuluj
+                  {tCommon('cancel')}
                 </Button>
                 <Button 
                   onClick={saveCompany} 
                   disabled={!editCompanyName || updateCompanyMutation.isPending}
                 >
                   <Save className="mr-2 h-4 w-4" />
-                  Zapisz
+                  {tCommon('save')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -697,11 +700,9 @@ export default function SettingsPage() {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4 flex items-start gap-2 md:gap-3">
             <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
             <div className="text-xs md:text-sm text-blue-800">
-              <p className="font-medium mb-1">Centra kosztów są zdefiniowane w Dataverse</p>
+              <p className="font-medium mb-1">{t('costCentersInfoTitle')}</p>
               <p className="text-blue-700">
-                MPK są powiązane z opcjami (option set) w Microsoft Dataverse i nie mogą być edytowane 
-                z poziomu aplikacji. Aby dodać, zmienić lub usunąć centrum kosztów, skontaktuj się 
-                z administratorem systemu.
+                {t('costCentersInfoDesc')}
               </p>
             </div>
           </div>
@@ -709,9 +710,9 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <div>
-                <CardTitle className="text-lg md:text-xl">Centra kosztów (MPK)</CardTitle>
+                <CardTitle className="text-lg md:text-xl">{t('costCentersTitle')}</CardTitle>
                 <CardDescription className="text-sm">
-                  Lista dostępnych centrów kosztów do kategoryzacji faktur
+                  {t('costCentersDesc')}
                 </CardDescription>
               </div>
             </CardHeader>
@@ -720,8 +721,8 @@ export default function SettingsPage() {
                 <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Wartość (Dataverse)</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>{t('table.value')}</TableHead>
+                    <TableHead>{t('table.status')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -735,10 +736,10 @@ export default function SettingsPage() {
                       <TableCell>
                         {cc.isActive ? (
                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            Aktywne
+                            {t('active')}
                           </Badge>
                         ) : (
-                          <Badge variant="secondary">Nieaktywne</Badge>
+                          <Badge variant="secondary">{t('inactive')}</Badge>
                         )}
                       </TableCell>
                     </TableRow>

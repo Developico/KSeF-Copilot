@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -34,13 +35,6 @@ import {
 } from 'lucide-react'
 import { useInvoices } from '@/hooks/use-api'
 import { Invoice } from '@/lib/api'
-
-function formatCurrency(amount: number, currency: string = 'PLN') {
-  return new Intl.NumberFormat('pl-PL', {
-    style: 'currency',
-    currency: currency,
-  }).format(amount)
-}
 
 interface MonthlyData {
   month: string
@@ -77,10 +71,21 @@ interface MpkData {
 
 export default function ReportsPage() {
   const { data, isLoading, error, refetch } = useInvoices()
+  const t = useTranslations('reports')
+  const tCommon = useTranslations('common')
+  const locale = useLocale()
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString())
   const [selectedMonth, setSelectedMonth] = useState<string>('all')
   
   const invoices = data?.invoices ?? []
+
+  // Locale-aware formatting
+  const formatCurrency = useCallback((amount: number, currency: string = 'PLN') => {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currency,
+    }).format(amount)
+  }, [locale])
 
   // Calculate available years from invoices
   const availableYears = useMemo(() => {
@@ -105,13 +110,16 @@ export default function ReportsPage() {
   // Monthly aggregation
   const monthlyData = useMemo<MonthlyData[]>(() => {
     const months: Record<string, MonthlyData> = {}
-    const monthNames = ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru']
+    const getShortMonth = (monthIndex: number) => {
+      const date = new Date(2024, monthIndex, 1)
+      return date.toLocaleDateString(locale, { month: 'short' })
+    }
     
     // Initialize all months
     for (let i = 1; i <= 12; i++) {
       const key = i.toString().padStart(2, '0')
       months[key] = {
-        month: monthNames[i - 1],
+        month: getShortMonth(i - 1),
         monthKey: key,
         invoiceCount: 0,
         totalNet: 0,
@@ -138,7 +146,7 @@ export default function ReportsPage() {
     })
     
     return Object.values(months)
-  }, [invoices, selectedYear])
+  }, [invoices, selectedYear, locale])
 
   // Top suppliers
   const topSuppliers = useMemo<SupplierData[]>(() => {
@@ -165,12 +173,13 @@ export default function ReportsPage() {
   }, [filteredInvoices])
 
   // Category breakdown
+  const uncategorizedLabel = t('uncategorized')
   const categoryData = useMemo<CategoryData[]>(() => {
     const categories: Record<string, { count: number; total: number }> = {}
     let grandTotal = 0
     
     filteredInvoices.forEach(inv => {
-      const cat = inv.category || 'Nieskategoryzowane'
+      const cat = inv.category || uncategorizedLabel
       if (!categories[cat]) {
         categories[cat] = { count: 0, total: 0 }
       }
@@ -187,15 +196,16 @@ export default function ReportsPage() {
         percentage: grandTotal > 0 ? (data.total / grandTotal) * 100 : 0,
       }))
       .sort((a, b) => b.totalGross - a.totalGross)
-  }, [filteredInvoices])
+  }, [filteredInvoices, uncategorizedLabel])
 
   // MPK breakdown
+  const unassignedLabel = t('unassigned')
   const mpkData = useMemo<MpkData[]>(() => {
     const mpks: Record<string, { count: number; total: number }> = {}
     let grandTotal = 0
     
     filteredInvoices.forEach(inv => {
-      const mpk = inv.mpk || 'Nieprzypisane'
+      const mpk = inv.mpk || unassignedLabel
       if (!mpks[mpk]) {
         mpks[mpk] = { count: 0, total: 0 }
       }
@@ -212,7 +222,7 @@ export default function ReportsPage() {
         percentage: grandTotal > 0 ? (data.total / grandTotal) * 100 : 0,
       }))
       .sort((a, b) => b.totalGross - a.totalGross)
-  }, [filteredInvoices])
+  }, [filteredInvoices, unassignedLabel])
 
   // Summary stats
   const summary = useMemo(() => {
@@ -248,13 +258,13 @@ export default function ReportsPage() {
     return (
       <div className="flex flex-col items-center justify-center h-96">
         <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-        <h2 className="text-xl font-semibold">Błąd ładowania danych</h2>
+        <h2 className="text-xl font-semibold">{t('loadingError')}</h2>
         <p className="text-muted-foreground mt-2">
-          {error instanceof Error ? error.message : 'Nie udało się załadować raportów'}
+          {error instanceof Error ? error.message : t('loadingErrorDesc')}
         </p>
         <Button variant="outline" onClick={() => refetch()} className="mt-4">
           <RefreshCw className="mr-2 h-4 w-4" />
-          Spróbuj ponownie
+          {t('tryAgain')}
         </Button>
       </div>
     )
@@ -267,10 +277,10 @@ export default function ReportsPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
             <BarChart3 className="h-6 w-6 md:h-7 md:w-7" />
-            Raporty
+            {t('title')}
           </h1>
           <p className="text-sm md:text-base text-muted-foreground">
-            Analizy i statystyki faktur kosztowych
+            {t('subtitle')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -293,27 +303,27 @@ export default function ReportsPage() {
           </Select>
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
             <SelectTrigger className="w-[120px] md:w-[140px]">
-              <SelectValue placeholder="Miesiąc" />
+              <SelectValue placeholder={t('monthSelector.placeholder')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Cały rok</SelectItem>
-              <SelectItem value="1">Styczeń</SelectItem>
-              <SelectItem value="2">Luty</SelectItem>
-              <SelectItem value="3">Marzec</SelectItem>
-              <SelectItem value="4">Kwiecień</SelectItem>
-              <SelectItem value="5">Maj</SelectItem>
-              <SelectItem value="6">Czerwiec</SelectItem>
-              <SelectItem value="7">Lipiec</SelectItem>
-              <SelectItem value="8">Sierpień</SelectItem>
-              <SelectItem value="9">Wrzesień</SelectItem>
-              <SelectItem value="10">Październik</SelectItem>
-              <SelectItem value="11">Listopad</SelectItem>
-              <SelectItem value="12">Grudzień</SelectItem>
+              <SelectItem value="all">{t('monthSelector.all')}</SelectItem>
+              <SelectItem value="1">{t('monthSelector.january')}</SelectItem>
+              <SelectItem value="2">{t('monthSelector.february')}</SelectItem>
+              <SelectItem value="3">{t('monthSelector.march')}</SelectItem>
+              <SelectItem value="4">{t('monthSelector.april')}</SelectItem>
+              <SelectItem value="5">{t('monthSelector.may')}</SelectItem>
+              <SelectItem value="6">{t('monthSelector.june')}</SelectItem>
+              <SelectItem value="7">{t('monthSelector.july')}</SelectItem>
+              <SelectItem value="8">{t('monthSelector.august')}</SelectItem>
+              <SelectItem value="9">{t('monthSelector.september')}</SelectItem>
+              <SelectItem value="10">{t('monthSelector.october')}</SelectItem>
+              <SelectItem value="11">{t('monthSelector.november')}</SelectItem>
+              <SelectItem value="12">{t('monthSelector.december')}</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" size="sm" onClick={() => refetch()} className="md:size-default">
             <RefreshCw className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Odśwież</span>
+            <span className="hidden sm:inline">{tCommon('refresh')}</span>
           </Button>
         </div>
       </div>
@@ -322,49 +332,49 @@ export default function ReportsPage() {
       <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium">Wszystkie faktury</CardTitle>
+            <CardTitle className="text-xs md:text-sm font-medium">{t('allInvoices')}</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-xl md:text-2xl font-bold">{summary.count}</div>
             <p className="text-xs text-muted-foreground">
-              {summary.uniqueSuppliers} dostawców
+              {summary.uniqueSuppliers} {t('suppliers')}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium">Suma brutto</CardTitle>
+            <CardTitle className="text-xs md:text-sm font-medium">{t('totalGross')}</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-xl md:text-2xl font-bold">{formatCurrency(summary.total)}</div>
             <p className="text-xs text-muted-foreground">
-              <span className="hidden sm:inline">Średnio</span> {formatCurrency(summary.avgInvoice)}<span className="hidden sm:inline"> / faktura</span>
+              <span className="hidden sm:inline">{t('average')}</span> {formatCurrency(summary.avgInvoice)}<span className="hidden sm:inline"> {t('perInvoice')}</span>
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium">Opłacone</CardTitle>
+            <CardTitle className="text-xs md:text-sm font-medium">{t('paidAmount')}</CardTitle>
             <CreditCard className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-xl md:text-2xl font-bold text-green-600">{formatCurrency(summary.paid)}</div>
             <p className="text-xs text-muted-foreground">
-              {summary.count > 0 ? ((summary.paid / summary.total) * 100).toFixed(1) : 0}% całości
+              {summary.count > 0 ? ((summary.paid / summary.total) * 100).toFixed(1) : 0}% {t('ofTotal')}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium">Do zapłaty</CardTitle>
+            <CardTitle className="text-xs md:text-sm font-medium">{t('pendingAmount')}</CardTitle>
             <CreditCard className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
             <div className="text-xl md:text-2xl font-bold text-red-600">{formatCurrency(summary.pending)}</div>
             <p className="text-xs text-muted-foreground">
-              {summary.count > 0 ? ((summary.pending / summary.total) * 100).toFixed(1) : 0}% całości
+              {summary.count > 0 ? ((summary.pending / summary.total) * 100).toFixed(1) : 0}% {t('ofTotal')}
             </p>
           </CardContent>
         </Card>
@@ -374,19 +384,19 @@ export default function ReportsPage() {
         <TabsList className="w-full md:w-auto overflow-x-auto">
           <TabsTrigger value="monthly">
             <BarChart3 className="mr-2 h-4 w-4" />
-            Miesięcznie
+            {t('tabs.monthly')}
           </TabsTrigger>
           <TabsTrigger value="suppliers">
             <Building2 className="mr-2 h-4 w-4" />
-            Dostawcy
+            {t('tabs.suppliers')}
           </TabsTrigger>
           <TabsTrigger value="mpk">
             <Folder className="mr-2 h-4 w-4" />
-            MPK
+            {t('tabs.mpk')}
           </TabsTrigger>
           <TabsTrigger value="categories">
             <PieChart className="mr-2 h-4 w-4" />
-            Kategorie
+            {t('tabs.categories')}
           </TabsTrigger>
         </TabsList>
 
@@ -394,9 +404,9 @@ export default function ReportsPage() {
         <TabsContent value="monthly" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg md:text-xl">Koszty miesięczne - {selectedYear}</CardTitle>
+              <CardTitle className="text-lg md:text-xl">{t('monthly.title', { year: selectedYear })}</CardTitle>
               <CardDescription className="text-sm">
-                Wartość brutto faktur w poszczególnych miesiącach
+                {t('monthly.description')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -424,7 +434,7 @@ export default function ReportsPage() {
                 <div className="flex justify-center gap-6 text-sm">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 bg-primary rounded" />
-                    <span>Wartość brutto</span>
+                    <span>{t('monthly.grossValue')}</span>
                   </div>
                 </div>
               </div>
@@ -434,20 +444,20 @@ export default function ReportsPage() {
           {/* Monthly Table */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg md:text-xl">Szczegóły miesięczne</CardTitle>
+              <CardTitle className="text-lg md:text-xl">{t('monthly.detailsTitle')}</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Miesiąc</TableHead>
-                      <TableHead className="text-right">Faktury</TableHead>
-                      <TableHead className="text-right hidden sm:table-cell">Netto</TableHead>
-                      <TableHead className="text-right hidden sm:table-cell">VAT</TableHead>
-                      <TableHead className="text-right">Brutto</TableHead>
-                      <TableHead className="text-right hidden md:table-cell">Opłacone</TableHead>
-                      <TableHead className="text-right hidden md:table-cell">Oczekujące</TableHead>
+                      <TableHead>{t('table.month')}</TableHead>
+                      <TableHead className="text-right">{t('table.invoices')}</TableHead>
+                      <TableHead className="text-right hidden sm:table-cell">{t('table.net')}</TableHead>
+                      <TableHead className="text-right hidden sm:table-cell">{t('table.vat')}</TableHead>
+                      <TableHead className="text-right">{t('table.gross')}</TableHead>
+                      <TableHead className="text-right hidden md:table-cell">{t('table.paidCount')}</TableHead>
+                      <TableHead className="text-right hidden md:table-cell">{t('table.pendingCount')}</TableHead>
                     </TableRow>
                   </TableHeader>
                 <TableBody>
@@ -465,7 +475,7 @@ export default function ReportsPage() {
                   {monthlyData.filter(m => m.invoiceCount > 0).length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                        Brak faktur w wybranym okresie
+                        {t('monthly.noInvoices')}
                       </TableCell>
                     </TableRow>
                   )}
@@ -480,9 +490,9 @@ export default function ReportsPage() {
         <TabsContent value="suppliers" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg md:text-xl">Top 10 dostawców</CardTitle>
+              <CardTitle className="text-lg md:text-xl">{t('suppliersTab.title')}</CardTitle>
               <CardDescription className="text-sm">
-                Dostawcy z największą wartością faktur w wybranym okresie
+                {t('suppliersTab.description')}
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
@@ -491,11 +501,11 @@ export default function ReportsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>#</TableHead>
-                      <TableHead>Dostawca</TableHead>
-                      <TableHead className="hidden md:table-cell">NIP</TableHead>
-                      <TableHead className="text-right hidden sm:table-cell">Faktury</TableHead>
-                      <TableHead className="text-right">Suma brutto</TableHead>
-                      <TableHead className="text-right hidden lg:table-cell">Średnia</TableHead>
+                      <TableHead>{t('table.supplier')}</TableHead>
+                      <TableHead className="hidden md:table-cell">{t('table.nip')}</TableHead>
+                      <TableHead className="text-right hidden sm:table-cell">{t('table.invoices')}</TableHead>
+                      <TableHead className="text-right">{t('table.totalGross')}</TableHead>
+                      <TableHead className="text-right hidden lg:table-cell">{t('table.avgInvoice')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -519,7 +529,7 @@ export default function ReportsPage() {
                     {topSuppliers.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                          Brak danych o dostawcach
+                          {t('suppliersTab.noData')}
                         </TableCell>
                       </TableRow>
                     )}
@@ -534,9 +544,9 @@ export default function ReportsPage() {
         <TabsContent value="mpk" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg md:text-xl">Podział wg MPK</CardTitle>
+              <CardTitle className="text-lg md:text-xl">{t('mpkTab.title')}</CardTitle>
               <CardDescription className="text-sm">
-                Rozkład kosztów według miejsc powstawania kosztów
+                {t('mpkTab.description')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -545,27 +555,27 @@ export default function ReportsPage() {
                   <div key={item.mpk} className="space-y-1 md:space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap min-w-0">
-                        <Badge variant={item.mpk === 'Nieprzypisane' ? 'outline' : 'default'} className="shrink-0">
+                        <Badge variant={item.mpk === unassignedLabel ? 'outline' : 'default'} className="shrink-0">
                           {item.mpk}
                         </Badge>
-                        <span className="text-xs text-muted-foreground">{item.invoiceCount} faktur</span>
+                        <span className="text-xs text-muted-foreground">{t('mpkTab.invoicesCount', { count: item.invoiceCount })}</span>
                       </div>
                       <span className="font-medium text-sm shrink-0">{formatCurrency(item.totalGross)}</span>
                     </div>
                     <div className="h-2 bg-secondary rounded-full overflow-hidden">
                       <div 
-                        className={`h-full rounded-full transition-all ${item.mpk === 'Nieprzypisane' ? 'bg-muted-foreground/50' : 'bg-blue-500'}`}
+                        className={`h-full rounded-full transition-all ${item.mpk === unassignedLabel ? 'bg-muted-foreground/50' : 'bg-blue-500'}`}
                         style={{ width: `${item.percentage}%` }}
                       />
                     </div>
                     <div className="text-xs text-muted-foreground text-right">
-                      {item.percentage.toFixed(1)}% całości
+                      {item.percentage.toFixed(1)}% {t('ofTotal')}
                     </div>
                   </div>
                 ))}
                 {mpkData.length === 0 && (
                   <div className="text-center text-muted-foreground py-8">
-                    Brak danych o MPK
+                    {t('mpkTab.noData')}
                   </div>
                 )}
               </div>
@@ -575,25 +585,25 @@ export default function ReportsPage() {
           {/* MPK Table */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg md:text-xl">Szczegóły MPK</CardTitle>
+              <CardTitle className="text-lg md:text-xl">{t('mpkTab.detailsTitle')}</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>MPK</TableHead>
-                      <TableHead className="text-right">Faktury</TableHead>
-                      <TableHead className="text-right">Suma brutto</TableHead>
-                      <TableHead className="text-right hidden sm:table-cell">Średnia</TableHead>
-                      <TableHead className="text-right">Udział</TableHead>
+                      <TableHead>{t('table.mpk')}</TableHead>
+                      <TableHead className="text-right">{t('table.invoices')}</TableHead>
+                      <TableHead className="text-right">{t('table.totalGross')}</TableHead>
+                      <TableHead className="text-right hidden sm:table-cell">{t('table.avgInvoice')}</TableHead>
+                      <TableHead className="text-right">{t('table.share')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {mpkData.map((item) => (
                       <TableRow key={item.mpk}>
                         <TableCell>
-                          <Badge variant={item.mpk === 'Nieprzypisane' ? 'outline' : 'secondary'}>
+                          <Badge variant={item.mpk === unassignedLabel ? 'outline' : 'secondary'}>
                             {item.mpk}
                           </Badge>
                         </TableCell>
@@ -608,7 +618,7 @@ export default function ReportsPage() {
                     {mpkData.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                          Brak danych o MPK
+                          {t('mpkTab.noData')}
                         </TableCell>
                       </TableRow>
                     )}
@@ -623,9 +633,9 @@ export default function ReportsPage() {
         <TabsContent value="categories" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg md:text-xl">Podział wg kategorii</CardTitle>
+              <CardTitle className="text-lg md:text-xl">{t('categoriesTab.title')}</CardTitle>
               <CardDescription className="text-sm">
-                Rozkład kosztów według kategorii faktur
+                {t('categoriesTab.description')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -635,7 +645,7 @@ export default function ReportsPage() {
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap min-w-0">
                         <span className="font-medium text-sm truncate">{cat.category}</span>
-                        <Badge variant="outline" className="text-xs shrink-0">{cat.invoiceCount} faktur</Badge>
+                        <Badge variant="outline" className="text-xs shrink-0">{t('categoriesTab.invoicesCount', { count: cat.invoiceCount })}</Badge>
                       </div>
                       <span className="font-medium text-sm shrink-0">{formatCurrency(cat.totalGross)}</span>
                     </div>
@@ -646,13 +656,13 @@ export default function ReportsPage() {
                       />
                     </div>
                     <div className="text-xs text-muted-foreground text-right">
-                      {cat.percentage.toFixed(1)}% całości
+                      {cat.percentage.toFixed(1)}% {t('ofTotal')}
                     </div>
                   </div>
                 ))}
                 {categoryData.length === 0 && (
                   <div className="text-center text-muted-foreground py-8">
-                    Brak danych o kategoriach
+                    {t('categoriesTab.noData')}
                   </div>
                 )}
               </div>

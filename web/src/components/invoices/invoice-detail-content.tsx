@@ -574,12 +574,19 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
               <span className="hidden sm:inline">Oznacz opłacone</span>
             </Button>
           )}
-          <Badge
-            variant={invoice.paymentStatus === 'paid' ? 'default' : isOverdue ? 'destructive' : 'secondary'}
-            className="text-xs sm:text-sm px-2 sm:px-3 py-1"
-          >
-            {invoice.paymentStatus === 'paid' ? 'Opłacona' : isOverdue ? 'Zaległe' : 'Oczekuje'}
-          </Badge>
+          {invoice.paymentStatus === 'paid' ? (
+            <div className="flex items-center gap-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-2 sm:px-3 py-1">
+              <Check className="h-3.5 w-3.5" />
+              <span>Opłacona</span>
+            </div>
+          ) : (
+            <Badge
+              variant={isOverdue ? 'destructive' : 'secondary'}
+              className="text-xs sm:text-sm px-2 sm:px-3 py-1"
+            >
+              {isOverdue ? 'Zaległe' : 'Oczekuje'}
+            </Badge>
+          )}
         </div>
       </div>
 

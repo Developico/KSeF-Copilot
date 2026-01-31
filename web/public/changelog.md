@@ -6,6 +6,35 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.5.0] - 2026-01-31
+
+### ✨ Dodane - Wielojęzyczność (i18n)
+
+- **Obsługa wielu języków** - pełna implementacja next-intl z dynamicznym routingiem `[locale]`
+- **Języki**: Polski (domyślny) i Angielski
+- **Przełącznik języków** w nagłówku aplikacji z flagami (PL/GB)
+- **Przetłumaczone strony**:
+  - Dashboard - tytuły, statystyki, ostatnia aktywność
+  - Faktury - lista, filtry, statusy płatności i opisu
+  - Raporty - wykresy, tabele, formatowanie dat i kwot
+  - Synchronizacja - status sesji, historia, komunikaty
+  - Ustawienia - zakładki, formularze, komunikaty walidacji
+- **Przetłumaczone komponenty**:
+  - Nagłówek i nawigacja boczna
+  - Modal skanowania dokumentów (DocumentScannerModal)
+  - Podgląd ekstrakcji danych (ExtractionPreview)
+  - Formularz ręcznego wprowadzenia faktury (ManualInvoiceForm)
+  - Dialogi potwierdzenia, komunikaty toast, błędy walidacji
+- **Formatowanie locale-aware** - daty (DD.MM.YYYY / MM/DD/YYYY), kwoty (PLN/currency)
+
+### 🔧 Zmiany
+
+- Middleware next-intl dla automatycznego wykrywania języka
+- Routing z prefiksem `/pl/` i `/en/` dla wszystkich stron
+- Struktura plików tłumaczeń: `src/messages/pl.json`, `src/messages/en.json`
+
+---
+
 ## [0.4.0] - 2026-01-30
 
 ### ✨ Dodane

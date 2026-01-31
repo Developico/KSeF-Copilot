@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useTheme } from 'next-themes'
+import { useTranslations } from 'next-intl'
 import { Sun, Moon, User, LogOut, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
@@ -15,9 +16,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ChangelogModal } from './changelog-modal'
 import { MobileSidebar } from './mobile-sidebar'
+import { LanguageSwitcher } from './language-switcher'
 import { useAuth } from '@/components/auth/auth-provider'
 
 export function Header() {
+  const t = useTranslations('header')
   const { theme, setTheme } = useTheme()
   const { user, logout, isAuthenticated } = useAuth()
   const [mounted, setMounted] = useState(false)
@@ -71,7 +74,7 @@ export function Header() {
               size="icon"
               className="md:hidden h-9 w-9"
               onClick={() => setMobileMenuOpen(true)}
-              aria-label="Otwórz menu"
+              aria-label={t('openMenu')}
             >
               <Menu className="h-5 w-5" />
             </Button>
@@ -80,7 +83,7 @@ export function Header() {
             <div 
               className="flex items-center gap-3 select-none cursor-pointer hover:opacity-80 transition-opacity"
               onClick={handleLogoClick}
-              title={clickCount > 0 ? `Kliknij jeszcze ${3 - clickCount} raz${3 - clickCount !== 1 ? 'y' : ''}...` : undefined}
+              title={clickCount > 0 ? t('clickHint', { count: 3 - clickCount, suffix: 3 - clickCount !== 1 ? 's' : '' }) : undefined}
             >
               <div className="flex h-8 w-8 items-center justify-center">
                 {logoOk ? (
@@ -99,8 +102,8 @@ export function Header() {
                 )}
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-base sm:text-lg font-semibold leading-tight">C-Level KSeF</h1>
-                <p className="text-xs text-muted-foreground">Cost analysis</p>
+                <h1 className="text-base sm:text-lg font-semibold leading-tight">{t('title')}</h1>
+                <p className="text-xs text-muted-foreground">{t('subtitle')}</p>
               </div>
             </div>
           </div>
@@ -110,6 +113,9 @@ export function Header() {
 
           {/* Right side actions */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Language Switcher */}
+            {mounted && <LanguageSwitcher />}
+
             {/* Theme toggle */}
             {mounted && (
               <Button
@@ -117,14 +123,14 @@ export function Header() {
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                title={theme === 'dark' ? 'Tryb jasny' : 'Tryb ciemny'}
+                title={theme === 'dark' ? t('lightMode') : t('darkMode')}
               >
                 {theme === 'dark' ? (
                   <Sun className="h-4 w-4" />
                 ) : (
                   <Moon className="h-4 w-4" />
                 )}
-                <span className="sr-only">Przełącz motyw</span>
+                <span className="sr-only">{t('toggleTheme')}</span>
               </Button>
             )}
 
@@ -134,8 +140,8 @@ export function Header() {
                 <DropdownMenuTrigger asChild>
                   <button 
                     className="relative h-8 w-8 rounded-full bg-transparent hover:bg-accent focus:bg-accent focus:outline-none"
-                    title={`Menu użytkownika: ${user.name}`}
-                    aria-label={`Menu użytkownika: ${user.name}`}
+                    title={`${t('userMenu')}: ${user.name}`}
+                    aria-label={`${t('userMenu')}: ${user.name}`}
                   >
                     <UserAvatar 
                       name={user.name} 
@@ -149,7 +155,7 @@ export function Header() {
                     <p className="text-sm font-medium leading-none">{user.name}</p>
                     <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                     <p className="text-[10px] mt-2 text-muted-foreground uppercase tracking-wide">
-                      Rola: <span className="text-foreground">{roleDisplay}</span>
+                      {t('role')}: <span className="text-foreground">{roleDisplay}</span>
                     </p>
                   </div>
                   <DropdownMenuSeparator />
@@ -161,13 +167,13 @@ export function Header() {
                       className="flex items-center cursor-pointer"
                     >
                       <User className="mr-2 h-4 w-4" />
-                      Profil
+                      {t('profile')}
                     </a>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
-                    Wyloguj
+                    {t('logout')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

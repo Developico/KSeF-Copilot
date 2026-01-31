@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import Link from 'next/link'
+import { Link } from '@/i18n/navigation'
 import { useRouter } from 'next/navigation'
+import { useTranslations, useLocale } from 'next-intl'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -118,13 +119,6 @@ function getPaymentStatusBadge(status: Invoice['paymentStatus'], dueDate?: strin
   return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Oczekuje</Badge>
 }
 
-function formatCurrency(amount: number, currency: string = 'PLN') {
-  return new Intl.NumberFormat('pl-PL', {
-    style: 'currency',
-    currency: currency,
-  }).format(amount)
-}
-
 // ============================================================================
 // Grouping Types
 // ============================================================================
@@ -136,15 +130,59 @@ interface InvoiceGroup {
   totalGross: number
 }
 
-const MONTH_NAMES_PL = [
-  'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
-  'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
-]
-
 export default function InvoicesPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const t = useTranslations('invoices')
+  const tCommon = useTranslations('common')
+  const locale = useLocale()
   
+  // Locale-aware formatting
+  const formatCurrency = useCallback((amount: number, currency: string = 'PLN') => {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currency,
+    }).format(amount)
+  }, [locale])
+
+  const formatDate = useCallback((date: string) => {
+    return new Date(date).toLocaleDateString(locale)
+  }, [locale])
+
+  const MONTH_NAMES = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const date = new Date(2024, i, 1)
+      return date.toLocaleDateString(locale, { month: 'long' })
+    })
+  }, [locale])
+
+  // Translated badge functions
+  const getDescriptionStatusBadgeTranslated = useCallback((status: DescriptionStatus) => {
+    switch (status) {
+      case 'not_described':
+        return (
+          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 gap-1">
+            <FileQuestion className="h-3 w-3" />
+            {t('notDescribed')}
+          </Badge>
+        )
+      case 'ai_suggested':
+        return (
+          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
+            <Sparkles className="h-3 w-3" />
+            {t('aiSuggestion')}
+          </Badge>
+        )
+      case 'described':
+        return (
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 gap-1">
+            <FileCheck className="h-3 w-3" />
+            {t('described')}
+          </Badge>
+        )
+    }
+  }, [t])
+
   // Mobile detection - use sm breakpoint (640px) for card/table switch
   const [isMobile, setIsMobile] = useState(false)
   // Tablet detection - between sm and lg (640px - 1024px) for filters layout
@@ -268,7 +306,7 @@ export default function InvoicesPage() {
     if (groupBy === 'none') {
       return [{
         key: 'all',
-        label: 'Wszystkie faktury',
+        label: t('allInvoices'),
         invoices: sortedInvoices,
         totalGross: sortedInvoices.reduce((sum, i) => sum + i.grossAmount, 0),
       }]
@@ -287,24 +325,24 @@ export default function InvoicesPage() {
             const year = date.getFullYear()
             const month = date.getMonth()
             key = `${year}-${String(month + 1).padStart(2, '0')}`
-            label = `${MONTH_NAMES_PL[month]} ${year}`
+            label = `${MONTH_NAMES[month]} ${year}`
           } else {
             key = 'unknown'
-            label = 'Brak daty'
+            label = t('noDate')
           }
           break
         }
         case 'mpk':
           key = invoice.mpk || 'brak'
-          label = invoice.mpk || 'Brak MPK'
+          label = invoice.mpk || t('noMpk')
           break
         case 'category':
           key = invoice.category || 'brak'
-          label = invoice.category || 'Brak kategorii'
+          label = invoice.category || t('noCategory')
           break
         default:
           key = 'all'
-          label = 'Wszystkie'
+          label = tCommon('all')
       }
 
       if (!groups[key]) {
@@ -328,7 +366,7 @@ export default function InvoicesPage() {
     }
 
     return sortedGroups
-  }, [sortedInvoices, groupBy])
+  }, [sortedInvoices, groupBy, t, tCommon, MONTH_NAMES])
 
   // Toggle group collapse
   const toggleGroupCollapse = useCallback((key: string) => {
@@ -353,16 +391,16 @@ export default function InvoicesPage() {
   function handleExport() {
     if (invoices.length === 0) {
       toast({
-        title: 'Brak danych',
-        description: 'Nie ma faktur do wyeksportowania',
+        title: t('noData'),
+        description: t('noInvoicesToExport'),
         variant: 'destructive',
       })
       return
     }
     exportInvoicesToCsv(invoices)
     toast({
-      title: 'Eksport zakończony',
-      description: `Wyeksportowano ${invoices.length} faktur do pliku CSV`,
+      title: t('exportCompleted'),
+      description: t('exportedCount', { count: invoices.length }),
       variant: 'success',
     })
   }
@@ -371,14 +409,14 @@ export default function InvoicesPage() {
     try {
       await markAsPaidMutation.mutateAsync({ id })
       toast({
-        title: 'Faktura opłacona',
-        description: `Faktura ${invoiceNumber} została oznaczona jako opłacona`,
+        title: t('invoicePaid'),
+        description: t('invoiceMarkedPaid', { number: invoiceNumber }),
         variant: 'success',
       })
     } catch (error) {
       toast({
-        title: 'Błąd',
-        description: error instanceof Error ? error.message : 'Nie udało się oznaczyć faktury',
+        title: tCommon('error'),
+        description: error instanceof Error ? error.message : t('markPaidError'),
         variant: 'destructive',
       })
     }
@@ -395,16 +433,16 @@ export default function InvoicesPage() {
         },
       })
       toast({
-        title: newStatus === 'paid' ? 'Faktura opłacona' : 'Status zmieniony',
+        title: newStatus === 'paid' ? t('invoicePaid') : t('statusChanged'),
         description: newStatus === 'paid' 
-          ? `Faktura ${invoiceNumber} została oznaczona jako opłacona`
-          : `Faktura ${invoiceNumber} została oznaczona jako nieopłacona`,
+          ? t('invoiceMarkedPaid', { number: invoiceNumber })
+          : t('invoiceMarkedUnpaid', { number: invoiceNumber }),
         variant: 'success',
       })
     } catch (error) {
       toast({
-        title: 'Błąd',
-        description: error instanceof Error ? error.message : 'Nie udało się zmienić statusu',
+        title: tCommon('error'),
+        description: error instanceof Error ? error.message : t('statusChangeError'),
         variant: 'destructive',
       })
     }
@@ -414,15 +452,15 @@ export default function InvoicesPage() {
     try {
       await deleteInvoiceMutation.mutateAsync(id)
       toast({
-        title: 'Faktura usunięta',
-        description: `Faktura ${invoiceNumber} została usunięta`,
+        title: t('invoiceDeleted'),
+        description: t('invoiceDeletedDesc', { number: invoiceNumber }),
         variant: 'success',
       })
       refetch()
     } catch (error) {
       toast({
-        title: 'Błąd',
-        description: error instanceof Error ? error.message : 'Nie udało się usunąć faktury',
+        title: tCommon('error'),
+        description: error instanceof Error ? error.message : t('deleteError'),
         variant: 'destructive',
       })
     }
@@ -435,10 +473,10 @@ export default function InvoicesPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
             <FileText className="h-6 w-6 md:h-7 md:w-7" />
-            Faktury
+            {t('title')}
           </h1>
           <p className="text-muted-foreground text-sm md:text-base">
-            Przeglądaj i zarządzaj fakturami kosztowymi z KSeF
+            {t('subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -448,51 +486,51 @@ export default function InvoicesPage() {
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm">
                   <Filter className="h-4 w-4 mr-2" />
-                  Filtry
+                  {t('filters')}
                 </Button>
               </SheetTrigger>
               <SheetContent side="bottom" className="h-[80vh] overflow-y-auto">
                 <SheetHeader>
-                  <SheetTitle>Filtry</SheetTitle>
+                  <SheetTitle>{t('filters')}</SheetTitle>
                 </SheetHeader>
                 <div className="py-4 space-y-4">
                   {/* Quick filters in drawer */}
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Status płatności</p>
+                    <p className="text-sm font-medium text-muted-foreground">{t('paymentStatusLabel')}</p>
                     <div className="flex flex-wrap gap-2">
                       <Button
                         variant={!filters.paymentStatus && !filters.overdue ? "default" : "outline"}
                         size="sm"
                         onClick={() => { setFilters(f => ({ ...f, paymentStatus: undefined, overdue: undefined })); setFiltersDrawerOpen(false) }}
                       >
-                        Wszystkie <Badge variant="secondary" className="ml-1">{data?.count || 0}</Badge>
+                        {tCommon('all')} <Badge variant="secondary" className="ml-1">{data?.count || 0}</Badge>
                       </Button>
                       <Button
                         variant={filters.paymentStatus === 'pending' && !filters.overdue ? "default" : "outline"}
                         size="sm"
                         onClick={() => { setFilters(f => ({ ...f, paymentStatus: 'pending', overdue: undefined })); setFiltersDrawerOpen(false) }}
                       >
-                        Do opłacenia <Badge variant="secondary" className="ml-1">{pendingCount}</Badge>
+                        {t('toPay')} <Badge variant="secondary" className="ml-1">{pendingCount}</Badge>
                       </Button>
                       <Button
                         variant={filters.overdue ? "default" : "outline"}
                         size="sm"
                         onClick={() => { setFilters(f => ({ ...f, overdue: true, paymentStatus: undefined })); setFiltersDrawerOpen(false) }}
                       >
-                        Zaległe <Badge variant="destructive" className="ml-1">{overdueCount}</Badge>
+                        {t('overdue')} <Badge variant="destructive" className="ml-1">{overdueCount}</Badge>
                       </Button>
                       <Button
                         variant={filters.paymentStatus === 'paid' ? "default" : "outline"}
                         size="sm"
                         onClick={() => { setFilters(f => ({ ...f, paymentStatus: 'paid', overdue: undefined })); setFiltersDrawerOpen(false) }}
                       >
-                        Opłacone <Badge className="ml-1 bg-green-100 text-green-800">{paidCount}</Badge>
+                        {t('paid')} <Badge className="ml-1 bg-green-100 text-green-800">{paidCount}</Badge>
                       </Button>
                     </div>
                   </div>
                   
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Status opisu</p>
+                    <p className="text-sm font-medium text-muted-foreground">{t('descriptionStatusLabel')}</p>
                     <div className="flex flex-wrap gap-2">
                       <Button
                         variant={descriptionFilter === 'not_described' ? "default" : "outline"}
@@ -500,7 +538,7 @@ export default function InvoicesPage() {
                         onClick={() => { setDescriptionFilter(f => f === 'not_described' ? null : 'not_described'); setFiltersDrawerOpen(false) }}
                       >
                         <FileQuestion className="h-3.5 w-3.5 mr-1" />
-                        Bez opisu <Badge variant="destructive" className="ml-1">{notDescribedCount}</Badge>
+                        {t('notDescribed')} <Badge variant="destructive" className="ml-1">{notDescribedCount}</Badge>
                       </Button>
                       <Button
                         variant={descriptionFilter === 'ai_suggested' ? "default" : "outline"}
@@ -508,7 +546,7 @@ export default function InvoicesPage() {
                         onClick={() => { setDescriptionFilter(f => f === 'ai_suggested' ? null : 'ai_suggested'); setFiltersDrawerOpen(false) }}
                       >
                         <Sparkles className="h-3.5 w-3.5 mr-1" />
-                        Propozycja AI <Badge className="ml-1 bg-purple-100 text-purple-800">{aiSuggestedCount}</Badge>
+                        {t('aiSuggestion')} <Badge className="ml-1 bg-purple-100 text-purple-800">{aiSuggestedCount}</Badge>
                       </Button>
                       <Button
                         variant={descriptionFilter === 'described' ? "default" : "outline"}
@@ -516,7 +554,7 @@ export default function InvoicesPage() {
                         onClick={() => { setDescriptionFilter(f => f === 'described' ? null : 'described'); setFiltersDrawerOpen(false) }}
                       >
                         <FileCheck className="h-3.5 w-3.5 mr-1" />
-                        Opisane <Badge className="ml-1 bg-green-100 text-green-800">{describedCount}</Badge>
+                        {t('described')} <Badge className="ml-1 bg-green-100 text-green-800">{describedCount}</Badge>
                       </Button>
                     </div>
                   </div>
@@ -524,32 +562,32 @@ export default function InvoicesPage() {
                   {/* Grouping & Sorting in mobile drawer */}
                   <div className="space-y-4 pt-4 border-t">
                     <div className="space-y-2">
-                      <p className="text-sm font-medium text-muted-foreground">Grupowanie</p>
+                      <p className="text-sm font-medium text-muted-foreground">{t('grouping')}</p>
                       <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
                         <SelectTrigger className="w-full">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="date">Data (miesiąc)</SelectItem>
-                          <SelectItem value="mpk">MPK</SelectItem>
-                          <SelectItem value="category">Kategoria</SelectItem>
-                          <SelectItem value="none">Brak grupowania</SelectItem>
+                          <SelectItem value="date">{t('groupByDate')}</SelectItem>
+                          <SelectItem value="mpk">{t('groupByMpk')}</SelectItem>
+                          <SelectItem value="category">{t('groupByCategory')}</SelectItem>
+                          <SelectItem value="none">{t('noGrouping')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <p className="text-sm font-medium text-muted-foreground">Sortowanie</p>
+                      <p className="text-sm font-medium text-muted-foreground">{t('sorting')}</p>
                       <div className="flex gap-2">
                         <Select value={sortColumn} onValueChange={(v) => setSortColumn(v as SortColumn)}>
                           <SelectTrigger className="flex-1">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="invoiceDate">Data faktury</SelectItem>
-                            <SelectItem value="dueDate">Termin płatności</SelectItem>
-                            <SelectItem value="grossAmount">Kwota brutto</SelectItem>
-                            <SelectItem value="supplierName">Dostawca</SelectItem>
-                            <SelectItem value="invoiceNumber">Numer faktury</SelectItem>
+                            <SelectItem value="invoiceDate">{t('invoiceDate')}</SelectItem>
+                            <SelectItem value="dueDate">{t('dueDate')}</SelectItem>
+                            <SelectItem value="grossAmount">{t('grossAmount')}</SelectItem>
+                            <SelectItem value="supplierName">{t('supplier')}</SelectItem>
+                            <SelectItem value="invoiceNumber">{t('invoiceNumber')}</SelectItem>
                           </SelectContent>
                         </Select>
                         <Select value={sortDirection} onValueChange={(v) => setSortDirection(v as SortDirection)}>
@@ -557,8 +595,8 @@ export default function InvoicesPage() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="desc">Malejąco</SelectItem>
-                            <SelectItem value="asc">Rosnąco</SelectItem>
+                            <SelectItem value="desc">{t('descending')}</SelectItem>
+                            <SelectItem value="asc">{t('ascending')}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -579,16 +617,16 @@ export default function InvoicesPage() {
           
           <Button onClick={() => setScannerOpen(true)} size={isMobile ? "sm" : "default"}>
             <Plus className="mr-2 h-4 w-4" />
-            {!isMobile && "Dodaj fakturę"}
+            {!isMobile && t('addInvoice')}
           </Button>
           <Button variant="outline" onClick={() => refetch()} size={isMobile ? "sm" : "default"}>
             <RefreshCw className="h-4 w-4" />
-            {!isMobile && <span className="ml-2">Odśwież</span>}
+            {!isMobile && <span className="ml-2">{tCommon('refresh')}</span>}
           </Button>
           {!isMobile && (
             <Button variant="outline" onClick={handleExport}>
               <Download className="mr-2 h-4 w-4" />
-              Eksportuj
+              {tCommon('export')}
             </Button>
           )}
         </div>
@@ -609,7 +647,7 @@ export default function InvoicesPage() {
                 onClick={() => setFilters(f => ({ ...f, paymentStatus: undefined, overdue: undefined }))}
               >
                 <FileText className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Wszystkie</span>
+                <span className="hidden sm:inline">{tCommon('all')}</span>
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5">{data?.count || 0}</Badge>
               </Button>
               <Button
@@ -619,7 +657,7 @@ export default function InvoicesPage() {
                 onClick={() => setFilters(f => ({ ...f, paymentStatus: 'pending', overdue: undefined }))}
               >
                 <ArrowDownToLine className="h-3.5 w-3.5 text-orange-500" />
-                <span className="hidden md:inline">Do opłacenia</span>
+                <span className="hidden md:inline">{t('toPay')}</span>
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5">{pendingCount}</Badge>
               </Button>
               <Button
@@ -629,7 +667,7 @@ export default function InvoicesPage() {
                 onClick={() => setFilters(f => ({ ...f, overdue: true, paymentStatus: undefined }))}
               >
                 <AlertCircle className="h-3.5 w-3.5 text-red-500" />
-                <span className="hidden md:inline">Zaległe</span>
+                <span className="hidden md:inline">{t('overdue')}</span>
                 <Badge variant="destructive" className="ml-1 h-5 px-1.5">{overdueCount}</Badge>
               </Button>
               <Button
@@ -639,7 +677,7 @@ export default function InvoicesPage() {
                 onClick={() => setFilters(f => ({ ...f, paymentStatus: 'paid', overdue: undefined }))}
               >
                 <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                <span className="hidden md:inline">Opłacone</span>
+                <span className="hidden md:inline">{t('paid')}</span>
                 <Badge className="ml-1 h-5 px-1.5 bg-green-100 text-green-800">{paidCount}</Badge>
               </Button>
             </div>
@@ -656,7 +694,7 @@ export default function InvoicesPage() {
                 onClick={() => setDescriptionFilter(f => f === 'not_described' ? null : 'not_described')}
               >
                 <FileQuestion className="h-3.5 w-3.5" />
-                <span className="hidden lg:inline">Bez opisu</span>
+                <span className="hidden lg:inline">{t('notDescribed')}</span>
                 <Badge variant="destructive" className="ml-1 h-5 px-1.5">{notDescribedCount}</Badge>
               </Button>
               <Button
@@ -666,7 +704,7 @@ export default function InvoicesPage() {
                 onClick={() => setDescriptionFilter(f => f === 'ai_suggested' ? null : 'ai_suggested')}
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                <span className="hidden lg:inline">Propozycja AI</span>
+                <span className="hidden lg:inline">{t('aiSuggestion')}</span>
                 <Badge className="ml-1 h-5 px-1.5 bg-purple-100 text-purple-800">{aiSuggestedCount}</Badge>
               </Button>
               <Button
@@ -676,7 +714,7 @@ export default function InvoicesPage() {
                 onClick={() => setDescriptionFilter(f => f === 'described' ? null : 'described')}
               >
                 <FileCheck className="h-3.5 w-3.5" />
-                <span className="hidden lg:inline">Opisane</span>
+                <span className="hidden lg:inline">{t('described')}</span>
                 <Badge className="ml-1 h-5 px-1.5 bg-green-100 text-green-800">{describedCount}</Badge>
               </Button>
             </div>
@@ -709,12 +747,12 @@ export default function InvoicesPage() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-medium">Brak faktur</h3>
+                <h3 className="text-lg font-medium">{t('noInvoices')}</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Uruchom synchronizację, aby pobrać faktury z KSeF
+                  {t('runSyncToFetch')}
                 </p>
                 <Button asChild className="mt-4">
-                  <Link href="/sync">Przejdź do synchronizacji</Link>
+                  <Link href="/sync">{t('goToSync')}</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -772,14 +810,14 @@ export default function InvoicesPage() {
           ) : invoices.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-medium">Brak faktur</h3>
+              <h3 className="text-lg font-medium">{t('noInvoices')}</h3>
               <p className="text-sm text-muted-foreground mt-1">
                 {Object.keys(filters).length > 3
-                  ? 'Brak faktur spełniających kryteria wyszukiwania'
-                  : 'Uruchom synchronizację, aby pobrać faktury z KSeF'}
+                  ? t('noMatchingInvoices')
+                  : t('runSyncToFetch')}
               </p>
               <Button asChild className="mt-4">
-                <Link href="/sync">Przejdź do synchronizacji</Link>
+                <Link href="/sync">{t('goToSync')}</Link>
               </Button>
             </div>
           ) : (
@@ -798,7 +836,7 @@ export default function InvoicesPage() {
                     }}
                   >
                     <div className="flex items-center gap-1">
-                      Numer faktury
+                      {t('invoiceNumber')}
                       {sortColumn === 'invoiceNumber' && (
                         sortDirection === 'asc' 
                           ? <ArrowUp className="h-3.5 w-3.5" />
@@ -818,7 +856,7 @@ export default function InvoicesPage() {
                     }}
                   >
                     <div className="flex items-center gap-1">
-                      Data wystawienia
+                      {t('issueDate')}
                       {sortColumn === 'invoiceDate' && (
                         sortDirection === 'asc' 
                           ? <ArrowUp className="h-3.5 w-3.5" />
@@ -838,7 +876,7 @@ export default function InvoicesPage() {
                     }}
                   >
                     <div className="flex items-center gap-1">
-                      Dostawca
+                      {t('supplier')}
                       {sortColumn === 'supplierName' && (
                         sortDirection === 'asc' 
                           ? <ArrowUp className="h-3.5 w-3.5" />
@@ -858,7 +896,7 @@ export default function InvoicesPage() {
                     }}
                   >
                     <div className="flex items-center justify-end gap-1">
-                      Kwota brutto
+                      {t('grossAmount')}
                       {sortColumn === 'grossAmount' && (
                         sortDirection === 'asc' 
                           ? <ArrowUp className="h-3.5 w-3.5" />
@@ -866,10 +904,10 @@ export default function InvoicesPage() {
                       )}
                     </div>
                   </TableHead>
-                  <TableHead className="hidden xl:table-cell">MPK</TableHead>
-                  <TableHead className="hidden xl:table-cell">Kategoria</TableHead>
-                  <TableHead className="hidden md:table-cell">Status opisu</TableHead>
-                  <TableHead className="w-[100px] lg:w-[120px] text-center">Akcje</TableHead>
+                  <TableHead className="hidden xl:table-cell">{t('mpk')}</TableHead>
+                  <TableHead className="hidden xl:table-cell">{t('category')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('descriptionStatus')}</TableHead>
+                  <TableHead className="w-[100px] lg:w-[120px] text-center">{tCommon('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -892,7 +930,7 @@ export default function InvoicesPage() {
                               )}
                               <span className="font-semibold">{group.label}</span>
                               <Badge variant="secondary">
-                                {group.invoices.length} {group.invoices.length === 1 ? 'faktura' : group.invoices.length < 5 ? 'faktury' : 'faktur'}
+                                {group.invoices.length} {t('invoicesCount', { count: group.invoices.length })}
                               </Badge>
                             </div>
                             <span className="font-semibold">
@@ -919,7 +957,7 @@ export default function InvoicesPage() {
                           </div>
                           {/* Show date on tablet when column is hidden */}
                           <div className="text-xs text-muted-foreground lg:hidden">
-                            {new Date(invoice.invoiceDate).toLocaleDateString('pl-PL')}
+                            {formatDate(invoice.invoiceDate)}
                           </div>
                         </div>
                       </div>
@@ -927,7 +965,7 @@ export default function InvoicesPage() {
                     <TableCell className="hidden lg:table-cell">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                        {new Date(invoice.invoiceDate).toLocaleDateString('pl-PL')}
+                        {formatDate(invoice.invoiceDate)}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -936,7 +974,7 @@ export default function InvoicesPage() {
                         <div>
                           <div className="font-medium text-sm truncate max-w-[120px] md:max-w-[200px]">{invoice.supplierName}</div>
                           <div className="text-xs text-muted-foreground hidden sm:block">
-                            NIP: {invoice.supplierNip}
+                            {t('nipLabel')}: {invoice.supplierNip}
                           </div>
                         </div>
                       </div>
@@ -973,7 +1011,7 @@ export default function InvoicesPage() {
                       )}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      {getDescriptionStatusBadge(getDescriptionStatus(invoice))}
+                      {getDescriptionStatusBadgeTranslated(getDescriptionStatus(invoice))}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center gap-1">
@@ -982,7 +1020,7 @@ export default function InvoicesPage() {
                           size="icon"
                           onClick={() => handleTogglePaymentStatus(invoice.id, invoice.invoiceNumber, invoice.paymentStatus)}
                           disabled={updateInvoiceMutation.isPending}
-                          title={invoice.paymentStatus === 'paid' ? 'Oznacz jako nieopłacone' : 'Oznacz jako opłacone'}
+                          title={invoice.paymentStatus === 'paid' ? t('markAsUnpaid') : t('markAsPaid')}
                         >
                           <CheckCircle 
                             className={`h-5 w-5 transition-colors ${invoice.paymentStatus === 'paid' ? 'text-green-500 fill-green-100' : 'text-gray-300'}`} 
@@ -999,26 +1037,25 @@ export default function InvoicesPage() {
                               <Button 
                                 variant="ghost" 
                                 size="icon"
-                                title="Usuń fakturę"
+                                title={tCommon('delete')}
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Czy na pewno chcesz usunąć?</AlertDialogTitle>
+                                <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Faktura {invoice.invoiceNumber} zostanie trwale usunięta.
-                                  Tej operacji nie można cofnąć.
+                                  {t('deleteConfirmDesc', { number: invoice.invoiceNumber })}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => handleDeleteInvoice(invoice.id, invoice.invoiceNumber)}
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
-                                  Usuń
+                                  {tCommon('delete')}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -1040,7 +1077,7 @@ export default function InvoicesPage() {
       {/* Pagination info */}
       {invoices.length > 0 && (
         <div className="text-sm text-muted-foreground text-center">
-          Wyświetlono {invoices.length} faktur
+          {t('showingCount', { count: invoices.length })}
         </div>
       )}
 

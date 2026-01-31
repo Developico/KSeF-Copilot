@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { useTranslations } from 'next-intl'
+import { useLocale } from 'next-intl'
 import {
   Table,
   TableBody,
@@ -40,6 +42,10 @@ import {
 import { RequireRole } from '@/components/auth/auth-provider'
 
 export default function SyncPage() {
+  const t = useTranslations('sync')
+  const tCommon = useTranslations('common')
+  const locale = useLocale()
+  
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date()
     d.setDate(d.getDate() - 30)
@@ -81,45 +87,52 @@ export default function SyncPage() {
   const session = sessionData?.session
   const newInvoices = previewData?.invoices.filter(inv => !inv.alreadyImported) || []
 
+  // Locale-aware formatting
+  const formatTime = () => new Date().toLocaleTimeString(locale)
+  const formatCurrency = (amount: number) => 
+    new Intl.NumberFormat(locale, { style: 'currency', currency: 'PLN' }).format(amount)
+  const formatDate = (date: string) => 
+    new Date(date).toLocaleDateString(locale)
+
   function addLog(message: string) {
-    const timestamp = new Date().toLocaleTimeString('pl-PL')
+    const timestamp = formatTime()
     setSyncLog(prev => [...prev, `[${timestamp}] ${message}`])
   }
 
   async function handleStartSession() {
-    addLog('Inicjalizacja sesji KSeF...')
+    addLog(t('initSession'))
     try {
       await startSessionMutation.mutateAsync(undefined)
-      addLog('Sesja została uruchomiona pomyślnie.')
+      addLog(t('sessionStarted'))
     } catch (error) {
-      addLog(`Błąd podczas uruchamiania sesji: ${error instanceof Error ? error.message : 'Unknown'}`)
+      addLog(`${t('sessionError')}: ${error instanceof Error ? error.message : 'Unknown'}`)
     }
   }
 
   async function handleEndSession() {
-    addLog('Zamykanie sesji KSeF...')
+    addLog(t('closingSession'))
     try {
       await endSessionMutation.mutateAsync()
-      addLog('Sesja została zamknięta.')
+      addLog(t('sessionClosed'))
     } catch (error) {
-      addLog(`Błąd podczas zamykania sesji: ${error instanceof Error ? error.message : 'Unknown'}`)
+      addLog(`${t('sessionCloseError')}: ${error instanceof Error ? error.message : 'Unknown'}`)
     }
   }
 
   async function handlePreview() {
-    addLog(`Pobieranie listy faktur od ${dateFrom} do ${dateTo}...`)
+    addLog(t('fetchingInvoices', { dateFrom, dateTo }))
     await refetchPreview()
-    addLog(`Znaleziono ${previewData?.total || 0} faktur, ${previewData?.new || 0} nowych.`)
+    addLog(t('foundInvoices', { total: previewData?.total || 0, new: previewData?.new || 0 }))
   }
 
   async function handleSyncAll() {
-    addLog(`Rozpoczynam pełną synchronizację...`)
+    addLog(t('startingFullSync'))
     try {
       const result = await runSyncMutation.mutateAsync({ dateFrom, dateTo })
-      addLog(`Zaimportowano ${result.imported} faktur, pominięto ${result.skipped}, błędów: ${result.failed}`)
+      addLog(t('syncResult', { imported: result.imported, skipped: result.skipped, failed: result.failed }))
       await refetchPreview()
     } catch (error) {
-      addLog(`Błąd synchronizacji: ${error instanceof Error ? error.message : 'Unknown'}`)
+      addLog(`${t('syncError')}: ${error instanceof Error ? error.message : 'Unknown'}`)
     }
   }
 
@@ -127,15 +140,15 @@ export default function SyncPage() {
     if (selectedInvoices.size === 0) return
     
     const refs = Array.from(selectedInvoices)
-    addLog(`Importowanie ${refs.length} wybranych faktur...`)
+    addLog(t('importingSelected', { count: refs.length }))
     
     try {
       const result = await importMutation.mutateAsync({ referenceNumbers: refs })
-      addLog(`Zaimportowano ${result.imported} faktur, błędów: ${result.failed}`)
+      addLog(t('importResult', { imported: result.imported, failed: result.failed }))
       setSelectedInvoices(new Set())
       await refetchPreview()
     } catch (error) {
-      addLog(`Błąd importu: ${error instanceof Error ? error.message : 'Unknown'}`)
+      addLog(`${t('importError')}: ${error instanceof Error ? error.message : 'Unknown'}`)
     }
   }
 
@@ -165,7 +178,7 @@ export default function SyncPage() {
   return (
     <RequireRole role="Admin" fallback={
       <div className="flex items-center justify-center h-[50vh]">
-        <p className="text-muted-foreground">Brak uprawnień do synchronizacji faktur.</p>
+        <p className="text-muted-foreground">{t('noPermission')}</p>
       </div>
     }>
       <div className="space-y-4 md:space-y-6">
@@ -173,10 +186,10 @@ export default function SyncPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
             <RefreshCw className="h-6 w-6 md:h-7 md:w-7" />
-            Synchronizacja KSeF
+            {t('title')}
           </h1>
           <p className="text-muted-foreground text-sm md:text-base">
-            Pobierz nowe faktury z Krajowego Systemu e-Faktur
+            {t('subtitle')}
           </p>
         </div>
 
@@ -191,32 +204,32 @@ export default function SyncPage() {
                 ) : (
                   <AlertCircle className="h-5 w-5 text-muted-foreground" />
                 )}
-                Status połączenia KSeF
+                {t('connectionStatus')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {isLoading ? (
-                <div className="animate-pulse text-muted-foreground">Ładowanie...</div>
+                <div className="animate-pulse text-muted-foreground">{tCommon('loading')}</div>
               ) : status ? (
                 <div className="grid gap-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Połączony:</span>
+                    <span className="text-muted-foreground">{t('connected')}:</span>
                     <Badge variant={status.isConnected ? 'default' : 'destructive'}>
-                      {status.isConnected ? 'Tak' : 'Nie'}
+                      {status.isConnected ? tCommon('yes') : tCommon('no')}
                     </Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Środowisko:</span>
+                    <span className="text-muted-foreground">{t('environment')}:</span>
                     <span className="font-medium">{status.environment}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">NIP:</span>
+                    <span className="text-muted-foreground">{t('nip')}:</span>
                     <span className="font-mono">{status.nip}</span>
                   </div>
-                  {status.tokenExpiringSoon && (
+                  {status.tokenExpiringSoon && status.daysUntilExpiry !== undefined && (
                     <div className="flex items-center gap-2 text-amber-600">
                       <AlertCircle className="h-4 w-4" />
-                      <span>Token wygasa za {status.daysUntilExpiry} dni</span>
+                      <span>{t('tokenExpiring', { days: status.daysUntilExpiry })}</span>
                     </div>
                   )}
                   {status.error && (
@@ -224,7 +237,7 @@ export default function SyncPage() {
                   )}
                 </div>
               ) : (
-                <p className="text-muted-foreground">Brak danych o statusie</p>
+                <p className="text-muted-foreground">{t('noStatusData')}</p>
               )}
             </CardContent>
           </Card>
@@ -238,7 +251,7 @@ export default function SyncPage() {
                 ) : (
                   <Zap className="h-5 w-5 text-muted-foreground" />
                 )}
-                Sesja KSeF
+                {t('ksefSession')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -246,20 +259,20 @@ export default function SyncPage() {
                 <>
                   <div className="grid gap-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Status:</span>
-                      <Badge variant="default">Aktywna</Badge>
+                      <span className="text-muted-foreground">{tCommon('status')}:</span>
+                      <Badge variant="default">{t('sessionActive')}</Badge>
                     </div>
                     {session.expiresAt && (
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Wygasa:</span>
+                        <span className="text-muted-foreground">{t('expires')}:</span>
                         <span className="font-medium flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {new Date(session.expiresAt).toLocaleTimeString('pl-PL')}
+                          {new Date(session.expiresAt).toLocaleTimeString(locale)}
                         </span>
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Przetworzone:</span>
+                      <span className="text-muted-foreground">{t('processed')}:</span>
                       <span className="font-medium">{session.invoicesProcessed}</span>
                     </div>
                   </div>
@@ -274,13 +287,13 @@ export default function SyncPage() {
                     ) : (
                       <Square className="mr-2 h-4 w-4" />
                     )}
-                    Zakończ sesję
+                    {t('endSession')}
                   </Button>
                 </>
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    Brak aktywnej sesji. Uruchom sesję, aby móc synchronizować faktury.
+                    {t('noActiveSession')}
                   </p>
                   <Button 
                     onClick={handleStartSession} 
@@ -291,7 +304,7 @@ export default function SyncPage() {
                     ) : (
                       <Play className="mr-2 h-4 w-4" />
                     )}
-                    {startSessionMutation.isPending ? 'Łączenie...' : 'Uruchom sesję'}
+                    {startSessionMutation.isPending ? t('connecting') : t('startSession')}
                   </Button>
                 </>
               )}
@@ -304,10 +317,10 @@ export default function SyncPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ArrowDownToLine className="h-5 w-5" />
-              Pobierz faktury
+              {t('fetchInvoices')}
             </CardTitle>
             <CardDescription>
-              Wybierz zakres dat i pobierz nowe faktury zakupowe z KSeF
+              {t('fetchInvoicesDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -315,7 +328,7 @@ export default function SyncPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  Data od
+                  {t('dateFrom')}
                 </label>
                 <Input
                   type="date"
@@ -326,7 +339,7 @@ export default function SyncPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  Data do
+                  {t('dateTo')}
                 </label>
                 <Input
                   type="date"
@@ -347,7 +360,7 @@ export default function SyncPage() {
                   ) : (
                     <RefreshCw className="mr-2 h-4 w-4" />
                   )}
-                  Podgląd
+                  {t('preview')}
                 </Button>
               </div>
               <div className="flex items-end">
@@ -362,14 +375,14 @@ export default function SyncPage() {
                   ) : (
                     <Download className="mr-2 h-4 w-4" />
                   )}
-                  {isSyncing ? 'Sync...' : (isMobile ? 'Sync wszystko' : 'Synchronizuj wszystko')}
+                  {isSyncing ? t('syncing') : (isMobile ? t('syncAllShort') : t('syncAll'))}
                 </Button>
               </div>
             </div>
             
             {!session && (
               <p className="text-sm text-muted-foreground">
-                Uruchom sesję KSeF, aby móc synchronizować faktury.
+                {t('startSessionHint')}
               </p>
             )}
           </CardContent>
@@ -380,11 +393,11 @@ export default function SyncPage() {
           <Card>
             <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <CardTitle className="text-lg md:text-xl">Znalezione faktury</CardTitle>
+                <CardTitle className="text-lg md:text-xl">{t('foundInvoicesTitle')}</CardTitle>
                 <CardDescription>
                   {newInvoices.length > 0 
-                    ? `${newInvoices.length} nowych faktur do zaimportowania z ${previewData.total} znalezionych`
-                    : 'Wszystkie faktury zostały już zaimportowane'}
+                    ? t('newInvoicesToImport', { new: newInvoices.length, total: previewData.total })
+                    : t('allInvoicesImported')}
                 </CardDescription>
               </div>
               {selectedInvoices.size > 0 && (
@@ -398,7 +411,7 @@ export default function SyncPage() {
                   ) : (
                     <CheckCircle className="mr-2 h-4 w-4" />
                   )}
-                  Importuj ({selectedInvoices.size})
+                  {t('import')} ({selectedInvoices.size})
                 </Button>
               )}
             </CardHeader>
@@ -413,7 +426,7 @@ export default function SyncPage() {
                         checked={selectedInvoices.size === newInvoices.length}
                         onCheckedChange={toggleSelectAll}
                       />
-                      <span className="text-sm text-muted-foreground">Zaznacz wszystkie nowe</span>
+                      <span className="text-sm text-muted-foreground">{t('selectAllNew')}</span>
                     </div>
                   )}
                   {previewData.invoices.map((invoice) => (
@@ -439,11 +452,11 @@ export default function SyncPage() {
                         {invoice.alreadyImported ? (
                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 shrink-0">
                             <CheckCircle className="mr-1 h-3 w-3" />
-                            Zaimportowana
+                            {t('alreadyImported')}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 shrink-0">
-                            Nowa
+                            {t('newBadge')}
                           </Badge>
                         )}
                       </div>
@@ -455,13 +468,10 @@ export default function SyncPage() {
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Calendar className="h-4 w-4" />
-                          {new Date(invoice.invoiceDate).toLocaleDateString('pl-PL')}
+                          {formatDate(invoice.invoiceDate)}
                         </div>
                         <span className="font-bold">
-                          {new Intl.NumberFormat('pl-PL', {
-                            style: 'currency',
-                            currency: 'PLN',
-                          }).format(invoice.grossAmount)}
+                          {formatCurrency(invoice.grossAmount)}
                         </span>
                       </div>
                     </div>
@@ -479,11 +489,11 @@ export default function SyncPage() {
                         disabled={newInvoices.length === 0}
                       />
                     </TableHead>
-                    <TableHead>Numer faktury</TableHead>
-                    <TableHead>Sprzedawca</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead className="text-right">Kwota brutto</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>{t('invoiceNumber')}</TableHead>
+                    <TableHead>{t('seller')}</TableHead>
+                    <TableHead>{t('date')}</TableHead>
+                    <TableHead className="text-right">{t('grossAmount')}</TableHead>
+                    <TableHead>{tCommon('status')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -511,23 +521,20 @@ export default function SyncPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {new Date(invoice.invoiceDate).toLocaleDateString('pl-PL')}
+                        {formatDate(invoice.invoiceDate)}
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {new Intl.NumberFormat('pl-PL', {
-                          style: 'currency',
-                          currency: 'PLN',
-                        }).format(invoice.grossAmount)}
+                        {formatCurrency(invoice.grossAmount)}
                       </TableCell>
                       <TableCell>
                         {invoice.alreadyImported ? (
                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                             <CheckCircle className="mr-1 h-3 w-3" />
-                            Zaimportowana
+                            {t('alreadyImported')}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            Nowa
+                            {t('newBadge')}
                           </Badge>
                         )}
                       </TableCell>
@@ -546,7 +553,7 @@ export default function SyncPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Dziennik operacji
+                {t('syncLog')}
               </CardTitle>
             </CardHeader>
             <CardContent>

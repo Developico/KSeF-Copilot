@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { 
   CheckCircle2, 
   AlertCircle, 
@@ -84,6 +85,8 @@ export function ExtractionPreview({
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const { selectedCompany } = useSelectedCompany()
+  const t = useTranslations('invoices')
+  const tCommon = useTranslations('common')
 
   // Editable form state (initialized from extracted data)
   const [formData, setFormData] = useState({
@@ -108,18 +111,18 @@ export function ExtractionPreview({
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!selectedCompany) {
-        throw new Error('Nie wybrano firmy')
+        throw new Error(t('scanner.companyNotSelected'))
       }
 
       // Validate required fields
       if (!formData.invoiceNumber.trim()) {
-        throw new Error('Numer faktury jest wymagany')
+        throw new Error(t('scanner.invoiceNumberRequired'))
       }
       if (!formData.supplierNip.trim()) {
-        throw new Error('NIP dostawcy jest wymagany')
+        throw new Error(t('scanner.supplierNipRequired'))
       }
       if (!formData.supplierName.trim()) {
-        throw new Error('Nazwa dostawcy jest wymagana')
+        throw new Error(t('scanner.supplierNameRequired'))
       }
 
       const invoiceData: ManualInvoiceCreate = {
@@ -165,8 +168,8 @@ export function ExtractionPreview({
     onSuccess: (invoice) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.invoices() })
       toast({
-        title: 'Sukces',
-        description: `Faktura ${invoice.invoiceNumber} została utworzona`,
+        title: tCommon('success'),
+        description: t('scanner.invoiceCreated', { number: invoice.invoiceNumber }),
       })
       onCreateInvoice()
       // Navigate to invoice detail
@@ -174,7 +177,7 @@ export function ExtractionPreview({
     },
     onError: (error: Error) => {
       toast({
-        title: 'Błąd',
+        title: tCommon('error'),
         description: error.message,
         variant: 'destructive',
       })
@@ -213,7 +216,7 @@ export function ExtractionPreview({
       formData.supplierPostalCode,
       formData.supplierCity,
     ].filter(Boolean)
-    return parts.join(', ') || 'Brak adresu'
+    return parts.join(', ') || t('scanner.noAddress')
   }
 
   return (
@@ -227,10 +230,10 @@ export function ExtractionPreview({
             ) : (
               <ImageIcon className="h-4 w-4" />
             )}
-            {fileName || 'Dokument'}
+            {fileName || t('scanner.documentPreview')}
           </h3>
           <Badge className={cn('text-xs', confidenceColor)}>
-            Pewność: {Math.round(confidence * 100)}%
+            {t('scanner.confidence', { percent: Math.round(confidence * 100) })}
           </Badge>
         </div>
         
@@ -238,20 +241,20 @@ export function ExtractionPreview({
           {fileDataUrl && sourceType === 'image' ? (
             <img
               src={fileDataUrl}
-              alt="Podgląd dokumentu"
+              alt={t('scanner.documentPreview')}
               className="w-full h-full object-contain"
             />
           ) : fileDataUrl && sourceType === 'pdf' ? (
             <iframe
               src={fileDataUrl}
-              title="Podgląd PDF"
+              title={t('scanner.documentPreview')}
               className="w-full h-full min-h-[400px]"
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8">
               <FileText className="h-16 w-16 mb-4" />
-              <p className="text-sm">Podgląd dokumentu niedostępny</p>
-              <p className="text-xs mt-1">Dane zostały wyodrębnione z dokumentu</p>
+              <p className="text-sm">{t('scanner.previewUnavailable')}</p>
+              <p className="text-xs mt-1">{t('scanner.dataExtracted')}</p>
             </div>
           )}
         </div>
@@ -266,22 +269,22 @@ export function ExtractionPreview({
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  Dane faktury
+                  {t('scanner.invoiceData')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs">Numer faktury *</Label>
+                    <Label className="text-xs">{t('invoiceNumber')} *</Label>
                     <Input
                       value={formData.invoiceNumber}
                       onChange={(e) => updateField('invoiceNumber', e.target.value)}
-                      placeholder="FV/2024/001"
+                      placeholder={t('scanner.invoiceNumberPlaceholder')}
                       className="h-8 text-sm"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Data wystawienia</Label>
+                    <Label className="text-xs">{t('issueDate')}</Label>
                     <Input
                       type="date"
                       value={formData.issueDate}
@@ -291,7 +294,7 @@ export function ExtractionPreview({
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs">Termin płatności</Label>
+                  <Label className="text-xs">{t('dueDate')}</Label>
                   <Input
                     type="date"
                     value={formData.dueDate}
@@ -307,66 +310,66 @@ export function ExtractionPreview({
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
-                  Sprzedawca
+                  {t('scanner.sellerSection')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs">NIP *</Label>
+                    <Label className="text-xs">{t('nipLabel')} *</Label>
                     <Input
                       value={formData.supplierNip}
                       onChange={(e) => updateField('supplierNip', e.target.value)}
-                      placeholder="0000000000"
+                      placeholder={t('scanner.nipPlaceholder')}
                       className="h-8 text-sm font-mono"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Nazwa *</Label>
+                    <Label className="text-xs">{tCommon('name')} *</Label>
                     <Input
                       value={formData.supplierName}
                       onChange={(e) => updateField('supplierName', e.target.value)}
-                      placeholder="Nazwa firmy"
+                      placeholder={t('scanner.namePlaceholder')}
                       className="h-8 text-sm"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="col-span-2">
-                    <Label className="text-xs">Ulica</Label>
+                    <Label className="text-xs">{tCommon('street')}</Label>
                     <Input
                       value={formData.supplierStreet}
                       onChange={(e) => updateField('supplierStreet', e.target.value)}
-                      placeholder="ul. Przykładowa"
+                      placeholder={t('scanner.streetPlaceholder')}
                       className="h-8 text-sm"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Nr budynku</Label>
+                    <Label className="text-xs">{t('scanner.buildingNumber')}</Label>
                     <Input
                       value={formData.supplierBuildingNumber}
                       onChange={(e) => updateField('supplierBuildingNumber', e.target.value)}
-                      placeholder="1A"
+                      placeholder={t('scanner.buildingNumberPlaceholder')}
                       className="h-8 text-sm"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <Label className="text-xs">Kod pocztowy</Label>
+                    <Label className="text-xs">{t('scanner.postalCode')}</Label>
                     <Input
                       value={formData.supplierPostalCode}
                       onChange={(e) => updateField('supplierPostalCode', e.target.value)}
-                      placeholder="00-000"
+                      placeholder={t('scanner.postalCodePlaceholder')}
                       className="h-8 text-sm"
                     />
                   </div>
                   <div className="col-span-2">
-                    <Label className="text-xs">Miasto</Label>
+                    <Label className="text-xs">{t('scanner.city')}</Label>
                     <Input
                       value={formData.supplierCity}
                       onChange={(e) => updateField('supplierCity', e.target.value)}
-                      placeholder="Warszawa"
+                      placeholder={t('scanner.cityPlaceholder')}
                       className="h-8 text-sm"
                     />
                   </div>
@@ -379,13 +382,13 @@ export function ExtractionPreview({
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <DollarSign className="h-4 w-4" />
-                  Kwoty
+                  {t('scanner.amounts')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <Label className="text-xs">Netto</Label>
+                    <Label className="text-xs">{t('netAmount')}</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -397,7 +400,7 @@ export function ExtractionPreview({
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">VAT</Label>
+                    <Label className="text-xs">{t('vatAmount')}</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -408,7 +411,7 @@ export function ExtractionPreview({
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Brutto</Label>
+                    <Label className="text-xs">{t('grossAmount')}</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -427,19 +430,19 @@ export function ExtractionPreview({
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Percent className="h-4 w-4" />
-                  Klasyfikacja
+                  {t('scanner.classification')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs">MPK</Label>
+                    <Label className="text-xs">{t('mpk')}</Label>
                     <Select
                       value={formData.mpk}
                       onValueChange={(v) => updateField('mpk', v)}
                     >
                       <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="Wybierz..." />
+                        <SelectValue placeholder={t('scanner.selectMpk')} />
                       </SelectTrigger>
                       <SelectContent>
                         {MPK_OPTIONS.map(mpk => (
@@ -451,21 +454,21 @@ export function ExtractionPreview({
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs">Kategoria</Label>
+                    <Label className="text-xs">{t('category')}</Label>
                     <Input
                       value={formData.category}
                       onChange={(e) => updateField('category', e.target.value)}
-                      placeholder="np. IT / Oprogramowanie"
+                      placeholder={t('scanner.categoryPlaceholder')}
                       className="h-8 text-sm"
                     />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs">Opis</Label>
+                  <Label className="text-xs">{t('description')}</Label>
                   <Input
                     value={formData.description}
                     onChange={(e) => updateField('description', e.target.value)}
-                    placeholder="Krótki opis faktury"
+                    placeholder={t('scanner.descriptionPlaceholder')}
                     className="h-8 text-sm"
                   />
                 </div>
@@ -477,7 +480,7 @@ export function ExtractionPreview({
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">
-                    Pozycje ({data.items.length})
+                    {t('scanner.items', { count: data.items.length })}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -492,7 +495,7 @@ export function ExtractionPreview({
                     ))}
                     {data.items.length > 5 && (
                       <p className="text-muted-foreground pt-1">
-                        ...i {data.items.length - 5} więcej
+                        {t('scanner.andMore', { count: data.items.length - 5 })}
                       </p>
                     )}
                   </div>
@@ -507,11 +510,11 @@ export function ExtractionPreview({
         <div className="flex items-center justify-between gap-3">
           <Button variant="ghost" size="sm" onClick={onRetry}>
             <RotateCcw className="h-4 w-4 mr-1" />
-            Inny dokument
+            {t('scanner.anotherDocument')}
           </Button>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onCancel}>
-              Anuluj
+              {tCommon('cancel')}
             </Button>
             <Button 
               onClick={() => createMutation.mutate()}
@@ -520,12 +523,12 @@ export function ExtractionPreview({
               {createMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Tworzę...
+                  {t('scanner.creating')}
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Utwórz fakturę
+                  {t('scanner.createInvoice')}
                 </>
               )}
             </Button>

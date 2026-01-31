@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
-import Link from 'next/link'
+import { useTranslations } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { 
@@ -23,7 +24,7 @@ interface SidebarProps {
 }
 
 type NavigationItem = {
-  name: string
+  nameKey: string
   icon: React.ElementType
   href: string
   disabled?: boolean
@@ -31,33 +32,35 @@ type NavigationItem = {
 
 const navigationItems: NavigationItem[] = [
   {
-    name: 'Dashboard',
+    nameKey: 'dashboard',
     icon: LayoutDashboard,
     href: '/',
   },
   {
-    name: 'Faktury',
+    nameKey: 'invoices',
     icon: FileText,
     href: '/invoices',
   },
   {
-    name: 'Raporty',
+    nameKey: 'reports',
     icon: BarChart3,
     href: '/reports',
   },
   {
-    name: 'Synchronizacja',
+    nameKey: 'sync',
     icon: RefreshCw,
     href: '/sync',
   },
   {
-    name: 'Ustawienia',
+    nameKey: 'settings',
     icon: Settings,
     href: '/settings',
   },
 ]
 
 export function Sidebar({ className }: SidebarProps) {
+  const t = useTranslations('navigation')
+  const tCommon = useTranslations('common')
   const [isCollapsed, setIsCollapsed] = useState(false)
   const pathname = usePathname()
 
@@ -75,24 +78,25 @@ export function Sidebar({ className }: SidebarProps) {
         <ul className="space-y-1">
           {navigationItems.map((item) => {
             const Icon = item.icon
-            const isActive = pathname === item.href
+            const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+            const name = t(item.nameKey as 'dashboard' | 'invoices' | 'reports' | 'sync' | 'settings')
 
             if (item.disabled) {
               return (
-                <li key={item.name}>
+                <li key={item.nameKey}>
                   <Button
                     variant="ghost"
                     className={cn(
                       'w-full justify-start h-10 opacity-50 cursor-not-allowed',
                       isCollapsed && 'px-2 justify-center'
                     )}
-                    title={isCollapsed ? `${item.name} (wkrótce)` : undefined}
+                    title={isCollapsed ? `${name} (${tCommon('comingSoon')})` : undefined}
                     disabled
                   >
                     <Icon className={cn('h-4 w-4', !isCollapsed && 'mr-3')} />
-                    {!isCollapsed && <span>{item.name}</span>}
+                    {!isCollapsed && <span>{name}</span>}
                     {!isCollapsed && (
-                      <span className="ml-auto text-xs text-muted-foreground">wkrótce</span>
+                      <span className="ml-auto text-xs text-muted-foreground">{tCommon('comingSoon')}</span>
                     )}
                   </Button>
                 </li>
@@ -100,7 +104,7 @@ export function Sidebar({ className }: SidebarProps) {
             }
 
             return (
-              <li key={item.name}>
+              <li key={item.nameKey}>
                 <Button
                   variant="ghost"
                   asChild
@@ -110,11 +114,11 @@ export function Sidebar({ className }: SidebarProps) {
                     isActive && 'border-l-primary bg-[#174372] text-white hover:bg-[#174372]/90 hover:text-white',
                     !isActive && 'hover:bg-accent hover:text-accent-foreground'
                   )}
-                  title={isCollapsed ? item.name : undefined}
+                  title={isCollapsed ? name : undefined}
                 >
                   <Link href={item.href}>
                     <Icon className={cn('h-4 w-4', !isCollapsed && 'mr-3')} />
-                    {!isCollapsed && <span>{item.name}</span>}
+                    {!isCollapsed && <span>{name}</span>}
                   </Link>
                 </Button>
               </li>
@@ -135,14 +139,14 @@ export function Sidebar({ className }: SidebarProps) {
                 isCollapsed && 'px-2 justify-center'
               )}
               onClick={() => setIsCollapsed(!isCollapsed)}
-              title={isCollapsed ? 'Rozwiń menu' : 'Zwiń menu'}
+              title={isCollapsed ? t('expandMenu') : t('collapseMenu')}
             >
               {isCollapsed ? (
                 <PanelLeft className="h-4 w-4" />
               ) : (
                 <>
                   <PanelLeftClose className="h-4 w-4 mr-3" />
-                  <span>Zwiń menu</span>
+                  <span>{t('collapseMenu')}</span>
                 </>
               )}
             </Button>
