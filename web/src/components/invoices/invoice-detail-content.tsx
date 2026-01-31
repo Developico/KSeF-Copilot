@@ -917,6 +917,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                     accept=".pdf,image/jpeg,image/png,image/gif,image/webp,.doc,.docx,.xls,.xlsx"
                     className="hidden"
                     onChange={handleFileSelect}
+                    aria-label="Wybierz pliki do przesłania"
                   />
                 </div>
 

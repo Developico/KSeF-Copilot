@@ -874,6 +874,7 @@ export function ManualInvoiceForm() {
                 accept=".pdf,image/jpeg,image/png,image/gif,image/webp"
                 className="hidden"
                 onChange={handleFileSelect}
+                aria-label={t('manualForm.attachmentsSection')}
               />
             </div>
 
