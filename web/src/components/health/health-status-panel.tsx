@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { RefreshCw, CheckCircle, AlertCircle, XCircle, Loader2 } from 'lucide-react'
 import { useHealthDetailed } from '@/hooks/use-api'
 import { useSelectedCompany } from '@/contexts/company-context'
@@ -49,8 +50,16 @@ export function HealthStatusPanel() {
           <CardDescription>Checking system health...</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center p-8">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="space-y-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-5 w-5 rounded-full" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+                <Skeleton className="h-6 w-16 rounded-full" />
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

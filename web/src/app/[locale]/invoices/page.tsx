@@ -65,6 +65,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { Skeleton } from '@/components/ui/skeleton'
 
 // Description status types - simplified to 3 states
 type DescriptionStatus = 'not_described' | 'ai_suggested' | 'described'
@@ -750,8 +751,24 @@ export default function InvoicesPage() {
         // Mobile card view with grouping
         <div className="space-y-4">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <Card key={i}>
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-48" />
+                      </div>
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <Skeleton className="h-5 w-24" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           ) : invoices.length === 0 ? (
             <Card>
@@ -814,8 +831,28 @@ export default function InvoicesPage() {
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div className="p-4 space-y-3">
+              {/* Table header skeleton */}
+              <div className="grid grid-cols-7 gap-4 pb-3 border-b">
+                {[...Array(7)].map((_, i) => (
+                  <Skeleton key={i} className="h-4 w-full" />
+                ))}
+              </div>
+              {/* Table rows skeleton */}
+              {[...Array(10)].map((_, i) => (
+                <div key={i} className="grid grid-cols-7 gap-4 py-3 border-b border-muted/50 last:border-0">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                  <div className="flex gap-1">
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : invoices.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">

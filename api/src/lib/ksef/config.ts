@@ -5,9 +5,9 @@
  */
 
 export const KSEF_ENDPOINTS = {
-  test: 'https://api-test.ksef.mf.gov.pl/v2',
-  demo: 'https://api-demo.ksef.mf.gov.pl/v2',
-  prod: 'https://api.ksef.mf.gov.pl/v2',
+  test: 'https://ksef-test.mf.gov.pl/api/v2',
+  demo: 'https://ksef-demo.mf.gov.pl/api/v2',
+  prod: 'https://ksef.mf.gov.pl/api/v2',
 } as const
 
 export type KsefEnvironment = keyof typeof KSEF_ENDPOINTS

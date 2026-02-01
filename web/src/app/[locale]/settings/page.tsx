@@ -43,10 +43,9 @@ import {
   RefreshCw,
   Save,
   Settings,
-  Loader2,
-  Shield,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { SettingsSkeleton } from '@/components/skeletons'
 import { 
   useCompanies, 
   useCreateCompany, 
@@ -56,8 +55,6 @@ import {
   useCreateCostCenter,
   useUpdateCostCenter,
   useDeleteCostCenter,
-  useTestToken,
-  useGrantKsefPermissions,
 } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
 import { KsefSetting, CostCenter } from '@/lib/api'
@@ -160,8 +157,6 @@ export default function SettingsPage() {
   const createCostCenterMutation = useCreateCostCenter()
   const updateCostCenterMutation = useUpdateCostCenter()
   const deleteCostCenterMutation = useDeleteCostCenter()
-  const testTokenMutation = useTestToken()
-  const grantPermissionsMutation = useGrantKsefPermissions()
   
   // Use API data or fallback to mock
   const companies = companiesData ?? mockCompanies
@@ -173,8 +168,6 @@ export default function SettingsPage() {
   const [editingCostCenter, setEditingCostCenter] = useState<CostCenter | null>(null)
   const [editCostCenterCode, setEditCostCenterCode] = useState('')
   const [editCostCenterName, setEditCostCenterName] = useState('')
-  const [testingTokenId, setTestingTokenId] = useState<string | null>(null)
-  const [grantingPermissionsId, setGrantingPermissionsId] = useState<string | null>(null)
   
   // Edit company state
   const [editingCompany, setEditingCompany] = useState<KsefSetting | null>(null)
@@ -282,86 +275,6 @@ export default function SettingsPage() {
     }
   }
 
-  async function testToken(company: KsefSetting) {
-    setTestingTokenId(company.id)
-    try {
-      const result = await testTokenMutation.mutateAsync(company.id)
-      
-      if (result.success) {
-        toast({
-          variant: 'success',
-          title: 'Token Test Successful',
-          description: result.details || 'Token is valid and KSeF API is reachable',
-        })
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Token Test Failed',
-          description: result.details || result.error || 'Token validation failed',
-        })
-      }
-    } catch (error) {
-      console.error('Token test error:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to test token'
-      toast({
-        variant: 'destructive',
-        title: 'Test Error',
-        description: errorMessage.includes('401') 
-          ? 'Authentication failed. Please try logging out and back in.' 
-          : errorMessage.includes('403')
-          ? 'Access denied. You may not have permission to test tokens.'
-          : errorMessage,
-      })
-    } finally {
-      setTestingTokenId(null)
-    }
-  }
-
-  async function grantTestPermissions(company: KsefSetting) {
-    // Only allow for test and demo environments
-    if (company.environment === 'production') {
-      toast({
-        variant: 'destructive',
-        title: 'Not Available',
-        description: 'Test permissions cannot be granted in production environment',
-      })
-      return
-    }
-
-    setGrantingPermissionsId(company.id)
-    try {
-      const result = await grantPermissionsMutation.mutateAsync({
-        nip: company.nip,
-        permissions: ['InvoiceRead', 'InvoiceWrite', 'CredentialsRead'],
-        environment: company.environment as 'test' | 'demo',
-      })
-
-      if (result.success) {
-        toast({
-          variant: 'success',
-          title: 'Permissions Granted',
-          description: `Granted ${result.grantedPermissions.join(', ')} permissions for ${company.nip} in ${result.environment} environment`,
-        })
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Failed to Grant Permissions',
-          description: result.error || result.details || 'Unknown error',
-        })
-      }
-    } catch (error) {
-      console.error('Grant permissions error:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to grant permissions'
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: errorMessage,
-      })
-    } finally {
-      setGrantingPermissionsId(null)
-    }
-  }
-
   function openEditCompany(company: KsefSetting) {
     setEditingCompany(company)
     setEditCompanyName(company.companyName)
@@ -448,11 +361,7 @@ export default function SettingsPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <SettingsSkeleton />
   }
 
   return (
@@ -687,34 +596,6 @@ export default function SettingsPage() {
                             <Button 
                               variant="ghost" 
                               size="icon"
-                              onClick={() => testToken(company)}
-                              disabled={testingTokenId === company.id}
-                              title="Test KSeF Token"
-                            >
-                              {testingTokenId === company.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <RefreshCw className="h-4 w-4" />
-                              )}
-                            </Button>
-                            {company.environment !== 'production' && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => grantTestPermissions(company)}
-                                disabled={grantingPermissionsId === company.id}
-                                title="Grant Test Permissions (InvoiceRead, InvoiceWrite)"
-                              >
-                                {grantingPermissionsId === company.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Shield className="h-4 w-4 text-blue-500" />
-                                )}
-                              </Button>
-                            )}
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
                               onClick={() => openEditCompany(company)}
                               title={t('editCompany')}
                             >
@@ -745,10 +626,10 @@ export default function SettingsPage() {
               <DialogHeader>
                 <DialogTitle>{t('editCompany')}</DialogTitle>
                 <DialogDescription>
-                  {t('nip')} {/* NIP cannot be changed */}
+                  {editingCompany?.companyName}
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
+              <div className="space-y-4 py-2">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('nip')}</label>
                   <Input

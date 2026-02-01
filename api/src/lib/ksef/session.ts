@@ -200,7 +200,13 @@ async function requestAuthChallenge(config: KsefConfig): Promise<KsefAuthChallen
   const contentType = response.headers.get('content-type') || ''
   if (!contentType.includes('application/json')) {
     console.error(`[KSEF] Unexpected content-type: ${contentType}, body: ${responseText.substring(0, 500)}`)
-    throw new Error(`KSeF returned non-JSON response (${contentType}). URL might be incorrect.`)
+    
+    // Check for common KSeF maintenance messages
+    if (responseText.includes('zamknięcie') || responseText.includes('maintenance') || responseText.includes('niedostępn')) {
+      throw new Error(`Środowisko KSeF ${config.environment} jest tymczasowo niedostępne. Spróbuj ponownie później.`)
+    }
+    
+    throw new Error(`KSeF API zwróciło nieoczekiwaną odpowiedź (${contentType}). Sprawdź czy środowisko ${config.environment} jest dostępne.`)
   }
   
   try {
@@ -279,6 +285,7 @@ async function waitForAuthenticationComplete(
     
     const responseText = await response.text()
     console.log(`[KSEF] Auth status check attempt ${attempt}/${maxAttempts}: HTTP ${response.status}`)
+    console.log(`[KSEF] Auth status response body: ${responseText.substring(0, 500)}`)
     
     if (response.ok) {
       try {
@@ -286,15 +293,26 @@ async function waitForAuthenticationComplete(
           processingCode?: number
           processingDescription?: string
           authenticationStatus?: number
+          status?: string
+          state?: string
         }
         
         const statusCode = statusData.processingCode || statusData.authenticationStatus || 0
-        console.log(`[KSEF] Auth status: ${statusCode} - ${statusData.processingDescription || 'unknown'}`)
+        console.log(`[KSEF] Auth status: ${statusCode} - ${statusData.processingDescription || statusData.status || statusData.state || 'unknown'}`)
         
         // Status 200 = success, ready to redeem
         if (statusCode === 200) {
           console.log(`[KSEF] Authentication complete, ready for token redemption`)
           return
+        }
+        
+        // If response is OK but no processingCode, check for other success indicators
+        if (statusCode === 0 && response.status === 200) {
+          // Check if response contains success indicators
+          if (statusData.status === 'completed' || statusData.state === 'ready' || Object.keys(statusData).length === 0) {
+            console.log(`[KSEF] Authentication complete (inferred from response)`)
+            return
+          }
         }
         
         // Status 100 = still processing
@@ -305,7 +323,7 @@ async function waitForAuthenticationComplete(
         }
         
         // Other status codes = error
-        throw new Error(`Authentication failed with status ${statusCode}: ${statusData.processingDescription}`)
+        throw new Error(`Authentication failed with status ${statusCode}: ${statusData.processingDescription || JSON.stringify(statusData).substring(0, 200)}`)
       } catch (e) {
         if (e instanceof SyntaxError) {
           console.log(`[KSEF] Non-JSON response, assuming success`)

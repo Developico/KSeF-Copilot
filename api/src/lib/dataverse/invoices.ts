@@ -1,11 +1,11 @@
-import { dataverseRequest } from './client'
+import { dataverseRequest, dataverseClient } from './client'
 import { InvoiceEntity, PaymentStatusValues, MpkValues, InvoiceSourceValues, getPaymentStatusKey, getMpkKey, getInvoiceSourceKey } from './entities'
 import { Invoice, InvoiceCreate, InvoiceUpdate, InvoiceListParams, ManualInvoiceCreate, InvoiceSource } from '../../types/invoice'
 
 /**
- * List invoices from Dataverse with advanced filtering
+ * Build OData filter string from params
  */
-export async function listInvoices(params: InvoiceListParams = {}): Promise<Invoice[]> {
+function buildInvoiceFilter(params: InvoiceListParams): string[] {
   const { 
     tenantNip, 
     paymentStatus, 
@@ -23,13 +23,8 @@ export async function listInvoices(params: InvoiceListParams = {}): Promise<Invo
     source,
     overdue,
     search,
-    top = 100, 
-    skip = 0,
-    orderBy = 'invoiceDate',
-    orderDirection = 'desc',
   } = params
 
-  // Build OData filter
   const filters: string[] = []
 
   if (tenantNip) {
@@ -115,21 +110,7 @@ export async function listInvoices(params: InvoiceListParams = {}): Promise<Invo
     filters.push(`(${searchFilters.join(' or ')})`)
   }
 
-  // Build order by clause
-  const orderByField = getOrderByField(orderBy)
-  const orderClause = `${orderByField} ${orderDirection}`
-
-  // Note: Dataverse doesn't support $skip, only $top for pagination
-  // For proper pagination, use @odata.nextLink from response
-  let path = `${InvoiceEntity.entitySet}?$top=${top}&$orderby=${orderClause}`
-
-  if (filters.length > 0) {
-    path += `&$filter=${filters.join(' and ')}`
-  }
-
-  const response = await dataverseRequest<{ value: DataverseInvoice[] }>(path)
-
-  return response.value.map(mapFromDataverse)
+  return filters
 }
 
 /**
@@ -147,6 +128,76 @@ function getOrderByField(orderBy: string): string {
     default:
       return InvoiceEntity.fields.invoiceDate
   }
+}
+
+/**
+ * List invoices from Dataverse with advanced filtering (single page)
+ * Note: This returns only up to 'top' records. For large datasets use listAllInvoices().
+ */
+export async function listInvoices(params: InvoiceListParams = {}): Promise<Invoice[]> {
+  const { 
+    top = 100, 
+    orderBy = 'invoiceDate',
+    orderDirection = 'desc',
+  } = params
+
+  const filters = buildInvoiceFilter(params)
+  const orderByField = getOrderByField(orderBy)
+  const orderClause = `${orderByField} ${orderDirection}`
+
+  // Note: Dataverse doesn't support $skip, only $top for pagination
+  // For proper pagination, use @odata.nextLink from response
+  let path = `${InvoiceEntity.entitySet}?$top=${top}&$orderby=${orderClause}`
+
+  if (filters.length > 0) {
+    path += `&$filter=${filters.join(' and ')}`
+  }
+
+  const response = await dataverseRequest<{ value: DataverseInvoice[] }>(path)
+
+  return response.value.map(mapFromDataverse)
+}
+
+/**
+ * List ALL invoices matching filters, following @odata.nextLink for full pagination.
+ * Use this when you need to process all matching records (e.g., bulk operations, cleanup).
+ * 
+ * WARNING: This may return a large number of records. Use with caution.
+ */
+export async function listAllInvoices(params: Omit<InvoiceListParams, 'top' | 'skip'> = {}): Promise<Invoice[]> {
+  const { 
+    orderBy = 'invoiceDate',
+    orderDirection = 'desc',
+  } = params
+
+  const filters = buildInvoiceFilter(params)
+  const orderByField = getOrderByField(orderBy)
+  const orderClause = `${orderByField} ${orderDirection}`
+
+  let query = `$orderby=${orderClause}`
+  if (filters.length > 0) {
+    query += `&$filter=${filters.join(' and ')}`
+  }
+
+  // Use dataverseClient.listAll which handles @odata.nextLink pagination
+  const records = await dataverseClient.listAll<DataverseInvoice>(InvoiceEntity.entitySet, query)
+
+  return records.map(mapFromDataverse)
+}
+
+/**
+ * Get count of invoices matching filters
+ */
+export async function countInvoices(params: Omit<InvoiceListParams, 'top' | 'skip' | 'orderBy' | 'orderDirection'> = {}): Promise<number> {
+  const filters = buildInvoiceFilter(params)
+  
+  let path = `${InvoiceEntity.entitySet}/$count`
+  if (filters.length > 0) {
+    path += `?$filter=${filters.join(' and ')}`
+  }
+
+  const response = await dataverseRequest<number>(path)
+  return response
 }
 
 /**
@@ -247,6 +298,69 @@ export async function deleteInvoice(id: string): Promise<void> {
   await dataverseRequest(`${InvoiceEntity.entitySet}(${id})`, {
     method: 'DELETE',
   })
+}
+
+/**
+ * Bulk delete invoices with progress callback.
+ * Fetches ALL matching invoices using pagination and deletes them in batches.
+ * 
+ * @param params - Filter parameters (same as listInvoices but without top/skip)
+ * @param options - Options for batch processing
+ * @returns Summary of deleted/failed counts
+ */
+export async function bulkDeleteInvoices(
+  params: Omit<InvoiceListParams, 'top' | 'skip'>,
+  options?: {
+    batchSize?: number
+    onProgress?: (deleted: number, failed: number, total: number) => void
+    dryRun?: boolean
+  }
+): Promise<{ deleted: number; failed: number; total: number; errors: string[] }> {
+  const { batchSize = 50, onProgress, dryRun = false } = options || {}
+  
+  // First, get all matching invoices (using pagination)
+  const allInvoices = await listAllInvoices(params)
+  const total = allInvoices.length
+  
+  if (dryRun) {
+    return { deleted: 0, failed: 0, total, errors: [] }
+  }
+
+  let deleted = 0
+  let failed = 0
+  const errors: string[] = []
+
+  // Process in batches to avoid overwhelming the API
+  for (let i = 0; i < allInvoices.length; i += batchSize) {
+    const batch = allInvoices.slice(i, i + batchSize)
+    
+    // Delete in parallel within batch, but sequentially between batches
+    const results = await Promise.allSettled(
+      batch.map(invoice => deleteInvoice(invoice.id))
+    )
+
+    for (let j = 0; j < results.length; j++) {
+      const result = results[j]
+      if (result.status === 'fulfilled') {
+        deleted++
+      } else {
+        failed++
+        errors.push(`Failed to delete ${batch[j].id}: ${result.reason?.message || 'Unknown error'}`)
+      }
+    }
+
+    // Report progress
+    if (onProgress) {
+      onProgress(deleted, failed, total)
+    }
+
+    // Small delay between batches to avoid rate limiting
+    if (i + batchSize < allInvoices.length) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+  }
+
+  return { deleted, failed, total, errors }
 }
 
 // ============================================================================

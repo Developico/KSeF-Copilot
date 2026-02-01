@@ -32,6 +32,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { api, queryKeys, DashboardStats } from '@/lib/api'
+import { DashboardSkeleton } from '@/components/skeletons'
 
 // Colors for charts
 const COLORS = [
@@ -76,11 +77,7 @@ export function DashboardContent() {
   })
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <DashboardSkeleton />
   }
 
   if (!stats) {

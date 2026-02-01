@@ -469,3 +469,235 @@ app.http('ksef-testdata-environments', {
     }
   },
 })
+
+// Import for cleanup functionality
+import { listAllInvoices, bulkDeleteInvoices, countInvoices } from '../lib/dataverse/invoices'
+import { settingService } from '../lib/dataverse/services/setting-service'
+
+/**
+ * Cleanup test invoices from Dataverse (TEST and DEMO environments only)
+ * DELETE /api/ksef/testdata/cleanup
+ * 
+ * Query params:
+ *   nip: string           - Required: NIP of the company to cleanup
+ *   dryRun: boolean       - Optional: If true, only count records without deleting (default: true)
+ *   fromDate: string      - Optional: Only delete invoices from this date (YYYY-MM-DD)
+ *   toDate: string        - Optional: Only delete invoices up to this date (YYYY-MM-DD)
+ *   source: string        - Optional: Only delete invoices from specific source (KSeF, Manual)
+ * 
+ * Returns:
+ *   { total, deleted, failed, dryRun, environment }
+ */
+app.http('ksef-testdata-cleanup', {
+  methods: ['DELETE'],
+  authLevel: 'anonymous',
+  route: 'ksef/testdata/cleanup',
+  handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    try {
+      // Verify authentication
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      // Require admin role
+      const roleCheck = requireRole(auth.user, 'Admin')
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Admin role required' } }
+      }
+
+      const nip = request.query.get('nip')
+      if (!nip) {
+        return { status: 400, jsonBody: { error: 'NIP parameter is required' } }
+      }
+
+      // Parse options
+      const dryRun = request.query.get('dryRun') !== 'false' // Default to true for safety
+      const fromDate = request.query.get('fromDate') || undefined
+      const toDate = request.query.get('toDate') || undefined
+      const source = request.query.get('source') as 'KSeF' | 'Manual' | undefined
+
+      // Get company setting to check environment
+      const settings = await settingService.getAll()
+      const companySetting = settings.find(s => s.nip === nip)
+      
+      if (!companySetting) {
+        return { 
+          status: 404, 
+          jsonBody: { error: `Company with NIP ${nip} not found in settings` } 
+        }
+      }
+
+      const environment = companySetting.environment
+      
+      // Only allow cleanup for test and demo environments
+      if (environment === 'production') {
+        return {
+          status: 400,
+          jsonBody: { 
+            error: 'Cannot cleanup invoices in production environment',
+            environment,
+          },
+        }
+      }
+
+      context.log(`Cleanup request for NIP: ${nip}, environment: ${environment}, dryRun: ${dryRun}`)
+
+      // Build filter params
+      const filterParams = {
+        tenantNip: nip,
+        ...(fromDate && { fromDate }),
+        ...(toDate && { toDate }),
+        ...(source && { source }),
+      }
+
+      if (dryRun) {
+        // Just count matching records
+        const invoices = await listAllInvoices(filterParams)
+        const total = invoices.length
+
+        return {
+          status: 200,
+          jsonBody: {
+            success: true,
+            dryRun: true,
+            environment,
+            nip,
+            total,
+            message: `Found ${total} invoices matching criteria. Set dryRun=false to delete them.`,
+            filters: filterParams,
+          },
+        }
+      }
+
+      // Actually delete invoices
+      const result = await bulkDeleteInvoices(filterParams, {
+        batchSize: 50,
+        onProgress: (deleted, failed, total) => {
+          context.log(`Cleanup progress: ${deleted}/${total} deleted, ${failed} failed`)
+        },
+      })
+
+      context.log(`Cleanup completed: ${result.deleted} deleted, ${result.failed} failed out of ${result.total}`)
+
+      return {
+        status: 200,
+        jsonBody: {
+          success: true,
+          dryRun: false,
+          environment,
+          nip,
+          total: result.total,
+          deleted: result.deleted,
+          failed: result.failed,
+          errors: result.errors.slice(0, 10), // Return first 10 errors
+        },
+      }
+    } catch (error) {
+      context.error('Failed to cleanup invoices:', error)
+      return {
+        status: 500,
+        jsonBody: {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+      }
+    }
+  },
+})
+
+/**
+ * Get cleanup preview (count of records that would be deleted)
+ * GET /api/ksef/testdata/cleanup/preview
+ * 
+ * Same query params as DELETE but always returns count only
+ */
+app.http('ksef-testdata-cleanup-preview', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  route: 'ksef/testdata/cleanup/preview',
+  handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    try {
+      // Verify authentication
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      const nip = request.query.get('nip')
+      if (!nip) {
+        return { status: 400, jsonBody: { error: 'NIP parameter is required' } }
+      }
+
+      const fromDate = request.query.get('fromDate') || undefined
+      const toDate = request.query.get('toDate') || undefined
+      const source = request.query.get('source') as 'KSeF' | 'Manual' | undefined
+
+      // Get company setting to check environment
+      const settings = await settingService.getAll()
+      const companySetting = settings.find(s => s.nip === nip)
+      
+      if (!companySetting) {
+        return { 
+          status: 404, 
+          jsonBody: { error: `Company with NIP ${nip} not found in settings` } 
+        }
+      }
+
+      const environment = companySetting.environment
+
+      // Build filter params
+      const filterParams = {
+        tenantNip: nip,
+        ...(fromDate && { fromDate }),
+        ...(toDate && { toDate }),
+        ...(source && { source }),
+      }
+
+      // Get all invoices to count (uses pagination)
+      const invoices = await listAllInvoices(filterParams)
+
+      // Group by source for better visibility
+      const bySource = invoices.reduce((acc, inv) => {
+        const src = inv.source || 'Unknown'
+        acc[src] = (acc[src] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
+
+      // Group by month for better visibility
+      const byMonth = invoices.reduce((acc, inv) => {
+        const month = inv.invoiceDate?.substring(0, 7) || 'Unknown'
+        acc[month] = (acc[month] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
+
+      return {
+        status: 200,
+        jsonBody: {
+          success: true,
+          environment,
+          nip,
+          total: invoices.length,
+          bySource,
+          byMonth: Object.entries(byMonth)
+            .sort(([a], [b]) => b.localeCompare(a))
+            .slice(0, 12)
+            .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {}),
+          filters: filterParams,
+          warning: environment === 'production' 
+            ? 'Cleanup is not allowed in production environment' 
+            : undefined,
+        },
+      }
+    } catch (error) {
+      context.error('Failed to get cleanup preview:', error)
+      return {
+        status: 500,
+        jsonBody: {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+      }
+    }
+  },
+})

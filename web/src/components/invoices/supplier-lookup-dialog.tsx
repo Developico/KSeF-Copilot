@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Search,
   Building2,
@@ -155,9 +156,17 @@ interface SearchResultsProps {
 function SearchResults({ results, isLoading, error, query, currentNip, onSelect }: SearchResultsProps) {
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-        <Loader2 className="h-8 w-8 animate-spin mb-2" />
-        <p>Wyszukiwanie w rejestrze REGON...</p>
+      <div className="space-y-3 py-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="p-4 border rounded-lg">
+            <div className="flex justify-between items-start mb-2">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-6 w-20 rounded-full" />
+            </div>
+            <Skeleton className="h-4 w-32 mb-2" />
+            <Skeleton className="h-3 w-56" />
+          </div>
+        ))}
       </div>
     )
   }
@@ -225,9 +234,19 @@ interface RecentSuppliersListProps {
 function RecentSuppliersList({ suppliers, isLoading, error, currentNip, onSelect }: RecentSuppliersListProps) {
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-        <Loader2 className="h-8 w-8 animate-spin mb-2" />
-        <p>Ładowanie ostatnich dostawców...</p>
+      <div className="space-y-3 py-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="p-4 border rounded-lg">
+            <div className="flex justify-between items-start mb-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+          </div>
+        ))}
       </div>
     )
   }
