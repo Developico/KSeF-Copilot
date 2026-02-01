@@ -58,7 +58,9 @@ app.http('settings-list', {
       }
 
       const url = new URL(request.url)
-      const activeOnly = url.searchParams.get('activeOnly') === 'true'
+      // Default to true - only return active settings unless explicitly set to false
+      const activeOnlyParam = url.searchParams.get('activeOnly')
+      const activeOnly = activeOnlyParam !== 'false' // Default true
 
       const settings = await settingService.getAll(activeOnly)
 

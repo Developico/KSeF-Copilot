@@ -83,10 +83,12 @@ app.http('ksef-sync', {
         pageOffset: 0,
       })
 
-      context.log(`Found ${queryResult.numberOfElements} invoices in KSeF`)
+      // API 2.0 uses 'invoices' array
+      const invoiceList = queryResult.invoices || []
+      context.log(`Found ${invoiceList.length} invoices in KSeF`)
 
       const result: SyncResult = {
-        total: queryResult.numberOfElements,
+        total: invoiceList.length,
         imported: 0,
         skipped: 0,
         failed: 0,
@@ -94,33 +96,33 @@ app.http('ksef-sync', {
         errors: [],
       }
 
-      // Process each invoice
-      for (const header of queryResult.invoiceHeaderList || []) {
+      // Process each invoice - API 2.0 format uses 'ksefNumber', 'sellerName', etc.
+      for (const header of invoiceList) {
         try {
-          // Check if already imported
-          const exists = await invoiceExistsByReference(header.ksefReferenceNumber)
+          // Check if already imported - API 2.0 uses 'ksefNumber'
+          const exists = await invoiceExistsByReference(header.ksefNumber)
           
           if (exists) {
             result.skipped++
             result.invoices.push({
-              ksefReferenceNumber: header.ksefReferenceNumber,
-              invoiceNumber: header.invoiceNumber,
-              supplierName: header.subjectName,
-              grossAmount: header.grossValue,
+              ksefReferenceNumber: header.ksefNumber,
+              invoiceNumber: header.invoiceNumber || 'Unknown',
+              supplierName: header.sellerName || 'Unknown',
+              grossAmount: header.grossValue ?? 0,
               status: 'skipped',
             })
             continue
           }
 
           // Download full invoice XML
-          const invoiceResponse = await getInvoice(nip, header.ksefReferenceNumber)
+          const invoiceResponse = await getInvoice(nip, header.ksefNumber)
           const parsed = parseInvoiceXml(invoiceResponse.invoiceXml)
 
           // Create invoice in Dataverse
           const invoiceData: InvoiceCreate = {
             tenantNip: nip,
             tenantName: parsed.buyer.name,
-            referenceNumber: header.ksefReferenceNumber,
+            referenceNumber: header.ksefNumber,
             invoiceNumber: parsed.invoiceNumber,
             supplierNip: parsed.supplier.nip,
             supplierName: parsed.supplier.name,
@@ -136,7 +138,7 @@ app.http('ksef-sync', {
 
           result.imported++
           result.invoices.push({
-            ksefReferenceNumber: header.ksefReferenceNumber,
+            ksefReferenceNumber: header.ksefNumber,
             invoiceNumber: parsed.invoiceNumber,
             supplierName: parsed.supplier.name,
             grossAmount: parsed.grossAmount,
@@ -148,18 +150,18 @@ app.http('ksef-sync', {
         } catch (error) {
           result.failed++
           result.errors.push({
-            ksefReferenceNumber: header.ksefReferenceNumber,
+            ksefReferenceNumber: header.ksefNumber,
             error: error instanceof Error ? error.message : 'Unknown error',
           })
           result.invoices.push({
-            ksefReferenceNumber: header.ksefReferenceNumber,
-            invoiceNumber: header.invoiceNumber,
-            supplierName: header.subjectName,
-            grossAmount: header.grossValue,
+            ksefReferenceNumber: header.ksefNumber,
+            invoiceNumber: header.invoiceNumber || 'Unknown',
+            supplierName: header.sellerName || 'Unknown',
+            grossAmount: header.grossValue ?? 0,
             status: 'failed',
           })
 
-          context.error(`Failed to import invoice ${header.ksefReferenceNumber}:`, error)
+          context.error(`Failed to import invoice ${header.ksefNumber}:`, error)
         }
       }
 
@@ -223,16 +225,19 @@ app.http('ksef-sync-preview', {
         pageOffset: 0,
       })
 
-      // Check which are already imported
+      // API 2.0 uses 'invoices' array
+      const invoiceList = queryResult.invoices || []
+
+      // Check which are already imported - API 2.0 uses 'ksefNumber', 'sellerNip', 'sellerName'
       const previews = await Promise.all(
-        (queryResult.invoiceHeaderList || []).map(async (header) => {
-          const exists = await invoiceExistsByReference(header.ksefReferenceNumber)
+        invoiceList.map(async (header) => {
+          const exists = await invoiceExistsByReference(header.ksefNumber)
           return {
-            ksefReferenceNumber: header.ksefReferenceNumber,
+            ksefReferenceNumber: header.ksefNumber,
             invoiceNumber: header.invoiceNumber,
-            invoiceDate: header.invoiceDate,
-            supplierNip: header.subjectNip,
-            supplierName: header.subjectName,
+            invoiceDate: header.invoicingDate,
+            supplierNip: header.sellerNip,
+            supplierName: header.sellerName,
             grossAmount: header.grossValue,
             alreadyImported: exists,
           }
@@ -245,7 +250,7 @@ app.http('ksef-sync-preview', {
       return {
         status: 200,
         jsonBody: {
-          total: queryResult.numberOfElements,
+          total: invoiceList.length,
           new: newInvoices.length,
           existing: existingInvoices.length,
           invoices: previews,

@@ -17,6 +17,7 @@ import {
   X
 } from 'lucide-react'
 import { useAuth } from '@/components/auth/auth-provider'
+import { CompanySelector } from './company-selector'
 
 interface MobileSidebarProps {
   open: boolean
@@ -135,6 +136,11 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
             })}
           </ul>
         </nav>
+
+        {/* Company selector */}
+        <div className="border-t p-3">
+          <CompanySelector />
+        </div>
 
         {/* User info footer */}
         {user && (

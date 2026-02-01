@@ -119,16 +119,18 @@ app.http('sync-start', {
           pageOffset: 0,
         })
 
-        progress.total = queryResult.numberOfElements
+        // API 2.0 uses 'invoices' array with 'ksefNumber'
+        const invoiceList = queryResult.invoices || []
+        progress.total = invoiceList.length
         context.log(`Found ${progress.total} invoices in KSeF`)
 
-        // Process each invoice
-        for (const header of queryResult.invoiceHeaderList || []) {
+        // Process each invoice - API 2.0 format
+        for (const header of invoiceList) {
           try {
             progress.processed++
 
-            // Check if already exists
-            const existing = await invoiceService.getByKsefReference(header.ksefReferenceNumber)
+            // Check if already exists - API 2.0 uses 'ksefNumber'
+            const existing = await invoiceService.getByKsefReference(header.ksefNumber)
             
             if (existing) {
               // Skip or update
@@ -137,14 +139,14 @@ app.http('sync-start', {
             }
 
             // Download full invoice
-            const invoiceData = await getInvoice(setting.nip, header.ksefReferenceNumber)
+            const invoiceData = await getInvoice(setting.nip, header.ksefNumber)
             const parsed = parseInvoiceXml(invoiceData.invoiceXml)
 
             // Create invoice in Dataverse
             await invoiceService.create({
               tenantNip: setting.nip,
               tenantName: setting.companyName,
-              referenceNumber: header.ksefReferenceNumber,
+              referenceNumber: header.ksefNumber,
               invoiceNumber: parsed.invoiceNumber,
               supplierNip: parsed.supplier.nip,
               supplierName: parsed.supplier.name,
@@ -169,10 +171,10 @@ app.http('sync-start', {
           } catch (invoiceError) {
             progress.failed++
             progress.errors.push({
-              reference: header.ksefReferenceNumber,
+              reference: header.ksefNumber,
               error: invoiceError instanceof Error ? invoiceError.message : 'Unknown error',
             })
-            context.warn(`Failed to process invoice ${header.ksefReferenceNumber}:`, invoiceError)
+            context.warn(`Failed to process invoice ${header.ksefNumber}:`, invoiceError)
           }
         }
 

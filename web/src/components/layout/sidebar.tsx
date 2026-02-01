@@ -15,7 +15,6 @@ import {
   PanelLeftClose,
   PanelRightClose
 } from 'lucide-react'
-import { CompanySelector } from './company-selector'
 
 interface SidebarProps {
   className?: string
@@ -152,10 +151,6 @@ export function Sidebar({ className }: SidebarProps) {
         </ul>
       </nav>
 
-      {/* Footer with Company Selector */}
-      <div className="border-t p-2">
-        <CompanySelector collapsed={isCollapsed} />
-      </div>
     </aside>
   )
 }

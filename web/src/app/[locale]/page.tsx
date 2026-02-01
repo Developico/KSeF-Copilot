@@ -14,11 +14,11 @@ import {
   Clock,
   TrendingUp,
   Building2,
-  Zap,
   LayoutDashboard,
 } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
-import { useKsefStatus, useInvoices, useRunSync } from '@/hooks/use-api'
+import { useContextInvoices, useContextRunSync } from '@/hooks/use-api'
+import { useCompanyContext } from '@/contexts/company-context'
 import { useToast } from '@/hooks/use-toast'
 
 export default function HomePage() {
@@ -26,11 +26,11 @@ export default function HomePage() {
   const tCommon = useTranslations('common')
   const locale = useLocale()
   const { toast } = useToast()
-  const { data: ksefStatus, isLoading: isStatusLoading } = useKsefStatus()
-  const { data: invoicesData, isLoading: isInvoicesLoading, refetch: refetchInvoices } = useInvoices()
-  const syncMutation = useRunSync()
+  const { selectedCompany } = useCompanyContext()
+  const { data: invoicesData, isLoading: isInvoicesLoading, refetch: refetchInvoices } = useContextInvoices()
+  const syncMutation = useContextRunSync()
 
-  const isLoading = isStatusLoading || isInvoicesLoading
+  const isLoading = isInvoicesLoading
   const isSyncing = syncMutation.isPending
 
   // Calculate stats from invoices
@@ -41,8 +41,6 @@ export default function HomePage() {
     paid: invoices.filter(i => i.paymentStatus === 'paid').length,
     incoming: invoices.length, // All invoices from sync are incoming (cost invoices)
     outgoing: 0,
-    lastSyncAt: ksefStatus?.lastSync,
-    ksefConnected: ksefStatus?.isConnected || false,
     activeCompanies: 1,
   }
 
@@ -88,35 +86,12 @@ export default function HomePage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant={stats.ksefConnected ? 'default' : 'destructive'} className="text-xs">
-            <Zap className="mr-1 h-3 w-3" />
-            {stats.ksefConnected ? t('ksefConnected') : t('ksefDisconnected')}
-          </Badge>
           <Button onClick={handleSync} disabled={isSyncing} size="sm">
             <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
             {isSyncing ? t('syncing') : t('sync')}
           </Button>
         </div>
       </div>
-
-      {/* Status Alert */}
-      {stats.lastSyncAt && (
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="flex items-center gap-4 py-4">
-            <Clock className="h-5 w-5 text-primary" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">{t('lastSync')}</p>
-              <p className="text-xs text-muted-foreground">
-                {formatDateTime(stats.lastSyncAt)}
-              </p>
-            </div>
-            <Badge variant="outline">
-              <Building2 className="mr-1 h-3 w-3" />
-              {t('companies', { count: stats.activeCompanies })}
-            </Badge>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Sync Error */}
       {syncMutation.isError && (

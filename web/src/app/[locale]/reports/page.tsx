@@ -33,7 +33,8 @@ import {
   CreditCard,
   Folder,
 } from 'lucide-react'
-import { useInvoices } from '@/hooks/use-api'
+import { useContextInvoices } from '@/hooks/use-api'
+import { useCompanyContext } from '@/contexts/company-context'
 import { Invoice } from '@/lib/api'
 
 interface MonthlyData {
@@ -70,7 +71,8 @@ interface MpkData {
 }
 
 export default function ReportsPage() {
-  const { data, isLoading, error, refetch } = useInvoices()
+  const { selectedCompany } = useCompanyContext()
+  const { data, isLoading, error, refetch } = useContextInvoices()
   const t = useTranslations('reports')
   const tCommon = useTranslations('common')
   const locale = useLocale()

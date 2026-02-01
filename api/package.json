@@ -4,7 +4,8 @@
   "description": "Azure Functions API for KSeF integration",
   "main": "dist/src/functions/*.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run copy-prompts",
+    "copy-prompts": "node -e \"const fs=require('fs');const path=require('path');const src='src/lib/prompts';const dest='dist/src/lib/prompts';fs.readdirSync(src).filter(f=>f.endsWith('.prompt.md')).forEach(f=>{fs.mkdirSync(dest,{recursive:true});fs.copyFileSync(path.join(src,f),path.join(dest,f));console.log('Copied:',f)})\"",
     "watch": "tsc -w",
     "clean": "rimraf dist",
     "prestart": "npm run clean && npm run build",

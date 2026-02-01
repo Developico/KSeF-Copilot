@@ -49,6 +49,26 @@ vi.mock('@/hooks/use-api', () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useDeleteInvoice: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useUpdateInvoice: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+}))
+
+vi.mock('@/contexts/company-context', () => ({
+  useCompanyContext: () => ({
+    selectedCompany: { id: '1', nip: '1234567890', companyName: 'Test Company', environment: 'test' },
+    isLoading: false,
+  }),
+}))
+
+vi.mock('next-intl', () => ({
+  useTranslations: () => (key: string) => key,
+  useLocale: () => 'pl',
 }))
 
 vi.mock('@/hooks/use-toast', () => ({

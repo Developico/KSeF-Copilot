@@ -199,6 +199,38 @@ export interface CostCenter {
   isActive: boolean
 }
 
+export interface TokenTestResult {
+  success: boolean
+  secretName: string
+  tokenExists: boolean
+  tokenLength?: number
+  keyVaultConnected: boolean
+  ksefApiConnected?: boolean
+  ksefEnvironment?: string
+  error?: string
+  details?: string
+}
+
+export interface ServiceStatus {
+  name: string
+  status: 'healthy' | 'degraded' | 'unhealthy'
+  message?: string
+  responseTime?: number
+  details?: Record<string, unknown>
+}
+
+export interface DetailedHealthResponse {
+  status: 'healthy' | 'degraded' | 'unhealthy'
+  timestamp: string
+  services: ServiceStatus[]
+  summary: {
+    total: number
+    healthy: number
+    degraded: number
+    unhealthy: number
+  }
+}
+
 // Invoice List Parameters (extended with advanced filters)
 export interface InvoiceListParams {
   tenantNip?: string
@@ -397,6 +429,11 @@ async function apiFetch<T>(
 export const api = {
   // Health
   health: () => apiFetch<{ status: string }>('/api/health'),
+  
+  healthDetailed: (environment?: string) => {
+    const params = environment ? `?environment=${encodeURIComponent(environment)}` : ''
+    return apiFetch<DetailedHealthResponse>(`/api/health/detailed${params}`)
+  },
 
   // GUS/REGON API
   gus: {
@@ -429,7 +466,13 @@ export const api = {
 
   // KSeF Status & Session
   ksef: {
-    status: () => apiFetch<KsefStatus>('/api/ksef/status'),
+    status: (params?: { companyId?: string; nip?: string; environment?: string }) => {
+      const searchParams = new URLSearchParams()
+      if (params?.companyId) searchParams.append('companyId', params.companyId)
+      if (params?.nip) searchParams.append('nip', params.nip)
+      if (params?.environment) searchParams.append('environment', params.environment)
+      return apiFetch<KsefStatus>(`/api/ksef/status?${searchParams}`)
+    },
     
     startSession: (nip?: string) =>
       apiFetch<{ success: boolean; session: KsefSession }>('/api/ksef/session', {
@@ -599,6 +642,11 @@ export const api = {
       apiFetch<void>(`/api/settings/${id}`, {
         method: 'DELETE',
       }),
+    
+    testToken: (id: string) =>
+      apiFetch<TokenTestResult>(`/api/settings/${id}/test-token`, {
+        method: 'POST',
+      }),
 
     // Cost Centers
     listCostCenters: () => apiFetch<{ costCenters: CostCenter[] }>('/api/settings/costcenters'),
@@ -703,6 +751,27 @@ export const api = {
   documents: {
     extract: (data: DocumentExtractRequest) =>
       apiFetch<ExtractionResult>('/api/documents/extract', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  },
+
+  // KSeF Test Data (for test/demo environments)
+  ksefTestdata: {
+    getEnvironments: () =>
+      apiFetch<KsefTestdataEnvironmentsResponse>('/api/ksef/testdata/environments'),
+
+    checkPermissions: (nip: string) =>
+      apiFetch<KsefTestdataPermissionsResponse>(`/api/ksef/testdata/permissions?nip=${nip}`),
+
+    grantPermissions: (data: KsefGrantPermissionsRequest) =>
+      apiFetch<KsefGrantPermissionsResponse>('/api/ksef/testdata/permissions', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    createTestPerson: (data: KsefCreateTestPersonRequest) =>
+      apiFetch<KsefCreateTestPersonResponse>('/api/ksef/testdata/person', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
@@ -911,4 +980,77 @@ export interface DocumentExtractRequest {
   fileName: string
   mimeType: string
   content: string // base64
+}
+
+// ============================================================================
+// KSeF Testdata Types
+// ============================================================================
+
+export interface KsefTestdataEnvironmentsResponse {
+  success: boolean
+  environments: {
+    test: {
+      name: string
+      baseUrl: string
+      description: string
+      testdataEndpoints: { permissions: string; person: string } | null
+    }
+    demo: {
+      name: string
+      baseUrl: string
+      description: string
+      testdataEndpoints: { permissions: string; person: string } | null
+    }
+    prod: {
+      name: string
+      baseUrl: string
+      description: string
+      testdataEndpoints: null
+    }
+  }
+  availablePermissions: Array<{ type: string; description: string }>
+}
+
+export interface KsefTestdataPermissionsResponse {
+  success: boolean
+  environment: string
+  nip: string
+  tokens?: unknown
+  error?: string
+  details?: string
+}
+
+export interface KsefGrantPermissionsRequest {
+  nip: string
+  permissions?: string[]
+  authorizedNip?: string
+  environment?: 'test' | 'demo'
+}
+
+export interface KsefGrantPermissionsResponse {
+  success: boolean
+  environment: string
+  nip: string
+  authorizedNip: string
+  grantedPermissions: string[]
+  result?: unknown
+  error?: string
+  details?: string
+}
+
+export interface KsefCreateTestPersonRequest {
+  nip: string
+  pesel?: string
+  firstName?: string
+  lastName?: string
+  environment?: 'test' | 'demo'
+}
+
+export interface KsefCreateTestPersonResponse {
+  success: boolean
+  environment: string
+  nip: string
+  result?: unknown
+  error?: string
+  details?: string
 }

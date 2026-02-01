@@ -144,6 +144,7 @@ export interface AppSetting {
   lastSyncStatus?: 'success' | 'error'
   keyVaultSecretName?: string
   tokenExpiresAt?: string
+  tokenStatus?: 'valid' | 'expiring' | 'expired' | 'missing'
   isActive: boolean
   invoicePrefix?: string
   createdAt: string

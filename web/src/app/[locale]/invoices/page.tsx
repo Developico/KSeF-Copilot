@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, Fragment } from 'react'
 import { Link } from '@/i18n/navigation'
 import { useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
@@ -46,6 +46,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { useInvoices, useMarkAsPaid, useDeleteInvoice, useUpdateInvoice } from '@/hooks/use-api'
+import { useCompanyContext } from '@/contexts/company-context'
 import { useToast } from '@/hooks/use-toast'
 import { Invoice, InvoiceListParams } from '@/lib/api'
 import { exportInvoicesToCsv } from '@/lib/export'
@@ -220,7 +221,16 @@ export default function InvoicesPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   
-  const { data, isLoading, refetch } = useInvoices(filters)
+  // Get selected company context
+  const { selectedCompany } = useCompanyContext()
+  
+  // Merge company NIP into filters
+  const filtersWithCompany = useMemo(() => ({
+    ...filters,
+    tenantNip: selectedCompany?.nip,
+  }), [filters, selectedCompany?.nip])
+  
+  const { data, isLoading, refetch } = useInvoices(filtersWithCompany)
   
   const markAsPaidMutation = useMarkAsPaid()
   const deleteInvoiceMutation = useDeleteInvoice()
@@ -912,7 +922,7 @@ export default function InvoicesPage() {
               </TableHeader>
               <TableBody>
                 {groupedInvoices.map((group) => (
-                  <>
+                  <Fragment key={`group-container-${group.key}`}>
                     {/* Group header row */}
                     {groupBy !== 'none' && (
                       <TableRow 
@@ -1065,7 +1075,7 @@ export default function InvoicesPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-                  </>
+                  </Fragment>
                 ))}
               </TableBody>
             </Table>

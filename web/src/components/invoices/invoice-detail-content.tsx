@@ -154,7 +154,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   const [editGrossAmount, setEditGrossAmount] = useState('')
   
   // State for collapsible attachments
-  const [attachmentsExpanded, setAttachmentsExpanded] = useState(false)
+  const [attachmentsExpanded, setAttachmentsExpanded] = useState(true)
   
   // State for attachment preview
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null)
@@ -693,7 +693,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                 </div>
               ) : (
                 <div className="space-y-2 text-sm">
-                  <p className="font-medium truncate" title={invoice.supplierName}>
+                  <p className="font-medium break-words" title={invoice.supplierName}>
                     {invoice.supplierName}
                   </p>
                   <p className="text-muted-foreground font-mono text-xs">
@@ -818,18 +818,22 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground text-xs">MPK</span>
-                  <p className="font-medium">{invoice.mpk || '-'}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground text-xs">Kategoria</span>
-                  <p className="font-medium">{invoice.category || '-'}</p>
+              <div className="space-y-2 text-sm">
+                <div className="grid grid-cols-4 gap-3">
+                  <div>
+                    <span className="text-muted-foreground text-xs">MPK</span>
+                    <p className="font-medium text-sm">{invoice.mpk || '-'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground text-xs">Kategoria</span>
+                    <p className="font-medium text-sm truncate" title={invoice.category || '-'}>
+                      {invoice.category || '-'}
+                    </p>
+                  </div>
                 </div>
                 <div>
                   <span className="text-muted-foreground text-xs">Opis</span>
-                  <p className="font-medium truncate" title={invoice.description || '-'}>
+                  <p className="font-medium text-sm" title={invoice.description || '-'}>
                     {invoice.description || '-'}
                   </p>
                 </div>

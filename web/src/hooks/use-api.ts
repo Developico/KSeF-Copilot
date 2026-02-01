@@ -7,10 +7,17 @@ import { useCompanyContext } from '@/contexts/company-context'
 // ============================================================================
 
 export function useKsefStatus() {
+  const { selectedCompany } = useCompanyContext()
+  
   return useQuery({
-    queryKey: queryKeys.ksefStatus,
-    queryFn: () => api.ksef.status(),
+    queryKey: ['ksef', 'status', selectedCompany?.id],
+    queryFn: () => api.ksef.status({
+      companyId: selectedCompany?.id,
+      nip: selectedCompany?.nip,
+      environment: selectedCompany?.environment,
+    }),
     refetchInterval: 60000, // Refresh every minute
+    enabled: Boolean(selectedCompany?.id),
   })
 }
 
@@ -175,6 +182,15 @@ export function useHealth() {
   })
 }
 
+export function useHealthDetailed(environment?: string) {
+  return useQuery({
+    queryKey: ['health', 'detailed', environment],
+    queryFn: () => api.healthDetailed(environment),
+    retry: false,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  })
+}
+
 // ============================================================================
 // Settings - Companies (KSeF Settings)
 // ============================================================================
@@ -237,6 +253,27 @@ export function useDeleteCompany() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.companies })
     },
+  })
+}
+
+export function useTestToken() {
+  return useMutation({
+    mutationFn: (id: string) => api.settings.testToken(id),
+  })
+}
+
+export function useGrantKsefPermissions() {
+  return useMutation({
+    mutationFn: (data: { nip: string; permissions?: string[]; environment?: 'test' | 'demo' }) =>
+      api.ksefTestdata.grantPermissions(data),
+  })
+}
+
+export function useKsefTestdataEnvironments() {
+  return useQuery({
+    queryKey: ['ksef', 'testdata', 'environments'],
+    queryFn: () => api.ksefTestdata.getEnvironments(),
+    staleTime: 1000 * 60 * 60, // 1 hour
   })
 }
 

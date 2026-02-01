@@ -18,6 +18,8 @@ import { ChangelogModal } from './changelog-modal'
 import { MobileSidebar } from './mobile-sidebar'
 import { LanguageSwitcher } from './language-switcher'
 import { useAuth } from '@/components/auth/auth-provider'
+import { SystemStatusBadge } from '@/components/health/system-status-badge'
+import { CompanySelector } from './company-selector'
 
 export function Header() {
   const t = useTranslations('header')
@@ -65,9 +67,9 @@ export function Header() {
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex h-16 items-center justify-between px-4">
-          {/* Logo & Title */}
-          <div className="flex items-center gap-2">
+        <div className="flex h-16 items-center px-4">
+          {/* Logo & Title - fixed width matching sidebar */}
+          <div className="flex items-center gap-2 md:w-52 shrink-0">
             {/* Hamburger menu - mobile only */}
             <Button
               variant="ghost"
@@ -108,11 +110,21 @@ export function Header() {
             </div>
           </div>
 
+          {/* Company Selector - aligned with main content area */}
+          {mounted && isAuthenticated && (
+            <div className="hidden md:block pl-1">
+              <CompanySelector variant="header" />
+            </div>
+          )}
+
           {/* Spacer */}
           <div className="flex-1" />
 
           {/* Right side actions */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* System Status Badge */}
+            {mounted && isAuthenticated && <SystemStatusBadge />}
+            
             {/* Language Switcher */}
             {mounted && <LanguageSwitcher />}
 

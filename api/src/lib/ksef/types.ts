@@ -141,13 +141,14 @@ export interface KsefStatusResponse {
 }
 
 /**
- * KSeF Session (extended)
+ * KSeF Session (API 2.0)
  */
 export interface KsefSession {
   sessionId: string
   referenceNumber: string
   nip: string
   sessionToken: string
+  refreshToken?: string
   createdAt: Date
   expiresAt: Date
   status: 'active' | 'expired' | 'terminated' | 'error'
@@ -169,11 +170,12 @@ export interface KsefSessionStatus {
 }
 
 /**
- * Auth challenge response
+ * Auth challenge response (KSeF API 2.0)
  */
 export interface KsefAuthChallengeResponse {
-  timestamp: string
   challenge: string
+  timestamp: string
+  timestampMs: number
 }
 
 /**
@@ -199,6 +201,8 @@ export interface KsefInitSessionResponse {
 export interface KsefTerminateSessionResponse {
   timestamp: string
   referenceNumber: string
+  processingCode?: number
+  processingDescription?: string
 }
 
 /**
@@ -301,14 +305,39 @@ export interface KsefQueryInvoicesRequest {
 }
 
 /**
- * Query invoices response
+ * Query invoices response - API 2.0
+ * Response from POST /invoices/query/metadata
  */
 export interface KsefQueryInvoicesResponse {
-  timestamp: string
-  referenceNumber: string
-  invoiceHeaderList: KsefInvoiceHeader[]
-  numberOfElements: number
-  pageSize: number
-  pageOffset: number
+  hasMore: boolean
+  isTruncated: boolean
+  permanentStorageHwmDate?: string
+  invoices: KsefInvoiceMetadata[]
+  // Legacy properties for backward compatibility
+  invoiceHeaderList?: KsefInvoiceHeader[]
+  numberOfElements?: number
+  pageSize?: number
+  pageOffset?: number
+}
+
+/**
+ * Invoice metadata from API 2.0
+ */
+export interface KsefInvoiceMetadata {
+  ksefNumber: string
+  invoiceNumber?: string
+  sellerNip?: string
+  sellerName?: string
+  buyerNip?: string
+  buyerName?: string
+  invoicingDate: string
+  issueDate?: string
+  permanentStorageDate?: string
+  grossValue?: number
+  vatValue?: number
+  netValue?: number
+  currency?: string
+  invoiceType?: string
+  formType?: string
 }
 

@@ -10,24 +10,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCompanyContext } from '@/contexts/company-context'
 import { KsefSetting } from '@/lib/api'
 import { cn } from '@/lib/utils'
-
-function getEnvironmentBadge(env: string) {
-  switch (env) {
-    case 'production':
-      return { label: 'Prod', variant: 'default' as const, className: 'bg-green-600 hover:bg-green-600' }
-    case 'test':
-      return { label: 'Test', variant: 'secondary' as const, className: 'bg-yellow-500 text-yellow-950 hover:bg-yellow-500' }
-    case 'demo':
-      return { label: 'Demo', variant: 'outline' as const, className: '' }
-    default:
-      return { label: env, variant: 'outline' as const, className: '' }
-  }
-}
+import { EnvironmentBadge } from './environment-banner'
 
 function CompanyItem({ 
   company, 
@@ -38,8 +25,8 @@ function CompanyItem({
   isSelected: boolean
   onClick: () => void 
 }) {
-  const envBadge = getEnvironmentBadge(company.environment)
-  const isManualOnly = !company.autoSync && company.environment === 'demo' // Heuristic for manual-only
+  // TODO: Uncomment when autoSync feature is implemented
+  // const isManualOnly = !company.autoSync && company.environment === 'demo'
   
   return (
     <DropdownMenuItem 
@@ -53,20 +40,16 @@ function CompanyItem({
         <span className="font-medium truncate">{company.companyName}</span>
         <span className="text-xs text-muted-foreground">NIP: {company.nip}</span>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center gap-1.5 shrink-0">
+        {/* TODO: Uncomment when autoSync feature is implemented
         {company.autoSync && (
-          <span title="Auto-sync włączony">
-            <RefreshCw className="h-3 w-3 text-muted-foreground" />
-          </span>
+          <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" title="Auto-sync włączony" />
         )}
         {isManualOnly && (
-          <span title="Tylko faktury ręczne">
-            <FileEdit className="h-3 w-3 text-muted-foreground" />
-          </span>
+          <FileEdit className="h-3.5 w-3.5 text-muted-foreground" title="Tylko faktury ręczne" />
         )}
-        <Badge variant={envBadge.variant} className={cn('text-[10px] px-1.5 py-0', envBadge.className)}>
-          {envBadge.label}
-        </Badge>
+        */}
+        <EnvironmentBadge environment={company.environment} size="sm" />
       </div>
     </DropdownMenuItem>
   )
@@ -74,19 +57,27 @@ function CompanyItem({
 
 interface CompanySelectorProps {
   collapsed?: boolean
+  variant?: 'sidebar' | 'header'
 }
 
-export function CompanySelector({ collapsed = false }: CompanySelectorProps) {
+export function CompanySelector({ collapsed = false, variant = 'sidebar' }: CompanySelectorProps) {
   const { selectedCompany, companies, isLoading, setSelectedCompany, hasCompanies } = useCompanyContext()
+  const isHeader = variant === 'header'
 
   if (isLoading) {
     return (
       <div className={cn("flex items-center gap-2", collapsed && "justify-center")}>
         <Skeleton className="h-8 w-8 rounded" />
-        {!collapsed && (
+        {!collapsed && !isHeader && (
           <div>
             <Skeleton className="h-4 w-32 mb-1" />
             <Skeleton className="h-3 w-20" />
+          </div>
+        )}
+        {isHeader && (
+          <div>
+            <Skeleton className="h-4 w-40 mb-1" />
+            <Skeleton className="h-3 w-24" />
           </div>
         )}
       </div>
@@ -102,34 +93,29 @@ export function CompanySelector({ collapsed = false }: CompanySelectorProps) {
     )
   }
 
-  const envBadge = selectedCompany ? getEnvironmentBadge(selectedCompany.environment) : null
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button 
           variant="ghost" 
           className={cn(
-            "flex items-center gap-2 h-auto py-2 px-2 w-full",
-            collapsed ? "justify-center" : "justify-start"
+            "flex items-center gap-2 h-auto py-2 px-3",
+            collapsed ? "justify-center" : "justify-start",
+            isHeader ? "w-auto" : "w-full"
           )}
           title={collapsed && selectedCompany ? `${selectedCompany.companyName} (${selectedCompany.nip})` : undefined}
         >
           <Building2 className="h-5 w-5 shrink-0 text-primary" />
           {!collapsed && selectedCompany && (
-            <div className="flex flex-col items-start min-w-0 flex-1">
-              <div className="flex items-center gap-2 w-full">
-                <span className="font-medium text-sm truncate flex-1 text-left">
+            <div className="flex flex-col items-start min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  "font-medium truncate text-left",
+                  isHeader ? "text-sm max-w-[180px]" : "text-sm max-w-[120px]"
+                )}>
                   {selectedCompany.companyName}
                 </span>
-                {envBadge && (
-                  <Badge 
-                    variant={envBadge.variant} 
-                    className={cn('text-[10px] px-1.5 py-0 shrink-0', envBadge.className)}
-                  >
-                    {envBadge.label}
-                  </Badge>
-                )}
+                <EnvironmentBadge environment={selectedCompany.environment} size="sm" />
               </div>
               <span className="text-xs text-muted-foreground">
                 NIP: {selectedCompany.nip}
@@ -139,10 +125,14 @@ export function CompanySelector({ collapsed = false }: CompanySelectorProps) {
           {!collapsed && !selectedCompany && (
             <span className="text-sm text-muted-foreground">Wybierz firmę</span>
           )}
-          {!collapsed && <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground ml-1" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align={collapsed ? "end" : "start"} side={collapsed ? "right" : "top"} className="w-[300px]">
+      <DropdownMenuContent 
+        align={isHeader ? "start" : (collapsed ? "end" : "start")} 
+        side={isHeader ? "bottom" : (collapsed ? "right" : "top")} 
+        className="w-[300px]"
+      >
         <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wide">
           Wybierz firmę
         </DropdownMenuLabel>

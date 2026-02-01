@@ -9,6 +9,7 @@ import { DV, KSEF_ENVIRONMENT, SYNC_STATUS } from '../config'
 import { mapDvSettingToApp, mapAppSettingToDv, type AppSetting } from '../mappers'
 import { logDataverseInfo, logDataverseError } from '../logger'
 import type { DvSetting } from '../../../types/dataverse'
+import { getSecret } from '../../keyvault/secrets'
 
 /**
  * DTO for creating a new setting
@@ -44,6 +45,38 @@ export class SettingService {
   private entitySet = DV.setting.entitySet
 
   /**
+   * Check token status for a setting
+   */
+  private async checkTokenStatus(setting: AppSetting): Promise<'valid' | 'expiring' | 'expired' | 'missing'> {
+    try {
+      const secretName = setting.keyVaultSecretName || `ksef-token-${setting.nip}`
+      const token = await getSecret(secretName)
+      
+      if (!token) {
+        return 'missing'
+      }
+      
+      // Check expiration
+      if (setting.tokenExpiresAt) {
+        const now = new Date()
+        const expiresAt = new Date(setting.tokenExpiresAt)
+        const daysUntilExpiry = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        
+        if (daysUntilExpiry < 0) {
+          return 'expired'
+        } else if (daysUntilExpiry <= 7) {
+          return 'expiring'
+        }
+      }
+      
+      return 'valid'
+    } catch (error) {
+      logDataverseError('SettingService.checkTokenStatus', error)
+      return 'missing'
+    }
+  }
+
+  /**
    * Get all settings
    */
   async getAll(activeOnly = true): Promise<AppSetting[]> {
@@ -58,7 +91,17 @@ export class SettingService {
 
     try {
       const records = await dataverseClient.listAll<DvSetting>(this.entitySet, query)
-      return records.map(mapDvSettingToApp)
+      const settings = records.map(mapDvSettingToApp)
+      
+      // Check token status for each setting
+      const settingsWithTokenStatus = await Promise.all(
+        settings.map(async (setting) => ({
+          ...setting,
+          tokenStatus: await this.checkTokenStatus(setting)
+        }))
+      )
+      
+      return settingsWithTokenStatus
     } catch (error) {
       logDataverseError('SettingService.getAll', error)
       throw error
@@ -73,7 +116,12 @@ export class SettingService {
 
     try {
       const record = await dataverseClient.getById<DvSetting>(this.entitySet, id)
-      return record ? mapDvSettingToApp(record) : null
+      if (!record) return null
+      
+      const setting = mapDvSettingToApp(record)
+      setting.tokenStatus = await this.checkTokenStatus(setting)
+      
+      return setting
     } catch (error) {
       logDataverseError('SettingService.getById', error)
       throw error

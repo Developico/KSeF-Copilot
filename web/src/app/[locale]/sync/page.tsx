@@ -39,12 +39,15 @@ import {
   useRunSync,
   useImportInvoices,
 } from '@/hooks/use-api'
+import { useSelectedCompany } from '@/contexts/company-context'
 import { RequireRole } from '@/components/auth/auth-provider'
 
 export default function SyncPage() {
   const t = useTranslations('sync')
   const tCommon = useTranslations('common')
   const locale = useLocale()
+  const { selectedCompany } = useSelectedCompany()
+  const nip = selectedCompany?.nip
   
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date()
@@ -100,9 +103,13 @@ export default function SyncPage() {
   }
 
   async function handleStartSession() {
+    if (!nip) {
+      addLog(t('sessionError') + ': No company selected')
+      return
+    }
     addLog(t('initSession'))
     try {
-      await startSessionMutation.mutateAsync(undefined)
+      await startSessionMutation.mutateAsync(nip)
       addLog(t('sessionStarted'))
     } catch (error) {
       addLog(`${t('sessionError')}: ${error instanceof Error ? error.message : 'Unknown'}`)
@@ -128,7 +135,7 @@ export default function SyncPage() {
   async function handleSyncAll() {
     addLog(t('startingFullSync'))
     try {
-      const result = await runSyncMutation.mutateAsync({ dateFrom, dateTo })
+      const result = await runSyncMutation.mutateAsync({ nip, dateFrom, dateTo })
       addLog(t('syncResult', { imported: result.imported, skipped: result.skipped, failed: result.failed }))
       await refetchPreview()
     } catch (error) {
@@ -143,7 +150,7 @@ export default function SyncPage() {
     addLog(t('importingSelected', { count: refs.length }))
     
     try {
-      const result = await importMutation.mutateAsync({ referenceNumbers: refs })
+      const result = await importMutation.mutateAsync({ referenceNumbers: refs, nip })
       addLog(t('importResult', { imported: result.imported, failed: result.failed }))
       setSelectedInvoices(new Set())
       await refetchPreview()

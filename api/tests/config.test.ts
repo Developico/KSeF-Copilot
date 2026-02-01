@@ -147,10 +147,10 @@ describe('KSeF Config', () => {
   })
 
   describe('KSEF_ENDPOINTS', () => {
-    it('should have correct endpoint URLs', () => {
-      expect(KSEF_ENDPOINTS.test).toBe('https://ksef-test.mf.gov.pl/api')
-      expect(KSEF_ENDPOINTS.demo).toBe('https://ksef-demo.mf.gov.pl/api')
-      expect(KSEF_ENDPOINTS.prod).toBe('https://ksef.mf.gov.pl/api')
+    it('should have correct endpoint URLs for KSeF 2.0', () => {
+      expect(KSEF_ENDPOINTS.test).toBe('https://api-test.ksef.mf.gov.pl/v2')
+      expect(KSEF_ENDPOINTS.demo).toBe('https://api-demo.ksef.mf.gov.pl/v2')
+      expect(KSEF_ENDPOINTS.prod).toBe('https://api.ksef.mf.gov.pl/v2')
     })
   })
 })
