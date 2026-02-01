@@ -1,0 +1,52 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Security
+- Implemented proper JWT signature verification using `jose` library
+- Added startup validation to prevent SKIP_AUTH in production
+- Configured security group to role mapping for authorization
+
+### Added
+- Open source documentation (SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md)
+- GitHub Actions CI/CD workflow
+- Dependabot configuration for automated dependency updates
+- ESLint configuration for API
+- Issue and PR templates
+- Pre-commit hooks for type checking and linting
+
+## [0.1.0] - 2026-01-31
+
+### Added
+- Initial release of KSeF integration module
+- Azure Functions REST API for KSeF operations
+- Next.js dashboard for invoice management
+- Microsoft Dataverse integration for data storage
+- Azure Entra ID authentication and authorization
+- Azure Key Vault integration for secure token storage
+- KSeF API client for invoice synchronization
+- Manual invoice categorization (MPK, category, project)
+- Payment status tracking
+- AI-powered automatic categorization (Azure OpenAI)
+- Multi-language support (Polish, English)
+- Multi-tenant support (multiple companies)
+- Export functionality (CSV, Excel)
+- Comprehensive documentation
+
+### Security
+- Azure Key Vault for token management
+- RBAC with Admin and Reader roles
+- Security group-based authorization
+
+### Infrastructure
+- Bicep templates for Azure deployment
+- Dataverse solution package
+- PowerShell deployment scripts
+
+[Unreleased]: https://github.com/dvlp-dev/dvlp-ksef/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/dvlp-dev/dvlp-ksef/releases/tag/v0.1.0

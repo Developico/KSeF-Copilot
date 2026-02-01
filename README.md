@@ -3,6 +3,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![Azure Functions](https://img.shields.io/badge/Azure%20Functions-v4-blue.svg)](https://azure.microsoft.com/en-us/products/functions)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
+[![CI](https://github.com/dvlp-dev/dvlp-ksef/actions/workflows/ci.yml/badge.svg)](https://github.com/dvlp-dev/dvlp-ksef/actions/workflows/ci.yml)
+[![pnpm](https://img.shields.io/badge/pnpm-9+-orange.svg)](https://pnpm.io/)
+[![Tests](https://img.shields.io/badge/tests-37%20passed-success.svg)](https://github.com/dvlp-dev/dvlp-ksef)
 
 > 🇵🇱 Open-source integration module for Polish National e-Invoice System (KSeF) with Dataverse backend and AI-powered categorization.
 

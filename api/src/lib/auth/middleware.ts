@@ -1,16 +1,53 @@
 import { HttpRequest } from '@azure/functions'
+import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
 import { AuthResult, AuthUser, RoleCheckResult } from '../../types/api'
 
-// Allow bypassing auth in development
+// =============================================================================
+// Security Configuration
+// =============================================================================
+
+// CRITICAL: Validate that SKIP_AUTH is never enabled in production
+if (process.env.NODE_ENV === 'production' && process.env.SKIP_AUTH === 'true') {
+  throw new Error('FATAL: SKIP_AUTH cannot be enabled in production! This is a critical security violation.')
+}
+
+// Allow bypassing auth ONLY in non-production with explicit flag
 const DEV_MODE = process.env.NODE_ENV !== 'production' && process.env.SKIP_AUTH === 'true'
+
+// Azure Entra ID configuration
+const TENANT_ID = process.env.AZURE_TENANT_ID
+const CLIENT_ID = process.env.AZURE_CLIENT_ID
+
+// JWKS URI for token signature verification
+const JWKS_URI = TENANT_ID 
+  ? `https://login.microsoftonline.com/${TENANT_ID}/discovery/v2.0/keys`
+  : null
+
+// Cache JWKS for performance
+let jwks: ReturnType<typeof createRemoteJWKSet> | null = null
+
+function getJWKS() {
+  if (!JWKS_URI) {
+    throw new Error('AZURE_TENANT_ID is required for JWT verification')
+  }
+  if (!jwks) {
+    jwks = createRemoteJWKSet(new URL(JWKS_URI))
+  }
+  return jwks
+}
+
+// =============================================================================
+// JWT Verification
+// =============================================================================
 
 /**
  * Verify JWT token from Authorization header
- * In production, this should validate against Entra ID
+ * Uses Azure Entra ID JWKS for cryptographic signature verification
  */
 export async function verifyAuth(request: HttpRequest): Promise<AuthResult> {
-  // Development mode - bypass auth
+  // Development mode - bypass auth (ONLY in non-production with explicit flag)
   if (DEV_MODE) {
+    console.warn('[AUTH] ⚠️ Running in DEV_MODE - authentication bypassed!')
     return {
       success: true,
       user: {
@@ -31,31 +68,30 @@ export async function verifyAuth(request: HttpRequest): Promise<AuthResult> {
   const token = authHeader.substring(7)
 
   try {
-    // TODO: Implement proper JWT validation with Entra ID
-    // For now, decode without verification (development only!)
-    const payload = decodeJwtPayload(token)
-
-    if (!payload) {
-      return { success: false, error: 'Invalid token' }
-    }
-
-    // Check expiration
-    if (payload.exp && payload.exp < Date.now() / 1000) {
-      return { success: false, error: 'Token expired' }
-    }
+    // Verify JWT signature using Azure Entra ID JWKS
+    const { payload } = await jwtVerify(token, getJWKS(), {
+      issuer: TENANT_ID ? `https://login.microsoftonline.com/${TENANT_ID}/v2.0` : undefined,
+      audience: CLIENT_ID,
+    })
 
     const user: AuthUser = {
-      id: payload.oid || payload.sub || '',
-      email: payload.email || payload.preferred_username || '',
-      name: payload.name || '',
+      id: (payload.oid as string) || (payload.sub as string) || '',
+      email: (payload.email as string) || (payload.preferred_username as string) || '',
+      name: (payload.name as string) || '',
       roles: extractRoles(payload),
     }
 
     return { success: true, user }
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[AUTH] Token verification failed:', errorMessage)
     return { success: false, error: 'Token validation failed' }
   }
 }
+
+// =============================================================================
+// Role Management
+// =============================================================================
 
 /**
  * Check if user has required role
@@ -81,64 +117,52 @@ export function requireRole(
   return { success: false, error: `Role '${requiredRole}' required` }
 }
 
-/**
- * Decode JWT payload (base64url)
- * WARNING: This does NOT verify the signature!
- * Use only for development or when token is already verified by Azure
- */
-function decodeJwtPayload(token: string): JwtPayload | null {
-  try {
-    const parts = token.split('.')
-    if (parts.length !== 3) return null
+// =============================================================================
+// Role Extraction from JWT
+// =============================================================================
 
-    const payload = parts[1]
-    const decoded = Buffer.from(payload, 'base64url').toString('utf-8')
-    return JSON.parse(decoded) as JwtPayload
-  } catch {
-    return null
-  }
+// Security group to role mapping (from environment)
+const GROUP_ROLE_MAPPING: Record<string, 'Admin' | 'Reader'> = {}
+
+// Initialize group mapping from environment
+const ADMIN_GROUP_ID = process.env.ADMIN_GROUP_ID || process.env.NEXT_PUBLIC_ADMIN_GROUP
+const USER_GROUP_ID = process.env.USER_GROUP_ID || process.env.NEXT_PUBLIC_USER_GROUP
+
+if (ADMIN_GROUP_ID) {
+  GROUP_ROLE_MAPPING[ADMIN_GROUP_ID] = 'Admin'
+}
+if (USER_GROUP_ID) {
+  GROUP_ROLE_MAPPING[USER_GROUP_ID] = 'Reader'
 }
 
 /**
  * Extract roles from JWT payload
- * Supports both 'roles' claim and 'groups' claim
+ * Supports both 'roles' claim (App Roles) and 'groups' claim (Security Groups)
  */
-function extractRoles(payload: JwtPayload): string[] {
+function extractRoles(payload: JWTPayload): string[] {
   const roles: string[] = []
 
-  // Direct roles claim (App Roles)
-  if (Array.isArray(payload.roles)) {
-    roles.push(...payload.roles)
+  // Direct roles claim (App Roles from Entra ID)
+  const appRoles = payload.roles as string[] | undefined
+  if (Array.isArray(appRoles)) {
+    roles.push(...appRoles)
   }
 
-  // Groups claim (with mapping)
-  // TODO: Configure group-to-role mapping
-  if (Array.isArray(payload.groups)) {
-    // Example: Map specific group IDs to roles
-    // This should come from configuration
+  // Groups claim - map security group IDs to application roles
+  const groups = payload.groups as string[] | undefined
+  if (Array.isArray(groups)) {
+    for (const groupId of groups) {
+      const role = GROUP_ROLE_MAPPING[groupId]
+      if (role && !roles.includes(role)) {
+        roles.push(role)
+      }
+    }
   }
 
-  // Default to Reader if no roles found
+  // Default to Reader if no roles found (authenticated but no specific role)
   if (roles.length === 0) {
     roles.push('Reader')
   }
 
   return roles
-}
-
-/**
- * JWT Payload interface (partial)
- */
-interface JwtPayload {
-  oid?: string
-  sub?: string
-  email?: string
-  preferred_username?: string
-  name?: string
-  roles?: string[]
-  groups?: string[]
-  exp?: number
-  iat?: number
-  iss?: string
-  aud?: string
 }

@@ -11,45 +11,45 @@ import {
 describe('Dataverse Entities', () => {
   describe('InvoiceEntity', () => {
     it('should have correct entity set name', () => {
-      expect(InvoiceEntity.entitySet).toBe('ksef_invoices')
+      expect(InvoiceEntity.entitySet).toBe('dvlp_ksefinvoices')
     })
 
     it('should have all required fields', () => {
       const { fields } = InvoiceEntity
 
-      expect(fields.id).toBe('ksef_invoiceid')
-      expect(fields.tenantNip).toBe('ksef_tenantnip')
-      expect(fields.referenceNumber).toBe('ksef_referencenumber')
-      expect(fields.invoiceNumber).toBe('ksef_invoicenumber')
-      expect(fields.supplierNip).toBe('ksef_suppliernip')
-      expect(fields.supplierName).toBe('ksef_suppliername')
-      expect(fields.invoiceDate).toBe('ksef_invoicedate')
-      expect(fields.grossAmount).toBe('ksef_grossamount')
-      expect(fields.paymentStatus).toBe('ksef_paymentstatus')
+      expect(fields.id).toBe('dvlp_ksefinvoiceid')
+      expect(fields.tenantNip).toBe('dvlp_sellernip')
+      expect(fields.referenceNumber).toBe('dvlp_ksefreferencenumber')
+      expect(fields.invoiceNumber).toBe('dvlp_name')
+      expect(fields.supplierNip).toBe('dvlp_buyernip')
+      expect(fields.supplierName).toBe('dvlp_buyername')
+      expect(fields.invoiceDate).toBe('dvlp_invoicedate')
+      expect(fields.grossAmount).toBe('dvlp_grossamount')
+      expect(fields.paymentStatus).toBe('dvlp_paymentstatus')
     })
 
     it('should have AI fields for Extended scope', () => {
       const { fields } = InvoiceEntity
 
-      expect(fields.aiMpkSuggestion).toBe('ksef_aimpksuggestion')
-      expect(fields.aiCategorySuggestion).toBe('ksef_aicategorysuggestion')
-      expect(fields.aiConfidence).toBe('ksef_aiconfidence')
+      expect(fields.aiMpkSuggestion).toBe('dvlp_aimpksuggestion')
+      expect(fields.aiCategorySuggestion).toBe('dvlp_aicategorysuggestion')
+      expect(fields.aiConfidence).toBe('dvlp_aiconfidence')
     })
   })
 
   describe('TenantEntity', () => {
     it('should have correct entity set name', () => {
-      expect(TenantEntity.entitySet).toBe('ksef_tenants')
+      expect(TenantEntity.entitySet).toBe('dvlp_ksefsettings')
     })
 
     it('should have all required fields', () => {
       const { fields } = TenantEntity
 
-      expect(fields.id).toBe('ksef_tenantid')
-      expect(fields.nip).toBe('ksef_nip')
-      expect(fields.name).toBe('ksef_name')
-      expect(fields.tokenSecretName).toBe('ksef_tokensecretname')
-      expect(fields.isActive).toBe('ksef_isactive')
+      expect(fields.id).toBe('dvlp_ksefsettingid')
+      expect(fields.nip).toBe('dvlp_nip')
+      expect(fields.name).toBe('dvlp_name')
+      expect(fields.tokenSecretName).toBe('dvlp_tokensecretname')
+      expect(fields.isActive).toBe('dvlp_isactive')
     })
   })
 
@@ -66,7 +66,7 @@ describe('Dataverse Entities', () => {
       expect(MpkValues.BackOffice).toBe(100000001)
       expect(MpkValues.Management).toBe(100000002)
       expect(MpkValues.Cars).toBe(100000003)
-      expect(MpkValues.Legal).toBe(100000004)
+      expect(MpkValues.Legal).toBe(100000100)
       expect(MpkValues.Marketing).toBe(100000005)
       expect(MpkValues.Sales).toBe(100000006)
       expect(MpkValues.Delivery).toBe(100000007)
