@@ -98,8 +98,16 @@ describe('Dataverse Entities', () => {
       expect(getMpkKey(100000008)).toBe('Finance')
     })
 
-    it('should default to Other for unknown value', () => {
-      expect(getMpkKey(999)).toBe('Other')
+    it('should return undefined for unknown value', () => {
+      expect(getMpkKey(999)).toBeUndefined()
+    })
+
+    it('should return undefined for null', () => {
+      expect(getMpkKey(null)).toBeUndefined()
+    })
+
+    it('should return undefined for undefined', () => {
+      expect(getMpkKey(undefined)).toBeUndefined()
     })
   })
 })

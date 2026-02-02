@@ -1,5 +1,5 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { initSession, terminateSession, getActiveSession, getSessionStatus } from '../lib/ksef/session'
+import { initSession, terminateSession, getActiveSession, getActiveSessionAsync, getSessionStatus } from '../lib/ksef/session'
 import { verifyAuth, requireRole } from '../lib/auth/middleware'
 
 /**
@@ -76,19 +76,22 @@ app.http('ksef-session-status', {
         return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
       
-      const session = getActiveSession()
+      // Use async version that falls back to Dataverse
+      const session = await getActiveSessionAsync()
       const status = await getSessionStatus()
       
       return {
         status: 200,
         jsonBody: {
           ...status,
+          // Override isActive based on Dataverse session if memory cache is empty
+          isActive: Boolean(session),
           session: session ? {
             sessionId: session.sessionId,
             referenceNumber: session.referenceNumber,
             nip: session.nip,
-            createdAt: session.createdAt.toISOString(),
-            expiresAt: session.expiresAt?.toISOString(),
+            createdAt: session.createdAt instanceof Date ? session.createdAt.toISOString() : session.createdAt,
+            expiresAt: session.expiresAt instanceof Date ? session.expiresAt?.toISOString() : session.expiresAt,
             status: session.status,
             invoicesProcessed: session.invoicesProcessed,
           } : null,

@@ -14,6 +14,10 @@ import {
   KsefTerminateSessionResponse,
 } from './types'
 import * as crypto from 'crypto'
+import { sessionService, settingService } from '../dataverse/services'
+import { dataverseClient } from '../dataverse/client'
+import { DV, SESSION_STATUS, KSEF_ENVIRONMENT } from '../dataverse/config'
+import type { DvSession } from '../../types/dataverse'
 
 // Active session storage (in-memory for now, should be in Dataverse for production)
 // Key: "NIP:environment" to ensure sessions are not reused across environments
@@ -226,6 +230,35 @@ export async function initSession(nip: string): Promise<KsefSession> {
     environment: config.environment,
   }
   console.log(`[KSEF] Session created for NIP: ${nip}, environment: ${config.environment}`)
+  
+  // Step 8: Persist session to Dataverse for durability
+  try {
+    // Map environment string to Dataverse option set value
+    const envMap: Record<string, number> = {
+      'test': KSEF_ENVIRONMENT.TEST,
+      'demo': KSEF_ENVIRONMENT.DEMO,
+      'prod': KSEF_ENVIRONMENT.PRODUCTION,
+    }
+    const envValue = envMap[config.environment] || KSEF_ENVIRONMENT.TEST
+    
+    const setting = await settingService.getByNipAndEnvironment(nip, envValue)
+    if (setting) {
+      await sessionService.create({
+        sessionReference: session.referenceNumber,
+        settingId: setting.id,
+        nip: session.nip,
+        sessionType: 'interactive',
+        sessionToken: session.sessionToken,
+        expiresAt: session.expiresAt.toISOString(),
+      })
+      console.log(`[KSEF] Session persisted to Dataverse: ${session.referenceNumber}`)
+    } else {
+      console.warn(`[KSEF] Could not find setting for NIP ${nip}, session not persisted to Dataverse`)
+    }
+  } catch (error) {
+    // Log but don't fail - in-memory session is still valid
+    console.error(`[KSEF] Failed to persist session to Dataverse:`, error)
+  }
   
   return session
 }
@@ -453,7 +486,7 @@ async function redeemTokens(
 }
 
 /**
- * Get the current active session
+ * Get the current active session (sync, in-memory only)
  */
 export function getActiveSession(): KsefSession | null {
   if (!activeSessionCache) {
@@ -469,6 +502,72 @@ export function getActiveSession(): KsefSession | null {
   }
   
   return session
+}
+
+/**
+ * Get the current active session with Dataverse fallback (async)
+ * This should be used when accurate session status is needed
+ */
+export async function getActiveSessionAsync(nip?: string): Promise<KsefSession | null> {
+  // First check in-memory cache
+  if (activeSessionCache) {
+    const { session } = activeSessionCache
+    
+    // Check if session is expired
+    if (session.expiresAt && session.expiresAt < new Date()) {
+      session.status = 'expired'
+      return null
+    }
+    
+    // If NIP is provided, check it matches
+    if (nip && session.nip !== nip) {
+      // Try Dataverse for the specific NIP
+    } else {
+      return session
+    }
+  }
+  
+  // Fallback to Dataverse
+  console.log(`[KSEF] Checking Dataverse for active session${nip ? ` for NIP: ${nip}` : ''}...`)
+  
+  try {
+    const s = DV.session
+    const filter = nip 
+      ? `${s.nip} eq '${nip}' and ${s.status} eq ${SESSION_STATUS.ACTIVE}`
+      : `${s.status} eq ${SESSION_STATUS.ACTIVE}`
+    const query = `$filter=${filter}&$orderby=${s.startedAt} desc&$top=1`
+    
+    const response = await dataverseClient.list<DvSession>(s.entitySet, query)
+    
+    if (response.value.length === 0) {
+      return null
+    }
+    
+    const dvSession = response.value[0]
+    
+    // Check if session is expired
+    if (dvSession.dvlp_expiresat && new Date(dvSession.dvlp_expiresat) < new Date()) {
+      return null
+    }
+    
+    // Convert to KsefSession format
+    const session: KsefSession = {
+      sessionId: dvSession.dvlp_ksefsessionid,
+      referenceNumber: dvSession.dvlp_sessionreference,
+      nip: dvSession.dvlp_nip,
+      sessionToken: dvSession.dvlp_sessiontoken || '',
+      createdAt: new Date(dvSession.dvlp_startedat),
+      expiresAt: dvSession.dvlp_expiresat ? new Date(dvSession.dvlp_expiresat) : new Date(Date.now() + 3600000), // Default 1 hour if not set
+      status: 'active',
+      invoicesProcessed: dvSession.dvlp_invoicesprocessed || 0,
+    }
+    
+    console.log(`[KSEF] Found active session in Dataverse: ${session.referenceNumber}`)
+    return session
+  } catch (error) {
+    console.error(`[KSEF] Failed to query Dataverse for session:`, error)
+    return null
+  }
 }
 
 /**
@@ -493,47 +592,145 @@ export function getActiveSessionWithEnv(): SessionCache | null {
 /**
  * Terminate the current session (KSeF API 2.0)
  * DELETE /auth/sessions/current
+ * 
+ * Falls back to Dataverse if in-memory cache is empty (e.g., after function restart)
  */
-export async function terminateSession(): Promise<KsefTerminateSessionResponse> {
-  if (!activeSessionCache) {
-    throw new Error('No active session to terminate')
+export async function terminateSession(nip?: string): Promise<KsefTerminateSessionResponse> {
+  let sessionNip: string
+  let sessionToken: string | undefined
+  let sessionReferenceNumber: string
+  let environment: string
+  let dvSessionId: string | undefined
+  
+  if (activeSessionCache) {
+    // Use in-memory cache
+    const { session, environment: env } = activeSessionCache
+    sessionNip = session.nip
+    sessionToken = session.refreshToken || session.sessionToken
+    sessionReferenceNumber = session.referenceNumber
+    environment = env
+    console.log(`[KSEF] Terminating session from memory cache for NIP: ${sessionNip}`)
+  } else {
+    // Fallback: Try to find active session in Dataverse
+    console.log(`[KSEF] No in-memory session cache, checking Dataverse for active session...`)
+    
+    // If NIP is provided, use it; otherwise we need to find any active session
+    let dvSession: DvSession | null = null
+    
+    if (nip) {
+      // Query Dataverse for active session by NIP
+      const s = DV.session
+      const filter = `${s.nip} eq '${nip}' and ${s.status} eq ${SESSION_STATUS.ACTIVE}`
+      const query = `$filter=${filter}&$orderby=${s.startedAt} desc&$top=1`
+      
+      try {
+        const response = await dataverseClient.list<DvSession>(s.entitySet, query)
+        if (response.value.length > 0) {
+          dvSession = response.value[0]
+        }
+      } catch (error) {
+        console.error(`[KSEF] Failed to query Dataverse for session:`, error)
+      }
+    } else {
+      // No NIP provided and no in-memory cache - find any active session
+      const s = DV.session
+      const filter = `${s.status} eq ${SESSION_STATUS.ACTIVE}`
+      const query = `$filter=${filter}&$orderby=${s.startedAt} desc&$top=1`
+      
+      try {
+        const response = await dataverseClient.list<DvSession>(s.entitySet, query)
+        if (response.value.length > 0) {
+          dvSession = response.value[0]
+        }
+      } catch (error) {
+        console.error(`[KSEF] Failed to query Dataverse for session:`, error)
+      }
+    }
+    
+    if (!dvSession) {
+      throw new Error('No active session to terminate')
+    }
+    
+    sessionNip = dvSession.dvlp_nip
+    sessionToken = dvSession.dvlp_sessiontoken
+    sessionReferenceNumber = dvSession.dvlp_sessionreference
+    dvSessionId = dvSession.dvlp_ksefsessionid
+    
+    // Determine environment from setting
+    const config = await getKsefConfigForNip(sessionNip)
+    environment = config.environment
+    
+    console.log(`[KSEF] Found active session in Dataverse: ${sessionReferenceNumber} for NIP: ${sessionNip}`)
+    
+    if (!sessionToken) {
+      console.warn(`[KSEF] Session token not stored in Dataverse, marking session as terminated without calling KSeF API`)
+      // Mark session as terminated in Dataverse even if we can't call KSeF API
+      if (dvSessionId) {
+        await markDvSessionTerminated(dvSessionId)
+      }
+      return {
+        timestamp: new Date().toISOString(),
+        referenceNumber: sessionReferenceNumber,
+        processingCode: 200,
+        processingDescription: 'Session terminated (token not available)',
+      }
+    }
   }
   
-  const { session, environment } = activeSessionCache
-  
   // Get config from Dataverse based on session NIP
-  const config = await getKsefConfigForNip(session.nip)
-  console.log(`[KSEF] Terminating session for NIP: ${session.nip}, environment: ${environment}`)
+  const config = await getKsefConfigForNip(sessionNip)
+  console.log(`[KSEF] Terminating session for NIP: ${sessionNip}, environment: ${environment}`)
   
-  // Use refresh token to terminate, or access token
-  const token = session.refreshToken || session.sessionToken
-  
+  // Call KSeF API to terminate session
   const response = await fetch(`${config.baseUrl}/auth/sessions/current`, {
     method: 'DELETE',
     headers: {
       Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${sessionToken}`,
     },
   })
   
   if (!response.ok && response.status !== 204) {
     const error = await response.text()
-    throw new Error(`Failed to terminate session: ${response.status} - ${error}`)
+    // If session already terminated on KSeF side (404), still clean up locally
+    if (response.status === 404 || response.status === 401) {
+      console.warn(`[KSEF] Session may already be terminated on KSeF side (${response.status}), cleaning up locally`)
+    } else {
+      throw new Error(`Failed to terminate session: ${response.status} - ${error}`)
+    }
   }
   
-  // Clear session
-  const terminatedSession: KsefSession = {
-    ...session,
-    status: 'terminated',
-    terminatedAt: new Date(),
-  }
+  // Clear in-memory session
   activeSessionCache = null
+  
+  // Mark session as terminated in Dataverse if we found it there
+  if (dvSessionId) {
+    await markDvSessionTerminated(dvSessionId)
+  }
   
   return {
     timestamp: new Date().toISOString(),
-    referenceNumber: terminatedSession.referenceNumber,
+    referenceNumber: sessionReferenceNumber,
     processingCode: 200,
     processingDescription: 'Session terminated',
+  }
+}
+
+/**
+ * Mark a Dataverse session as terminated
+ */
+async function markDvSessionTerminated(sessionId: string): Promise<void> {
+  try {
+    const s = DV.session
+    const payload: Record<string, unknown> = {
+      [s.status]: SESSION_STATUS.TERMINATED,
+      [s.terminatedAt]: new Date().toISOString(),
+    }
+    await dataverseClient.update(s.entitySet, sessionId, payload)
+    console.log(`[KSEF] Marked session ${sessionId} as terminated in Dataverse`)
+  } catch (error) {
+    console.error(`[KSEF] Failed to mark session as terminated in Dataverse:`, error)
+    // Don't throw - the KSeF termination was successful
   }
 }
 

@@ -141,10 +141,14 @@ export function getPaymentStatusKey(value: number): 'pending' | 'paid' {
   return (found?.[0] as 'pending' | 'paid') || 'pending'
 }
 
-export function getMpkKey(value: number): string {
+export function getMpkKey(value: number | null | undefined): string | undefined {
+  // Return undefined for null/undefined values (no MPK assigned)
+  if (value === null || value === undefined) {
+    return undefined
+  }
   const entries = Object.entries(MpkValues)
   const found = entries.find(([, v]) => v === value)
-  return found?.[0] || 'Other'
+  return found?.[0]
 }
 
 export function getInvoiceSourceKey(value: number): 'KSeF' | 'Manual' {
