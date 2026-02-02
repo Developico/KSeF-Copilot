@@ -321,23 +321,64 @@ export interface KsefQueryInvoicesResponse {
 }
 
 /**
+ * Seller info from API 2.0 invoice metadata
+ */
+export interface KsefInvoiceMetadataSeller {
+  nip: string
+  name?: string
+}
+
+/**
+ * Buyer identifier from API 2.0 invoice metadata
+ */
+export interface KsefInvoiceMetadataBuyerIdentifier {
+  type: 'Nip' | 'VatUe' | 'Other' | 'None'
+  value?: string
+}
+
+/**
+ * Buyer info from API 2.0 invoice metadata
+ */
+export interface KsefInvoiceMetadataBuyer {
+  identifier: KsefInvoiceMetadataBuyerIdentifier
+  name?: string
+}
+
+/**
  * Invoice metadata from API 2.0
+ * Response from POST /invoices/query/metadata
  */
 export interface KsefInvoiceMetadata {
   ksefNumber: string
-  invoiceNumber?: string
+  invoiceNumber: string
+  issueDate: string
+  invoicingDate: string
+  acquisitionDate: string
+  permanentStorageDate: string
+  seller: KsefInvoiceMetadataSeller
+  buyer: KsefInvoiceMetadataBuyer
+  netAmount: number
+  grossAmount: number
+  vatAmount: number
+  currency: string
+  invoicingMode: 'Online' | 'Offline'
+  invoiceType: string
+  formCode: {
+    systemCode: string
+    schemaVersion: string
+    value: string
+  }
+  isSelfInvoicing: boolean
+  hasAttachment: boolean
+  invoiceHash: string
+  // Legacy flat properties for backward compatibility
   sellerNip?: string
   sellerName?: string
   buyerNip?: string
   buyerName?: string
-  invoicingDate: string
-  issueDate?: string
-  permanentStorageDate?: string
   grossValue?: number
   vatValue?: number
   netValue?: number
-  currency?: string
-  invoiceType?: string
   formType?: string
 }
 

@@ -96,8 +96,14 @@ app.http('ksef-sync', {
         errors: [],
       }
 
-      // Process each invoice - API 2.0 format uses 'ksefNumber', 'sellerName', etc.
+      // Process each invoice - API 2.0 format uses nested 'seller', 'buyer' objects
       for (const header of invoiceList) {
+        // Extract seller info from nested structure (API 2.0) or flat properties (legacy)
+        const sellerName = header.seller?.name || header.sellerName || 'Unknown'
+        const sellerNip = header.seller?.nip || header.sellerNip || ''
+        // Extract amount from API 2.0 format (grossAmount) or legacy (grossValue)
+        const grossAmount = header.grossAmount ?? header.grossValue ?? 0
+        
         try {
           // Check if already imported - API 2.0 uses 'ksefNumber'
           const exists = await invoiceExistsByReference(header.ksefNumber)
@@ -107,8 +113,8 @@ app.http('ksef-sync', {
             result.invoices.push({
               ksefReferenceNumber: header.ksefNumber,
               invoiceNumber: header.invoiceNumber || 'Unknown',
-              supplierName: header.sellerName || 'Unknown',
-              grossAmount: header.grossValue ?? 0,
+              supplierName: sellerName,
+              grossAmount: grossAmount,
               status: 'skipped',
             })
             continue
@@ -156,8 +162,8 @@ app.http('ksef-sync', {
           result.invoices.push({
             ksefReferenceNumber: header.ksefNumber,
             invoiceNumber: header.invoiceNumber || 'Unknown',
-            supplierName: header.sellerName || 'Unknown',
-            grossAmount: header.grossValue ?? 0,
+            supplierName: sellerName,
+            grossAmount: grossAmount,
             status: 'failed',
           })
 
@@ -228,17 +234,21 @@ app.http('ksef-sync-preview', {
       // API 2.0 uses 'invoices' array
       const invoiceList = queryResult.invoices || []
 
-      // Check which are already imported - API 2.0 uses 'ksefNumber', 'sellerNip', 'sellerName'
+      // Check which are already imported - API 2.0 uses nested 'seller', 'buyer' objects
       const previews = await Promise.all(
         invoiceList.map(async (header) => {
           const exists = await invoiceExistsByReference(header.ksefNumber)
+          // Extract from nested structure (API 2.0) or flat properties (legacy)
+          const sellerNip = header.seller?.nip || header.sellerNip || ''
+          const sellerName = header.seller?.name || header.sellerName || 'Unknown'
+          const grossAmount = header.grossAmount ?? header.grossValue ?? 0
           return {
             ksefReferenceNumber: header.ksefNumber,
             invoiceNumber: header.invoiceNumber,
             invoiceDate: header.invoicingDate,
-            supplierNip: header.sellerNip,
-            supplierName: header.sellerName,
-            grossAmount: header.grossValue,
+            supplierNip: sellerNip,
+            supplierName: sellerName,
+            grossAmount: grossAmount,
             alreadyImported: exists,
           }
         })

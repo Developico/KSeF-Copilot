@@ -4,7 +4,7 @@
  */
 
 import { getKsefConfigForNip } from './config'
-import { getActiveSession, ensureActiveSession, decodeJwtPayload } from './session'
+import { getActiveSession, ensureActiveSession, decodeJwtPayload, checkRateLimit, getRateLimitStatus } from './session'
 import { parseInvoiceFromXml, buildInvoiceXml } from './parser'
 import {
   KsefInvoice,
@@ -70,11 +70,23 @@ export async function getInvoice(
   const config = await getKsefConfigForNip(nip)
   
   console.log(`[KSEF] Getting invoice: ${ksefReferenceNumber}`)
+  console.log(`[KSEF] Base URL: ${config.baseUrl}`)
+  console.log(`[KSEF] Session NIP: ${session.nip}`)
+  console.log(`[KSEF] Session token length: ${session.sessionToken?.length || 0}`)
+  
+  // Decode and log JWT payload to see permissions
+  if (session.sessionToken) {
+    const jwtPayload = decodeJwtPayload(session.sessionToken)
+    if (jwtPayload) {
+      console.log(`[KSEF] JWT Payload for getInvoice:`, JSON.stringify(jwtPayload, null, 2))
+    }
+  }
   
   // API 2.0 uses /invoices/ksef/{ksefNumber}
-  const response = await fetch(
-    `${config.baseUrl}/invoices/ksef/${ksefReferenceNumber}`,
-    {
+  const url = `${config.baseUrl}/invoices/ksef/${ksefReferenceNumber}`
+  console.log(`[KSEF] Full URL: ${url}`)
+  
+  const response = await fetch(url, {
       method: 'GET',
       headers: {
         Accept: 'application/xml',
@@ -83,13 +95,33 @@ export async function getInvoice(
     }
   )
   
+  console.log(`[KSEF] Response status: ${response.status}`)
+  console.log(`[KSEF] Response content-type: ${response.headers.get('content-type')}`)
+  console.log(`[KSEF] Response headers:`, JSON.stringify(Object.fromEntries(response.headers.entries())))
+  
   if (!response.ok) {
-    const error = await response.text()
-    console.error(`[KSEF] Get invoice failed:`, error.substring(0, 500))
-    throw new Error(`Failed to get invoice: ${response.status} - ${error.substring(0, 200)}`)
+    const errorText = await response.text()
+    console.error(`[KSEF] Get invoice failed with status ${response.status}`)
+    console.error(`[KSEF] Error response body:`, errorText.substring(0, 2000))
+    
+    // Try to parse error as JSON
+    try {
+      const errorJson = JSON.parse(errorText)
+      console.error(`[KSEF] Error JSON:`, JSON.stringify(errorJson, null, 2))
+      
+      // KSeF API 2.0 error format: { code, message, details }
+      const errorMessage = errorJson.message || errorJson.error?.message || errorJson.description || errorText
+      throw new Error(`Failed to get invoice: ${response.status} - ${errorMessage}`)
+    } catch (parseError) {
+      // Not JSON, use raw text
+      throw new Error(`Failed to get invoice: ${response.status} - ${errorText.substring(0, 500)}`)
+    }
   }
   
   const invoiceXml = await response.text()
+  console.log(`[KSEF] Received XML length: ${invoiceXml.length}`)
+  console.log(`[KSEF] XML preview: ${invoiceXml.substring(0, 200)}`)
+  
   const invoice = parseInvoiceFromXml(invoiceXml)
   
   return {
@@ -141,6 +173,12 @@ export async function queryInvoices(
   nip: string,
   query: KsefQueryInvoicesRequest
 ): Promise<KsefQueryInvoicesResponse> {
+  // Check rate limit before making API calls
+  if (!checkRateLimit('queryInvoices')) {
+    const status = getRateLimitStatus('queryInvoices')
+    throw new Error(`Rate limit exceeded. Please wait ${status.resetIn} seconds before querying invoices.`)
+  }
+  
   const session = await ensureActiveSession(nip)
   const config = await getKsefConfigForNip(nip)
   

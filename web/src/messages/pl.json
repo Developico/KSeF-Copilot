@@ -346,7 +346,8 @@
     "invoiceNumber": "Numer faktury",
     "seller": "Sprzedawca",
     "date": "Data",
-    "grossAmount": "Kwota brutto"
+    "grossAmount": "Kwota brutto",
+    "openInKsef": "Otwórz w portalu KSeF"
   },
   "settings": {
     "title": "Ustawienia",

@@ -179,7 +179,7 @@ See [.env.example](.env.example) for full list.
 
 ### KSeF Token Setup
 
-1. Log in to [KSeF Portal](https://ksef-demo.mf.gov.pl/) (use demo for testing)
+1. Log in to [KSeF Portal](https://ap-demo.ksef.mf.gov.pl/) (use demo for testing)
 2. Authenticate as company representative
 3. Generate authorization token (INVOICE_READ permission)
 4. Store token in Azure Key Vault

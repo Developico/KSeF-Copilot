@@ -886,7 +886,7 @@ export const queryKeys = {
   health: ['health'] as const,
   ksefStatus: ['ksef', 'status'] as const,
   ksefSession: ['ksef', 'session'] as const,
-  syncPreview: (params?: { dateFrom?: string; dateTo?: string }) =>
+  syncPreview: (params?: { nip?: string; dateFrom?: string; dateTo?: string }) =>
     ['sync', 'preview', params] as const,
   
   // Dashboard

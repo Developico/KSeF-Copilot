@@ -26,6 +26,59 @@ let activeSessionCache: SessionCache | null = null
 // Cache for MF public key - per environment (different certs per environment)
 const mfPublicKeyCache: Map<string, string> = new Map()
 
+// ============================================================================
+// Rate Limiting for KSeF API calls
+// ============================================================================
+interface RateLimitEntry {
+  count: number
+  resetAt: number
+}
+const rateLimitCache: Map<string, RateLimitEntry> = new Map()
+
+const RATE_LIMIT_WINDOW_MS = 60000 // 1 minute window
+const RATE_LIMIT_MAX_REQUESTS = 10 // Max 10 requests per minute per operation type
+
+/**
+ * Check and update rate limit for an operation
+ * @returns true if request is allowed, false if rate limited
+ */
+export function checkRateLimit(operation: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitCache.get(operation)
+  
+  if (!entry || now > entry.resetAt) {
+    // New window
+    rateLimitCache.set(operation, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
+    return true
+  }
+  
+  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
+    const waitSeconds = Math.ceil((entry.resetAt - now) / 1000)
+    console.warn(`[KSEF] Rate limit reached for ${operation}. Wait ${waitSeconds}s before next request.`)
+    return false
+  }
+  
+  entry.count++
+  return true
+}
+
+/**
+ * Get rate limit status for an operation
+ */
+export function getRateLimitStatus(operation: string): { remaining: number; resetIn: number } {
+  const now = Date.now()
+  const entry = rateLimitCache.get(operation)
+  
+  if (!entry || now > entry.resetAt) {
+    return { remaining: RATE_LIMIT_MAX_REQUESTS, resetIn: 0 }
+  }
+  
+  return {
+    remaining: Math.max(0, RATE_LIMIT_MAX_REQUESTS - entry.count),
+    resetIn: Math.ceil((entry.resetAt - now) / 1000),
+  }
+}
+
 /**
  * Decode JWT token and extract payload (without verification)
  * Useful for debugging token permissions
@@ -120,6 +173,12 @@ async function encryptToken(token: string, timestampMs: number, publicKeyBase64:
  * Start a new session with KSeF API 2.0
  */
 export async function initSession(nip: string): Promise<KsefSession> {
+  // Check rate limit before making API calls
+  if (!checkRateLimit('initSession')) {
+    const status = getRateLimitStatus('initSession')
+    throw new Error(`Rate limit exceeded. Please wait ${status.resetIn} seconds before starting a new session.`)
+  }
+  
   // Get config from Dataverse for this NIP
   const config = await getKsefConfigForNip(nip)
   
@@ -293,12 +352,25 @@ async function waitForAuthenticationComplete(
           processingCode?: number
           processingDescription?: string
           authenticationStatus?: number
-          status?: string
+          status?: { code?: number; description?: string } | string
           state?: string
+          isTokenRedeemed?: boolean
+          startDate?: string
+          authenticationMethod?: string
         }
         
-        const statusCode = statusData.processingCode || statusData.authenticationStatus || 0
-        console.log(`[KSEF] Auth status: ${statusCode} - ${statusData.processingDescription || statusData.status || statusData.state || 'unknown'}`)
+        // KSeF 2.0 returns status as nested object: { status: { code: 200, description: "..." } }
+        // KSeF 1.0 returned processingCode directly
+        let statusCode = statusData.processingCode || statusData.authenticationStatus || 0
+        let statusDescription = statusData.processingDescription || ''
+        
+        // Handle KSeF 2.0 nested status object
+        if (typeof statusData.status === 'object' && statusData.status !== null) {
+          statusCode = statusData.status.code || statusCode
+          statusDescription = statusData.status.description || statusDescription
+        }
+        
+        console.log(`[KSEF] Auth status: ${statusCode} - ${statusDescription || statusData.state || 'unknown'}`)
         
         // Status 200 = success, ready to redeem
         if (statusCode === 200) {
@@ -309,7 +381,8 @@ async function waitForAuthenticationComplete(
         // If response is OK but no processingCode, check for other success indicators
         if (statusCode === 0 && response.status === 200) {
           // Check if response contains success indicators
-          if (statusData.status === 'completed' || statusData.state === 'ready' || Object.keys(statusData).length === 0) {
+          const stateValue = typeof statusData.status === 'string' ? statusData.status : statusData.state
+          if (stateValue === 'completed' || stateValue === 'ready' || Object.keys(statusData).length === 0) {
             console.log(`[KSEF] Authentication complete (inferred from response)`)
             return
           }
@@ -323,7 +396,7 @@ async function waitForAuthenticationComplete(
         }
         
         // Other status codes = error
-        throw new Error(`Authentication failed with status ${statusCode}: ${statusData.processingDescription || JSON.stringify(statusData).substring(0, 200)}`)
+        throw new Error(`Authentication failed with status ${statusCode}: ${statusDescription || JSON.stringify(statusData).substring(0, 200)}`)
       } catch (e) {
         if (e instanceof SyntaxError) {
           console.log(`[KSEF] Non-JSON response, assuming success`)

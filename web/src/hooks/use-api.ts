@@ -25,6 +25,8 @@ export function useKsefSession() {
   return useQuery({
     queryKey: queryKeys.ksefSession,
     queryFn: () => api.ksef.getSession(),
+    staleTime: 30000, // Consider data fresh for 30 seconds
+    refetchOnWindowFocus: false,
   })
 }
 
@@ -62,12 +64,15 @@ export function useSyncPreview(params?: {
   dateTo?: string
   enabled?: boolean
 }) {
-  const { enabled = true, ...queryParams } = params || {}
+  const { enabled = true, nip, dateFrom, dateTo } = params || {}
+  const queryParams = { nip, dateFrom, dateTo }
 
   return useQuery({
     queryKey: queryKeys.syncPreview(queryParams),
     queryFn: () => api.sync.preview(queryParams),
     enabled,
+    staleTime: 60000, // Consider data fresh for 1 minute
+    refetchOnWindowFocus: false,
   })
 }
 

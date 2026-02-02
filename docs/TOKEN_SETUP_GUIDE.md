@@ -103,9 +103,9 @@ az keyvault secret set \
 ### 4. Uzyskanie tokenu z portalu KSeF
 
 1. Zaloguj się do odpowiedniego środowiska KSeF:
-   - **Produkcja**: https://ksef.mf.gov.pl/
-   - **Demo**: https://ksef-demo.mf.gov.pl/
-   - **Test**: https://ksef-test.mf.gov.pl/
+   - **Produkcja**: https://ap.ksef.mf.gov.pl/ (API: https://api.ksef.mf.gov.pl/v2)
+   - **Demo**: https://ap-demo.ksef.mf.gov.pl/ (API: https://api-demo.ksef.mf.gov.pl/v2)
+   - **Test**: https://ap-test.ksef.mf.gov.pl/ (API: https://api-test.ksef.mf.gov.pl/v2)
 
 2. Przejdź do sekcji zarządzania tokenami
 3. Wygeneruj nowy token z uprawnieniami:

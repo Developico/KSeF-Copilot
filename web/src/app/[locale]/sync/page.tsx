@@ -29,6 +29,7 @@ import {
   FileText,
   ArrowDownToLine,
   Building2,
+  ExternalLink,
 } from 'lucide-react'
 import {
   useKsefStatus,
@@ -76,9 +77,10 @@ export default function SyncPage() {
     isLoading: isLoadingPreview,
     refetch: refetchPreview,
   } = useSyncPreview({ 
+    nip,
     dateFrom, 
     dateTo, 
-    enabled: Boolean(sessionData?.session),
+    enabled: Boolean(sessionData?.session) && Boolean(nip),
   })
 
   // Mutations
@@ -89,6 +91,17 @@ export default function SyncPage() {
 
   const session = sessionData?.session
   const newInvoices = previewData?.invoices.filter(inv => !inv.alreadyImported) || []
+
+  // Reset state when company changes
+  useEffect(() => {
+    // Clear all local state when company (NIP) changes
+    setSelectedInvoices(new Set())
+    setSyncLog([])
+  }, [nip])
+
+  // Helper to generate KSeF portal link
+  const getKsefPortalLink = (ksefNumber: string) => 
+    `https://ap.ksef.mf.gov.pl/invoice/${ksefNumber}`
 
   // Locale-aware formatting
   const formatTime = () => new Date().toLocaleTimeString(locale)
@@ -126,17 +139,17 @@ export default function SyncPage() {
     }
   }
 
-  async function handlePreview() {
-    addLog(t('fetchingInvoices', { dateFrom, dateTo }))
-    await refetchPreview()
-    addLog(t('foundInvoices', { total: previewData?.total || 0, new: previewData?.new || 0 }))
-  }
-
   async function handleSyncAll() {
     addLog(t('startingFullSync'))
     try {
       const result = await runSyncMutation.mutateAsync({ nip, dateFrom, dateTo })
       addLog(t('syncResult', { imported: result.imported, skipped: result.skipped, failed: result.failed }))
+      // Log error details if any
+      if (result.errors && result.errors.length > 0) {
+        result.errors.forEach((err: { ksefReferenceNumber: string; error: string }) => {
+          addLog(`❌ ${err.ksefReferenceNumber}: ${err.error}`)
+        })
+      }
       await refetchPreview()
     } catch (error) {
       addLog(`${t('syncError')}: ${error instanceof Error ? error.message : 'Unknown'}`)
@@ -152,6 +165,12 @@ export default function SyncPage() {
     try {
       const result = await importMutation.mutateAsync({ referenceNumbers: refs, nip })
       addLog(t('importResult', { imported: result.imported, failed: result.failed }))
+      // Log error details if any
+      if (result.errors && result.errors.length > 0) {
+        result.errors.forEach((err: { ksefReferenceNumber: string; error: string }) => {
+          addLog(`❌ ${err.ksefReferenceNumber}: ${err.error}`)
+        })
+      }
       setSelectedInvoices(new Set())
       await refetchPreview()
     } catch (error) {
@@ -331,7 +350,7 @@ export default function SyncPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
@@ -356,22 +375,6 @@ export default function SyncPage() {
               </div>
               <div className="flex items-end">
                 <Button 
-                  variant="outline"
-                  onClick={handlePreview} 
-                  disabled={!session || isLoadingPreview}
-                  className="w-full"
-                  size={isMobile ? "sm" : "default"}
-                >
-                  {isLoadingPreview ? (
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                  )}
-                  {t('preview')}
-                </Button>
-              </div>
-              <div className="flex items-end">
-                <Button 
                   onClick={handleSyncAll} 
                   disabled={!session || isSyncing}
                   className="w-full"
@@ -386,6 +389,13 @@ export default function SyncPage() {
                 </Button>
               </div>
             </div>
+            
+            {isLoadingPreview && session && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                {t('fetchingInvoices', { dateFrom, dateTo })}
+              </div>
+            )}
             
             {!session && (
               <p className="text-sm text-muted-foreground">
@@ -450,7 +460,18 @@ export default function SyncPage() {
                             className="mt-1"
                           />
                           <div>
-                            <p className="font-medium">{invoice.invoiceNumber}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{invoice.invoiceNumber}</p>
+                              <a 
+                                href={getKsefPortalLink(invoice.ksefReferenceNumber)} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800"
+                                title={t('openInKsef')}
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </div>
                             <p className="text-xs text-muted-foreground font-mono">
                               {invoice.ksefReferenceNumber.slice(0, 20)}...
                             </p>
@@ -515,7 +536,18 @@ export default function SyncPage() {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{invoice.invoiceNumber}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{invoice.invoiceNumber}</span>
+                            <a 
+                              href={getKsefPortalLink(invoice.ksefReferenceNumber)} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800"
+                              title={t('openInKsef')}
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </div>
                           <div className="text-xs text-muted-foreground font-mono">
                             {invoice.ksefReferenceNumber.slice(0, 20)}...
                           </div>

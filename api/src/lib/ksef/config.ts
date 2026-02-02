@@ -1,13 +1,14 @@
 /**
  * KSeF API Configuration
  * Updated for KSeF 2.0 (effective from February 1, 2026)
- * API 2.0 requires /v2 prefix in all endpoints
+ * API 2.0 uses new api-*.ksef.mf.gov.pl subdomains with /v2 prefix
+ * Old endpoints (ksef-*.mf.gov.pl/api/v2) were deprecated and shut down on Feb 1, 2026
  */
 
 export const KSEF_ENDPOINTS = {
-  test: 'https://ksef-test.mf.gov.pl/api/v2',
-  demo: 'https://ksef-demo.mf.gov.pl/api/v2',
-  prod: 'https://ksef.mf.gov.pl/api/v2',
+  test: 'https://api-test.ksef.mf.gov.pl/v2',
+  demo: 'https://api-demo.ksef.mf.gov.pl/v2',
+  prod: 'https://api.ksef.mf.gov.pl/v2',
 } as const
 
 export type KsefEnvironment = keyof typeof KSEF_ENDPOINTS

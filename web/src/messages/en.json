@@ -346,7 +346,8 @@
     "invoiceNumber": "Invoice number",
     "seller": "Seller",
     "date": "Date",
-    "grossAmount": "Gross amount"
+    "grossAmount": "Gross amount",
+    "openInKsef": "Open in KSeF portal"
   },
   "settings": {
     "title": "Settings",
