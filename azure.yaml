@@ -1,0 +1,39 @@
+# Azure Developer CLI configuration for KSeF Integration
+# Deploy with: azd up
+# Docs: https://learn.microsoft.com/azure/developer/azure-developer-cli/
+
+name: ksef-integration
+
+metadata:
+  template: azd-init
+
+# Infrastructure configuration
+infra:
+  provider: bicep
+  path: ./deployment/templates
+
+# Service definitions
+services:
+  api:
+    project: ./api
+    language: ts
+    host: function
+    hooks:
+      prepackage:
+        shell: pwsh
+        run: |
+          cd api
+          pnpm install
+          pnpm run build
+
+  web:
+    project: ./web
+    language: ts
+    host: staticwebapp
+    hooks:
+      prepackage:
+        shell: pwsh
+        run: |
+          cd web
+          pnpm install
+          pnpm run build

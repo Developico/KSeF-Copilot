@@ -1,0 +1,9 @@
+{
+  "spa": {
+    "redirectUris": [
+      "http://localhost:3001",
+      "https://dvlp-ksef-bmgjdsb6gzbdhjgs.polandcentral-01.azurewebsites.net",
+      "https://app-ksef.developico.com"
+    ]
+  }
+}

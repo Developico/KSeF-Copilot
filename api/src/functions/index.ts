@@ -1,0 +1,21 @@
+// Auto-generated index file for Azure Functions v4
+// This file imports all function handlers to register them with the runtime
+
+import './ai-categorize'
+import './attachments'
+import './dashboard'
+import './documents'
+import './gus'
+import './health-detailed'
+import './health'
+import './invoices'
+import './ksef-invoices'
+import './ksef-session'
+import './ksef-status'
+import './ksef-sync'
+import './ksef-testdata'
+import './manual-invoice'
+import './sessions'
+import './settings-test-token'
+import './settings'
+import './sync'

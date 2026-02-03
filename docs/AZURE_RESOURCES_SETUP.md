@@ -194,9 +194,24 @@ Dla każdego sekretu:
 | Function App name | `func-ksef-prod` | Musi być unikalny globalnie |
 | Runtime stack | **Node.js** | - |
 | Version | **20 LTS** | Wymagane przez projekt |
-| Region | `West Europe` | - |
-| Operating System | **Linux** | Rekomendowane dla Node.js |
-| Hosting plan | **Consumption (Serverless)** | Lub Premium dla większych obciążeń |
+| Region | `Poland Central` lub `West Europe` | - |
+| Operating System | **Linux** | Wymagane dla Flex Consumption |
+| Hosting plan | **Flex Consumption** | ✅ Rekomendowane - automatyczne skalowanie, pay-per-use |
+
+> ⚠️ **Uwaga:** Flex Consumption jest dostępny tylko w wybranych regionach. Jeśli niedostępny, użyj **Consumption (Serverless)**.
+
+#### Wymagania dla Flex Consumption z Node.js v4
+
+Po utworzeniu Function App, ustaw wymagane ustawienia aplikacji:
+
+```bash
+az functionapp config appsettings set \
+  --name func-ksef-prod \
+  --resource-group rg-ksef-prod \
+  --settings "FUNCTIONS_NODE_BLOCK_ON_ENTRY_POINT_ERROR=true"
+```
+
+To ustawienie jest **krytyczne** dla debugowania problemów z rejestracją funkcji.
 
 #### Zakładka Storage
 
@@ -385,6 +400,10 @@ console.log('Client ID configured:', !!process.env.ENTRA_CLIENT_ID);
 Wywołaj endpoint API (po wdrożeniu):
 
 ```bash
+# Flex Consumption URL format:
+curl https://func-ksef-prod-<unique-id>.polandcentral-01.azurewebsites.net/api/health
+
+# Lub standardowy format:
 curl https://func-ksef-prod.azurewebsites.net/api/health
 ```
 
@@ -400,6 +419,37 @@ Oczekiwana odpowiedź:
 ---
 
 ## Rozwiązywanie problemów
+
+### "No functions found" po deployu (Flex Consumption)
+
+To najczęstszy problem przy Flex Consumption z Node.js v4. Rozwiązania:
+
+1. **Sprawdź logi entry point:**
+   ```bash
+   az monitor app-insights query --app appi-ksef-prod --resource-group rg-ksef-prod \
+     --analytics-query "traces | where message has 'entry point' or message has 'error' | take 10"
+   ```
+
+2. **Typowe błędy:**
+   - `Cannot find module 'cookie'` - dodaj `npm install cookie`
+   - `Cannot find module '@azure/functions'` - brakuje node_modules w paczce
+
+3. **Upewnij się że ustawienie `FUNCTIONS_NODE_BLOCK_ON_ENTRY_POINT_ERROR=true`:**
+   ```bash
+   az functionapp config appsettings set --name func-ksef-prod --resource-group rg-ksef-prod \
+     --settings "FUNCTIONS_NODE_BLOCK_ON_ENTRY_POINT_ERROR=true"
+   ```
+
+4. **Sprawdź plik `.funcignore`:**
+   - NIE ignoruj `node_modules` jeśli nie używasz remote build
+   - Ignoruj `src`, `*.ts`, `tests`
+
+5. **Deploy przez Core Tools:**
+   ```bash
+   cd api
+   npm run build
+   func azure functionapp publish func-ksef-prod
+   ```
 
 ### Key Vault Reference nie działa (czerwona ikona)
 

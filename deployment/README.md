@@ -91,6 +91,80 @@ Tokeny KSeF przechowujemy bezpiecznie w Azure Key Vault:
 pac solution import --path ./dataverse/solution/KSeF_1_1_0_0_managed.zip --upgrade
 ```
 
+## Wdrożenie ręczne Azure Functions (Flex Consumption)
+
+Projekt korzysta z Azure Functions Flex Consumption plan dla optymalnej skalowalności.
+
+### Wymagania przed deploymentem
+
+1. **Zbuduj projekt:**
+   ```bash
+   cd api
+   npm install
+   npm run build
+   ```
+
+2. **Upewnij się że zależność `cookie` jest zainstalowana:**
+   ```bash
+   npm install cookie
+   ```
+
+3. **Ustaw wymaganą zmienną środowiskową w Azure:**
+   ```bash
+   az functionapp config appsettings set \
+     --name <FUNCTION_APP_NAME> \
+     --resource-group <RESOURCE_GROUP> \
+     --settings "FUNCTIONS_NODE_BLOCK_ON_ENTRY_POINT_ERROR=true"
+   ```
+
+### Deploy przez Azure Functions Core Tools
+
+```bash
+cd api
+func azure functionapp publish <FUNCTION_APP_NAME>
+```
+
+Pomyślny deploy powinien wyświetlić listę wszystkich zarejestrowanych funkcji.
+
+### Weryfikacja
+
+```bash
+# Sprawdź listę funkcji
+func azure functionapp list-functions <FUNCTION_APP_NAME>
+
+# Test endpointu health
+curl https://<FUNCTION_APP_URL>/api/health
+```
+
+### Rozwiązywanie problemów "No functions found"
+
+Jeśli po deployu nie ma zarejestrowanych funkcji:
+
+1. **Sprawdź logi Application Insights:**
+   ```bash
+   az monitor app-insights query --app <APP_INSIGHTS_NAME> \
+     --resource-group <RESOURCE_GROUP> \
+     --analytics-query "traces | where message has 'entry point' | take 10"
+   ```
+
+2. **Typowe błędy:**
+   - `Cannot find module 'cookie'` - brakuje zależności, uruchom `npm install cookie`
+   - `Cannot find module '@azure/functions'` - brakuje node_modules, uruchom `npm install`
+
+3. **Plik `.funcignore`:**
+   Upewnij się że NIE ignorujesz `node_modules` jeśli nie używasz remote build:
+   ```
+   # .funcignore
+   *.js.map
+   *.ts
+   .git*
+   .vscode
+   local.settings.json
+   src
+   test
+   tests
+   ```
+
 ## Rozwiązywanie problemów
 
 ### Logi

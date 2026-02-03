@@ -1,0 +1,13 @@
+# Ignore files for Azure Functions deployment
+*.js.map
+*.ts
+.git*
+.vscode
+local.settings.json
+test
+tests
+*.test.js
+*.spec.js
+src
+tsconfig.json
+vitest.config.ts
