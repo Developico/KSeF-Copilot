@@ -49,6 +49,7 @@ export default function SyncPage() {
   const locale = useLocale()
   const { selectedCompany } = useSelectedCompany()
   const nip = selectedCompany?.nip
+  const settingId = selectedCompany?.id
   
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date()
@@ -142,7 +143,7 @@ export default function SyncPage() {
   async function handleSyncAll() {
     addLog(t('startingFullSync'))
     try {
-      const result = await runSyncMutation.mutateAsync({ nip, dateFrom, dateTo })
+      const result = await runSyncMutation.mutateAsync({ nip, settingId, dateFrom, dateTo })
       addLog(t('syncResult', { imported: result.imported, skipped: result.skipped, failed: result.failed }))
       // Log error details if any
       if (result.errors && result.errors.length > 0) {
@@ -163,7 +164,7 @@ export default function SyncPage() {
     addLog(t('importingSelected', { count: refs.length }))
     
     try {
-      const result = await importMutation.mutateAsync({ referenceNumbers: refs, nip })
+      const result = await importMutation.mutateAsync({ referenceNumbers: refs, nip, settingId })
       addLog(t('importResult', { imported: result.imported, failed: result.failed }))
       // Log error details if any
       if (result.errors && result.errors.length > 0) {

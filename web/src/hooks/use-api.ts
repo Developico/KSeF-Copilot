@@ -80,7 +80,7 @@ export function useRunSync() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (params?: { nip?: string; dateFrom?: string; dateTo?: string }) =>
+    mutationFn: (params?: { nip?: string; settingId?: string; dateFrom?: string; dateTo?: string }) =>
       api.sync.run(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
@@ -96,10 +96,12 @@ export function useImportInvoices() {
     mutationFn: ({
       referenceNumbers,
       nip,
+      settingId,
     }: {
       referenceNumbers: string[]
       nip?: string
-    }) => api.sync.import(referenceNumbers, nip),
+      settingId?: string
+    }) => api.sync.import(referenceNumbers, nip, settingId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
       queryClient.invalidateQueries({ queryKey: ['sync'] })
@@ -111,10 +113,11 @@ export function useImportInvoices() {
 // Invoices
 // ============================================================================
 
-export function useInvoices(params?: InvoiceListParams) {
+export function useInvoices(params?: InvoiceListParams, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.invoices(params),
     queryFn: () => api.invoices.list(params),
+    enabled: options?.enabled,
   })
 }
 
@@ -492,18 +495,18 @@ export function useDvSyncStats(settingId: string) {
 
 /**
  * Hook that returns invoices filtered by currently selected company.
- * Automatically adds tenantNip from company context.
+ * Uses settingId for filtering to support multi-environment (same NIP, different environments).
  */
-export function useContextInvoices(params?: Omit<InvoiceListParams, 'tenantNip'>) {
+export function useContextInvoices(params?: Omit<InvoiceListParams, 'settingId' | 'tenantNip'>) {
   const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
   
   const fullParams: InvoiceListParams = {
     ...params,
-    tenantNip: selectedCompany?.nip,
+    settingId: selectedCompany?.id,
   }
   
   return useQuery({
-    queryKey: ['invoices', 'context', selectedCompany?.nip, params],
+    queryKey: ['invoices', 'context', selectedCompany?.id, params],
     queryFn: () => api.invoices.list(fullParams),
     enabled: !companyLoading && Boolean(selectedCompany),
   })
@@ -511,16 +514,16 @@ export function useContextInvoices(params?: Omit<InvoiceListParams, 'tenantNip'>
 
 /**
  * Hook that returns dashboard stats for currently selected company.
- * Automatically adds tenantNip from company context.
+ * Uses settingId for filtering to support multi-environment (same NIP, different environments).
  */
 export function useContextDashboardStats(params?: { fromDate?: string; toDate?: string }) {
   const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
   
   return useQuery({
-    queryKey: ['dashboard', 'stats', 'context', selectedCompany?.nip, params],
+    queryKey: ['dashboard', 'stats', 'context', selectedCompany?.id, params],
     queryFn: () => api.dashboard.stats({ 
       ...params, 
-      tenantNip: selectedCompany?.nip 
+      settingId: selectedCompany?.id 
     }),
     enabled: !companyLoading && Boolean(selectedCompany),
   })

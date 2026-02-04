@@ -123,6 +123,7 @@ export type InvoiceUpdate = z.infer<typeof InvoiceUpdateSchema>
  * Invoice create (from KSeF import or manual entry)
  */
 export interface InvoiceCreate {
+  settingId?: string  // Links to KSeF setting for multi-environment support
   tenantNip: string
   tenantName: string
   referenceNumber: string
@@ -178,6 +179,7 @@ export type ManualInvoiceCreate = z.infer<typeof ManualInvoiceCreateSchema>
  */
 export interface InvoiceListParams {
   tenantNip?: string
+  settingId?: string // Filter by KSeF setting ID (for multi-environment support)
   paymentStatus?: PaymentStatus
   mpk?: string
   mpkList?: string[] // Multiple MPKs

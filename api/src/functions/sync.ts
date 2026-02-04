@@ -144,6 +144,7 @@ app.http('sync-start', {
 
             // Create invoice in Dataverse
             await invoiceService.create({
+              settingId: settingId,
               tenantNip: setting.nip,
               tenantName: setting.companyName,
               referenceNumber: header.ksefNumber,

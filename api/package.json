@@ -15,7 +15,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint src --ext .ts --fix"
+    "lint:fix": "eslint src --ext .ts --fix",
+    "seed:testdata": "tsx scripts/seed-testdata.ts",
+    "cleanup:testdata": "tsx scripts/cleanup-testdata.ts"
   },
   "dependencies": {
     "@azure/functions": "^4.5.0",

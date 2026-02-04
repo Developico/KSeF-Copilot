@@ -223,15 +223,18 @@ export default function InvoicesPage() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   
   // Get selected company context
-  const { selectedCompany } = useCompanyContext()
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
   
-  // Merge company NIP into filters
+  // Merge company setting ID into filters (settingId preferred for multi-environment support)
   const filtersWithCompany = useMemo(() => ({
     ...filters,
-    tenantNip: selectedCompany?.nip,
-  }), [filters, selectedCompany?.nip])
+    settingId: selectedCompany?.id,
+  }), [filters, selectedCompany?.id])
   
-  const { data, isLoading, refetch } = useInvoices(filtersWithCompany)
+  // Only fetch invoices when company is loaded and selected
+  const { data, isLoading, refetch } = useInvoices(filtersWithCompany, {
+    enabled: !companyLoading && Boolean(selectedCompany?.id),
+  })
   
   const markAsPaidMutation = useMarkAsPaid()
   const deleteInvoiceMutation = useDeleteInvoice()

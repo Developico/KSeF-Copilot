@@ -143,7 +143,8 @@ export class SyncLogService {
       }
 
       const payload: Record<string, unknown> = {
-        [`${s.settingLookup.replace('_value', '')}@odata.bind`]: `/dvlp_ksefsettings(${data.settingId})`,
+        // Convert lookup field name from read format (_dvlp_ksefsettingid_value) to binding format (dvlp_ksefsettingid)
+        [`${s.settingLookup.replace(/^_/, '').replace(/_value$/, '')}@odata.bind`]: `/dvlp_ksefsettings(${data.settingId})`,
         [s.direction]: directionValue,
         [s.startedAt]: new Date().toISOString(),
         [s.status]: SYNC_STATUS.IN_PROGRESS,

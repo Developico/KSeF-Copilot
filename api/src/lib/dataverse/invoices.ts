@@ -1,13 +1,15 @@
 import { dataverseRequest, dataverseClient } from './client'
 import { InvoiceEntity, PaymentStatusValues, MpkValues, InvoiceSourceValues, getPaymentStatusKey, getMpkKey, getInvoiceSourceKey } from './entities'
 import { Invoice, InvoiceCreate, InvoiceUpdate, InvoiceListParams, ManualInvoiceCreate, InvoiceSource } from '../../types/invoice'
+import { logDataverseInfo } from './logger'
 
 /**
  * Build OData filter string from params
  */
 function buildInvoiceFilter(params: InvoiceListParams): string[] {
   const { 
-    tenantNip, 
+    tenantNip,
+    settingId,
     paymentStatus, 
     mpk,
     mpkList,
@@ -27,7 +29,11 @@ function buildInvoiceFilter(params: InvoiceListParams): string[] {
 
   const filters: string[] = []
 
-  if (tenantNip) {
+  // Filter by setting ID (preferred for multi-environment support)
+  if (settingId) {
+    filters.push(`_dvlp_settingid_value eq ${settingId}`)
+  } else if (tenantNip) {
+    // Fallback to NIP filter for backward compatibility
     filters.push(`${InvoiceEntity.fields.tenantNip} eq '${tenantNip}'`)
   }
 
@@ -233,6 +239,18 @@ export async function invoiceExistsByReference(referenceNumber: string): Promise
 export async function createInvoice(data: InvoiceCreate): Promise<Invoice> {
   const body = mapToDataverse(data)
 
+  // Log the settingId binding for debugging
+  if (data.settingId) {
+    logDataverseInfo('createInvoice', 'Creating invoice with settingId binding', {
+      settingId: data.settingId,
+      binding: body['dvlp_settingid@odata.bind'],
+    })
+  } else {
+    logDataverseInfo('createInvoice', 'WARNING: Creating invoice WITHOUT settingId!', {
+      referenceNumber: data.referenceNumber,
+    })
+  }
+
   const response = await dataverseRequest<DataverseInvoice>(InvoiceEntity.entitySet, {
     method: 'POST',
     body,
@@ -416,7 +434,7 @@ function mapToDataverse(data: InvoiceCreate): Record<string, unknown> {
     ? InvoiceSourceValues[data.source]
     : InvoiceSourceValues.KSeF
 
-  return {
+  const result: Record<string, unknown> = {
     [f.tenantNip]: data.tenantNip,
     [f.tenantName]: data.tenantName,
     [f.referenceNumber]: data.referenceNumber,
@@ -447,6 +465,13 @@ function mapToDataverse(data: InvoiceCreate): Record<string, unknown> {
     [f.aiConfidence]: data.aiConfidence,
     [f.aiProcessedAt]: data.aiConfidence ? new Date().toISOString() : null,
   }
+
+  // Add settingId lookup binding if provided
+  if (data.settingId) {
+    result['dvlp_settingid@odata.bind'] = `/dvlp_ksefsettings(${data.settingId})`
+  }
+
+  return result
 }
 
 /**

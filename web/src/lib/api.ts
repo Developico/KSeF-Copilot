@@ -234,6 +234,7 @@ export interface DetailedHealthResponse {
 // Invoice List Parameters (extended with advanced filters)
 export interface InvoiceListParams {
   tenantNip?: string
+  settingId?: string // Filter by KSeF setting ID (for multi-environment support)
   paymentStatus?: 'pending' | 'paid'
   mpk?: string
   mpkList?: string[]
@@ -455,11 +456,12 @@ export const api = {
 
   // Dashboard
   dashboard: {
-    stats: (params?: { fromDate?: string; toDate?: string; tenantNip?: string }) => {
+    stats: (params?: { fromDate?: string; toDate?: string; tenantNip?: string; settingId?: string }) => {
       const searchParams = new URLSearchParams()
       if (params?.fromDate) searchParams.append('fromDate', params.fromDate)
       if (params?.toDate) searchParams.append('toDate', params.toDate)
-      if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
+      if (params?.settingId) searchParams.append('settingId', params.settingId)
+      else if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
       return apiFetch<DashboardStats>(`/api/dashboard/stats?${searchParams}`)
     },
   },
@@ -491,25 +493,26 @@ export const api = {
 
   // Sync operations
   sync: {
-    preview: (params?: { nip?: string; dateFrom?: string; dateTo?: string }) => {
+    preview: (params?: { nip?: string; settingId?: string; dateFrom?: string; dateTo?: string }) => {
       const searchParams = new URLSearchParams()
       if (params?.nip) searchParams.append('nip', params.nip)
+      if (params?.settingId) searchParams.append('settingId', params.settingId)
       if (params?.dateFrom) searchParams.append('dateFrom', params.dateFrom)
       if (params?.dateTo) searchParams.append('dateTo', params.dateTo)
       
       return apiFetch<SyncPreviewResponse>(`/api/ksef/sync/preview?${searchParams}`)
     },
 
-    run: (params?: { nip?: string; dateFrom?: string; dateTo?: string }) =>
+    run: (params?: { nip?: string; settingId?: string; dateFrom?: string; dateTo?: string }) =>
       apiFetch<SyncResult>('/api/ksef/sync', {
         method: 'POST',
         body: JSON.stringify(params),
       }),
 
-    import: (referenceNumbers: string[], nip?: string) =>
+    import: (referenceNumbers: string[], nip?: string, settingId?: string) =>
       apiFetch<SyncResult>('/api/ksef/sync/import', {
         method: 'POST',
-        body: JSON.stringify({ referenceNumbers, nip }),
+        body: JSON.stringify({ referenceNumbers, nip, settingId }),
       }),
   },
 
@@ -890,7 +893,7 @@ export const queryKeys = {
     ['sync', 'preview', params] as const,
   
   // Dashboard
-  dashboardStats: (params?: { fromDate?: string; toDate?: string }) =>
+  dashboardStats: (params?: { fromDate?: string; toDate?: string; settingId?: string }) =>
     ['dashboard', 'stats', params] as const,
   
   invoices: (params?: InvoiceListParams) => ['invoices', params] as const,

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Multi-environment invoice separation using `dvlp_settingid` lookup field
+- Test data seed script with `--name` parameter for targeting specific settings
+- Helper scripts for checking settings and invoices (`check-settings.ts`, `check-invoices.ts`)
+
+### Changed
+- KSeF sync now properly links imported invoices to their environment setting
+- Updated sync API endpoints to accept and use `settingId` parameter
+- Frontend sync page passes selected company's settingId to backend
+- Invoice queries filter by `_dvlp_settingid_value` for environment isolation
+
+### Fixed
+- Fixed session creation field name (`dvlp_sessionstatus` instead of `dvlp_status`)
+- Fixed OData binding syntax for lookup fields in session and synclog services
+- Invoices from same NIP now correctly separated by environment (PROD vs Demo)
+
 ### Security
 - Implemented proper JWT signature verification using `jose` library
 - Added startup validation to prevent SKIP_AUTH in production

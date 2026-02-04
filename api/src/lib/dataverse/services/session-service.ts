@@ -117,9 +117,11 @@ export class SessionService {
 
     try {
       const s = DV.session
+      // Convert lookup field name from read format (_dvlp_ksefsettingid_value) to binding format (dvlp_ksefsettingid)
+      const settingBindingField = s.settingLookup.replace(/^_/, '').replace(/_value$/, '')
       const payload: Record<string, unknown> = {
         [s.sessionReference]: data.sessionReference,
-        [`${s.settingLookup.replace('_value', '')}@odata.bind`]: `/dvlp_ksefsettings(${data.settingId})`,
+        [`${settingBindingField}@odata.bind`]: `/dvlp_ksefsettings(${data.settingId})`,
         [s.nip]: data.nip,
         [s.sessionType]: data.sessionType === 'batch' ? SESSION_TYPE.BATCH : SESSION_TYPE.INTERACTIVE,
         [s.startedAt]: new Date().toISOString(),

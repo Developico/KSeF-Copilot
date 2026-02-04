@@ -56,7 +56,8 @@ interface DashboardStats {
  * Query params:
  * - fromDate: YYYY-MM-DD (default: 12 months ago)
  * - toDate: YYYY-MM-DD (default: today)
- * - tenantNip: filter by buyer NIP
+ * - settingId: filter by KSeF setting ID (preferred for multi-environment)
+ * - tenantNip: filter by buyer NIP (fallback)
  */
 export async function getDashboardStatsHandler(
   request: HttpRequest,
@@ -75,6 +76,7 @@ export async function getDashboardStatsHandler(
 
     // Parse query parameters
     const url = new URL(request.url)
+    const settingId = url.searchParams.get('settingId') || undefined
     const tenantNip = url.searchParams.get('tenantNip') || undefined
     
     // Default: last 12 months
@@ -89,7 +91,10 @@ export async function getDashboardStatsHandler(
       `${InvoiceEntity.fields.invoiceDate} le ${toDate}`,
     ]
 
-    if (tenantNip) {
+    // Filter by setting ID (preferred) or NIP (fallback)
+    if (settingId) {
+      filters.push(`_dvlp_settingid_value eq ${settingId}`)
+    } else if (tenantNip) {
       filters.push(`${InvoiceEntity.fields.tenantNip} eq '${tenantNip}'`)
     }
 

@@ -32,6 +32,7 @@ export async function listInvoicesHandler(
 
     const params = {
       tenantNip: url.searchParams.get('tenantNip') || undefined,
+      settingId: url.searchParams.get('settingId') || undefined,
       paymentStatus: url.searchParams.get('paymentStatus') as 'pending' | 'paid' | undefined,
       mpk: url.searchParams.get('mpk') || undefined,
       mpkList,

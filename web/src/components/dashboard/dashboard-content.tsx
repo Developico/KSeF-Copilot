@@ -33,6 +33,7 @@ import {
 } from 'lucide-react'
 import { api, queryKeys, DashboardStats } from '@/lib/api'
 import { DashboardSkeleton } from '@/components/skeletons'
+import { useCompanyContext } from '@/contexts/company-context'
 
 // Colors for charts
 const COLORS = [
@@ -64,6 +65,9 @@ function formatMonth(month: string): string {
 }
 
 export function DashboardContent() {
+  // Get selected company context
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+  
   // Date range - default last 12 months
   const today = new Date()
   const defaultFrom = new Date(today.getFullYear() - 1, today.getMonth(), 1)
@@ -72,11 +76,12 @@ export function DashboardContent() {
   const [toDate, setToDate] = useState(today.toISOString().split('T')[0])
 
   const { data: stats, isLoading, refetch } = useQuery({
-    queryKey: queryKeys.dashboardStats({ fromDate, toDate }),
-    queryFn: () => api.dashboard.stats({ fromDate, toDate }),
+    queryKey: queryKeys.dashboardStats({ fromDate, toDate, settingId: selectedCompany?.id }),
+    queryFn: () => api.dashboard.stats({ fromDate, toDate, settingId: selectedCompany?.id }),
+    enabled: !companyLoading && Boolean(selectedCompany?.id),
   })
 
-  if (isLoading) {
+  if (companyLoading || isLoading) {
     return <DashboardSkeleton />
   }
 

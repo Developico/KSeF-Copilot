@@ -3,6 +3,7 @@ import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { queryInvoices, getInvoice } from '../lib/ksef/invoices'
 import { parseInvoiceXml } from '../lib/ksef/parser'
 import { createInvoice, invoiceExistsByReference } from '../lib/dataverse/invoices'
+import { settingService } from '../lib/dataverse'
 import { getKsefConfig } from '../lib/ksef/config'
 import { InvoiceCreate } from '../types/invoice'
 
@@ -59,15 +60,40 @@ app.http('ksef-sync', {
 
       const body = await request.json().catch(() => ({})) as {
         nip?: string
+        settingId?: string  // Preferred: pass settingId directly for multi-environment support
         dateFrom?: string
         dateTo?: string
         importAll?: boolean
       }
 
-      const config = getKsefConfig()
-      const nip = body.nip || config.nip
+      // Get setting - prefer settingId if provided, otherwise lookup by NIP
+      let setting: Awaited<ReturnType<typeof settingService.getById>> | undefined
+      let settingId: string | undefined
+      let nip: string
 
-      context.log(`Starting KSeF sync for NIP: ${nip}`)
+      if (body.settingId) {
+        // Preferred: use settingId directly
+        setting = await settingService.getById(body.settingId) ?? undefined
+        if (!setting) {
+          return { status: 404, jsonBody: { error: `Setting not found: ${body.settingId}` } }
+        }
+        settingId = setting.id
+        nip = setting.nip
+      } else {
+        // Legacy: lookup by NIP (may find wrong setting if same NIP in multiple environments)
+        const config = getKsefConfig()
+        nip = body.nip || config.nip
+        
+        const settings = await settingService.getAll(true)
+        setting = settings.find(s => s.nip === nip)
+        settingId = setting?.id
+
+        if (!settingId) {
+          context.warn(`No setting found for NIP ${nip}, invoices will not be linked to a setting`)
+        }
+      }
+
+      context.log(`Starting KSeF sync for NIP: ${nip}, settingId: ${settingId || 'none'}`)
 
       // Default date range: last 30 days
       const dateTo = body.dateTo || new Date().toISOString()
@@ -126,6 +152,7 @@ app.http('ksef-sync', {
 
           // Create invoice in Dataverse
           const invoiceData: InvoiceCreate = {
+            settingId: settingId,
             tenantNip: nip,
             tenantName: parsed.buyer.name,
             referenceNumber: header.ksefNumber,
@@ -301,6 +328,7 @@ app.http('ksef-sync-import', {
 
       const body = await request.json() as {
         nip?: string
+        settingId?: string
         referenceNumbers: string[]
       }
 
@@ -308,10 +336,27 @@ app.http('ksef-sync-import', {
         return { status: 400, jsonBody: { error: 'referenceNumbers array is required' } }
       }
 
-      const config = getKsefConfig()
-      const nip = body.nip || config.nip
+      // Get setting - prefer settingId if provided, otherwise lookup by NIP
+      let settingId: string | undefined
+      let nip: string
 
-      context.log(`Importing ${body.referenceNumbers.length} specific invoices for NIP: ${nip}`)
+      if (body.settingId) {
+        const setting = await settingService.getById(body.settingId)
+        if (!setting) {
+          return { status: 404, jsonBody: { error: `Setting not found: ${body.settingId}` } }
+        }
+        settingId = setting.id
+        nip = setting.nip
+      } else {
+        const config = getKsefConfig()
+        nip = body.nip || config.nip
+        
+        const settings = await settingService.getAll(true)
+        const setting = settings.find(s => s.nip === nip)
+        settingId = setting?.id
+      }
+
+      context.log(`Importing ${body.referenceNumbers.length} specific invoices for NIP: ${nip}, settingId: ${settingId || 'none'}`)
 
       const result: SyncResult = {
         total: body.referenceNumbers.length,
@@ -345,6 +390,7 @@ app.http('ksef-sync-import', {
 
           // Create invoice in Dataverse
           const invoiceData: InvoiceCreate = {
+            settingId: settingId,
             tenantNip: nip,
             tenantName: parsed.buyer.name,
             referenceNumber: refNumber,

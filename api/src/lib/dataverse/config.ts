@@ -73,7 +73,7 @@ export const DV = {
     startedAt: process.env.DV_FIELD_SESSION_STARTED || 'dvlp_startedat',
     expiresAt: process.env.DV_FIELD_SESSION_EXPIRES || 'dvlp_expiresat',
     terminatedAt: process.env.DV_FIELD_SESSION_TERMINATED || 'dvlp_terminatedat',
-    status: process.env.DV_FIELD_SESSION_STATUS || 'dvlp_status',
+    status: process.env.DV_FIELD_SESSION_STATUS || 'dvlp_sessionstatus',
     invoicesProcessed: process.env.DV_FIELD_SESSION_INVOICES || 'dvlp_invoicesprocessed',
     errorMessage: process.env.DV_FIELD_SESSION_ERROR || 'dvlp_errormessage',
     stateCode: process.env.DV_FIELD_SESSION_STATE || 'statecode',
@@ -187,7 +187,7 @@ export const DV = {
     ksefRawXml: process.env.DV_FIELD_INVOICE_KSEF_XML || 'dvlp_ksefrawxml',
     
     // Relations
-    settingLookup: process.env.DV_FIELD_INVOICE_SETTING || '_dvlp_ksefsettingid_value',
+    settingLookup: process.env.DV_FIELD_INVOICE_SETTING || '_dvlp_settingid_value',
     parentInvoiceLookup: process.env.DV_FIELD_INVOICE_PARENT || '_dvlp_parentinvoiceid_value',
     
     // Standard fields

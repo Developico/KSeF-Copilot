@@ -470,9 +470,11 @@ app.http('ksef-testdata-environments', {
   },
 })
 
-// Import for cleanup functionality
-import { listAllInvoices, bulkDeleteInvoices, countInvoices } from '../lib/dataverse/invoices'
+// Import for cleanup and generation functionality
+import { listAllInvoices, bulkDeleteInvoices, countInvoices, createInvoice, updateInvoice } from '../lib/dataverse/invoices'
 import { settingService } from '../lib/dataverse/services/setting-service'
+import { generateInvoices, calculateSummary, type GenerateInvoicesOptions } from '../lib/testdata'
+import { InvoiceSource, PaymentStatus } from '../types/invoice'
 
 /**
  * Cleanup test invoices from Dataverse (TEST and DEMO environments only)
@@ -691,6 +693,171 @@ app.http('ksef-testdata-cleanup-preview', {
       }
     } catch (error) {
       context.error('Failed to get cleanup preview:', error)
+      return {
+        status: 500,
+        jsonBody: {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+      }
+    }
+  },
+})
+
+/**
+ * Generate test invoices in Dataverse (TEST and DEMO environments only)
+ * POST /api/ksef/testdata/generate
+ * 
+ * Body: {
+ *   nip: string,              // Required: NIP of the company to generate invoices for
+ *   count?: number,           // Optional: Number of invoices to generate (default: 10, max: 100)
+ *   fromDate?: string,        // Optional: Start date for invoice dates (YYYY-MM-DD, default: 6 months ago)
+ *   toDate?: string,          // Optional: End date for invoice dates (YYYY-MM-DD, default: today)
+ *   paidPercentage?: number,  // Optional: Percentage of invoices to mark as paid (0-100, default: 30)
+ *   source?: 'KSeF' | 'Manual' // Optional: Invoice source (default: Manual)
+ * }
+ * 
+ * Returns:
+ *   { success, environment, nip, summary }
+ */
+app.http('ksef-testdata-generate', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  route: 'ksef/testdata/generate',
+  handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    try {
+      // Verify authentication
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      // Require admin role
+      const roleCheck = requireRole(auth.user, 'Admin')
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Admin role required' } }
+      }
+
+      const body = await request.json() as {
+        nip: string
+        count?: number
+        fromDate?: string
+        toDate?: string
+        paidPercentage?: number
+        source?: 'KSeF' | 'Manual'
+      }
+
+      if (!body.nip) {
+        return { status: 400, jsonBody: { error: 'NIP is required' } }
+      }
+
+      // Validate count
+      const count = Math.min(Math.max(body.count || 10, 1), 100)
+
+      // Get company setting to check environment
+      const settings = await settingService.getAll()
+      const companySetting = settings.find(s => s.nip === body.nip)
+      
+      if (!companySetting) {
+        return { 
+          status: 404, 
+          jsonBody: { error: `Company with NIP ${body.nip} not found in settings` } 
+        }
+      }
+
+      const environment = companySetting.environment
+      
+      // Only allow generation for test and demo environments
+      if (environment === 'production') {
+        return {
+          status: 400,
+          jsonBody: { 
+            error: 'Cannot generate test invoices in production environment',
+            environment,
+          },
+        }
+      }
+
+      context.log(`Generating ${count} test invoices for NIP: ${body.nip}, environment: ${environment}`)
+
+      // Parse dates
+      const fromDate = body.fromDate ? new Date(body.fromDate) : undefined
+      const toDate = body.toDate ? new Date(body.toDate) : undefined
+
+      // Validate dates
+      if (fromDate && isNaN(fromDate.getTime())) {
+        return { status: 400, jsonBody: { error: 'Invalid fromDate format. Use YYYY-MM-DD' } }
+      }
+      if (toDate && isNaN(toDate.getTime())) {
+        return { status: 400, jsonBody: { error: 'Invalid toDate format. Use YYYY-MM-DD' } }
+      }
+
+      // Generate invoices
+      const generatorOptions: GenerateInvoicesOptions = {
+        tenantNip: body.nip,
+        tenantName: companySetting.companyName || `Company ${body.nip}`,
+        count,
+        fromDate,
+        toDate,
+        paidPercentage: body.paidPercentage,
+        source: body.source === 'KSeF' ? InvoiceSource.KSeF : InvoiceSource.Manual,
+      }
+
+      const generatedInvoices = generateInvoices(generatorOptions)
+      const summary = calculateSummary(generatedInvoices)
+
+      // Create invoices in Dataverse
+      let created = 0
+      let paid = 0
+      let failed = 0
+      const errors: string[] = []
+
+      for (const invoice of generatedInvoices) {
+        try {
+          // Create invoice
+          const { shouldBePaid, suggestedPaymentDate, ...invoiceData } = invoice
+          const createdInvoice = await createInvoice(invoiceData)
+          created++
+
+          // Mark as paid if applicable
+          if (shouldBePaid && suggestedPaymentDate) {
+            try {
+              await updateInvoice(createdInvoice.id, {
+                paymentStatus: PaymentStatus.Paid,
+                paymentDate: suggestedPaymentDate,
+              })
+              paid++
+            } catch (payError) {
+              context.warn(`Failed to mark invoice ${createdInvoice.id} as paid:`, payError)
+              // Don't count as failed - invoice was created successfully
+            }
+          }
+        } catch (error) {
+          failed++
+          errors.push(error instanceof Error ? error.message : 'Unknown error')
+          context.error('Failed to create invoice:', error)
+        }
+      }
+
+      context.log(`Generation completed: ${created} created, ${paid} marked as paid, ${failed} failed`)
+
+      return {
+        status: 200,
+        jsonBody: {
+          success: true,
+          environment,
+          nip: body.nip,
+          summary: {
+            ...summary,
+            created,
+            paid,
+            failed,
+            errors: errors.slice(0, 10), // Return first 10 errors
+          },
+        },
+      }
+    } catch (error) {
+      context.error('Failed to generate test invoices:', error)
       return {
         status: 500,
         jsonBody: {
