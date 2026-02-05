@@ -6,6 +6,7 @@
 import { InvoiceCreate, InvoiceSource } from '../../types/invoice'
 import {
   SAMPLE_SUPPLIERS,
+  DEFAULT_BUYER,
   AMOUNT_RANGES,
   PAYMENT_TERMS,
   randomElement,
@@ -98,10 +99,14 @@ export function generateSingleInvoice(
   return {
     tenantNip,
     tenantName,
+    buyerAddress: DEFAULT_BUYER.address,
+    buyerCountry: DEFAULT_BUYER.country,
     referenceNumber,
     invoiceNumber,
     supplierNip: supplier.nip,
     supplierName: supplier.name,
+    supplierAddress: supplier.address,
+    supplierCountry: supplier.country,
     invoiceDate: formatDate(invoiceDate),
     dueDate: formatDate(dueDate),
     netAmount,

@@ -93,6 +93,9 @@ interface FormData {
   invoiceNumber: string
   supplierNip: string
   supplierName: string
+  supplierAddress: string
+  supplierCity: string
+  supplierPostalCode: string
   invoiceDate: string
   dueDate: string
   netAmount: string
@@ -110,6 +113,9 @@ const initialFormData: FormData = {
   invoiceNumber: '',
   supplierNip: '',
   supplierName: '',
+  supplierAddress: '',
+  supplierCity: '',
+  supplierPostalCode: '',
   invoiceDate: new Date().toISOString().split('T')[0],
   dueDate: '',
   netAmount: '',
@@ -184,6 +190,9 @@ export function ManualInvoiceForm() {
       ...prev,
       supplierNip: supplier.nip.replace(/\D/g, ''),
       supplierName: supplier.name,
+      supplierAddress: supplier.address || '',
+      supplierCity: supplier.city || '',
+      supplierPostalCode: supplier.postalCode || '',
     }))
     setGusDataLoaded(true)
     setErrors(prev => ({ 
@@ -464,6 +473,9 @@ export function ManualInvoiceForm() {
       invoiceNumber: formData.invoiceNumber,
       supplierNip: formData.supplierNip,
       supplierName: formData.supplierName,
+      supplierAddress: formData.supplierAddress || undefined,
+      supplierCity: formData.supplierCity || undefined,
+      supplierPostalCode: formData.supplierPostalCode || undefined,
       invoiceDate: formData.invoiceDate,
       dueDate: formData.dueDate || undefined,
       netAmount: parseFloat(formData.netAmount),
@@ -579,6 +591,34 @@ export function ManualInvoiceForm() {
                 />
                 {errors.supplierName && <p className="text-sm text-red-500">{errors.supplierName}</p>}
               </div>
+            </div>
+
+            {/* Address fields */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium">{t('manualForm.addressLabel')}</label>
+                <Input
+                  placeholder={t('manualForm.addressPlaceholder')}
+                  value={formData.supplierAddress}
+                  onChange={(e) => handleChange('supplierAddress', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{t('manualForm.postalCodeLabel')}</label>
+                <Input
+                  placeholder="00-000"
+                  value={formData.supplierPostalCode}
+                  onChange={(e) => handleChange('supplierPostalCode', e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t('manualForm.cityLabel')}</label>
+              <Input
+                placeholder={t('manualForm.cityPlaceholder')}
+                value={formData.supplierCity}
+                onChange={(e) => handleChange('supplierCity', e.target.value)}
+              />
             </div>
 
             {/* GUS data preview */}

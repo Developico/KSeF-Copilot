@@ -10,12 +10,21 @@ export const InvoiceEntity = {
   entitySet: process.env.DV_ENTITY_INVOICE || 'dvlp_ksefinvoices',
   fields: {
     id: 'dvlp_ksefinvoiceid',
-    // Seller = Tenant (my company)
-    tenantNip: 'dvlp_sellernip',
-    tenantName: 'dvlp_sellername',
-    // Buyer = Supplier (the company I'm paying)
-    supplierNip: 'dvlp_buyernip',
-    supplierName: 'dvlp_buyername',
+    // Tenant = My company = Buyer (nabywca) - we receive/buy goods/services
+    tenantNip: 'dvlp_buyernip',
+    tenantName: 'dvlp_buyername',
+    // Supplier = Vendor = Seller (sprzedawca) - they sell to us
+    supplierNip: 'dvlp_sellernip',
+    supplierName: 'dvlp_sellername',
+    supplierAddress: 'dvlp_selleraddress',
+    supplierCity: 'dvlp_sellercity',
+    supplierPostalCode: 'dvlp_sellerpostalcode',
+    supplierCountry: 'dvlp_sellercountry',
+    // Buyer address fields
+    buyerAddress: 'dvlp_buyeraddress',
+    buyerCity: 'dvlp_buyercity',
+    buyerPostalCode: 'dvlp_buyerpostalcode',
+    buyerCountry: 'dvlp_buyercountry',
     // Reference number (for KSeF) and invoice number
     referenceNumber: 'dvlp_ksefreferencenumber',
     invoiceNumber: 'dvlp_name', // Primary name field

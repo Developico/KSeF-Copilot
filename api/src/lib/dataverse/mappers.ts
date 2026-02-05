@@ -67,6 +67,10 @@ export function mapDvInvoiceToApp(raw: DvInvoice): Invoice {
     invoiceNumber: raw[s.name as keyof DvInvoice] as string,
     supplierNip: raw[s.sellerNip as keyof DvInvoice] as string,
     supplierName: raw[s.sellerName as keyof DvInvoice] as string,
+    supplierAddress: raw[s.sellerAddress as keyof DvInvoice] as string | undefined,
+    supplierCountry: raw[s.sellerCountry as keyof DvInvoice] as string | undefined,
+    buyerAddress: raw[s.buyerAddress as keyof DvInvoice] as string | undefined,
+    buyerCountry: raw[s.buyerCountry as keyof DvInvoice] as string | undefined,
     invoiceDate: raw[s.invoiceDate as keyof DvInvoice] as string,
     dueDate: raw[s.dueDate as keyof DvInvoice] as string | undefined,
     netAmount: raw[s.netAmount as keyof DvInvoice] as number,
@@ -105,7 +109,11 @@ export function mapAppInvoiceToDv(app: Partial<Invoice>): Record<string, unknown
   if (app.dueDate !== undefined) payload[s.dueDate] = app.dueDate
   if (app.supplierNip !== undefined) payload[s.sellerNip] = app.supplierNip
   if (app.supplierName !== undefined) payload[s.sellerName] = app.supplierName
+  if (app.supplierAddress !== undefined) payload[s.sellerAddress] = app.supplierAddress
+  if (app.supplierCountry !== undefined) payload[s.sellerCountry] = app.supplierCountry
   if (app.tenantNip !== undefined) payload[s.buyerNip] = app.tenantNip
+  if (app.buyerAddress !== undefined) payload[s.buyerAddress] = app.buyerAddress
+  if (app.buyerCountry !== undefined) payload[s.buyerCountry] = app.buyerCountry
   if (app.netAmount !== undefined) payload[s.netAmount] = app.netAmount
   if (app.vatAmount !== undefined) payload[s.vatAmount] = app.vatAmount
   if (app.grossAmount !== undefined) payload[s.grossAmount] = app.grossAmount

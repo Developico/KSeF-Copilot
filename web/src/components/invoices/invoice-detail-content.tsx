@@ -699,6 +699,16 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                   <p className="text-muted-foreground font-mono text-xs">
                     NIP: {invoice.supplierNip}
                   </p>
+                  {invoice.supplierAddress && (
+                    <p className="text-muted-foreground text-xs break-words">
+                      {invoice.supplierAddress}
+                    </p>
+                  )}
+                  {(invoice.supplierCity || invoice.supplierPostalCode) && (
+                    <p className="text-muted-foreground text-xs">
+                      {[invoice.supplierPostalCode, invoice.supplierCity].filter(Boolean).join(' ')}
+                    </p>
+                  )}
                 </div>
               )}
             </Card>
@@ -995,34 +1005,106 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                 )}
               </CardHeader>
               <CardContent className="space-y-4">
-                {(invoice.aiMpkSuggestion || invoice.aiCategorySuggestion) ? (
+                {(invoice.aiMpkSuggestion || invoice.aiCategorySuggestion || invoice.aiDescription) ? (
                   <>
-                    {/* AI Suggestions */}
-                    <div className="space-y-3">
+                    {/* AI Suggestions with Comparison */}
+                    <div className="space-y-2">
+                      {/* MPK Comparison */}
                       {invoice.aiMpkSuggestion && (
-                        <div className="p-3 bg-white dark:bg-background rounded-lg border">
-                          <span className="text-xs text-muted-foreground">Sugerowane MPK</span>
+                        <div className={cn(
+                          "p-3 rounded-lg border transition-colors",
+                          invoice.mpk === invoice.aiMpkSuggestion
+                            ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
+                            : "bg-white dark:bg-background border-orange-200 dark:border-orange-800"
+                        )}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-muted-foreground">MPK</span>
+                            {invoice.mpk === invoice.aiMpkSuggestion ? (
+                              <Badge variant="outline" className="text-[10px] h-4 bg-green-100 text-green-700 border-green-300">
+                                <Check className="h-2.5 w-2.5 mr-0.5" />zgodne
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] h-4 bg-orange-100 text-orange-700 border-orange-300">
+                                różne
+                              </Badge>
+                            )}
+                          </div>
+                          {invoice.mpk !== invoice.aiMpkSuggestion && invoice.mpk && (
+                            <p className="text-xs text-muted-foreground line-through mb-0.5">
+                              {invoice.mpk}
+                            </p>
+                          )}
                           <p className="font-medium text-purple-700 dark:text-purple-400">
                             {invoice.aiMpkSuggestion}
                           </p>
                         </div>
                       )}
+
+                      {/* Category Comparison */}
                       {invoice.aiCategorySuggestion && (
-                        <div className="p-3 bg-white dark:bg-background rounded-lg border">
-                          <span className="text-xs text-muted-foreground">Sugerowana kategoria</span>
+                        <div className={cn(
+                          "p-3 rounded-lg border transition-colors",
+                          invoice.category === invoice.aiCategorySuggestion
+                            ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
+                            : "bg-white dark:bg-background border-orange-200 dark:border-orange-800"
+                        )}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-muted-foreground">Kategoria</span>
+                            {invoice.category === invoice.aiCategorySuggestion ? (
+                              <Badge variant="outline" className="text-[10px] h-4 bg-green-100 text-green-700 border-green-300">
+                                <Check className="h-2.5 w-2.5 mr-0.5" />zgodne
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] h-4 bg-orange-100 text-orange-700 border-orange-300">
+                                różne
+                              </Badge>
+                            )}
+                          </div>
+                          {invoice.category !== invoice.aiCategorySuggestion && invoice.category && (
+                            <p className="text-xs text-muted-foreground line-through mb-0.5">
+                              {invoice.category}
+                            </p>
+                          )}
                           <p className="font-medium text-purple-700 dark:text-purple-400">
                             {invoice.aiCategorySuggestion}
                           </p>
                         </div>
                       )}
+
+                      {/* Description Comparison */}
                       {invoice.aiDescription && (
-                        <div className="p-3 bg-white dark:bg-background rounded-lg border">
-                          <span className="text-xs text-muted-foreground">Sugerowany opis</span>
-                          <p className="text-sm mt-1">{invoice.aiDescription}</p>
+                        <div className={cn(
+                          "p-3 rounded-lg border transition-colors",
+                          invoice.description === invoice.aiDescription
+                            ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
+                            : "bg-white dark:bg-background border-orange-200 dark:border-orange-800"
+                        )}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-muted-foreground">Opis</span>
+                            {invoice.description === invoice.aiDescription ? (
+                              <Badge variant="outline" className="text-[10px] h-4 bg-green-100 text-green-700 border-green-300">
+                                <Check className="h-2.5 w-2.5 mr-0.5" />zgodne
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] h-4 bg-orange-100 text-orange-700 border-orange-300">
+                                różne
+                              </Badge>
+                            )}
+                          </div>
+                          {invoice.description !== invoice.aiDescription && invoice.description && (
+                            <p className="text-xs text-muted-foreground line-through mb-0.5">
+                              {invoice.description}
+                            </p>
+                          )}
+                          <p className="text-sm text-purple-700 dark:text-purple-400">
+                            {invoice.aiDescription}
+                          </p>
                         </div>
                       )}
+
+                      {/* AI Rationale */}
                       {invoice.aiRationale && (
-                        <div className="p-3 bg-purple-100/50 dark:bg-purple-900/20 rounded-lg">
+                        <div className="p-3 bg-purple-100/50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
                           <span className="text-xs text-muted-foreground">Uzasadnienie AI</span>
                           <p className="text-xs text-purple-800 dark:text-purple-300 mt-1">
                             {invoice.aiRationale}
@@ -1031,28 +1113,46 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                       )}
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="space-y-2">
-                      <Button
-                        className="w-full"
-                        variant="default"
-                        size="sm"
-                        onClick={applyAiToEdit}
-                      >
-                        <Check className="h-4 w-4 mr-2" />
-                        {isEditingClassification ? 'Przepisz do formularza' : 'Zastosuj sugestie'}
-                      </Button>
-                      <Button
-                        className="w-full"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => categorizeAiMutation.mutate()}
-                        disabled={categorizeAiMutation.isPending}
-                      >
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        {categorizeAiMutation.isPending ? 'Analizuję...' : 'Ponów analizę'}
-                      </Button>
-                    </div>
+                    {/* Action Buttons - only show if there are differences */}
+                    {(invoice.mpk !== invoice.aiMpkSuggestion || 
+                      invoice.category !== invoice.aiCategorySuggestion || 
+                      invoice.description !== invoice.aiDescription) && (
+                      <div className="space-y-2">
+                        <Button
+                          className="w-full text-white"
+                          variant="default"
+                          size="sm"
+                          onClick={applyAiToEdit}
+                        >
+                          <Check className="h-4 w-4 mr-2" />
+                          {isEditingClassification ? 'Przepisz do formularza' : 'Zastosuj sugestie'}
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* All matched message */}
+                    {invoice.mpk === invoice.aiMpkSuggestion && 
+                     invoice.category === invoice.aiCategorySuggestion && 
+                     invoice.description === invoice.aiDescription && (
+                      <div className="text-center py-2">
+                        <p className="text-xs text-green-600 dark:text-green-400 flex items-center justify-center gap-1">
+                          <Check className="h-3.5 w-3.5" />
+                          Wszystkie sugestie zostały zastosowane
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Re-analyze button */}
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => categorizeAiMutation.mutate()}
+                      disabled={categorizeAiMutation.isPending}
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      {categorizeAiMutation.isPending ? 'Analizuję...' : 'Ponów analizę'}
+                    </Button>
                   </>
                 ) : (
                   // No AI suggestions yet

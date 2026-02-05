@@ -1,6 +1,14 @@
 import { getMsalInstance, apiScopes, isAuthConfigured } from './auth-config'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
+// In production (Azure Static Web Apps), use empty string to use relative URLs
+// The rewrites in next.config.mjs will proxy /api/* to the Azure Functions backend
+// In development, use NEXT_PUBLIC_API_URL (e.g., http://localhost:7071)
+const API_BASE_URL =
+  typeof window !== 'undefined' &&
+  window.location.hostname !== 'localhost' &&
+  !window.location.hostname.includes('127.0.0.1')
+    ? '' // Production: use relative URLs
+    : process.env.NEXT_PUBLIC_API_URL || ''
 
 // ============================================================================
 // Types
@@ -67,11 +75,13 @@ export interface Invoice {
   supplierAddress?: string
   supplierCity?: string
   supplierPostalCode?: string
+  supplierCountry?: string
   buyerNip?: string
   buyerName?: string
   buyerAddress?: string
   buyerCity?: string
   buyerPostalCode?: string
+  buyerCountry?: string
   invoiceDate: string
   dueDate?: string
   netAmount: number
@@ -262,6 +272,10 @@ export interface ManualInvoiceCreate {
   invoiceNumber: string
   supplierNip: string
   supplierName: string
+  supplierAddress?: string
+  supplierCity?: string
+  supplierPostalCode?: string
+  supplierCountry?: string
   invoiceDate: string
   dueDate?: string
   netAmount: number

@@ -18,11 +18,11 @@ describe('Dataverse Entities', () => {
       const { fields } = InvoiceEntity
 
       expect(fields.id).toBe('dvlp_ksefinvoiceid')
-      expect(fields.tenantNip).toBe('dvlp_sellernip')
+      expect(fields.tenantNip).toBe('dvlp_buyernip')
       expect(fields.referenceNumber).toBe('dvlp_ksefreferencenumber')
       expect(fields.invoiceNumber).toBe('dvlp_name')
-      expect(fields.supplierNip).toBe('dvlp_buyernip')
-      expect(fields.supplierName).toBe('dvlp_buyername')
+      expect(fields.supplierNip).toBe('dvlp_sellernip')
+      expect(fields.supplierName).toBe('dvlp_sellername')
       expect(fields.invoiceDate).toBe('dvlp_invoicedate')
       expect(fields.grossAmount).toBe('dvlp_grossamount')
       expect(fields.paymentStatus).toBe('dvlp_paymentstatus')

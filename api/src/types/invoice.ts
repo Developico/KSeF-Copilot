@@ -49,6 +49,14 @@ export interface Invoice {
   invoiceNumber: string
   supplierNip: string
   supplierName: string
+  supplierAddress?: string
+  supplierCity?: string
+  supplierPostalCode?: string
+  supplierCountry?: string
+  buyerAddress?: string
+  buyerCity?: string
+  buyerPostalCode?: string
+  buyerCountry?: string
   invoiceDate: string
   dueDate?: string
   netAmount: number
@@ -130,6 +138,14 @@ export interface InvoiceCreate {
   invoiceNumber: string
   supplierNip: string
   supplierName: string
+  supplierAddress?: string
+  supplierCity?: string
+  supplierPostalCode?: string
+  supplierCountry?: string
+  buyerAddress?: string
+  buyerCity?: string
+  buyerPostalCode?: string
+  buyerCountry?: string
   invoiceDate: string
   dueDate?: string
   netAmount: number
@@ -157,6 +173,10 @@ export const ManualInvoiceCreateSchema = z.object({
   invoiceNumber: z.string().min(1).max(100),
   supplierNip: z.string().regex(/^\d{10}$/, 'NIP musi mieć 10 cyfr'),
   supplierName: z.string().min(1).max(255),
+  supplierAddress: z.string().max(255).optional(),
+  supplierCity: z.string().max(100).optional(),
+  supplierPostalCode: z.string().max(20).optional(),
+  supplierCountry: z.string().max(100).optional(),
   invoiceDate: z.string().date(),
   dueDate: z.string().date().optional(),
   netAmount: z.number().min(0),

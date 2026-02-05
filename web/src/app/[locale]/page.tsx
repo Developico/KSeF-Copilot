@@ -17,21 +17,14 @@ import {
   LayoutDashboard,
 } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
-import { useContextInvoices, useContextRunSync } from '@/hooks/use-api'
+import { useContextInvoices } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
-import { useToast } from '@/hooks/use-toast'
 
 export default function HomePage() {
   const t = useTranslations('dashboard')
-  const tCommon = useTranslations('common')
   const locale = useLocale()
-  const { toast } = useToast()
   const { selectedCompany } = useCompanyContext()
-  const { data: invoicesData, isLoading: isInvoicesLoading, refetch: refetchInvoices } = useContextInvoices()
-  const syncMutation = useContextRunSync()
-
-  const isLoading = isInvoicesLoading
-  const isSyncing = syncMutation.isPending
+  const { data: invoicesData, isLoading } = useContextInvoices()
 
   // Calculate stats from invoices
   const invoices = invoicesData?.invoices || []
@@ -42,24 +35,6 @@ export default function HomePage() {
     incoming: invoices.length, // All invoices from sync are incoming (cost invoices)
     outgoing: 0,
     activeCompanies: 1,
-  }
-
-  async function handleSync() {
-    try {
-      const result = await syncMutation.mutateAsync(undefined)
-      await refetchInvoices()
-      toast({
-        title: t('syncCompleted'),
-        description: t('syncCompletedDesc', { count: result.imported }),
-        variant: 'success',
-      })
-    } catch (error) {
-      toast({
-        title: t('syncError'),
-        description: error instanceof Error ? error.message : tCommon('error'),
-        variant: 'destructive',
-      })
-    }
   }
 
   // Locale-aware formatting
@@ -85,28 +60,7 @@ export default function HomePage() {
             {t('subtitle')}
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button onClick={handleSync} disabled={isSyncing} size="sm">
-            <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-            {isSyncing ? t('syncing') : t('sync')}
-          </Button>
-        </div>
       </div>
-
-      {/* Sync Error */}
-      {syncMutation.isError && (
-        <Card className="border-destructive/50 bg-destructive/10">
-          <CardContent className="flex items-center gap-4 py-4">
-            <AlertCircle className="h-5 w-5 text-destructive" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-destructive">{t('syncError')}</p>
-              <p className="text-xs text-muted-foreground">
-                {syncMutation.error instanceof Error ? syncMutation.error.message : tCommon('error')}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Quick Stats */}
       <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">

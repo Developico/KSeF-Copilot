@@ -17,6 +17,7 @@ import {
 import { ChangelogModal } from './changelog-modal'
 import { MobileSidebar } from './mobile-sidebar'
 import { LanguageSwitcher } from './language-switcher'
+import { KsefSyncButton } from './ksef-sync-button'
 import { useAuth } from '@/components/auth/auth-provider'
 import { SystemStatusBadge } from '@/components/health/system-status-badge'
 import { CompanySelector } from './company-selector'
@@ -122,6 +123,9 @@ export function Header() {
 
           {/* Right side actions */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* KSeF Sync Button */}
+            {mounted && isAuthenticated && <KsefSyncButton compact />}
+            
             {/* System Status Badge */}
             {mounted && isAuthenticated && <SystemStatusBadge />}
             

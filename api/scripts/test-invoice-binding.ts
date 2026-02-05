@@ -12,10 +12,10 @@ async function testInvoiceCreate() {
   
   // Create a test invoice with settingId binding - using correct field names from Dataverse
   const testInvoice = {
-    dvlp_sellernip: '5272926470',        // tenantNip (my company)
-    dvlp_sellername: 'Developico Test',  // tenantName
-    dvlp_buyernip: '1234567890',          // supplierNip (supplier I'm paying)
-    dvlp_buyername: 'Test Supplier',      // supplierName
+    dvlp_buyernip: '5272926470',          // tenantNip (my company = buyer)
+    dvlp_buyername: 'Developico Test',    // tenantName
+    dvlp_sellernip: '1234567890',         // supplierNip (supplier = seller)
+    dvlp_sellername: 'Test Supplier',     // supplierName
     dvlp_ksefreferencenumber: `TEST-BINDING-${Date.now()}`,
     dvlp_name: 'TEST/001',                // invoiceNumber (primary name)
     dvlp_invoicenumber: 'TEST/001',       // invoiceNumber field

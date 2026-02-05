@@ -4,6 +4,7 @@
  * Usage:
  *   pnpm seed:testdata                          # Generate 10 invoices for default NIP
  *   pnpm seed:testdata --nip=1234567890         # Generate for specific NIP
+ *   pnpm seed:testdata --env=demo               # Generate for specific environment (demo, test, prod)
  *   pnpm seed:testdata --count=50               # Generate 50 invoices
  *   pnpm seed:testdata --from=2025-01-01        # Start date for invoices
  *   pnpm seed:testdata --to=2026-01-31          # End date for invoices
@@ -31,6 +32,7 @@ let accessToken: string
 function parseArgs(): {
   nip: string
   settingName?: string
+  environment?: 'demo' | 'test' | 'production'
   count: number
   fromDate?: Date
   toDate?: Date
@@ -42,6 +44,7 @@ function parseArgs(): {
   const result = {
     nip: defaultNip,
     settingName: undefined as string | undefined,
+    environment: undefined as 'demo' | 'test' | 'production' | undefined,
     count: 10,
     fromDate: undefined as Date | undefined,
     toDate: undefined as Date | undefined,
@@ -66,6 +69,11 @@ function parseArgs(): {
     } else if (arg.startsWith('--source=')) {
       const src = arg.split('=')[1]
       result.source = src === 'KSeF' ? 'KSeF' : 'Manual'
+    } else if (arg.startsWith('--env=')) {
+      const env = arg.split('=')[1].toLowerCase()
+      if (env === 'demo' || env === 'test' || env === 'production' || env === 'prod') {
+        result.environment = env === 'prod' ? 'production' : env as 'demo' | 'test' | 'production'
+      }
     } else if (arg === '--cleanup') {
       result.cleanup = true
     }
@@ -119,8 +127,8 @@ async function dvFetch(path: string, options: RequestInit = {}) {
   return response.json()
 }
 
-// Get company setting by NIP and optional name filter
-async function getCompanySetting(nip: string, settingName?: string) {
+// Get company setting by NIP and optional name/environment filter
+async function getCompanySetting(nip: string, settingName?: string, targetEnv?: 'demo' | 'test' | 'production') {
   const result = await dvFetch(`/dvlp_ksefsettings?$filter=dvlp_nip eq '${nip}'`)
   if (!result.value || result.value.length === 0) {
     throw new Error(`Company with NIP ${nip} not found in settings`)
@@ -133,9 +141,27 @@ async function getCompanySetting(nip: string, settingName?: string) {
     100000002: 'demo',
   }
   
-  // If setting name is specified, find matching setting by name
+  const reverseEnvMap: Record<string, number> = {
+    'production': 100000000,
+    'test': 100000001,
+    'demo': 100000002,
+  }
+  
+  // If environment is specified, filter by environment first
   let setting = result.value[0]
-  if (settingName && result.value.length > 1) {
+  if (targetEnv) {
+    const envValue = reverseEnvMap[targetEnv]
+    const envMatching = result.value.find((s: Record<string, unknown>) => s.dvlp_environment === envValue)
+    if (envMatching) {
+      setting = envMatching
+    } else {
+      console.log(`\n⚠️  No setting found for environment '${targetEnv}'. Available settings:`)
+      for (const s of result.value) {
+        console.log(`   - "${s.dvlp_companyname || s.dvlp_name}" (${envMap[s.dvlp_environment as number] || 'unknown'})`)
+      }
+      throw new Error(`Setting for environment '${targetEnv}' not found for NIP ${nip}`)
+    }
+  } else if (settingName && result.value.length > 1) {
     const searchName = settingName.toLowerCase().trim()
     
     // First try exact match
@@ -268,6 +294,7 @@ async function main() {
   }
   
   console.log(`📌 NIP: ${options.nip}`)
+  if (options.environment) console.log(`📌 Target Environment: ${options.environment}`)
   if (options.settingName) console.log(`📌 Target Setting: ${options.settingName}`)
   console.log(`📌 Count: ${options.count}`)
   console.log(`📌 Source: ${options.source}`)
@@ -282,9 +309,9 @@ async function main() {
   await getToken()
   console.log('   ✅ Token acquired\n')
   
-  // Get company setting (with preferred name if specified)
+  // Get company setting (with preferred environment or name if specified)
   console.log('🏢 Getting company settings...')
-  const company = await getCompanySetting(options.nip, options.settingName)
+  const company = await getCompanySetting(options.nip, options.settingName, options.environment)
   console.log(`   ✅ Found: ${company.companyName}`)
   console.log(`   📌 Setting ID: ${company.id}`)
   console.log(`   📌 Environment: ${company.environment}`)
@@ -337,13 +364,17 @@ async function main() {
       // Map to Dataverse format
       const dvData: Record<string, unknown> = {
         'dvlp_settingid@odata.bind': `/dvlp_ksefsettings(${company.id})`,
-        dvlp_sellernip: data.tenantNip,
-        dvlp_sellername: data.tenantName,
+        dvlp_buyernip: data.tenantNip,
+        dvlp_buyername: data.tenantName,
+        dvlp_buyeraddress: data.buyerAddress,
+        dvlp_buyercountry: data.buyerCountry,
         dvlp_ksefreferencenumber: data.referenceNumber,
         dvlp_name: data.invoiceNumber,
         dvlp_invoicenumber: data.invoiceNumber,
-        dvlp_buyernip: data.supplierNip,
-        dvlp_buyername: data.supplierName,
+        dvlp_sellernip: data.supplierNip,
+        dvlp_sellername: data.supplierName,
+        dvlp_selleraddress: data.supplierAddress,
+        dvlp_sellercountry: data.supplierCountry,
         dvlp_invoicedate: data.invoiceDate,
         dvlp_duedate: data.dueDate,
         dvlp_netamount: data.netAmount,
