@@ -15,7 +15,9 @@ import {
   Sparkles,
   FileQuestion,
   FileCheck,
-  ArrowDownToLine
+  ArrowDownToLine,
+  Paperclip,
+  StickyNote,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -185,6 +187,22 @@ export function InvoiceMobileCard({
             
             {/* Description status */}
             {getDescriptionBadge()}
+
+            {/* Attachments indicator */}
+            {invoice.hasAttachments && (
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 gap-1">
+                <Paperclip className="h-3 w-3" />
+                {invoice.attachmentCount || 1}
+              </Badge>
+            )}
+
+            {/* Notes indicator */}
+            {invoice.hasNotes && (
+              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 gap-1">
+                <StickyNote className="h-3 w-3" />
+                {invoice.noteCount || 1}
+              </Badge>
+            )}
           </div>
 
           {/* Due date if present */}

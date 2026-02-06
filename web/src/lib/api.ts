@@ -113,6 +113,9 @@ export interface Invoice {
   // Attachment summary
   hasAttachments?: boolean
   attachmentCount?: number
+  // Notes summary
+  hasNotes?: boolean
+  noteCount?: number
 }
 
 export interface InvoiceItem {
@@ -368,6 +371,26 @@ export interface AttachmentConfig {
   maxSizeBytes: number
   maxSizeMB: number
   allowedMimeTypes: string[]
+}
+
+// Note Types (text notes for invoices)
+export interface Note {
+  id: string
+  invoiceId: string
+  subject: string | null
+  noteText: string
+  createdOn: string
+  modifiedOn: string
+}
+
+export interface NoteCreate {
+  subject?: string
+  noteText: string
+}
+
+export interface NoteUpdate {
+  subject?: string
+  noteText?: string
 }
 
 // Document Types (for invoice image/scan)
@@ -642,6 +665,30 @@ export const api = {
 
     deleteAttachment: (attachmentId: string) =>
       apiFetch<void>(`/api/attachments/${attachmentId}`, {
+        method: 'DELETE',
+      }),
+
+    // Notes
+    listNotes: (invoiceId: string) =>
+      apiFetch<{ notes: Note[]; count: number }>(`/api/invoices/${invoiceId}/notes`),
+
+    createNote: (invoiceId: string, data: NoteCreate) =>
+      apiFetch<Note>(`/api/invoices/${invoiceId}/notes`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    getNote: (noteId: string) =>
+      apiFetch<Note>(`/api/notes/${noteId}`),
+
+    updateNote: (noteId: string, data: NoteUpdate) =>
+      apiFetch<Note>(`/api/notes/${noteId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    deleteNote: (noteId: string) =>
+      apiFetch<void>(`/api/notes/${noteId}`, {
         method: 'DELETE',
       }),
 

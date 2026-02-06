@@ -139,26 +139,30 @@ export async function uploadAttachment(data: AttachmentCreate): Promise<Attachme
     filename: fileName,
     mimetype: finalMimeType,
     documentbody: finalContent,
-    notetext: description || `Załącznik do faktury`,
+    notetext: description || `Invoice attachment`,
     isdocument: true,
   }
 
-  const response = await dataverseRequest<{
-    annotationid: string
-    createdon: string
-    filesize: number
-  }>('annotations', {
+  // Dataverse POST returns 204 No Content with OData-EntityId header
+  // The client extracts just { id: '...' } from it
+  const response = await dataverseRequest<{ id?: string; annotationid?: string }>('annotations', {
     method: 'POST',
     body: annotationBody,
   })
 
+  // Get the created annotation ID (either from 'id' or 'annotationid' depending on response type)
+  const createdId = response?.id || response?.annotationid
+  if (!createdId) {
+    throw new Error('Failed to create attachment: No ID returned')
+  }
+
   return {
-    id: response.annotationid,
+    id: createdId,
     invoiceId,
     fileName,
     mimeType: finalMimeType,
     fileSize: Buffer.from(finalContent, 'base64').length,
-    createdOn: response.createdon,
+    createdOn: new Date().toISOString(),
   }
 }
 

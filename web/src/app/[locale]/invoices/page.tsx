@@ -46,6 +46,7 @@ import {
   ChevronRight,
   FileImage,
   Paperclip,
+  StickyNote,
 } from 'lucide-react'
 import { useInvoices, useMarkAsPaid, useDeleteInvoice, useUpdateInvoice } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
@@ -1081,7 +1082,15 @@ export default function InvoicesPage() {
                             )}
                           </div>
                         )}
-                        {!invoice.hasDocument && !invoice.hasAttachments && (
+                        {invoice.hasNotes && (
+                          <div className="flex items-center gap-0.5" title={t('notesCount', { count: invoice.noteCount || 0 })}>
+                            <StickyNote className="h-4 w-4 text-amber-500" />
+                            {(invoice.noteCount || 0) > 1 && (
+                              <span className="text-xs text-amber-600">{invoice.noteCount}</span>
+                            )}
+                          </div>
+                        )}
+                        {!invoice.hasDocument && !invoice.hasAttachments && !invoice.hasNotes && (
                           <span className="text-muted-foreground text-sm">—</span>
                         )}
                       </div>

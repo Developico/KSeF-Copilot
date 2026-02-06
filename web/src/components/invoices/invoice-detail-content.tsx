@@ -30,6 +30,7 @@ import Link from 'next/link'
 
 import { api, Invoice, Attachment } from '@/lib/api'
 import { InvoiceDocumentViewer } from '@/components/documents'
+import { InvoiceNotesSection } from './invoice-notes-section'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -988,6 +989,9 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
               </div>
             )}
           </Card>
+
+          {/* Notes Section */}
+          <InvoiceNotesSection invoiceId={invoiceId} />
         </div>
 
         {/* Right Side - AI Panel (sticky) */}
