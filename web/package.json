@@ -50,7 +50,7 @@
     "react-medium-image-zoom": "^5.4.0",
     "react-pdf": "^10.3.0",
     "recharts": "^3.7.0",
-    "styled-jsx": "^5.1.6",
+    "styled-jsx": "^5.1.7",
     "tailwind-merge": "^2.6.0",
     "tailwindcss": "^4.1.18",
     "tailwindcss-animate": "^1.0.7",
