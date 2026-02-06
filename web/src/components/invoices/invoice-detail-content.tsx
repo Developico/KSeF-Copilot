@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { pl } from 'date-fns/locale'
+import { useTranslations } from 'next-intl'
 import {
   ArrowLeft,
   FileText,
@@ -135,6 +136,7 @@ interface InvoiceDetailContentProps {
 export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const t = useTranslations('invoices')
   const [isDragging, setIsDragging] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   
@@ -154,6 +156,8 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   const [editNetAmount, setEditNetAmount] = useState('')
   const [editVatAmount, setEditVatAmount] = useState('')
   const [editGrossAmount, setEditGrossAmount] = useState('')
+  const [editCurrency, setEditCurrency] = useState<'PLN' | 'EUR' | 'USD'>('PLN')
+  const [editExchangeRate, setEditExchangeRate] = useState('')
   
   // State for collapsible attachments
   const [attachmentsExpanded, setAttachmentsExpanded] = useState(false)
@@ -366,6 +370,9 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
       netAmount?: number
       vatAmount?: number
       grossAmount?: number
+      currency?: 'PLN' | 'EUR' | 'USD'
+      exchangeRate?: number
+      grossAmountPln?: number
     }) => api.invoices.update(invoiceId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
@@ -395,11 +402,19 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
     setEditNetAmount(invoice?.netAmount?.toString() || '')
     setEditVatAmount(invoice?.vatAmount?.toString() || '')
     setEditGrossAmount(invoice?.grossAmount?.toString() || '')
+    setEditCurrency((invoice?.currency as 'PLN' | 'EUR' | 'USD') || 'PLN')
+    setEditExchangeRate(invoice?.exchangeRate?.toString() || '')
     setIsEditingInvoice(true)
   }
 
   // Save invoice changes
   function saveInvoice() {
+    const grossAmount = editGrossAmount ? parseFloat(editGrossAmount) : undefined
+    const exchangeRate = editExchangeRate ? parseFloat(editExchangeRate) : undefined
+    const grossAmountPln = editCurrency !== 'PLN' && grossAmount && exchangeRate
+      ? grossAmount * exchangeRate
+      : undefined
+
     updateInvoiceMutation.mutate({
       supplierName: editSupplierName || undefined,
       supplierNip: editSupplierNip || undefined,
@@ -408,7 +423,10 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
       dueDate: editDueDate || undefined,
       netAmount: editNetAmount ? parseFloat(editNetAmount) : undefined,
       vatAmount: editVatAmount ? parseFloat(editVatAmount) : undefined,
-      grossAmount: editGrossAmount ? parseFloat(editGrossAmount) : undefined,
+      grossAmount: grossAmount,
+      currency: editCurrency,
+      exchangeRate: exchangeRate,
+      grossAmountPln: grossAmountPln,
     })
   }
 
@@ -723,10 +741,30 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
               </div>
               {isEditingInvoice ? (
                 <div className="space-y-2">
+                  <Select value={editCurrency} onValueChange={(v: 'PLN' | 'EUR' | 'USD') => setEditCurrency(v)}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Waluta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PLN">PLN</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="USD">USD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {editCurrency !== 'PLN' && (
+                    <Input
+                      type="number"
+                      step="0.0001"
+                      placeholder="Kurs wymiany"
+                      value={editExchangeRate}
+                      onChange={(e) => setEditExchangeRate(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  )}
                   <Input
                     type="number"
                     step="0.01"
-                    placeholder="Netto"
+                    placeholder={`Netto (${editCurrency})`}
                     value={editNetAmount}
                     onChange={(e) => setEditNetAmount(e.target.value)}
                     className="h-8 text-sm"
@@ -734,7 +772,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                   <Input
                     type="number"
                     step="0.01"
-                    placeholder="VAT"
+                    placeholder={`VAT (${editCurrency})`}
                     value={editVatAmount}
                     onChange={(e) => setEditVatAmount(e.target.value)}
                     className="h-8 text-sm"
@@ -742,7 +780,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                   <Input
                     type="number"
                     step="0.01"
-                    placeholder="Brutto"
+                    placeholder={`Brutto (${editCurrency})`}
                     value={editGrossAmount}
                     onChange={(e) => setEditGrossAmount(e.target.value)}
                     className="h-8 text-sm font-medium"
@@ -763,6 +801,30 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                     <span>Brutto</span>
                     <span>{formatCurrency(invoice.grossAmount, invoice.currency)}</span>
                   </div>
+                  {/* PLN conversion for foreign currencies */}
+                  {invoice.currency !== 'PLN' && (
+                    <>
+                      <Separator className="my-2" />
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Równowartość PLN</span>
+                          {invoice.grossAmountPln ? (
+                            <span className="font-medium text-foreground">
+                              {formatCurrency(invoice.grossAmountPln, 'PLN')}
+                            </span>
+                          ) : (
+                            <span className="text-yellow-600">Brak kursu</span>
+                          )}
+                        </div>
+                        {invoice.exchangeRate && (
+                          <div className="text-xs text-muted-foreground">
+                            Kurs: {invoice.exchangeRate.toFixed(4)}
+                            {invoice.exchangeDate && ` (${formatDate(invoice.exchangeDate)})`}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </Card>
@@ -898,7 +960,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
             >
               <div className="flex items-center gap-2">
                 <Upload className="h-4 w-4" />
-                Załączniki
+                {t('attachments.title')}
                 {hasAttachments && (
                   <Badge variant="secondary" className="h-5 text-xs">
                     {attachmentsData?.attachments?.length}
@@ -931,7 +993,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                 >
                   <FileUp className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
                   <p className="text-xs text-muted-foreground">
-                    Przeciągnij lub <span className="text-primary">wybierz pliki</span>
+                    {t('attachments.dropOrSelect')} <span className="text-primary">{t('attachments.selectFiles')}</span>
                   </p>
                   <input
                     id="detail-file-input"
@@ -940,7 +1002,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                     accept=".pdf,image/jpeg,image/png,image/gif,image/webp,.doc,.docx,.xls,.xlsx"
                     className="hidden"
                     onChange={handleFileSelect}
-                    aria-label="Wybierz pliki do przesłania"
+                    aria-label={t('attachments.selectFilesAriaLabel')}
                   />
                 </div>
 
@@ -948,7 +1010,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                 {uploadMutation.isPending && (
                   <div className="space-y-1">
                     <Progress value={uploadProgress} className="h-1" />
-                    <p className="text-xs text-muted-foreground text-center">Przesyłanie...</p>
+                    <p className="text-xs text-muted-foreground text-center">{t('attachments.uploading')}</p>
                   </div>
                 )}
 
@@ -970,21 +1032,21 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                           size="icon" 
                           className="h-6 w-6" 
                           onClick={() => handlePreview(attachment)}
-                          title="Podgląd"
+                          title={t('attachments.preview')}
                         >
                           <Eye className="h-3 w-3" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDownload(attachment)} title="Pobierz">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDownload(attachment)} title={t('attachments.download')}>
                           <Download className="h-3 w-3" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteMutation.mutate(attachment.id)} title="Usuń">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteMutation.mutate(attachment.id)} title={t('attachments.delete')}>
                           <Trash2 className="h-3 w-3 text-red-500" />
                         </Button>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground text-center py-2">Brak załączników</p>
+                  <p className="text-xs text-muted-foreground text-center py-2">{t('attachments.noAttachments')}</p>
                 )}
               </div>
             )}

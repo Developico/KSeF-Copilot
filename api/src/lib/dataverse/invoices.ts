@@ -1,5 +1,6 @@
 import { dataverseRequest, dataverseClient } from './client'
 import { InvoiceEntity, PaymentStatusValues, MpkValues, InvoiceSourceValues, getPaymentStatusKey, getMpkKey, getInvoiceSourceKey } from './entities'
+import { mapDvCurrencyToApp } from './mappers'
 import { Invoice, InvoiceCreate, InvoiceUpdate, InvoiceListParams, ManualInvoiceCreate, InvoiceSource } from '../../types/invoice'
 import { logDataverseInfo } from './logger'
 
@@ -424,6 +425,10 @@ function mapFromDataverse(record: DataverseInvoice): Invoice {
     source: getInvoiceSourceKey(record[f.source] as number),
     // Description field
     description: record[f.description] as string | undefined,
+    // Currency fields
+    currency: mapDvCurrencyToApp(record[f.currency] as number | undefined),
+    exchangeRate: record[f.exchangeRate] as number | undefined,
+    grossAmountPln: record[f.grossAmountPln] as number | undefined,
     // AI categorization fields
     aiMpkSuggestion: record[f.aiMpkSuggestion]
       ? getMpkKey(record[f.aiMpkSuggestion] as number) as Invoice['mpk']

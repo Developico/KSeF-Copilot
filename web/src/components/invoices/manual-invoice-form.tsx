@@ -102,6 +102,9 @@ interface FormData {
   vatRate: string
   vatAmount: string
   grossAmount: string
+  currency: 'PLN' | 'EUR' | 'USD'
+  exchangeRate: string
+  exchangeDate: string
   description: string
   mpk: string
   category: string
@@ -122,6 +125,9 @@ const initialFormData: FormData = {
   vatRate: '23',
   vatAmount: '',
   grossAmount: '',
+  currency: 'PLN',
+  exchangeRate: '',
+  exchangeDate: '',
   description: '',
   mpk: '',
   category: '',
@@ -136,6 +142,7 @@ export function ManualInvoiceForm() {
   
   const [formData, setFormData] = useState<FormData>(initialFormData)
   const [attachments, setAttachments] = useState<FileAttachment[]>([])
+  const [invoiceDocument, setInvoiceDocument] = useState<FileAttachment | null>(null)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
   
   // GUS lookup state
@@ -357,6 +364,34 @@ export function ManualInvoiceForm() {
     }))
   }
 
+  // Fetch exchange rate from NBP API
+  const handleFetchExchangeRate = async () => {
+    if (!formData.invoiceDate || formData.currency === 'PLN') return
+
+    try {
+      const response = await api.exchangeRates.get(formData.currency, formData.invoiceDate)
+      setFormData(prev => ({
+        ...prev,
+        exchangeRate: response.rate.toFixed(4),
+        exchangeDate: response.effectiveDate,
+      }))
+      toast({
+        title: t('manualForm.rateFetched'),
+        description: t('manualForm.rateFetchedDesc', { 
+          currency: formData.currency, 
+          date: response.effectiveDate, 
+          rate: response.rate.toFixed(4) 
+        }),
+      })
+    } catch (error) {
+      toast({
+        title: t('manualForm.validationError'),
+        description: t('manualForm.rateFetchError'),
+        variant: 'destructive',
+      })
+    }
+  }
+
   // Handle file drop
   const handleFileDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -415,6 +450,64 @@ export function ManualInvoiceForm() {
     })
   }
 
+  // Handle document drop (single file for dvlp_doc)
+  const handleDocumentDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) {
+      setDocumentFile(files[0])
+    }
+  }, [])
+
+  // Handle document select
+  const handleDocumentSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length > 0) {
+      setDocumentFile(files[0])
+    }
+  }
+
+  // Set document file (validates and sets invoiceDocument state)
+  const setDocumentFile = (file: File) => {
+    // Validate type
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: t('manualForm.validationError'),
+        description: t('manualForm.unsupportedFileType', { name: file.name }),
+        variant: 'destructive',
+      })
+      return
+    }
+    // Validate size (128 MB for dvlp_doc)
+    if (file.size > 128 * 1024 * 1024) {
+      toast({
+        title: t('manualForm.validationError'),
+        description: t('manualForm.fileTooLarge', { name: file.name }),
+        variant: 'destructive',
+      })
+      return
+    }
+    
+    // Clean up previous preview
+    if (invoiceDocument?.preview) {
+      URL.revokeObjectURL(invoiceDocument.preview)
+    }
+    
+    setInvoiceDocument({
+      file,
+      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+    })
+  }
+
+  // Remove document
+  const removeDocument = () => {
+    if (invoiceDocument?.preview) {
+      URL.revokeObjectURL(invoiceDocument.preview)
+    }
+    setInvoiceDocument(null)
+  }
+
   // Validate form
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof FormData, string>> = {}
@@ -466,6 +559,12 @@ export function ManualInvoiceForm() {
       return
     }
 
+    const grossAmount = parseFloat(formData.grossAmount)
+    const exchangeRate = formData.exchangeRate ? parseFloat(formData.exchangeRate) : undefined
+    const grossAmountPln = formData.currency !== 'PLN' && exchangeRate
+      ? grossAmount * exchangeRate
+      : undefined
+
     // Use company from context
     const data: ManualInvoiceCreate = {
       tenantNip: selectedCompany!.nip,
@@ -480,10 +579,15 @@ export function ManualInvoiceForm() {
       dueDate: formData.dueDate || undefined,
       netAmount: parseFloat(formData.netAmount),
       vatAmount: parseFloat(formData.vatAmount),
-      grossAmount: parseFloat(formData.grossAmount),
+      grossAmount: grossAmount,
       description: formData.description || undefined,
       mpk: formData.mpk || undefined,
       category: formData.category || undefined,
+      // Currency fields
+      currency: formData.currency,
+      exchangeRate: exchangeRate,
+      exchangeDate: formData.exchangeDate || undefined,
+      grossAmountPln: grossAmountPln,
     }
 
     createMutation.mutate(data)
@@ -492,7 +596,7 @@ export function ManualInvoiceForm() {
   return (
     <TooltipProvider>
     <form onSubmit={handleSubmit}>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* No company selected warning */}
         {!isLoadingCompany && !selectedCompany && (
           <Alert variant="destructive">
@@ -505,141 +609,290 @@ export function ManualInvoiceForm() {
           </Alert>
         )}
 
-        {/* Supplier section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              {t('manualForm.supplierSection')}
-            </CardTitle>
-            <CardDescription>
-              {t('manualForm.supplierDescription')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Supplier lookup button */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsSupplierDialogOpen(true)}
-              className="w-full"
-            >
-              <Search className="h-4 w-4 mr-2" />
-              {t('manualForm.searchSupplier')}
-            </Button>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t('manualForm.nipLabel')}</label>
-                <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <Input
-                      placeholder="0000000000"
-                      value={formData.supplierNip}
-                      onChange={(e) => handleNipChange(e.target.value)}
-                      className={errors.supplierNip ? 'border-red-500' : ''}
-                    />
-                    {/* NIP validation indicator */}
-                    {formData.supplierNip.length === 10 && !errors.supplierNip && (
-                      <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
-                    )}
-                  </div>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={handleGusLookup}
-                        disabled={formData.supplierNip.length !== 10 || isGusLoading || !!errors.supplierNip}
-                      >
-                        {isGusLoading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <ExternalLink className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{t('manualForm.fetchFromGus')}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                {errors.supplierNip && <p className="text-sm text-red-500">{errors.supplierNip}</p>}
-                {gusError && <p className="text-sm text-red-500">{gusError}</p>}
-                {formData.supplierNip.length > 0 && formData.supplierNip.length < 10 && (
-                  <p className="text-xs text-muted-foreground">
-                    {t('manualForm.nipDigits', { count: formData.supplierNip.length })}
-                  </p>
-                )}
+        {/* Top Row: Invoice Info + Supplier + Amounts in 3 columns */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Invoice Info - Compact */}
+          <Card className="p-4">
+            <div className="flex items-center gap-2 text-sm font-medium mb-3">
+              <FileText className="h-4 w-4" />
+              {t('manualForm.invoiceSection')}
+            </div>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">{t('manualForm.invoiceNumberLabel')}</label>
+                <Input
+                  placeholder={t('manualForm.invoiceNumberPlaceholder')}
+                  value={formData.invoiceNumber}
+                  onChange={(e) => handleChange('invoiceNumber', e.target.value)}
+                  className={`h-8 text-sm ${errors.invoiceNumber ? 'border-red-500' : ''}`}
+                />
+                {errors.invoiceNumber && <p className="text-xs text-red-500">{errors.invoiceNumber}</p>}
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-2">
-                  {t('manualForm.companyName')}
-                  {gusDataLoaded && (
-                    <Badge variant="secondary" className="text-xs">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      {t('manualForm.fromGus')}
-                    </Badge>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {t('manualForm.issueDateLabel')}
+                  </label>
+                  <Input
+                    type="date"
+                    value={formData.invoiceDate}
+                    onChange={(e) => handleChange('invoiceDate', e.target.value)}
+                    className={`h-8 text-sm ${errors.invoiceDate ? 'border-red-500' : ''}`}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {t('manualForm.dueDateLabel')}
+                  </label>
+                  <Input
+                    type="date"
+                    value={formData.dueDate}
+                    onChange={(e) => handleChange('dueDate', e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">{t('manualForm.descriptionLabel')}</label>
+                <Input
+                  placeholder={t('manualForm.descriptionPlaceholder')}
+                  value={formData.description}
+                  onChange={(e) => handleChange('description', e.target.value)}
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+          </Card>
+
+          {/* Supplier - Compact */}
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Building2 className="h-4 w-4" />
+                {t('manualForm.supplierSection')}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2"
+                onClick={() => setIsSupplierDialogOpen(true)}
+              >
+                <Search className="h-3 w-3" />
+              </Button>
+            </div>
+            <div className="space-y-2">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">{t('manualForm.nipLabel')}</label>
+                <div className="relative">
+                  <Input
+                    placeholder="0000000000"
+                    value={formData.supplierNip}
+                    onChange={(e) => handleNipChange(e.target.value)}
+                    className={`h-8 text-sm font-mono ${errors.supplierNip ? 'border-red-500' : ''}`}
+                  />
+                  {formData.supplierNip.length === 10 && !errors.supplierNip && (
+                    <CheckCircle2 className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-green-500" />
                   )}
-                </label>
+                </div>
+                {errors.supplierNip && <p className="text-xs text-red-500">{errors.supplierNip}</p>}
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">{t('manualForm.companyName')}</label>
                 <Input
                   placeholder={t('supplier')}
                   value={formData.supplierName}
                   onChange={(e) => handleChange('supplierName', e.target.value)}
-                  className={errors.supplierName ? 'border-red-500' : ''}
+                  className={`h-8 text-sm ${errors.supplierName ? 'border-red-500' : ''}`}
                 />
-                {errors.supplierName && <p className="text-sm text-red-500">{errors.supplierName}</p>}
+                {errors.supplierName && <p className="text-xs text-red-500">{errors.supplierName}</p>}
               </div>
-            </div>
-
-            {/* Address fields */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-medium">{t('manualForm.addressLabel')}</label>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">{t('manualForm.addressLabel')}</label>
                 <Input
                   placeholder={t('manualForm.addressPlaceholder')}
                   value={formData.supplierAddress}
                   onChange={(e) => handleChange('supplierAddress', e.target.value)}
+                  className="h-8 text-sm"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t('manualForm.postalCodeLabel')}</label>
-                <Input
-                  placeholder="00-000"
-                  value={formData.supplierPostalCode}
-                  onChange={(e) => handleChange('supplierPostalCode', e.target.value)}
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">{t('manualForm.postalCodeLabel')}</label>
+                  <Input
+                    placeholder="00-000"
+                    value={formData.supplierPostalCode}
+                    onChange={(e) => handleChange('supplierPostalCode', e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">{t('manualForm.cityLabel')}</label>
+                  <Input
+                    placeholder={t('manualForm.cityPlaceholder')}
+                    value={formData.supplierCity}
+                    onChange={(e) => handleChange('supplierCity', e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
               </div>
+            </div>
+          </Card>
+
+          {/* Amounts - Compact */}
+          <Card className="p-4">
+            <div className="flex items-center gap-2 text-sm font-medium mb-3">
+              <DollarSign className="h-4 w-4" />
+              {t('manualForm.amountsSection')}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t('manualForm.cityLabel')}</label>
-              <Input
-                placeholder={t('manualForm.cityPlaceholder')}
-                value={formData.supplierCity}
-                onChange={(e) => handleChange('supplierCity', e.target.value)}
-              />
-            </div>
-
-            {/* GUS data preview */}
-            {isGusSuccess && gusData && (
-              <Alert>
-                <CheckCircle2 className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="text-sm">
-                    <strong>{gusData.nazwa}</strong>
-                    {gusData.adres && <span className="text-muted-foreground"> • {gusData.adres}</span>}
-                    {gusData.pkdNazwa && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        PKD: {gusData.pkd} - {gusData.pkdNazwa}
-                      </div>
+              {/* Currency and Exchange Rate row */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">{t('manualForm.currencyLabel')}</label>
+                  <Select 
+                    value={formData.currency} 
+                    onValueChange={(v: 'PLN' | 'EUR' | 'USD') => handleChange('currency', v)}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder={t('manualForm.currencyPlaceholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PLN">{t('manualForm.currencyPln')}</SelectItem>
+                      <SelectItem value="EUR">{t('manualForm.currencyEur')}</SelectItem>
+                      <SelectItem value="USD">{t('manualForm.currencyUsd')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {formData.currency !== 'PLN' && (
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">{t('manualForm.exchangeRateLabel', { currency: formData.currency })}</label>
+                    <div className="flex gap-1">
+                      <Input
+                        type="number"
+                        step="0.0001"
+                        min="0"
+                        placeholder="4.35"
+                        value={formData.exchangeRate}
+                        onChange={(e) => handleChange('exchangeRate', e.target.value)}
+                        className="h-8 text-sm flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2"
+                        onClick={handleFetchExchangeRate}
+                        disabled={!formData.invoiceDate}
+                        title={t('manualForm.fetchNbpRate')}
+                      >
+                        {t('manualForm.fetchNbpRate')}
+                      </Button>
+                    </div>
+                    {formData.exchangeDate && (
+                      <p className="text-xs text-muted-foreground">
+                        {t('manualForm.nbpRateFromDate', { date: formData.exchangeDate })}
+                      </p>
                     )}
                   </div>
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
+                )}
+              </div>
+              
+              {/* Net and VAT */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">{t('manualForm.netAmountLabel', { currency: formData.currency })}</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={formData.netAmount}
+                    onChange={(e) => handleNetAmountChange(e.target.value)}
+                    className={`h-8 text-sm ${errors.netAmount ? 'border-red-500' : ''}`}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">{t('manualForm.vatRateLabel')}</label>
+                  <Select value={formData.vatRate} onValueChange={handleVatRateChange}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder={t('manualForm.vatRateSelect')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {VAT_RATES.map((rate) => (
+                        <SelectItem key={rate.value} value={rate.value}>
+                          {rate.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* VAT amount and Gross */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">{t('manualForm.vatAmountLabel', { currency: formData.currency })}</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={formData.vatAmount}
+                    onChange={(e) => handleVatAmountManual(e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">{t('manualForm.grossAmountLabel', { currency: formData.currency })}</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={formData.grossAmount}
+                    readOnly
+                    className="h-8 text-sm bg-muted cursor-not-allowed font-semibold"
+                  />
+                </div>
+              </div>
+
+              {/* PLN equivalents for foreign currencies */}
+              {formData.currency !== 'PLN' && formData.netAmount && formData.exchangeRate && (
+                <div className="p-2 bg-muted rounded-md space-y-1 text-xs">
+                  <p className="text-muted-foreground font-medium">{t('manualForm.plnEquivalentHeader', { rate: formData.exchangeRate })}</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <span className="text-muted-foreground">{t('manualForm.netPln')}</span>
+                      <p className="font-semibold">
+                        {new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(
+                          parseFloat(formData.netAmount) * parseFloat(formData.exchangeRate)
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">{t('manualForm.vatPln')}</span>
+                      <p className="font-semibold">
+                        {new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(
+                          parseFloat(formData.vatAmount || '0') * parseFloat(formData.exchangeRate)
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">{t('manualForm.grossPln')}</span>
+                      <p className="font-semibold">
+                        {new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(
+                          parseFloat(formData.grossAmount || '0') * parseFloat(formData.exchangeRate)
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
 
         {/* Supplier Lookup Dialog */}
         <SupplierLookupDialog
@@ -650,257 +903,186 @@ export function ManualInvoiceForm() {
           currentNip={formData.supplierNip}
         />
 
-        {/* Invoice details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              {t('manualForm.invoiceSection')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t('manualForm.invoiceNumberLabel')}</label>
-                <Input
-                  placeholder={t('manualForm.invoiceNumberPlaceholder')}
-                  value={formData.invoiceNumber}
-                  onChange={(e) => handleChange('invoiceNumber', e.target.value)}
-                  className={errors.invoiceNumber ? 'border-red-500' : ''}
-                />
-                {errors.invoiceNumber && <p className="text-sm text-red-500">{errors.invoiceNumber}</p>}
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  {t('manualForm.issueDateLabel')}
-                </label>
-                <Input
-                  type="date"
-                  value={formData.invoiceDate}
-                  onChange={(e) => handleChange('invoiceDate', e.target.value)}
-                  className={errors.invoiceDate ? 'border-red-500' : ''}
-                />
-                {errors.invoiceDate && <p className="text-sm text-red-500">{errors.invoiceDate}</p>}
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  {t('manualForm.dueDateLabel')}
-                </label>
-                <Input
-                  type="date"
-                  value={formData.dueDate}
-                  onChange={(e) => handleChange('dueDate', e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">{t('manualForm.descriptionLabel')}</label>
-              <Input
-                placeholder={t('manualForm.descriptionPlaceholder')}
-                value={formData.description}
-                onChange={(e) => handleChange('description', e.target.value)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Amounts */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              {t('manualForm.amountsSection')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t('manualForm.netAmountLabel')}</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={formData.netAmount}
-                  onChange={(e) => handleNetAmountChange(e.target.value)}
-                  className={errors.netAmount ? 'border-red-500' : ''}
-                />
-                {errors.netAmount && <p className="text-sm text-red-500">{errors.netAmount}</p>}
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t('manualForm.vatRateLabel')}</label>
-                <Select value={formData.vatRate} onValueChange={handleVatRateChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('manualForm.vatRateSelect')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {VAT_RATES.map((rate) => (
-                      <SelectItem key={rate.value} value={rate.value}>
-                        {rate.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t('manualForm.vatAmountLabel')}</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={formData.vatAmount}
-                  onChange={(e) => handleVatAmountManual(e.target.value)}
-                  className={errors.vatAmount ? 'border-red-500' : ''}
-                />
-                {errors.vatAmount && <p className="text-sm text-red-500">{errors.vatAmount}</p>}
-                <p className="text-xs text-muted-foreground">
-                  {t('manualForm.vatAutoCalculated')}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t('manualForm.grossAmountLabel')}</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={formData.grossAmount}
-                  readOnly
-                  className="bg-muted cursor-not-allowed"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t('manualForm.grossAutoCalculated')}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Categorization */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('manualForm.categorizationSection')}</CardTitle>
-            <CardDescription>{t('manualForm.categorizationDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t('manualForm.mpkLabel')}</label>
-                <Select value={formData.mpk} onValueChange={(v) => handleChange('mpk', v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('manualForm.mpkPlaceholder')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MPK_OPTIONS.map((mpk) => (
-                      <SelectItem key={mpk} value={mpk}>
-                        {mpk}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t('manualForm.categoryLabel')}</label>
-                <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={categoryOpen}
-                      className="w-full justify-between font-normal"
-                    >
-                      {formData.category || t('manualForm.categoryPlaceholder')}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0" align="start">
-                    <Command shouldFilter={false}>
-                      <CommandInput
-                        placeholder={t('manualForm.categorySearch')}
-                        value={categoryInput}
-                        onValueChange={setCategoryInput}
-                      />
-                      <CommandList>
-                        <CommandEmpty className="py-2 px-3">
-                          {categoryInput.trim() ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="w-full justify-start gap-2"
-                              onClick={() => {
-                                const newCategory = categoryInput.trim()
-                                if (!allCategories.includes(newCategory)) {
-                                  setCustomCategories(prev => [...prev, newCategory])
-                                }
-                                handleChange('category', newCategory)
+        <Card className="p-4">
+          <div className="flex items-center gap-2 text-sm font-medium mb-3">
+            <FileText className="h-4 w-4" />
+            {t('manualForm.categorizationSection')}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">{t('manualForm.mpkLabel')}</label>
+              <Select value={formData.mpk} onValueChange={(v) => handleChange('mpk', v)}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder={t('manualForm.mpkPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {MPK_OPTIONS.map((mpk) => (
+                    <SelectItem key={mpk} value={mpk}>
+                      {mpk}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">{t('manualForm.categoryLabel')}</label>
+              <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={categoryOpen}
+                    className="w-full justify-between font-normal h-8 text-sm"
+                  >
+                    {formData.category || t('manualForm.categoryPlaceholder')}
+                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder={t('manualForm.categorySearch')}
+                      value={categoryInput}
+                      onValueChange={setCategoryInput}
+                    />
+                    <CommandList>
+                      <CommandEmpty className="py-2 px-3">
+                        {categoryInput.trim() ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start gap-2"
+                            onClick={() => {
+                              const newCategory = categoryInput.trim()
+                              if (!allCategories.includes(newCategory)) {
+                                setCustomCategories(prev => [...prev, newCategory])
+                              }
+                              handleChange('category', newCategory)
+                              setCategoryInput('')
+                              setCategoryOpen(false)
+                            }}
+                          >
+                            <Plus className="h-4 w-4" />
+                            {t('manualForm.categoryAdd', { name: categoryInput.trim() })}
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">
+                            {t('manualForm.categoryTypeNew')}
+                          </span>
+                        )}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {allCategories
+                          .filter(cat => 
+                            cat.toLowerCase().includes(categoryInput.toLowerCase())
+                          )
+                          .map((cat) => (
+                            <CommandItem
+                              key={cat}
+                              value={cat}
+                              onSelect={() => {
+                                handleChange('category', cat)
                                 setCategoryInput('')
                                 setCategoryOpen(false)
                               }}
                             >
-                              <Plus className="h-4 w-4" />
-                              {t('manualForm.categoryAdd', { name: categoryInput.trim() })}
-                            </Button>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">
-                              {t('manualForm.categoryTypeNew')}
-                            </span>
-                          )}
-                        </CommandEmpty>
-                        <CommandGroup>
-                          {allCategories
-                            .filter(cat => 
-                              cat.toLowerCase().includes(categoryInput.toLowerCase())
-                            )
-                            .map((cat) => (
-                              <CommandItem
-                                key={cat}
-                                value={cat}
-                                onSelect={() => {
-                                  handleChange('category', cat)
-                                  setCategoryInput('')
-                                  setCategoryOpen(false)
-                                }}
-                              >
-                                <Check
-                                  className={`mr-2 h-4 w-4 ${
-                                    formData.category === cat ? "opacity-100" : "opacity-0"
-                                  }`}
-                                />
-                                {cat}
-                              </CommandItem>
-                            ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
+                              <Check
+                                className={`mr-2 h-4 w-4 ${
+                                  formData.category === cat ? "opacity-100" : "opacity-0"
+                                }`}
+                              />
+                              {cat}
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
-          </CardContent>
+          </div>
+        </Card>
+
+        {/* Invoice Image (Scan) - dvlp_doc */}
+        <Card className="p-4">
+          <div className="flex items-center gap-2 text-sm font-medium mb-3">
+            <FileText className="h-4 w-4" />
+            {t('manualForm.invoiceImageSection')}
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            {t('manualForm.invoiceImageDescription')}
+          </p>
+          <div className="space-y-3">
+            {invoiceDocument ? (
+              <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                {invoiceDocument.preview ? (
+                  <img 
+                    src={invoiceDocument.preview} 
+                    alt={invoiceDocument.file.name} 
+                    className="h-12 w-12 object-cover rounded"
+                  />
+                ) : (
+                  <FileText className="h-12 w-12 text-muted-foreground" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{invoiceDocument.file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(invoiceDocument.file.size / 1024).toFixed(1)} KB
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={removeDocument}
+                >
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                </Button>
+              </div>
+            ) : (
+              <div
+                className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDocumentDrop}
+                onClick={() => document.getElementById('document-input')?.click()}
+              >
+                <FileUp className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  {t('manualForm.dropImageHere')} <span className="text-primary">{t('manualForm.selectFromDisk')}</span>
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('manualForm.imageFormats')}
+                </p>
+                <input
+                  id="document-input"
+                  type="file"
+                  accept=".pdf,image/jpeg,image/png,image/gif,image/webp"
+                  className="hidden"
+                  onChange={handleDocumentSelect}
+                  aria-label={t('manualForm.invoiceImageSection')}
+                />
+              </div>
+            )}
+          </div>
         </Card>
 
         {/* Attachments */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              {t('manualForm.attachmentsSection')}
-            </CardTitle>
-            <CardDescription>{t('manualForm.attachmentsDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <Card className="p-4">
+          <div className="flex items-center gap-2 text-sm font-medium mb-3">
+            <Upload className="h-4 w-4" />
+            {t('manualForm.attachmentsSection')}
+          </div>
+          <div className="space-y-3">
             {/* Drop zone */}
             <div
-              className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer"
+              className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer"
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleFileDrop}
               onClick={() => document.getElementById('file-input')?.click()}
             >
-              <FileUp className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+              <FileUp className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground">
                 {t('manualForm.dropFilesHere')} <span className="text-primary">{t('manualForm.selectFromDisk')}</span>
               </p>
@@ -924,16 +1106,16 @@ export function ManualInvoiceForm() {
                 {attachments.map((att, idx) => (
                   <div 
                     key={idx}
-                    className="flex items-center gap-3 p-3 bg-muted rounded-lg"
+                    className="flex items-center gap-3 p-2 bg-muted rounded-lg"
                   >
                     {att.preview ? (
                       <img 
                         src={att.preview} 
                         alt={att.file.name} 
-                        className="h-10 w-10 object-cover rounded"
+                        className="h-8 w-8 object-cover rounded"
                       />
                     ) : (
-                      <FileText className="h-10 w-10 text-muted-foreground" />
+                      <FileText className="h-8 w-8 text-muted-foreground" />
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{att.file.name}</p>
@@ -945,6 +1127,7 @@ export function ManualInvoiceForm() {
                       type="button"
                       variant="ghost"
                       size="icon"
+                      className="h-6 w-6"
                       onClick={() => removeAttachment(idx)}
                     >
                       <Trash2 className="h-4 w-4 text-red-500" />
@@ -953,7 +1136,7 @@ export function ManualInvoiceForm() {
                 ))}
               </div>
             )}
-          </CardContent>
+          </div>
         </Card>
 
         {/* Actions */}

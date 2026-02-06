@@ -34,6 +34,10 @@ export const InvoiceEntity = {
     netAmount: 'dvlp_netamount',
     vatAmount: 'dvlp_vatamount',
     grossAmount: 'dvlp_grossamount',
+    // Currency fields
+    currency: 'dvlp_currency',
+    exchangeRate: 'dvlp_exchangerate',
+    grossAmountPln: 'dvlp_grossamountpln',
     paymentStatus: 'dvlp_paymentstatus',
     paymentDate: 'dvlp_paidat',
     mpk: 'dvlp_costcenter',

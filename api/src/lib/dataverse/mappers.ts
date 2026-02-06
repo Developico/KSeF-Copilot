@@ -8,7 +8,7 @@
 import { DV, KSEF_STATUS, KSEF_DIRECTION, PAYMENT_STATUS, INVOICE_TYPE, CURRENCY, SESSION_STATUS, SESSION_TYPE, SYNC_STATUS, SYNC_DIRECTION, SYNC_OPERATION_TYPE, KSEF_ENVIRONMENT, INVOICE_SOURCE } from './config'
 import { logDataverseMapping } from './logger'
 import type { DvInvoice, DvSetting, DvSession, DvSyncLog } from '../../types/dataverse'
-import type { Invoice, PaymentStatus as AppPaymentStatus, MPK, InvoiceSource } from '../../types/invoice'
+import type { Invoice, PaymentStatus as AppPaymentStatus, MPK, InvoiceSource, Currency } from '../../types/invoice'
 
 // ============================================================
 // Invoice Mappers
@@ -54,6 +54,24 @@ function mapAppSourceToDv(source: InvoiceSource | undefined): number {
 }
 
 /**
+ * Map Dataverse Currency (number) to App Currency
+ */
+export function mapDvCurrencyToApp(value: number | undefined): Currency {
+  if (value === CURRENCY.EUR) return 'EUR'
+  if (value === CURRENCY.USD) return 'USD'
+  return 'PLN' // Default
+}
+
+/**
+ * Map App Currency to Dataverse Currency (number)
+ */
+export function mapAppCurrencyToDv(currency: Currency | undefined): number {
+  if (currency === 'EUR') return CURRENCY.EUR
+  if (currency === 'USD') return CURRENCY.USD
+  return CURRENCY.PLN // Default
+}
+
+/**
  * Map Dataverse Invoice to App Invoice
  */
 export function mapDvInvoiceToApp(raw: DvInvoice): Invoice {
@@ -76,6 +94,12 @@ export function mapDvInvoiceToApp(raw: DvInvoice): Invoice {
     netAmount: raw[s.netAmount as keyof DvInvoice] as number,
     vatAmount: raw[s.vatAmount as keyof DvInvoice] as number,
     grossAmount: raw[s.grossAmount as keyof DvInvoice] as number,
+    // Currency fields
+    currency: mapDvCurrencyToApp(raw[s.currency as keyof DvInvoice] as number | undefined),
+    exchangeRate: raw[s.exchangeRate as keyof DvInvoice] as number | undefined,
+    exchangeDate: undefined, // Not stored in Dataverse yet - derived from invoice date
+    exchangeSource: undefined, // Not stored in Dataverse yet
+    grossAmountPln: raw[s.grossAmountPln as keyof DvInvoice] as number | undefined,
     paymentStatus: mapDvPaymentStatusToApp(raw[s.paymentStatus as keyof DvInvoice] as number),
     paymentDate: raw[s.paidAt as keyof DvInvoice] as string | undefined,
     mpk: mapDvCostCenterToMpk(raw[s.costCenter as keyof DvInvoice] as number | undefined),
@@ -120,6 +144,10 @@ export function mapAppInvoiceToDv(app: Partial<Invoice>): Record<string, unknown
   if (app.netAmount !== undefined) payload[s.netAmount] = app.netAmount
   if (app.vatAmount !== undefined) payload[s.vatAmount] = app.vatAmount
   if (app.grossAmount !== undefined) payload[s.grossAmount] = app.grossAmount
+  // Currency fields
+  if (app.currency !== undefined) payload[s.currency] = mapAppCurrencyToDv(app.currency)
+  if (app.exchangeRate !== undefined) payload[s.exchangeRate] = app.exchangeRate
+  if (app.grossAmountPln !== undefined) payload[s.grossAmountPln] = app.grossAmountPln
   if (app.paymentStatus !== undefined) payload[s.paymentStatus] = mapAppPaymentStatusToDv(app.paymentStatus)
   if (app.paymentDate !== undefined) payload[s.paidAt] = app.paymentDate
   if (app.category !== undefined) payload[s.category] = app.category

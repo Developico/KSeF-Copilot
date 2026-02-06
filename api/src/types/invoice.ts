@@ -39,6 +39,17 @@ export const MPK = {
 export type MPK = (typeof MPK)[keyof typeof MPK]
 
 /**
+ * Currency enum - supported currencies
+ */
+export const Currency = {
+  PLN: 'PLN',
+  EUR: 'EUR',
+  USD: 'USD',
+} as const
+
+export type Currency = (typeof Currency)[keyof typeof Currency]
+
+/**
  * Invoice entity from Dataverse
  */
 export interface Invoice {
@@ -62,6 +73,12 @@ export interface Invoice {
   netAmount: number
   vatAmount: number
   grossAmount: number
+  // Currency fields
+  currency: Currency
+  exchangeRate?: number           // Exchange rate (4 decimal places)
+  exchangeDate?: string           // Date of the exchange rate (ISO 8601)
+  exchangeSource?: string         // Source of rate: 'NBP API' | 'Manual'
+  grossAmountPln?: number         // Gross amount in PLN (for EUR/USD invoices)
   paymentStatus: PaymentStatus
   paymentDate?: string
   mpk?: MPK
@@ -100,6 +117,7 @@ export interface KsefInvoice {
   netAmount: number
   vatAmount: number
   grossAmount: number
+  currency?: Currency
   rawXml: string
 }
 
@@ -123,6 +141,12 @@ export const InvoiceUpdateSchema = z.object({
   netAmount: z.number().positive().optional(),
   vatAmount: z.number().min(0).optional(),
   grossAmount: z.number().positive().optional(),
+  // Currency fields
+  currency: z.enum(['PLN', 'EUR', 'USD']).optional(),
+  exchangeRate: z.number().min(0).optional(),
+  exchangeDate: z.string().optional(),
+  exchangeSource: z.string().max(50).optional(),
+  grossAmountPln: z.number().min(0).optional(),
   // AI Categorization fields
   aiMpkSuggestion: z.nativeEnum(MPK).optional(),
   aiCategorySuggestion: z.string().max(100).optional(),
@@ -157,6 +181,12 @@ export interface InvoiceCreate {
   netAmount: number
   vatAmount: number
   grossAmount: number
+  // Currency fields
+  currency?: Currency
+  exchangeRate?: number
+  exchangeDate?: string
+  exchangeSource?: string
+  grossAmountPln?: number
   rawXml?: string
   source?: InvoiceSource
   // Manual entry fields

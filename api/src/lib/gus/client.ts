@@ -13,8 +13,8 @@ import { GusCompanyData, GusSession, GusLookupResult, GusSearchResult, GusSearch
 const GUS_API_URL = process.env.GUS_API_URL || 'https://wyszukiwarkaregon.stat.gov.pl/wsBIR/UslugaBIRzewnPubl.svc'
 const GUS_API_KEY = process.env.GUS_API_KEY || ''
 
-// Test API endpoint (for development)
-const GUS_TEST_API_URL = 'https://wyszukiwarkaregon.stat.gov.pl/wsBIR/wsBIR.svc'
+// Test API endpoint (for development) - note: different hostname!
+const GUS_TEST_API_URL = 'https://wyszukiwarkaregontest.stat.gov.pl/wsBIR/wsBIR.svc'
 const GUS_TEST_API_KEY = 'abcde12345abcde12345'
 
 // Use test environment if no production key is configured
@@ -47,6 +47,7 @@ function createSoapEnvelope(body: string): string {
 async function soapRequest(envelope: string, sessionId?: string): Promise<string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/soap+xml; charset=utf-8',
+    'Accept': 'application/soap+xml', // Force plain SOAP response, not MTOM
   }
   
   if (sessionId) {
@@ -63,7 +64,18 @@ async function soapRequest(envelope: string, sessionId?: string): Promise<string
     throw new Error(`GUS API error: ${response.status} ${response.statusText}`)
   }
   
-  return response.text()
+  const text = await response.text()
+  
+  // Handle MTOM/XOP multipart response - extract the SOAP part
+  if (text.includes('--uuid:') || text.includes('Content-Type:')) {
+    // Find the actual SOAP envelope in the multipart response
+    const soapMatch = text.match(/<s:Envelope[\s\S]*?<\/s:Envelope>/i)
+    if (soapMatch) {
+      return soapMatch[0]
+    }
+  }
+  
+  return text
 }
 
 /**
@@ -75,13 +87,27 @@ function extractSoapValue(xml: string, tagName: string): string | null {
     new RegExp(`<${tagName}[^>]*>([^<]*)</${tagName}>`, 'i'),
     new RegExp(`<[^:]+:${tagName}[^>]*>([^<]*)</[^:]+:${tagName}>`, 'i'),
     new RegExp(`<${tagName}Result[^>]*>([^<]*)</${tagName}Result>`, 'i'),
+    // Handle namespace in tag name like <ZalogujResponse xmlns="...">
+    new RegExp(`<${tagName}[^>]*>\\s*<${tagName}Result[^>]*>([^<]*)</${tagName}Result>`, 'i'),
   ]
   
   for (const pattern of patterns) {
     const match = xml.match(pattern)
-    if (match) {
-      return match[1].trim()
+    if (match && match[1]) {
+      const value = match[1].trim()
+      if (value) {
+        console.log(`[GUS] Extracted ${tagName}: ${value}`)
+        return value
+      }
     }
+  }
+  
+  console.log(`[GUS] Could not extract ${tagName} from XML. Looking for patterns...`)
+  // Try to find any ZalogujResult
+  const zalogujMatch = xml.match(/ZalogujResult[^>]*>([^<]+)</i)
+  if (zalogujMatch) {
+    console.log(`[GUS] Found ZalogujResult with regex: ${zalogujMatch[1]}`)
+    return zalogujMatch[1].trim()
   }
   
   return null
@@ -134,6 +160,10 @@ async function login(): Promise<string> {
     return cachedSession.sessionId
   }
   
+  console.log(`[GUS] Logging in to ${API_URL}`)
+  console.log(`[GUS] Using ${USE_TEST_ENV ? 'TEST' : 'PRODUCTION'} environment`)
+  console.log(`[GUS] API key length: ${API_KEY.length}, first 4 chars: ${API_KEY.substring(0, 4)}...`)
+  
   const envelope = createSoapEnvelope(`
     <ns:Zaloguj>
       <ns:pKluczUzytkownika>${API_KEY}</ns:pKluczUzytkownika>
@@ -141,11 +171,30 @@ async function login(): Promise<string> {
   `)
   
   const response = await soapRequest(envelope)
+  console.log(`[GUS] Login response: ${response}`)
+  
   const sessionId = extractSoapValue(response, 'ZalogujResult')
   
   if (!sessionId) {
-    throw new Error('Failed to login to GUS API: No session ID returned')
+    // Login failed - the API returned empty ZalogujResult
+    // This means the API key is invalid or wrong endpoint
+    console.error('[GUS] Login failed! Empty session ID returned.')
+    console.error('[GUS] Possible causes:')
+    console.error('  1. Invalid API key')
+    console.error('  2. Wrong endpoint (test key on production or vice versa)')
+    console.error('  3. API key expired')
+    console.error(`[GUS] Current config: URL=${API_URL}, KeyLen=${API_KEY.length}`)
+    
+    // For test environment, the key should be exactly 'abcde12345abcde12345' (20 chars)
+    if (USE_TEST_ENV && API_KEY !== 'abcde12345abcde12345') {
+      console.error('[GUS] WARNING: Using test URL but API key is not the standard test key!')
+      console.error('[GUS] Test key should be: abcde12345abcde12345')
+    }
+    
+    throw new Error('Failed to login to GUS API: Invalid API key or wrong endpoint')
   }
+  
+  console.log(`[GUS] Login successful! Session ID: ${sessionId.substring(0, 8)}...`)
   
   // Cache the session (expires in 55 minutes to be safe)
   cachedSession = {

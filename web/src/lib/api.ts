@@ -87,7 +87,12 @@ export interface Invoice {
   netAmount: number
   vatAmount: number
   grossAmount: number
-  currency?: string
+  // Currency fields
+  currency: 'PLN' | 'EUR' | 'USD'
+  exchangeRate?: number           // Exchange rate (4 decimal places)
+  exchangeDate?: string           // Date of the exchange rate (ISO 8601)
+  exchangeSource?: string         // Source: 'NBP API' | 'Manual'
+  grossAmountPln?: number         // Gross amount converted to PLN
   paymentStatus: 'pending' | 'paid'
   paymentDate?: string
   mpk?: string
@@ -293,6 +298,11 @@ export interface ManualInvoiceCreate {
   description?: string
   mpk?: string
   category?: string
+  // Currency fields
+  currency?: 'PLN' | 'EUR' | 'USD'
+  exchangeRate?: number
+  exchangeDate?: string
+  grossAmountPln?: number
   // AI suggestion fields (from document extraction)
   aiMpkSuggestion?: string
   aiCategorySuggestion?: string
@@ -894,6 +904,46 @@ export const api = {
         body: JSON.stringify(data),
       }),
   },
+
+  // Exchange Rates (NBP)
+  exchangeRates: {
+    get: (currency: 'EUR' | 'USD', date?: string) => {
+      const params = new URLSearchParams()
+      params.append('currency', currency)
+      if (date) params.append('date', date)
+      return apiFetch<ExchangeRateResponse>(`/api/exchange-rates?${params}`)
+    },
+
+    convert: (amount: number, currency: 'EUR' | 'USD', date?: string) =>
+      apiFetch<ConversionResponse>('/api/exchange-rates/convert', {
+        method: 'POST',
+        body: JSON.stringify({ amount, currency, date }),
+      }),
+  },
+}
+
+// ============================================================================
+// Exchange Rate Types
+// ============================================================================
+
+export interface ExchangeRateResponse {
+  rate: number
+  currency: 'EUR' | 'USD'
+  effectiveDate: string
+  requestedDate: string
+  source: 'NBP API'
+  previousRate?: number
+  changePercent?: number
+  warningThreshold?: boolean
+}
+
+export interface ConversionResponse {
+  originalAmount: number
+  currency: 'EUR' | 'USD'
+  plnAmount: number
+  rate: number
+  effectiveDate: string
+  requestedDate: string
 }
 
 // ============================================================================

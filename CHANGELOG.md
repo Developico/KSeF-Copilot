@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Multi-currency support (EUR, USD) for manual invoices with PLN conversion
+- NBP exchange rate API integration for automatic rate fetching
+- Invoice Image (Scan) section on both create and detail forms for `dvlp_doc` field
+- i18n translations for invoice document viewer and attachments section
+- Supplier lookup dialog with i18n support
+- Exchange rates API endpoint (`/api/exchange-rates`) for NBP rate lookup
 - Invoice document field (`dvlp_doc`) for storing invoice scans/images up to 128MB
 - Drag & drop document upload component with progress indicator
 - Modern document preview with fullscreen mode and zoom
@@ -19,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Helper scripts for checking settings and invoices (`check-settings.ts`, `check-invoices.ts`)
 
 ### Changed
+- Manual invoice form redesigned with 3-column grid layout matching detail view
+- Form sections renamed: "Załączniki" for additional docs, "Obraz faktury (Scan)" for main invoice image
+- Improved compact card styling with consistent padding across invoice forms
 - Attachments section on invoice detail is now collapsed by default
 - KSeF sync now properly links imported invoices to their environment setting
 - Updated sync API endpoints to accept and use `settingId` parameter

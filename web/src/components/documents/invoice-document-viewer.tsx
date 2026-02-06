@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import {
   FileImage,
   Download,
@@ -76,6 +77,7 @@ export function InvoiceDocumentViewer({
 }: InvoiceDocumentViewerProps) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const t = useTranslations('invoices.invoiceDocument')
   
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -111,15 +113,15 @@ export function InvoiceDocumentViewer({
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
       setUploadProgress(0)
       toast({
-        title: 'Sukces',
-        description: 'Dokument został przesłany',
+        title: t('success'),
+        description: t('uploadSuccess'),
       })
     },
     onError: (error: Error) => {
       setUploadProgress(0)
       toast({
-        title: 'Błąd',
-        description: error.message || 'Nie udało się przesłać dokumentu',
+        title: t('error'),
+        description: error.message || t('uploadError'),
         variant: 'destructive',
       })
     },
@@ -133,14 +135,14 @@ export function InvoiceDocumentViewer({
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
       toast({
-        title: 'Sukces',
-        description: 'Dokument został usunięty',
+        title: t('success'),
+        description: t('deleteSuccess'),
       })
     },
     onError: (error: Error) => {
       toast({
-        title: 'Błąd',
-        description: error.message || 'Nie udało się usunąć dokumentu',
+        title: t('error'),
+        description: error.message || t('deleteError'),
         variant: 'destructive',
       })
     },
@@ -197,7 +199,7 @@ export function InvoiceDocumentViewer({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <FileImage className="h-5 w-5 text-primary" />
-            Dokument faktury
+            {t('title')}
           </CardTitle>
           
           {hasDocument && documentData && (
@@ -237,18 +239,18 @@ export function InvoiceDocumentViewer({
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Usunąć dokument?</AlertDialogTitle>
+                      <AlertDialogTitle>{t('deleteTitle')}</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Ta operacja jest nieodwracalna. Dokument zostanie trwale usunięty.
+                        {t('deleteDescription')}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                      <AlertDialogCancel>{t('deleteCancel')}</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={() => deleteMutation.mutate()}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
-                        Usuń
+                        {t('deleteConfirm')}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -275,7 +277,7 @@ export function InvoiceDocumentViewer({
         {documentError && !isLoadingDocument && (
           <div className="text-center py-8 text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Nie udało się załadować dokumentu</p>
+            <p className="text-sm">{t('loadError')}</p>
             <Button
               variant="ghost"
               size="sm"
@@ -283,7 +285,7 @@ export function InvoiceDocumentViewer({
               className="mt-2"
             >
               <RefreshCw className="h-4 w-4 mr-1" />
-              Spróbuj ponownie
+              {t('retry')}
             </Button>
           </div>
         )}
@@ -362,7 +364,7 @@ export function InvoiceDocumentViewer({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileImage className="h-5 w-5" />
-              {documentData?.fileName || 'Dokument'}
+              {documentData?.fileName || t('document')}
             </DialogTitle>
           </DialogHeader>
 
@@ -391,10 +393,10 @@ export function InvoiceDocumentViewer({
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleDownload}>
                 <Download className="h-4 w-4 mr-2" />
-                Pobierz
+                {t('download')}
               </Button>
               <Button variant="outline" onClick={() => setIsFullscreen(false)}>
-                Zamknij
+                {t('close')}
               </Button>
             </div>
           </div>
