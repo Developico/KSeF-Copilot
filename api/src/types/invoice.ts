@@ -79,6 +79,12 @@ export interface Invoice {
   aiRationale?: string
   aiConfidence?: number
   aiProcessedAt?: string
+  // Document (invoice image/scan)
+  hasDocument?: boolean
+  documentFileName?: string
+  // Attachment summary
+  hasAttachments?: boolean
+  attachmentCount?: number
 }
 
 /**

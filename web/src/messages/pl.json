@@ -153,6 +153,9 @@
     "exportedCount": "Wyeksportowano {count} faktur do pliku CSV",
     "invoicePaid": "Faktura opłacona",
     "invoiceMarkedPaid": "Faktura {number} została oznaczona jako opłacona",
+    "documents": "Dok.",
+    "hasDocument": "Faktura posiada dokument",
+    "attachmentsCount": "{count, plural, one {{count} załącznik} few {{count} załączniki} other {{count} załączników}}",
     "scanner": {
       "title": "Skanuj fakturę",
       "titleProcessing": "Analizuję dokument...",

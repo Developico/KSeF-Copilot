@@ -5,7 +5,7 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // For Azure Static Web Apps integration with Functions
+  // For Azure App Service integration with Azure Functions API
   async rewrites() {
     return [
       {

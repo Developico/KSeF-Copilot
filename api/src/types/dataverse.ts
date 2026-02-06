@@ -128,6 +128,10 @@ export interface DvInvoice {
   _dvlp_ksefsettingid_value: string
   _dvlp_parentinvoiceid_value?: string
   
+  // Document file column
+  dvlp_doc?: string // File column - contains file name when document exists
+  dvlp_doc_name?: string // File name metadata
+  
   // Standard fields
   statecode: number
   statuscode: number

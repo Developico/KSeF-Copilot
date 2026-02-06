@@ -153,6 +153,9 @@
     "exportedCount": "Exported {count} invoices to CSV",
     "invoicePaid": "Invoice paid",
     "invoiceMarkedPaid": "Invoice {number} marked as paid",
+    "documents": "Doc.",
+    "hasDocument": "Invoice has document",
+    "attachmentsCount": "{count, plural, one {{count} attachment} other {{count} attachments}}",
     "scanner": {
       "title": "Scan invoice",
       "titleProcessing": "Analyzing document...",

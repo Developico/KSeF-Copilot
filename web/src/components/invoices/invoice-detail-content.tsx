@@ -29,6 +29,7 @@ import {
 import Link from 'next/link'
 
 import { api, Invoice, Attachment } from '@/lib/api'
+import { InvoiceDocumentViewer } from '@/components/documents'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -154,7 +155,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   const [editGrossAmount, setEditGrossAmount] = useState('')
   
   // State for collapsible attachments
-  const [attachmentsExpanded, setAttachmentsExpanded] = useState(true)
+  const [attachmentsExpanded, setAttachmentsExpanded] = useState(false)
   
   // State for attachment preview
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null)
@@ -880,6 +881,13 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
               </Table>
             </Card>
           )}
+
+          {/* Invoice Document */}
+          <InvoiceDocumentViewer
+            invoiceId={invoiceId}
+            hasDocument={invoice.hasDocument}
+            documentFileName={invoice.documentFileName}
+          />
 
           {/* Attachments - Collapsible */}
           <Card className="p-4">

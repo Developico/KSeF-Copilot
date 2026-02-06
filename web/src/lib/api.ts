@@ -107,6 +107,12 @@ export interface Invoice {
   aiRationale?: string
   aiConfidence?: number
   aiProcessedAt?: string
+  // Document (invoice image/scan)
+  hasDocument?: boolean
+  documentFileName?: string
+  // Attachment summary
+  hasAttachments?: boolean
+  attachmentCount?: number
 }
 
 export interface InvoiceItem {
@@ -364,6 +370,33 @@ export interface AttachmentConfig {
   allowedMimeTypes: string[]
 }
 
+// Document Types (for invoice image/scan)
+export interface DocumentInfo {
+  fileName: string
+  mimeType: string
+  fileSize: number
+}
+
+export interface DocumentUpload {
+  fileName: string
+  mimeType: string
+  content: string // base64
+}
+
+export interface DocumentDownload {
+  fileName: string
+  mimeType: string
+  fileSize: number
+  content: string // base64
+}
+
+export interface DocumentConfig {
+  maxSizeBytes: number
+  maxSizeMB: number
+  allowedMimeTypes: string[]
+  allowedExtensions: string[]
+}
+
 // ============================================================================
 // Auth helpers
 // ============================================================================
@@ -611,6 +644,27 @@ export const api = {
       apiFetch<void>(`/api/attachments/${attachmentId}`, {
         method: 'DELETE',
       }),
+
+    // Document (invoice image/scan) - File column
+    uploadDocument: (invoiceId: string, data: DocumentUpload) =>
+      apiFetch<{ success: boolean; document: DocumentInfo }>(`/api/invoices/${invoiceId}/document`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+
+    downloadDocument: (invoiceId: string) =>
+      apiFetch<DocumentDownload>(`/api/invoices/${invoiceId}/document`),
+
+    getDocumentStreamUrl: (invoiceId: string) =>
+      `${API_BASE_URL}/api/invoices/${invoiceId}/document/stream`,
+
+    deleteDocument: (invoiceId: string) =>
+      apiFetch<{ success: boolean }>(`/api/invoices/${invoiceId}/document`, {
+        method: 'DELETE',
+      }),
+
+    getDocumentConfig: () =>
+      apiFetch<DocumentConfig>('/api/documents/config'),
 
     // AI Categorization
     categorizeWithAI: (invoiceId: string) =>

@@ -190,6 +190,10 @@ export const DV = {
     settingLookup: process.env.DV_FIELD_INVOICE_SETTING || '_dvlp_settingid_value',
     parentInvoiceLookup: process.env.DV_FIELD_INVOICE_PARENT || '_dvlp_parentinvoiceid_value',
     
+    // Document (File column for invoice image/scan)
+    document: process.env.DV_FIELD_INVOICE_DOC || 'dvlp_doc',
+    documentName: process.env.DV_FIELD_INVOICE_DOC_NAME || 'dvlp_doc_name',
+    
     // Standard fields
     stateCode: process.env.DV_FIELD_INVOICE_STATE || 'statecode',
     statusCode: process.env.DV_FIELD_INVOICE_STATUSCODE || 'statuscode',

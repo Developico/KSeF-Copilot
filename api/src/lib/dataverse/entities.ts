@@ -51,6 +51,9 @@ export const InvoiceEntity = {
     aiRationale: 'dvlp_airationale',
     aiConfidence: 'dvlp_aiconfidence',
     aiProcessedAt: 'dvlp_aiprocessedat',
+    // Document (File column for invoice image/scan)
+    document: 'dvlp_doc',
+    documentName: 'dvlp_doc_name',
   },
 }
 

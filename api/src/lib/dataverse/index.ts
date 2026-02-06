@@ -88,3 +88,4 @@ export type {
 // Legacy exports (for backward compatibility)
 export * from './entities'
 export * from './invoices'
+export * from './document'

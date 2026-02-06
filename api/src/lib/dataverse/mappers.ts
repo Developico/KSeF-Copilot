@@ -91,6 +91,9 @@ export function mapDvInvoiceToApp(raw: DvInvoice): Invoice {
     aiRationale: raw[s.aiRationale as keyof DvInvoice] as string | undefined,
     aiConfidence: raw[s.aiConfidence as keyof DvInvoice] as number | undefined,
     aiProcessedAt: raw[s.aiProcessedAt as keyof DvInvoice] as string | undefined,
+    // Document fields (File column)
+    hasDocument: !!(raw[s.documentName as keyof DvInvoice]),
+    documentFileName: raw[s.documentName as keyof DvInvoice] as string | undefined,
   }
   
   logDataverseMapping('mapDvInvoiceToApp', raw, mapped)

@@ -47,6 +47,8 @@
     "react-day-picker": "^9.13.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
+    "react-medium-image-zoom": "^5.4.0",
+    "react-pdf": "^10.3.0",
     "recharts": "^3.7.0",
     "styled-jsx": "^5.1.6",
     "tailwind-merge": "^2.6.0",

@@ -8,11 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Invoice document field (`dvlp_doc`) for storing invoice scans/images up to 128MB
+- Drag & drop document upload component with progress indicator
+- Modern document preview with fullscreen mode and zoom
+- Document/attachment status icons on invoice list (📄 document, 📎 attachments)
+- Azure Functions endpoints for document upload, download, and delete
+- Chunked upload support for large files via Dataverse File column API
 - Multi-environment invoice separation using `dvlp_settingid` lookup field
 - Test data seed script with `--name` parameter for targeting specific settings
 - Helper scripts for checking settings and invoices (`check-settings.ts`, `check-invoices.ts`)
 
 ### Changed
+- Attachments section on invoice detail is now collapsed by default
 - KSeF sync now properly links imported invoices to their environment setting
 - Updated sync API endpoints to accept and use `settingId` parameter
 - Frontend sync page passes selected company's settingId to backend

@@ -44,6 +44,8 @@ import {
   Tag,
   ChevronDown,
   ChevronRight,
+  FileImage,
+  Paperclip,
 } from 'lucide-react'
 import { useInvoices, useMarkAsPaid, useDeleteInvoice, useUpdateInvoice } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
@@ -957,6 +959,7 @@ export default function InvoicesPage() {
                   <TableHead className="hidden xl:table-cell">{t('mpk')}</TableHead>
                   <TableHead className="hidden xl:table-cell">{t('category')}</TableHead>
                   <TableHead className="hidden md:table-cell">{t('descriptionStatus')}</TableHead>
+                  <TableHead className="hidden sm:table-cell w-[70px] text-center">{t('documents')}</TableHead>
                   <TableHead className="w-[100px] lg:w-[120px] text-center">{tCommon('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -970,7 +973,7 @@ export default function InvoicesPage() {
                         className="bg-muted/50 hover:bg-muted/70 cursor-pointer"
                         onClick={() => toggleGroupCollapse(group.key)}
                       >
-                        <TableCell colSpan={8}>
+                        <TableCell colSpan={9}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               {collapsedGroups.has(group.key) ? (
@@ -1062,6 +1065,26 @@ export default function InvoicesPage() {
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       {getDescriptionStatusBadgeTranslated(getDescriptionStatus(invoice))}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <div className="flex items-center justify-center gap-1">
+                        {invoice.hasDocument && (
+                          <span title={invoice.documentFileName || t('hasDocument')}>
+                            <FileImage className="h-4 w-4 text-purple-500" />
+                          </span>
+                        )}
+                        {invoice.hasAttachments && (
+                          <div className="flex items-center gap-0.5" title={t('attachmentsCount', { count: invoice.attachmentCount || 0 })}>
+                            <Paperclip className="h-4 w-4 text-blue-500" />
+                            {(invoice.attachmentCount || 0) > 1 && (
+                              <span className="text-xs text-blue-600">{invoice.attachmentCount}</span>
+                            )}
+                          </div>
+                        )}
+                        {!invoice.hasDocument && !invoice.hasAttachments && (
+                          <span className="text-muted-foreground text-sm">—</span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center gap-1">
