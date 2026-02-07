@@ -165,6 +165,7 @@ export function DocumentDropzone({
         onChange={handleInputChange}
         className="hidden"
         disabled={disabled || isUploading}
+        aria-label="Upload document file"
       />
 
       {/* Dropzone area */}

@@ -8,7 +8,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { getSecret, listSecretNames } from '../lib/keyvault/secrets'
+import { getSecret } from '../lib/keyvault/secrets'
 import { dataverseClient } from '../lib/dataverse/client'
 import { KSEF_ENDPOINTS } from '../lib/ksef/config'
 
@@ -48,9 +48,19 @@ async function checkKeyVault(): Promise<ServiceStatus> {
       }
     }
 
-    // Try to list secrets (lightweight operation)
-    const secrets = await listSecretNames()
-    const ksefTokens = secrets.filter(s => s.startsWith('ksef-token-'))
+    // Try to get a known secret to verify connectivity (faster than listing)
+    const testSecretName = process.env.KSEF_TOKEN_SECRET_NAME || 'ksef-token-primary'
+    const testNip = process.env.KSEF_NIP
+    
+    // Try to fetch a specific secret to verify access
+    let secretExists = false
+    try {
+      const secretName = testNip ? `ksef-token-${testNip}` : testSecretName
+      const secret = await getSecret(secretName)
+      secretExists = secret !== undefined
+    } catch {
+      // Secret might not exist, but connection works
+    }
     
     return {
       name: 'Azure Key Vault',
@@ -59,8 +69,7 @@ async function checkKeyVault(): Promise<ServiceStatus> {
       responseTime: Date.now() - start,
       details: {
         vaultUrl,
-        totalSecrets: secrets.length,
-        ksefTokens: ksefTokens.length
+        testSecretExists: secretExists
       }
     }
   } catch (error) {

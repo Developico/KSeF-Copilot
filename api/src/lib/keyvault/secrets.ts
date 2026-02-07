@@ -1,11 +1,12 @@
 import { SecretClient } from '@azure/keyvault-secrets'
-import { DefaultAzureCredential, AzureCliCredential, ChainedTokenCredential } from '@azure/identity'
+import { DefaultAzureCredential, AzureCliCredential, ChainedTokenCredential, ManagedIdentityCredential } from '@azure/identity'
 
 let secretClient: SecretClient | null = null
 
 /**
  * Get or create Key Vault SecretClient
- * Uses Azure CLI credentials first (for local dev), then DefaultAzureCredential
+ * In Azure: uses Managed Identity
+ * Locally: uses Azure CLI credentials
  */
 function getSecretClient(): SecretClient {
   if (!secretClient) {
@@ -15,12 +16,19 @@ function getSecretClient(): SecretClient {
       throw new Error('AZURE_KEYVAULT_URL environment variable is required')
     }
 
-    // For local development: prefer Azure CLI credentials over environment variables
-    // This allows using personal account which has Key Vault access
-    const credential = new ChainedTokenCredential(
-      new AzureCliCredential(),
-      new DefaultAzureCredential()
-    )
+    // Detect Azure environment - use Managed Identity first, then fall back to CLI for local dev
+    const isAzure = process.env.WEBSITE_INSTANCE_ID !== undefined
+    
+    const credential = isAzure
+      ? new ChainedTokenCredential(
+          new ManagedIdentityCredential(),
+          new DefaultAzureCredential()
+        )
+      : new ChainedTokenCredential(
+          new AzureCliCredential(),
+          new DefaultAzureCredential()
+        )
+    
     secretClient = new SecretClient(vaultUrl, credential)
   }
 
