@@ -7,31 +7,9 @@
     "azureFunctions.projectLanguageModel": 4,
     "azureFunctions.preDeployTask": "npm prune (functions)",
 
-    // Azure App Service (web) - analogicznie do dvlp-planner
+    // Azure App Service (web) — local build, deploy artifacts
     "appService.defaultWebAppToDeploy": "/subscriptions/73d82af2-b751-4bd5-9750-70a8a5378d93/resourceGroups/rg-ksef/providers/Microsoft.Web/sites/dvlp-ksef",
-    "appService.deploySubpath": "web",
-    "appService.zipIgnorePattern": [
-        "node_modules{,/**}",
-        ".next{,/**}",
-        ".git{,/**}",
-        ".github{,/**}",
-        ".vscode{,/**}",
-        "*.md",
-        "*.test.ts",
-        "*.test.tsx",
-        "*.spec.ts",
-        "*.spec.tsx",
-        "tests{,/**}",
-        "docs{,/**}",
-        "scripts{,/**}",
-        "*.log",
-        "*-debug.log",
-        ".env.local",
-        ".env.development",
-        ".env.test",
-        "vitest.config.*",
-        "jest.config.*",
-        ".eslintrc*",
-        ".prettierrc*"
-    ]
+    "appService.deploySubpath": "web/.deploy",
+    "appService.preDeployTask": "build-deploy",
+    "appService.showBuildDuringDeployPrompt": false
 }

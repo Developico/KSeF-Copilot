@@ -12,7 +12,8 @@
     "lint:fix": "next lint --fix",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "deploy:build": "node scripts/build-deploy.mjs"
   },
   "dependencies": {
     "@azure/msal-browser": "^3.26.0",

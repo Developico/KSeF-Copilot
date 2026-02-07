@@ -1,20 +1,17 @@
 #!/bin/bash
-
 # Azure App Service startup script for Next.js
+# Handles Oryx's node_modules.tar.gz compression optimization
+
 cd /home/site/wwwroot
 
-# Install dependencies if needed (usually done during build)
-if [ ! -d "node_modules" ]; then
-    echo "Installing dependencies..."
-    npm ci
+# Azure compresses node_modules to tar.gz during ZIP deployment.
+# The default Oryx startup extracts them, but our custom startup must do it manually.
+if [ -f node_modules.tar.gz ] && [ ! -d node_modules/next ]; then
+    echo "Extracting node_modules.tar.gz..."
+    mkdir -p node_modules
+    tar xzf node_modules.tar.gz -C .
+    echo "node_modules extracted ($(du -sh node_modules | cut -f1))"
 fi
 
-# Build if .next doesn't exist
-if [ ! -d ".next" ]; then
-    echo "Building application..."
-    npm run build
-fi
-
-# Start the application
-echo "Starting Next.js application..."
-npm start
+echo "Starting Next.js server..."
+node server.js

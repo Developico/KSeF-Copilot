@@ -63,6 +63,17 @@
       "options": {
         "cwd": "${workspaceFolder}/api"
       }
+    },
+    {
+      "type": "shell",
+      "label": "build-deploy",
+      "command": "node",
+      "args": ["scripts/build-deploy.mjs"],
+      "options": {
+        "cwd": "${workspaceFolder}/web"
+      },
+      "group": "build",
+      "problemMatcher": []
     }
   ]
 }
