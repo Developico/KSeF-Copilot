@@ -6,6 +6,26 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.6.1] - 2026-02-08
+
+### 🔧 Poprawki - Deployment i Autentykacja
+
+- **Naprawiony token issuer mismatch** — API middleware akceptuje zarówno tokeny v1.0 (`sts.windows.net`) jak i v2.0 (`login.microsoftonline.com`)
+- **Dodane uprawnienia Key Vault** — nadano rolę "Key Vault Secrets User" dla managed identity Function App oraz service principal aplikacji
+- **Skonfigurowane zmienne środowiskowe**:
+  - Web App: dodano wszystkie `NEXT_PUBLIC_*` (CLIENT_ID, TENANT_ID, API_SCOPE, ADMIN_GROUP, USER_GROUP)
+  - Function App: dodano `ADMIN_GROUP_ID`, `USER_GROUP_ID`, `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_KEYVAULT_URL`
+- **Naprawiony problem z pamięcią Function App** — usunięto folder `.ignored` z devDependencies (redukcja z 1.17GB do 137MB)
+- **Deployment zoptymalizowany** — paczka deployment zmniejszona o 92% (602MB → 137MB)
+
+### 🔒 Bezpieczeństwo
+
+- Funkcje API sprawdzają przynależność użytkownika do grup zabezpieczeń (Admin/User) przed wykonaniem operacji
+- Key Vault RBAC poprawnie skonfigurowany dla odczytu sekretów KSeF token
+- Autentykacja działa end-to-end: frontend → MSAL → Bearer token → API validation → Key Vault access
+
+---
+
 ## [0.6.0] - 2026-02-08
 
 ### 🚀 Wdrożenie - Azure App Service

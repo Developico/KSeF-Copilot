@@ -72,8 +72,16 @@ export async function verifyAuth(request: HttpRequest): Promise<AuthResult> {
     // Accept both "api://<client-id>" and bare "<client-id>" as valid audiences
     const validAudiences = CLIENT_ID ? [CLIENT_ID, `api://${CLIENT_ID}`] : undefined
 
+    // Accept both v1.0 and v2.0 token issuers
+    const validIssuers = TENANT_ID 
+      ? [
+          `https://login.microsoftonline.com/${TENANT_ID}/v2.0`,  // v2.0 endpoint
+          `https://sts.windows.net/${TENANT_ID}/`,                 // v1.0 endpoint
+        ]
+      : undefined
+
     const { payload } = await jwtVerify(token, getJWKS(), {
-      issuer: TENANT_ID ? `https://login.microsoftonline.com/${TENANT_ID}/v2.0` : undefined,
+      issuer: validIssuers,
       audience: validAudiences,
     })
 
