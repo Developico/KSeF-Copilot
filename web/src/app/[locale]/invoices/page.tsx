@@ -1069,34 +1069,39 @@ export default function InvoicesPage() {
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       <div className="flex items-center justify-center gap-1">
-                        {invoice.hasDocument && (
+                        {/* Fixed grid: always 3 icon slots for consistent alignment */}
+                        {invoice.hasDocument ? (
                           <span title={invoice.documentFileName || t('hasDocument')}>
                             <FileImage className="h-4 w-4 text-purple-500" />
                           </span>
+                        ) : (
+                          <span className="w-4 h-4 inline-block" />
                         )}
-                        {invoice.hasAttachments && (
+                        {invoice.hasAttachments ? (
                           <div className="flex items-center gap-0.5" title={t('attachmentsCount', { count: invoice.attachmentCount || 0 })}>
                             <Paperclip className="h-4 w-4 text-blue-500" />
                             {(invoice.attachmentCount || 0) > 1 && (
-                              <span className="text-xs text-blue-600">{invoice.attachmentCount}</span>
+                              <span className="text-xs text-blue-600 w-3">{invoice.attachmentCount}</span>
                             )}
                           </div>
+                        ) : (
+                          <span className="w-4 h-4 inline-block" />
                         )}
-                        {invoice.hasNotes && (
+                        {invoice.hasNotes ? (
                           <div className="flex items-center gap-0.5" title={t('notesCount', { count: invoice.noteCount || 0 })}>
                             <StickyNote className="h-4 w-4 text-amber-500" />
                             {(invoice.noteCount || 0) > 1 && (
-                              <span className="text-xs text-amber-600">{invoice.noteCount}</span>
+                              <span className="text-xs text-amber-600 w-3">{invoice.noteCount}</span>
                             )}
                           </div>
-                        )}
-                        {!invoice.hasDocument && !invoice.hasAttachments && !invoice.hasNotes && (
-                          <span className="text-muted-foreground text-sm">—</span>
+                        ) : (
+                          <span className="w-4 h-4 inline-block" />
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center gap-1">
+                        {/* Fixed grid: always 3 button slots for consistent alignment */}
                         <Button 
                           variant="ghost" 
                           size="icon"
@@ -1113,7 +1118,7 @@ export default function InvoicesPage() {
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
-                        {invoice.source === 'Manual' && (
+                        {invoice.source === 'Manual' ? (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button 
@@ -1142,6 +1147,8 @@ export default function InvoicesPage() {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
+                        ) : (
+                          <span className="w-10 h-10 inline-block" />
                         )}
                       </div>
                     </TableCell>

@@ -473,7 +473,7 @@ app.http('ksef-testdata-environments', {
 // Import for cleanup and generation functionality
 import { listAllInvoices, bulkDeleteInvoices, countInvoices, createInvoice, updateInvoice } from '../lib/dataverse/invoices'
 import { settingService } from '../lib/dataverse/services/setting-service'
-import { generateInvoices, calculateSummary, type GenerateInvoicesOptions } from '../lib/testdata'
+import { generateInvoices, calculateSummary, type GenerateInvoicesOptions, type GeneratedInvoice } from '../lib/testdata'
 import { InvoiceSource, PaymentStatus } from '../types/invoice'
 
 /**
@@ -518,10 +518,14 @@ app.http('ksef-testdata-cleanup', {
       const fromDate = request.query.get('fromDate') || undefined
       const toDate = request.query.get('toDate') || undefined
       const source = request.query.get('source') as 'KSeF' | 'Manual' | undefined
+      const companyId = request.query.get('companyId') || undefined
 
       // Get company setting to check environment
       const settings = await settingService.getAll()
-      const companySetting = settings.find(s => s.nip === nip)
+      // Use companyId if provided (for multiple companies with same NIP), otherwise use NIP
+      const companySetting = companyId 
+        ? settings.find(s => s.id === companyId)
+        : settings.find(s => s.nip === nip)
       
       if (!companySetting) {
         return { 
@@ -533,11 +537,12 @@ app.http('ksef-testdata-cleanup', {
       const environment = companySetting.environment
       
       // Only allow cleanup for test and demo environments
-      if (environment === 'production') {
+      const envLower = environment?.toLowerCase()
+      if (envLower !== 'test' && envLower !== 'demo') {
         return {
           status: 400,
           jsonBody: { 
-            error: 'Cannot cleanup invoices in production environment',
+            error: `Cleanup is only allowed for test and demo environments (current: ${environment})`,
             environment,
           },
         }
@@ -634,10 +639,14 @@ app.http('ksef-testdata-cleanup-preview', {
       const fromDate = request.query.get('fromDate') || undefined
       const toDate = request.query.get('toDate') || undefined
       const source = request.query.get('source') as 'KSeF' | 'Manual' | undefined
+      const companyId = request.query.get('companyId') || undefined
 
       // Get company setting to check environment
       const settings = await settingService.getAll()
-      const companySetting = settings.find(s => s.nip === nip)
+      // Use companyId if provided (for multiple companies with same NIP), otherwise use NIP
+      const companySetting = companyId 
+        ? settings.find(s => s.id === companyId)
+        : settings.find(s => s.nip === nip)
       
       if (!companySetting) {
         return { 
@@ -710,11 +719,13 @@ app.http('ksef-testdata-cleanup-preview', {
  * 
  * Body: {
  *   nip: string,              // Required: NIP of the company to generate invoices for
+ *   companyId?: string,       // Optional: KsefSetting ID (for multiple companies with same NIP)
  *   count?: number,           // Optional: Number of invoices to generate (default: 10, max: 100)
  *   fromDate?: string,        // Optional: Start date for invoice dates (YYYY-MM-DD, default: 6 months ago)
  *   toDate?: string,          // Optional: End date for invoice dates (YYYY-MM-DD, default: today)
  *   paidPercentage?: number,  // Optional: Percentage of invoices to mark as paid (0-100, default: 30)
- *   source?: 'KSeF' | 'Manual' // Optional: Invoice source (default: Manual)
+ *   ksefPercentage?: number,  // Optional: Percentage of invoices from KSeF vs Manual (0-100, overrides source)
+ *   source?: 'KSeF' | 'Manual' // Optional: Invoice source (default: Manual, ignored if ksefPercentage is provided)
  * }
  * 
  * Returns:
@@ -740,10 +751,12 @@ app.http('ksef-testdata-generate', {
 
       const body = await request.json() as {
         nip: string
+        companyId?: string
         count?: number
         fromDate?: string
         toDate?: string
         paidPercentage?: number
+        ksefPercentage?: number
         source?: 'KSeF' | 'Manual'
       }
 
@@ -756,7 +769,10 @@ app.http('ksef-testdata-generate', {
 
       // Get company setting to check environment
       const settings = await settingService.getAll()
-      const companySetting = settings.find(s => s.nip === body.nip)
+      // Use companyId if provided (for multiple companies with same NIP), otherwise use NIP
+      const companySetting = body.companyId
+        ? settings.find(s => s.id === body.companyId)
+        : settings.find(s => s.nip === body.nip)
       
       if (!companySetting) {
         return { 
@@ -768,11 +784,12 @@ app.http('ksef-testdata-generate', {
       const environment = companySetting.environment
       
       // Only allow generation for test and demo environments
-      if (environment === 'production') {
+      const envLower = environment?.toLowerCase()
+      if (envLower !== 'test' && envLower !== 'demo') {
         return {
           status: 400,
           jsonBody: { 
-            error: 'Cannot generate test invoices in production environment',
+            error: `Test data generation is only allowed for test and demo environments (current: ${environment})`,
             environment,
           },
         }
@@ -793,17 +810,65 @@ app.http('ksef-testdata-generate', {
       }
 
       // Generate invoices
-      const generatorOptions: GenerateInvoicesOptions = {
-        tenantNip: body.nip,
-        tenantName: companySetting.companyName || `Company ${body.nip}`,
-        count,
-        fromDate,
-        toDate,
-        paidPercentage: body.paidPercentage,
-        source: body.source === 'KSeF' ? InvoiceSource.KSeF : InvoiceSource.Manual,
+      let generatedInvoices: GeneratedInvoice[]
+      
+      if (body.ksefPercentage !== undefined && body.ksefPercentage >= 0 && body.ksefPercentage <= 100) {
+        // Generate a mix of KSeF and Manual invoices based on percentage
+        const ksefCount = Math.round(count * body.ksefPercentage / 100)
+        const manualCount = count - ksefCount
+        
+        context.log(`Generating ${ksefCount} KSeF and ${manualCount} Manual invoices (${body.ksefPercentage}% KSeF)`)
+        
+        const invoices: GeneratedInvoice[] = []
+        
+        // Generate KSeF invoices
+        if (ksefCount > 0) {
+          const ksefOptions: GenerateInvoicesOptions = {
+            tenantNip: body.nip,
+            tenantName: companySetting.companyName || `Company ${body.nip}`,
+            count: ksefCount,
+            fromDate,
+            toDate,
+            paidPercentage: body.paidPercentage,
+            source: InvoiceSource.KSeF,
+          }
+          invoices.push(...generateInvoices(ksefOptions))
+        }
+        
+        // Generate Manual invoices
+        if (manualCount > 0) {
+          const manualOptions: GenerateInvoicesOptions = {
+            tenantNip: body.nip,
+            tenantName: companySetting.companyName || `Company ${body.nip}`,
+            count: manualCount,
+            fromDate,
+            toDate,
+            paidPercentage: body.paidPercentage,
+            source: InvoiceSource.Manual,
+          }
+          invoices.push(...generateInvoices(manualOptions))
+        }
+        
+        // Shuffle to mix KSeF and Manual invoices randomly by date
+        generatedInvoices = invoices.sort((a, b) => {
+          const dateA = new Date(a.invoiceDate).getTime()
+          const dateB = new Date(b.invoiceDate).getTime()
+          return dateA - dateB
+        })
+      } else {
+        // Generate all invoices with the same source (backward compatibility)
+        const generatorOptions: GenerateInvoicesOptions = {
+          tenantNip: body.nip,
+          tenantName: companySetting.companyName || `Company ${body.nip}`,
+          count,
+          fromDate,
+          toDate,
+          paidPercentage: body.paidPercentage,
+          source: body.source === 'KSeF' ? InvoiceSource.KSeF : InvoiceSource.Manual,
+        }
+        generatedInvoices = generateInvoices(generatorOptions)
       }
-
-      const generatedInvoices = generateInvoices(generatorOptions)
+      
       const summary = calculateSummary(generatedInvoices)
 
       // Create invoices in Dataverse
@@ -814,9 +879,12 @@ app.http('ksef-testdata-generate', {
 
       for (const invoice of generatedInvoices) {
         try {
-          // Create invoice
+          // Create invoice with settingId to link to company
           const { shouldBePaid, suggestedPaymentDate, ...invoiceData } = invoice
-          const createdInvoice = await createInvoice(invoiceData)
+          const createdInvoice = await createInvoice({
+            ...invoiceData,
+            settingId: companySetting.id, // Link to KSeF setting for multi-environment support
+          })
           created++
 
           // Mark as paid if applicable

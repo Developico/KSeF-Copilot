@@ -31,14 +31,13 @@ export function LanguageSwitcher() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="ghost"
-          size="sm"
-          className={cn('h-8 px-2 gap-1.5 text-sm font-medium', isPending && 'opacity-50')}
+          variant="outline"
+          size="icon"
+          className={cn('h-8 w-8 text-xs font-semibold uppercase', isPending && 'opacity-50')}
           title={t('select')}
           disabled={isPending}
         >
-          <span className="text-base leading-none">{localeFlags[locale]}</span>
-          <span className="hidden sm:inline uppercase">{locale}</span>
+          {locale}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

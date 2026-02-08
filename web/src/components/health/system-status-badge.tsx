@@ -4,6 +4,7 @@ import { CheckCircle, AlertCircle, XCircle, Loader2 } from 'lucide-react'
 import { useHealthDetailed } from '@/hooks/use-api'
 import { useSelectedCompany } from '@/contexts/company-context'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import {
   Tooltip,
   TooltipContent,
@@ -21,12 +22,14 @@ export function SystemStatusBadge() {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted">
-              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-              <span className="text-xs font-medium text-muted-foreground">
-                Checking...
-              </span>
-            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 cursor-default"
+              disabled
+            >
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </Button>
           </TooltipTrigger>
           <TooltipContent>
             <p>Checking system status...</p>
@@ -41,12 +44,13 @@ export function SystemStatusBadge() {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-50 border border-red-200">
-              <XCircle className="h-3 w-3 text-red-600" />
-              <span className="text-xs font-medium text-red-700">
-                Offline
-              </span>
-            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 border-red-200 bg-red-50 hover:bg-red-100 dark:border-red-900 dark:bg-red-950 dark:hover:bg-red-900"
+            >
+              <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+            </Button>
           </TooltipTrigger>
           <TooltipContent>
             <p>Unable to connect to health endpoint</p>
@@ -59,23 +63,20 @@ export function SystemStatusBadge() {
   const statusConfig = {
     healthy: {
       icon: CheckCircle,
-      label: 'All Systems',
-      className: 'bg-green-50 border-green-200 text-green-700',
-      iconClassName: 'text-green-600',
+      buttonClass: 'border-green-200 bg-green-50 hover:bg-green-100 dark:border-green-900 dark:bg-green-950 dark:hover:bg-green-900',
+      iconClass: 'text-green-600 dark:text-green-400',
       tooltip: 'All systems are operational',
     },
     degraded: {
       icon: AlertCircle,
-      label: 'Degraded',
-      className: 'bg-yellow-50 border-yellow-200 text-yellow-700',
-      iconClassName: 'text-yellow-600',
+      buttonClass: 'border-yellow-200 bg-yellow-50 hover:bg-yellow-100 dark:border-yellow-900 dark:bg-yellow-950 dark:hover:bg-yellow-900',
+      iconClass: 'text-yellow-600 dark:text-yellow-400',
       tooltip: `${health.summary.degraded} service(s) degraded`,
     },
     unhealthy: {
       icon: XCircle,
-      label: 'Issues',
-      className: 'bg-red-50 border-red-200 text-red-700',
-      iconClassName: 'text-red-600',
+      buttonClass: 'border-red-200 bg-red-50 hover:bg-red-100 dark:border-red-900 dark:bg-red-950 dark:hover:bg-red-900',
+      iconClass: 'text-red-600 dark:text-red-400',
       tooltip: `${health.summary.unhealthy} service(s) unavailable`,
     },
   }
@@ -87,15 +88,13 @@ export function SystemStatusBadge() {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div
-            className={cn(
-              'flex items-center gap-1.5 px-2 py-1 rounded-md border cursor-pointer transition-colors hover:opacity-80',
-              config.className
-            )}
+          <Button
+            variant="outline"
+            size="icon"
+            className={cn('h-8 w-8', config.buttonClass)}
           >
-            <Icon className={cn('h-3 w-3', config.iconClassName)} />
-            <span className="text-xs font-medium">{config.label}</span>
-          </div>
+            <Icon className={cn('h-4 w-4', config.iconClass)} />
+          </Button>
         </TooltipTrigger>
         <TooltipContent>
           <div className="space-y-1">

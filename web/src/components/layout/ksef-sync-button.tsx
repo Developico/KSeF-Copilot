@@ -7,6 +7,7 @@ import { useRunSync } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
 import { useToast } from '@/hooks/use-toast'
 import { useQueryClient } from '@tanstack/react-query'
+import { cn } from '@/lib/utils'
 
 interface KsefSyncButtonProps {
   /** Use smaller size on mobile */
@@ -19,7 +20,7 @@ interface KsefSyncButtonProps {
  * Shared button component that triggers KSeF sync directly.
  * Syncs invoices from the last 30 days for the selected company.
  */
-export function KsefSyncButton({ compact = false, className }: KsefSyncButtonProps) {
+export function KsefSyncButton({ className }: Omit<KsefSyncButtonProps, 'compact'>) {
   const t = useTranslations('common')
   const tDashboard = useTranslations('dashboard')
   const { toast } = useToast()
@@ -70,15 +71,14 @@ export function KsefSyncButton({ compact = false, className }: KsefSyncButtonPro
 
   return (
     <Button
-      variant="default"
-      size={compact ? 'sm' : 'default'}
+      variant="outline"
+      size="icon"
       onClick={handleSync}
       disabled={isSyncing || !selectedCompany}
-      className={className}
+      className={cn('h-8 w-8', className)}
+      title={isSyncing ? tDashboard('syncing') : t('ksefSync')}
     >
       <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-      {!compact && <span className="ml-2">{isSyncing ? tDashboard('syncing') : t('ksefSync')}</span>}
-      {compact && <span className="ml-2 hidden sm:inline">{isSyncing ? tDashboard('syncing') : t('ksefSync')}</span>}
     </Button>
   )
 }

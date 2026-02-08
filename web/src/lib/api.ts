@@ -903,6 +903,34 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+
+    generate: (data: KsefGenerateTestDataRequest) =>
+      apiFetch<KsefGenerateTestDataResponse>('/api/ksef/testdata/generate', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    cleanupPreview: (nip: string, params?: { fromDate?: string; toDate?: string; source?: 'KSeF' | 'Manual' }) => {
+      const searchParams = new URLSearchParams()
+      searchParams.append('nip', nip)
+      if (params?.fromDate) searchParams.append('fromDate', params.fromDate)
+      if (params?.toDate) searchParams.append('toDate', params.toDate)
+      if (params?.source) searchParams.append('source', params.source)
+      return apiFetch<KsefCleanupPreviewResponse>(`/api/ksef/testdata/cleanup/preview?${searchParams}`)
+    },
+
+    cleanup: (data: KsefCleanupRequest) => {
+      const searchParams = new URLSearchParams()
+      searchParams.append('nip', data.nip)
+      if (data.companyId) searchParams.append('companyId', data.companyId)
+      if (data.dryRun !== undefined) searchParams.append('dryRun', String(data.dryRun))
+      if (data.fromDate) searchParams.append('fromDate', data.fromDate)
+      if (data.toDate) searchParams.append('toDate', data.toDate)
+      if (data.source) searchParams.append('source', data.source)
+      return apiFetch<KsefCleanupResponse>(`/api/ksef/testdata/cleanup?${searchParams}`, {
+        method: 'DELETE',
+      })
+    },
   },
 
   // Exchange Rates (NBP)
@@ -1221,4 +1249,69 @@ export interface KsefCreateTestPersonResponse {
   result?: unknown
   error?: string
   details?: string
+}
+
+export interface KsefGenerateTestDataRequest {
+  nip: string
+  companyId?: string // ID of KsefSetting to uniquely identify company (useful when multiple companies have same NIP)
+  count?: number
+  fromDate?: string
+  toDate?: string
+  paidPercentage?: number
+  ksefPercentage?: number
+  source?: 'KSeF' | 'Manual'
+}
+
+export interface KsefGenerateTestDataResponse {
+  success: boolean
+  environment: string
+  nip: string
+  summary: {
+    requested: number
+    created: number
+    paid: number
+    failed: number
+    errors?: string[]
+    totalNet: number
+    totalGross: number
+    dateRange: { from: string; to: string }
+  }
+  error?: string
+}
+
+export interface KsefCleanupPreviewResponse {
+  success: boolean
+  environment: string
+  nip: string
+  total: number
+  bySource: Record<string, number>
+  byMonth: Record<string, number>
+  filters?: {
+    tenantNip: string
+    fromDate?: string
+    toDate?: string
+    source?: string
+  }
+  warning?: string
+}
+
+export interface KsefCleanupRequest {
+  nip: string
+  companyId?: string // ID of KsefSetting to uniquely identify company (useful when multiple companies have same NIP)
+  dryRun?: boolean
+  fromDate?: string
+  toDate?: string
+  source?: 'KSeF' | 'Manual'
+}
+
+export interface KsefCleanupResponse {
+  success: boolean
+  dryRun: boolean
+  environment: string
+  nip: string
+  total: number
+  deleted?: number
+  failed?: number
+  errors?: string[]
+  message?: string
 }

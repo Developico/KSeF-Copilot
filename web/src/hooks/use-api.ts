@@ -658,3 +658,55 @@ export function useContextDvSyncLogs(limit = 50) {
     enabled: !companyLoading && Boolean(selectedCompany),
   })
 }
+
+// ============================================================================
+// Test Data Operations
+// ============================================================================
+
+export function useGenerateTestData() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: {
+      nip: string
+      companyId?: string
+      count?: number
+      fromDate?: string
+      toDate?: string
+      paidPercentage?: number
+      ksefPercentage?: number // 0-100, how many should be KSeF vs Manual
+    }) => {
+      return api.ksefTestdata.generate(data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+  })
+}
+
+export function useCleanupTestDataPreview(nip?: string, params?: { fromDate?: string; toDate?: string; source?: 'KSeF' | 'Manual' }) {
+  return useQuery({
+    queryKey: ['testdata', 'cleanup', 'preview', nip, params],
+    queryFn: () => api.ksefTestdata.cleanupPreview(nip!, params),
+    enabled: Boolean(nip),
+  })
+}
+
+export function useCleanupTestData() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: {
+      nip: string
+      companyId?: string
+      dryRun?: boolean
+      fromDate?: string
+      toDate?: string
+      source?: 'KSeF' | 'Manual'
+    }) => api.ksefTestdata.cleanup(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['testdata'] })
+    },
+  })
+}

@@ -6,6 +6,39 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.6.2] - 2026-02-08
+
+### ✨ Dodane - Generator Danych Testowych
+
+- **Nowa zakładka "Dane testowe" w Ustawieniach** — kompleksowy UI do generowania i zarządzania testowymi fakturami
+- **Zaawansowane opcje generowania**:
+  - Slider liczby faktur (1-100)
+  - Slider proporcji źródeł: KSeF vs Ręczne (0-100%)
+  - Slider procentu opłaconych faktur (0-100%)
+  - Wybór zakresu dat (od-do)
+  - Checkbox do czyszczenia istniejących danych przed generowaniem
+- **Panel zarządzania danymi testowymi** — podgląd i usuwanie wygenerowanych faktur
+- **Backend `ksefPercentage`** — możliwość generowania mixu faktur KSeF i Manual w jednym requestcie
+- **Instalacja Radix UI Slider** — komponent `@radix-ui/react-slider@^1.3.6` dla kontrolek procentowych
+- **Tłumaczenia EN/PL** — 45+ nowych kluczy tłumaczeń dla funkcji danych testowych
+
+### 🔧 Poprawki - Dane Testowe
+
+- **Naprawiony problem z wieloma firmami o tym samym NIP** — API przyjmuje `companyId` do jednoznacznej identyfikacji firmy
+- **Dodane `settingId` do generowanych faktur** — faktury testowe są teraz poprawnie powiązane z firmą i widoczne w aplikacji
+- **Walidacja środowiska case-insensitive** — akceptuje "Demo", "DEMO", "demo" etc.
+- **Whitelist zamiast blacklist** — API sprawdza czy środowisko to 'test' lub 'demo' (bezpieczniejsze niż blacklist 'production')
+- **Polskie komunikaty błędów** — wykrywanie błędów środowiska i pokazywanie przetłumaczonych komunikatów z informacją o wykrytym środowisku
+- **Sortowanie faktur po dacie** — mix KSeF/Manual jest automatycznie sortowany chronologicznie
+
+### 🎨 Ulepszenia UI
+
+- **Wyrównanie ikon w kolumnach tabeli faktur** — ikony "Dokumenty" i "Akcje" mają stałe pozycje (3 sloty każda kolumna)
+- **Eliminacja przeskakiwania wierszy** — placeholder dla nieobecnych ikon zapewnia spójny layout
+- **Lepsza czytelność** — każdy typ ikony (dokument, załącznik, notatka, płatność, podgląd, usuń) zawsze w tym samym miejscu
+
+---
+
 ## [0.6.1] - 2026-02-08
 
 ### 🔧 Poprawki - Deployment i Autentykacja

@@ -43,6 +43,8 @@ import {
   RefreshCw,
   Save,
   Settings,
+  TestTube2,
+  Trash,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { SettingsSkeleton } from '@/components/skeletons'
@@ -55,10 +57,15 @@ import {
   useCreateCostCenter,
   useUpdateCostCenter,
   useDeleteCostCenter,
+  useGenerateTestData,
+  useCleanupTestData,
+  useCleanupTestDataPreview,
 } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
 import { KsefSetting, CostCenter } from '@/lib/api'
 import { HealthStatusPanel } from '@/components/health/health-status-panel'
+import { Slider } from '@/components/ui/slider'
+import { Label } from '@/components/ui/label'
 
 type TokenStatus = 'valid' | 'expiring' | 'expired' | 'missing'
 type Environment = 'production' | 'test' | 'demo'
@@ -151,6 +158,29 @@ export default function SettingsPage() {
   // New cost center form
   const [newCostCenterCode, setNewCostCenterCode] = useState('')
   const [newCostCenterName, setNewCostCenterName] = useState('')
+
+  // Test data generator state
+  const [testDataCompany, setTestDataCompany] = useState<KsefSetting | null>(null)
+  const [testDataCount, setTestDataCount] = useState(10)
+  const [testDataFromDate, setTestDataFromDate] = useState(() => {
+    const sixMonthsAgo = new Date()
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+    return sixMonthsAgo.toISOString().split('T')[0]
+  })
+  const [testDataToDate, setTestDataToDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [testDataKsefPercent, setTestDataKsefPercent] = useState(30)
+  const [testDataPaidPercent, setTestDataPaidPercent] = useState(30)
+  const [testDataClearBefore, setTestDataClearBefore] = useState(false)
+
+  const generateTestDataMutation = useGenerateTestData()
+  const cleanupTestDataMutation = useCleanupTestData()
+  const { data: cleanupPreview, isLoading: cleanupPreviewLoading } = useCleanupTestDataPreview(
+    testDataCompany?.nip,
+    undefined
+  )
+
+  // Filter to only test/demo companies
+  const testDemoCompanies = companies.filter(c => c.environment !== 'production')
 
   // Handle company selection
   const handleSelectCompany = (company: KsefSetting) => {
@@ -324,6 +354,111 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleGenerateTestData() {
+    if (!testDataCompany) {
+      toast({
+        variant: 'destructive',
+        title: tCommon('error'),
+        description: t('companyRequired'),
+      })
+      return
+    }
+
+    try {
+      // Clear existing data if requested
+      if (testDataClearBefore) {
+        await cleanupTestDataMutation.mutateAsync({
+          nip: testDataCompany.nip,
+          companyId: testDataCompany.id, // Send company ID to handle multiple companies with same NIP
+          dryRun: false,
+        })
+      }
+
+      // Generate new data
+      const result = await generateTestDataMutation.mutateAsync({
+        nip: testDataCompany.nip,
+        companyId: testDataCompany.id, // Send company ID to handle multiple companies with same NIP
+        count: testDataCount,
+        fromDate: testDataFromDate,
+        toDate: testDataToDate,
+        paidPercentage: testDataPaidPercent,
+        ksefPercentage: testDataKsefPercent,
+      })
+
+      toast({
+        variant: 'success',
+        title: t('generationCompleted'),
+        description: t('generatedDesc', { 
+          created: result.summary.created,
+          paid: result.summary.paid,
+        }),
+      })
+    } catch (error) {
+      console.error('Test data generation error:', error)
+      
+      // Check if it's a production environment error
+      const errorMessage = error instanceof Error ? error.message : ''
+      const isProductionError = errorMessage.includes('only allowed for test and demo') || 
+                                errorMessage.includes('production')
+      
+      // Extract environment from error if available (format: "(current: production)")
+      const envMatch = errorMessage.match(/\(current: ([^)]+)\)/)
+      const detectedEnv = envMatch ? envMatch[1] : null
+      
+      toast({
+        variant: 'destructive',
+        title: t('generationError'),
+        description: isProductionError 
+          ? `${t('productionNotAllowed')}${detectedEnv ? '\n' + t('environmentDetected', { environment: detectedEnv }) : ''}`
+          : errorMessage || tCommon('error'),
+      })
+    }
+  }
+
+  async function handleCleanupTestData() {
+    if (!testDataCompany) {
+      toast({
+        variant: 'destructive',
+        title: tCommon('error'),
+        description: t('companyRequired'),
+      })
+      return
+    }
+
+    try {
+      const result = await cleanupTestDataMutation.mutateAsync({
+        nip: testDataCompany.nip,
+        companyId: testDataCompany.id, // Send company ID to handle multiple companies with same NIP
+        dryRun: false,
+      })
+
+      toast({
+        variant: 'success',
+        title: t('cleanupCompleted'),
+        description: t('cleanupCompletedDesc', { count: result.deleted || 0 }),
+      })
+    } catch (error) {
+      console.error('Test data cleanup error:', error)
+      
+      // Check if it's a production environment error
+      const errorMessage = error instanceof Error ? error.message : ''
+      const isProductionError = errorMessage.includes('only allowed for test and demo') || 
+                                errorMessage.includes('production')
+      
+      // Extract environment from error if available
+      const envMatch = errorMessage.match(/\(current: ([^)]+)\)/)
+      const detectedEnv = envMatch ? envMatch[1] : null
+      
+      toast({
+        variant: 'destructive',
+        title: t('cleanupError'),
+        description: isProductionError 
+          ? `${t('productionNotAllowed')}${detectedEnv ? '\n' + t('environmentDetected', { environment: detectedEnv }) : ''}`
+          : errorMessage || tCommon('error'),
+      })
+    }
+  }
+
   if (isLoading) {
     return <SettingsSkeleton />
   }
@@ -350,6 +485,10 @@ export default function SettingsPage() {
           <TabsTrigger value="costcenters">
             <Folder className="mr-2 h-4 w-4" />
             {t('costCenters')}
+          </TabsTrigger>
+          <TabsTrigger value="testdata">
+            <TestTube2 className="mr-2 h-4 w-4" />
+            {t('testData')}
           </TabsTrigger>
           <TabsTrigger value="system">
             <AlertCircle className="mr-2 h-4 w-4" />
@@ -724,6 +863,242 @@ export default function SettingsPage() {
         {/* System Status Tab */}
         <TabsContent value="system" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
           <HealthStatusPanel />
+        </TabsContent>
+
+        {/* Test Data Tab */}
+        <TabsContent value="testdata" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
+          {/* Test Data Generator */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TestTube2 className="h-5 w-5" />
+                {t('testDataGenerator')}
+              </CardTitle>
+              <CardDescription>
+                {t('testDataGeneratorDesc')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Company Selection */}
+              <div className="space-y-2">
+                <Label>{t('company')}</Label>
+                <Select 
+                  value={testDataCompany?.id || ''} 
+                  onValueChange={(id) => setTestDataCompany(testDemoCompanies.find(c => c.id === id) || null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('selectCompany')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {testDemoCompanies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.companyName} ({company.nip}) - {getEnvironmentBadge(company.environment)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {testDemoCompanies.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('onlyTestDemo')}
+                  </p>
+                )}
+              </div>
+
+              {/* Number of Invoices */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>{t('numberOfInvoices')}</Label>
+                  <span className="text-sm text-muted-foreground">
+                    {t('invoicesRange', { count: testDataCount })}
+                  </span>
+                </div>
+                <Slider
+                  value={[testDataCount]}
+                  onValueChange={(v: number[]) => setTestDataCount(v[0])}
+                  min={1}
+                  max={100}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Date Range */}
+              <div className="space-y-2">
+                <Label>{t('dateRange')}</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">{t('from')}</label>
+                    <Input
+                      type="date"
+                      value={testDataFromDate}
+                      onChange={(e) => setTestDataFromDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">{t('to')}</label>
+                    <Input
+                      type="date"
+                      value={testDataToDate}
+                      onChange={(e) => setTestDataToDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Source Mix Slider */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>{t('sourceMix')}</Label>
+                  <span className="text-sm font-medium">
+                    {t('previewSources', {
+                      ksef: Math.round(testDataCount * testDataKsefPercent / 100),
+                      manual: Math.round(testDataCount * (100 - testDataKsefPercent) / 100),
+                    })}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  <Slider
+                    value={[testDataKsefPercent]}
+                    onValueChange={(v: number[]) => setTestDataKsefPercent(v[0])}
+                    min={0}
+                    max={100}
+                    step={10}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{testDataKsefPercent}% {t('ksefInvoices')}</span>
+                    <span>{100 - testDataKsefPercent}% {t('manualInvoices')}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">{t('sourceMixDesc')}</p>
+              </div>
+
+              {/* Paid Percentage */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>{t('paidPercentage')}</Label>
+                  <span className="text-sm text-muted-foreground">
+                    {t('willBePaid', { count: Math.round(testDataCount * testDataPaidPercent / 100) })}
+                  </span>
+                </div>
+                <Slider
+                  value={[testDataPaidPercent]}
+                  onValueChange={(v: number[]) => setTestDataPaidPercent(v[0])}
+                  min={0}
+                  max={100}
+                  step={10}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">{t('paidPercentageDesc')}</p>
+              </div>
+
+              {/* Clear Before Option */}
+              <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
+                <Checkbox
+                  id="clearBefore"
+                  checked={testDataClearBefore}
+                  onCheckedChange={(checked) => setTestDataClearBefore(checked === true)}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <label htmlFor="clearBefore" className="text-sm font-medium cursor-pointer">
+                    {t('clearExistingData')}
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    {t('clearExistingDataDesc')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Generate Button */}
+              <Button
+                onClick={handleGenerateTestData}
+                disabled={!testDataCompany || generateTestDataMutation.isPending}
+                className="w-full"
+                size="lg"
+              >
+                <TestTube2 className="mr-2 h-4 w-4" />
+                {generateTestDataMutation.isPending ? t('generating') : t('generateTestInvoices')}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Manage Test Data */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trash className="h-5 w-5" />
+                {t('manageTestData')}
+              </CardTitle>
+              <CardDescription>
+                {t('manageTestDataDesc')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Company Selection */}
+              <div className="space-y-2">
+                <Label>{t('company')}</Label>
+                <Select 
+                  value={testDataCompany?.id || ''} 
+                  onValueChange={(id) => setTestDataCompany(testDemoCompanies.find(c => c.id === id) || null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('selectCompany')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {testDemoCompanies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.companyName} ({company.nip})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Current Test Data Info */}
+              {cleanupPreviewLoading && (
+                <div className="text-sm text-muted-foreground">
+                  {t('loadingPreview')}
+                </div>
+              )}
+
+              {cleanupPreview && testDataCompany && (
+                <div className="space-y-3">
+                  <div className="text-sm font-medium">{t('currentTestData')}</div>
+                  {cleanupPreview.total === 0 ? (
+                    <p className="text-sm text-muted-foreground">{t('noTestData')}</p>
+                  ) : (
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span>{t('testInvoicesFound', { count: cleanupPreview.total })}</span>
+                      </div>
+                      {cleanupPreview.bySource && (
+                        <ul className="space-y-1 text-muted-foreground ml-4">
+                          {Object.entries(cleanupPreview.bySource).map(([source, count]) => (
+                            <li key={source}>
+                              • {source === 'KSeF' ? t('fromKsef', { count }) : t('fromManual', { count })}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Delete Button */}
+                  {cleanupPreview.total > 0 && (
+                    <Button
+                      variant="destructive"
+                      onClick={handleCleanupTestData}
+                      disabled={cleanupTestDataMutation.isPending}
+                      className="w-full"
+                    >
+                      <Trash className="mr-2 h-4 w-4" />
+                      {cleanupTestDataMutation.isPending ? tCommon('loading') : t('deleteAllTestData')}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

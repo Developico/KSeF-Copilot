@@ -122,9 +122,9 @@ export function Header() {
           <div className="flex-1" />
 
           {/* Right side actions */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
             {/* KSeF Sync Button */}
-            {mounted && isAuthenticated && <KsefSyncButton compact />}
+            {mounted && isAuthenticated && <KsefSyncButton />}
             
             {/* System Status Badge */}
             {mounted && isAuthenticated && <SystemStatusBadge />}
@@ -135,7 +135,7 @@ export function Header() {
             {/* Theme toggle */}
             {mounted && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
