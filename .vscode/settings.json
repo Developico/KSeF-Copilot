@@ -7,9 +7,31 @@
     "azureFunctions.projectLanguageModel": 4,
     "azureFunctions.preDeployTask": "npm prune (functions)",
 
-    // Azure App Service (web) — local build, deploy artifacts
+    // Azure App Service (web) — send source, Azure builds (like planner)
     "appService.defaultWebAppToDeploy": "/subscriptions/73d82af2-b751-4bd5-9750-70a8a5378d93/resourceGroups/rg-ksef/providers/Microsoft.Web/sites/dvlp-ksef",
-    "appService.deploySubpath": "web/.deploy",
-    "appService.preDeployTask": "build-deploy",
-    "appService.showBuildDuringDeployPrompt": false
+    "appService.deploySubpath": "web",
+    "appService.zipIgnorePattern": [
+        "node_modules{,/**}",
+        ".next{,/**}",
+        ".deploy{,/**}",
+        ".git{,/**}",
+        ".github{,/**}",
+        ".vscode{,/**}",
+        "*.md",
+        "*.test.ts",
+        "*.test.tsx",
+        "*.spec.ts",
+        "*.spec.tsx",
+        "__tests__{,/**}",
+        "scripts{,/**}",
+        "*.log",
+        ".env.local",
+        ".env.example",
+        "vitest.config.mts",
+        "deploy.zip",
+        "staticwebapp.config.json",
+        "_create_zip.ps1",
+        "coverage{,/**}",
+        "tsconfig.tsbuildinfo"
+    ]
 }

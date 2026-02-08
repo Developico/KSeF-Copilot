@@ -4,13 +4,14 @@
  *
  * Usage: node scripts/build-deploy.mjs
  *
- * Strategy: Local build + deploy ready artifacts (no Oryx on Azure).
+ * Strategy: Local build + deploy artifacts with WEBSITE_RUN_FROM_PACKAGE=1.
+ * Azure mounts the ZIP directly as read-only filesystem — no tar extraction needed.
  *
  * Steps:
- * 1. `next build` using existing pnpm node_modules (works fine for build)
- * 2. Creates .deploy/ with: .next/, public/, server.js, package.json, .npmrc
- * 3. Runs `npm install --omit=dev` inside .deploy/ — flat node_modules, no symlinks
- * 4. Reports size — ready for VS Code "Deploy to Web App"
+ * 1. `next build` using existing pnpm node_modules
+ * 2. Creates .deploy/ with: .next/, public/, server.js, config, deps
+ * 3. Runs `npm install --omit=dev` inside .deploy/ — flat node_modules
+ * 4. Installs Linux native binaries for Azure
  */
 
 import { execSync } from 'child_process'
@@ -42,7 +43,7 @@ if (existsSync(DEPLOY_DIR)) rmSync(DEPLOY_DIR, { recursive: true })
 mkdirSync(DEPLOY_DIR, { recursive: true })
 
 // Copy .next/ (build output — without cache)
-cpSync(join(ROOT, '.next'), join(DEPLOY_DIR, '.next'), { 
+cpSync(join(ROOT, '.next'), join(DEPLOY_DIR, '.next'), {
   recursive: true,
   filter: (src) => !src.includes('.next' + sep + 'cache'),
 })
@@ -58,7 +59,7 @@ if (existsSync(join(ROOT, 'public'))) {
 copyFileSync(join(ROOT, 'server.js'), join(DEPLOY_DIR, 'server.js'))
 console.log('     ✓ server.js')
 
-// Copy startup.sh (handles node_modules extraction on Azure)
+// Copy startup.sh
 copyFileSync(join(ROOT, 'startup.sh'), join(DEPLOY_DIR, 'startup.sh'))
 console.log('     ✓ startup.sh')
 
@@ -71,6 +72,12 @@ if (existsSync(join(ROOT, '.env.production'))) {
   copyFileSync(join(ROOT, '.env.production'), join(DEPLOY_DIR, '.env.production'))
   console.log('     ✓ .env.production')
 }
+
+// Create src/app/ directory with placeholder (Next.js findPagesDir() requires it at runtime)
+// Note: empty dirs are dropped by ZIP — must include a file
+mkdirSync(join(DEPLOY_DIR, 'src', 'app'), { recursive: true })
+writeFileSync(join(DEPLOY_DIR, 'src', 'app', '.gitkeep'), '')
+console.log('     ✓ src/app/ (required by Next.js findPagesDir)')
 
 // Create production package.json (only production deps)
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'))
@@ -90,7 +97,7 @@ if (existsSync(join(ROOT, '.npmrc'))) {
   console.log('     ✓ .npmrc')
 }
 
-// Create .deployment (override old file on Azure that enables Oryx build)
+// Create .deployment (disable Oryx build on Azure)
 writeFileSync(join(DEPLOY_DIR, '.deployment'), '[config]\nSCM_DO_BUILD_DURING_DEPLOYMENT=false\n')
 console.log('     ✓ .deployment (Oryx disabled)')
 
@@ -120,15 +127,16 @@ console.log('     ✓ node_modules installed (with Linux binaries)\n')
 // ── Step 4: Summary ─────────────────────────────────────────────────
 function dirSize(dir) {
   let total = 0
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
-    const p = join(dir, e.name)
-    total += e.isDirectory() ? dirSize(p) : statSync(p).size
-  }
+  try {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name)
+      total += e.isDirectory() ? dirSize(p) : statSync(p).size
+    }
+  } catch { /* skip unreadable */ }
   return total
 }
 
 const sizeMB = (dirSize(DEPLOY_DIR) / 1024 / 1024).toFixed(1)
 console.log(`4/4  Summary`)
 console.log(`     .deploy/ size: ${sizeMB} MB`)
-console.log(`\n✓ Ready! Use VS Code "Deploy to Web App" or run:`)
-console.log(`  az webapp deploy --name dvlp-ksef -g rg-ksef --src-path .deploy --type zip`)
+console.log(`\n✓ Ready! Deploy via VS Code "Deploy to Web App"`)

@@ -63,42 +63,6 @@ import { HealthStatusPanel } from '@/components/health/health-status-panel'
 type TokenStatus = 'valid' | 'expiring' | 'expired' | 'missing'
 type Environment = 'production' | 'test' | 'demo'
 
-// Mock data for fallback
-const mockCompanies: KsefSetting[] = [
-  {
-    id: '1',
-    companyName: 'Developico Sp. z o.o.',
-    nip: '1234567890',
-    isActive: true,
-    environment: 'production',
-    tokenStatus: 'valid',
-    tokenExpiresAt: '2024-12-31',
-    lastSyncAt: '2024-01-20T10:30:00Z',
-  },
-  {
-    id: '2',
-    companyName: 'Test Company S.A.',
-    nip: '0987654321',
-    isActive: true,
-    environment: 'test',
-    tokenStatus: 'expiring',
-    tokenExpiresAt: '2024-02-15',
-  },
-]
-
-const mockCostCenters: CostCenter[] = [
-  { id: '1', code: 'CONS', name: 'Consultants', isActive: true },
-  { id: '2', code: 'BACK', name: 'BackOffice', isActive: true },
-  { id: '3', code: 'MGMT', name: 'Management', isActive: true },
-  { id: '4', code: 'CARS', name: 'Cars', isActive: true },
-  { id: '5', code: 'LEGAL', name: 'Legal', isActive: true },
-  { id: '6', code: 'MKTG', name: 'Marketing', isActive: true },
-  { id: '7', code: 'SALES', name: 'Sales', isActive: true },
-  { id: '8', code: 'DELIV', name: 'Delivery', isActive: true },
-  { id: '9', code: 'FIN', name: 'Finance', isActive: true },
-  { id: '10', code: 'OTHER', name: 'Other', isActive: true },
-]
-
 export default function SettingsPage() {
   const { toast } = useToast()
   const t = useTranslations('settings')
@@ -158,9 +122,9 @@ export default function SettingsPage() {
   const updateCostCenterMutation = useUpdateCostCenter()
   const deleteCostCenterMutation = useDeleteCostCenter()
   
-  // Use API data or fallback to mock
-  const companies = companiesData ?? mockCompanies
-  const costCenters = costCentersData ?? mockCostCenters
+  // Use API data (no mock fallback)
+  const companies = companiesData ?? []
+  const costCenters = costCentersData ?? []
   const isLoading = companiesLoading || costCentersLoading
   
   const [isAddCompanyOpen, setIsAddCompanyOpen] = useState(false)

@@ -69,9 +69,12 @@ export async function verifyAuth(request: HttpRequest): Promise<AuthResult> {
 
   try {
     // Verify JWT signature using Azure Entra ID JWKS
+    // Accept both "api://<client-id>" and bare "<client-id>" as valid audiences
+    const validAudiences = CLIENT_ID ? [CLIENT_ID, `api://${CLIENT_ID}`] : undefined
+
     const { payload } = await jwtVerify(token, getJWKS(), {
       issuer: TENANT_ID ? `https://login.microsoftonline.com/${TENANT_ID}/v2.0` : undefined,
-      audience: CLIENT_ID,
+      audience: validAudiences,
     })
 
     const user: AuthUser = {

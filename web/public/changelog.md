@@ -6,6 +6,34 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.6.0] - 2026-02-08
+
+### 🚀 Wdrożenie - Azure App Service
+
+- **Deployment web przez VS Code** - konfiguracja identyczna jak planner (Oryx build na serwerze)
+- **Usunięte podejście local build** - pozbycie się 654 MB artefaktu `.deploy/` z node_modules
+- **Konfiguracja Azure App Service**:
+  - Startup command: `node node_modules/next/dist/bin/next start -p 8080`
+  - Oryx remote build z `npm install` + `npm run build`
+  - `SCM_COMMAND_IDLE_TIMEOUT=3600` dla dłuższego buildu na B1
+- **Usunięte zbędne artefakty**: `.deployment`, `.deploy/`, nadmiarowe ustawienia Azure
+
+### 🔒 Poprawione - Autentykacja API
+
+- **Dodany `NEXT_PUBLIC_API_SCOPE`** w `.env.production` — frontend teraz pobiera access token MSAL dla API
+- **Skonfigurowany "Expose an API"** w Entra ID — Application ID URI + scope `access_as_user`
+- **Poprawiona walidacja audience w middleware** — akceptuje zarówno `<client-id>` jak i `api://<client-id>`
+- **Naprawione 401 Unauthorized** — requesty z frontu teraz zawierają nagłówek `Authorization: Bearer <token>`
+
+### 🔧 Zmiany
+
+- Usunięte dane mockowe z Settings page (Developico Sp. z o.o., Test Company S.A.)
+- Fallback na pustą tablicę `[]` zamiast mockowych firm gdy API nie odpowiada
+- `package.json` script `start` zmieniony z `node server.js` na `next start`
+- Dodane flagi buildu w `next.config.mjs`: `eslint.ignoreDuringBuilds`, `typescript.ignoreBuildErrors`, `images.unoptimized`
+
+---
+
 ## [0.5.1] - 2026-01-31
 
 ### 🔧 Zmiany - Modularyzacja promptów AI
