@@ -15,10 +15,12 @@ import {
   TrendingUp,
   Building2,
   LayoutDashboard,
+  CreditCard,
 } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { useContextInvoices } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
+import { AnimatedKpiCard, AnimatedCardGrid, AnimatedCardWrapper, formatCurrency } from '@/components/dashboard/animated-kpi-card'
 
 export default function HomePage() {
   const t = useTranslations('dashboard')
@@ -29,12 +31,12 @@ export default function HomePage() {
   // Calculate stats from invoices
   const invoices = invoicesData?.invoices || []
   const stats = {
-    totalInvoices: invoices.length,
-    pendingPayment: invoices.filter(i => i.paymentStatus === 'pending').length,
-    paid: invoices.filter(i => i.paymentStatus === 'paid').length,
-    incoming: invoices.length, // All invoices from sync are incoming (cost invoices)
-    outgoing: 0,
-    activeCompanies: 1,
+    count: invoices.length,
+    total: invoices.reduce((acc, inv) => acc + inv.grossAmount, 0),
+    paid: invoices.filter(i => i.paymentStatus === 'paid').reduce((acc, inv) => acc + inv.grossAmount, 0),
+    pending: invoices.filter(i => i.paymentStatus === 'pending').reduce((acc, inv) => acc + inv.grossAmount, 0),
+    avgInvoice: invoices.length > 0 ? invoices.reduce((acc, inv) => acc + inv.grossAmount, 0) / invoices.length : 0,
+    uniqueSuppliers: new Set(invoices.map(i => i.supplierNip)).size,
   }
 
   // Locale-aware formatting
@@ -63,135 +65,128 @@ export default function HomePage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('totalInvoices')}</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? '—' : stats.totalInvoices}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t('inSystem')}
-            </p>
-          </CardContent>
-        </Card>
+      <AnimatedCardGrid className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
+        <AnimatedKpiCard
+          title={t('allInvoices')}
+          value={isLoading ? 0 : stats.count}
+          format="number"
+          icon={FileText}
+          iconColor="#64748b"
+          borderColor="#64748b"
+          subtitle={`${stats.uniqueSuppliers} ${t('suppliers')}`}
+          delay={0}
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('incoming')}</CardTitle>
-            <ArrowDownToLine className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? '—' : stats.incoming}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t('costInvoices')}
-            </p>
-          </CardContent>
-        </Card>
+        <AnimatedKpiCard
+          title={t('totalGross')}
+          value={isLoading ? 0 : stats.total}
+          format="currency"
+          icon={TrendingUp}
+          iconColor="#3b82f6"
+          borderColor="#3b82f6"
+          subtitle={`${t('average')} ${formatCurrency(stats.avgInvoice)} ${t('perInvoice')}`}
+          delay={0.1}
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('paid')}</CardTitle>
-            <ArrowUpFromLine className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {isLoading ? '—' : stats.paid}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t('completedPayments')}
-            </p>
-          </CardContent>
-        </Card>
+        <AnimatedKpiCard
+          title={t('paidAmount')}
+          value={isLoading ? 0 : stats.paid}
+          format="currency"
+          icon={CreditCard}
+          iconColor="#10b981"
+          valueColor="#16a34a"
+          borderColor="#10b981"
+          subtitle={`${stats.count > 0 ? ((stats.paid / stats.total) * 100).toFixed(1) : 0}% ${t('ofTotal')}`}
+          delay={0.2}
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('pendingPayment')}</CardTitle>
-            <AlertCircle className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-500">
-              {isLoading ? '—' : stats.pendingPayment}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t('toPay')}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+        <AnimatedKpiCard
+          title={t('pendingAmount')}
+          value={isLoading ? 0 : stats.pending}
+          format="currency"
+          icon={CreditCard}
+          iconColor="#ef4444"
+          valueColor="#dc2626"
+          borderColor="#ef4444"
+          subtitle={`${stats.count > 0 ? ((stats.pending / stats.total) * 100).toFixed(1) : 0}% ${t('ofTotal')}`}
+          delay={0.3}
+        />
+      </AnimatedCardGrid>
 
       {/* Quick Actions */}
       <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ArrowDownToLine className="h-5 w-5 text-blue-500" />
-              {t('incomingInvoices')}
-            </CardTitle>
-            <CardDescription>
-              {t('incomingInvoicesDesc')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full">
-              <Link href="/invoices">
-                {t('browseInvoices')}
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <AnimatedCardWrapper delay={0.4}>
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ArrowDownToLine className="h-5 w-5 text-blue-500" />
+                {t('incomingInvoices')}
+              </CardTitle>
+              <CardDescription>
+                {t('incomingInvoicesDesc')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="w-full">
+                <Link href="/invoices">
+                  {t('browseInvoices')}
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </AnimatedCardWrapper>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <RefreshCw className="h-5 w-5 text-primary" />
-              {t('synchronization')}
-            </CardTitle>
-            <CardDescription>
-              {t('synchronizationDesc')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/sync">
-                {t('syncPanel')}
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <AnimatedCardWrapper delay={0.5}>
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <RefreshCw className="h-5 w-5 text-primary" />
+                {t('synchronization')}
+              </CardTitle>
+              <CardDescription>
+                {t('synchronizationDesc')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/sync">
+                  {t('syncPanel')}
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </AnimatedCardWrapper>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-green-500" />
-              {t('reports')}
-            </CardTitle>
-            <CardDescription>
-              {t('reportsDesc')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/reports">
-                {t('viewReports')}
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <AnimatedCardWrapper delay={0.6}>
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-green-500" />
+                {t('reports')}
+              </CardTitle>
+              <CardDescription>
+                {t('reportsDesc')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/reports">
+                  {t('viewReports')}
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </AnimatedCardWrapper>
       </div>
 
       {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('recentActivity')}</CardTitle>
-          <CardDescription>{t('recentActivityDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <AnimatedCardWrapper delay={0.7}>
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle>{t('recentActivity')}</CardTitle>
+            <CardDescription>{t('recentActivityDesc')}</CardDescription>
+          </CardHeader>
+          <CardContent>
           <div className="space-y-4">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
@@ -238,6 +233,7 @@ export default function HomePage() {
           </div>
         </CardContent>
       </Card>
+      </AnimatedCardWrapper>
     </div>
   )
 }

@@ -34,6 +34,7 @@ import {
 import { api, queryKeys, DashboardStats } from '@/lib/api'
 import { DashboardSkeleton } from '@/components/skeletons'
 import { useCompanyContext } from '@/contexts/company-context'
+import { AnimatedKpiCard, AnimatedCardGrid, AnimatedCardWrapper } from './animated-kpi-card'
 
 // Colors for charts
 const COLORS = [
@@ -138,227 +139,229 @@ export function DashboardContent() {
       </Card>
 
       {/* Summary cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Liczba faktur</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totals.invoiceCount}</div>
-            <p className="text-xs text-muted-foreground">
-              w wybranym okresie
-            </p>
-          </CardContent>
-        </Card>
+      <AnimatedCardGrid className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <AnimatedKpiCard
+          title="Liczba faktur"
+          value={stats.totals.invoiceCount}
+          format="number"
+          icon={FileText}
+          iconColor="#64748b"
+          borderColor="#64748b"
+          subtitle="w wybranym okresie"
+          delay={0}
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Suma brutto</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.totals.grossAmount)}</div>
-            <p className="text-xs text-muted-foreground">
-              netto: {formatCurrency(stats.totals.netAmount)}
-            </p>
-          </CardContent>
-        </Card>
+        <AnimatedKpiCard
+          title="Suma brutto"
+          value={stats.totals.grossAmount}
+          format="currency"
+          icon={DollarSign}
+          iconColor="#3b82f6"
+          borderColor="#3b82f6"
+          subtitle={`netto: ${formatCurrency(stats.totals.netAmount)}`}
+          delay={0.1}
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Nieopłacone</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              {formatCurrency(stats.payments.pending.grossAmount)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats.payments.pending.count} faktur oczekujących
-            </p>
-          </CardContent>
-        </Card>
+        <AnimatedKpiCard
+          title="Nieopłacone"
+          value={stats.payments.pending.grossAmount}
+          format="currency"
+          icon={Clock}
+          iconColor="#f59e0b"
+          valueColor="#ca8a04"
+          borderColor="#f59e0b"
+          subtitle={`${stats.payments.pending.count} faktur oczekujących`}
+          delay={0.2}
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Przeterminowane</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {formatCurrency(stats.payments.overdue.grossAmount)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats.payments.overdue.count} faktur po terminie
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+        <AnimatedKpiCard
+          title="Przeterminowane"
+          value={stats.payments.overdue.grossAmount}
+          format="currency"
+          icon={AlertTriangle}
+          iconColor="#ef4444"
+          valueColor="#dc2626"
+          borderColor="#ef4444"
+          subtitle={`${stats.payments.overdue.count} faktur po terminie`}
+          delay={0.3}
+        />
+      </AnimatedCardGrid>
 
       {/* Charts row */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Monthly expenses chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Wydatki miesięczne
-            </CardTitle>
-            <CardDescription>Suma brutto w poszczególnych miesiącach</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis 
-                    dataKey="name" 
-                    tick={{ fontSize: 12 }}
-                    className="text-muted-foreground"
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                    className="text-muted-foreground"
-                  />
-                  <Tooltip 
-                    formatter={(value) => [formatCurrency(value as number), 'Brutto']}
-                    labelClassName="font-medium"
-                  />
-                  <Bar dataKey="grossAmount" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+        <AnimatedCardWrapper delay={0.4}>
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Wydatki miesięczne
+              </CardTitle>
+              <CardDescription>Suma brutto w poszczególnych miesiącach</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthlyData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fontSize: 12 }}
+                      className="text-muted-foreground"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                      className="text-muted-foreground"
+                    />
+                    <Tooltip 
+                      formatter={(value) => [formatCurrency(value as number), 'Brutto']}
+                      labelClassName="font-medium"
+                    />
+                    <Bar dataKey="grossAmount" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </AnimatedCardWrapper>
 
         {/* MPK distribution pie chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Wydatki per MPK
-            </CardTitle>
-            <CardDescription>Rozkład kosztów według centrów kosztów</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={mpkData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(0)}%)`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="grossAmount"
-                  >
-                    {mpkData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+        <AnimatedCardWrapper delay={0.5}>
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Wydatki per MPK
+              </CardTitle>
+              <CardDescription>Rozkład kosztów według centrów kosztów</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={mpkData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(0)}%)`}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="grossAmount"
+                    >
+                      {mpkData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </AnimatedCardWrapper>
       </div>
 
       {/* Top suppliers table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Top 10 dostawców
-          </CardTitle>
-          <CardDescription>Dostawcy z największą sumą faktur</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-2 font-medium text-muted-foreground">#</th>
-                  <th className="text-left py-3 px-2 font-medium text-muted-foreground">Dostawca</th>
-                  <th className="text-left py-3 px-2 font-medium text-muted-foreground">NIP</th>
-                  <th className="text-right py-3 px-2 font-medium text-muted-foreground">Liczba faktur</th>
-                  <th className="text-right py-3 px-2 font-medium text-muted-foreground">Suma brutto</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.topSuppliers.map((supplier, index) => (
-                  <tr key={supplier.supplierNip} className="border-b last:border-0">
-                    <td className="py-3 px-2 text-muted-foreground">{index + 1}</td>
-                    <td className="py-3 px-2 font-medium">{supplier.supplierName}</td>
-                    <td className="py-3 px-2 text-muted-foreground">{supplier.supplierNip}</td>
-                    <td className="py-3 px-2 text-right">{supplier.invoiceCount}</td>
-                    <td className="py-3 px-2 text-right font-medium">
-                      {formatCurrency(supplier.grossAmount)}
-                    </td>
+      <AnimatedCardWrapper delay={0.6}>
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Top 10 dostawców
+            </CardTitle>
+            <CardDescription>Dostawcy z największą sumą faktur</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground">#</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground">Dostawca</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground">NIP</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Liczba faktur</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Suma brutto</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                </thead>
+                <tbody>
+                  {stats.topSuppliers.map((supplier, index) => (
+                    <tr key={supplier.supplierNip} className="border-b last:border-0">
+                      <td className="py-3 px-2 text-muted-foreground">{index + 1}</td>
+                      <td className="py-3 px-2 font-medium">{supplier.supplierName}</td>
+                      <td className="py-3 px-2 text-muted-foreground">{supplier.supplierNip}</td>
+                      <td className="py-3 px-2 text-right">{supplier.invoiceCount}</td>
+                      <td className="py-3 px-2 text-right font-medium">
+                        {formatCurrency(supplier.grossAmount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </AnimatedCardWrapper>
 
       {/* Payment status summary */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              Opłacone
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-700">
-              {formatCurrency(stats.payments.paid.grossAmount)}
-            </div>
-            <p className="text-sm text-green-600">
-              {stats.payments.paid.count} faktur
-            </p>
-          </CardContent>
-        </Card>
+        <AnimatedCardWrapper delay={0.7}>
+          <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/20 hover:shadow-md transition-all border-l-4" style={{ borderLeftColor: '#10b981' }}>
+            <CardHeader className="pb-2 py-2 px-4">
+              <CardTitle className="text-xs font-medium flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                Opłacone
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 px-4 pb-3">
+              <div className="text-2xl font-bold text-green-700">
+                {formatCurrency(stats.payments.paid.grossAmount)}
+              </div>
+              <p className="text-xs text-green-600 mt-1">
+                {stats.payments.paid.count} faktur
+              </p>
+            </CardContent>
+          </Card>
+        </AnimatedCardWrapper>
 
-        <Card className="border-yellow-200 bg-yellow-50/50 dark:bg-yellow-950/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="h-4 w-4 text-yellow-600" />
-              Oczekujące
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-700">
-              {formatCurrency(stats.payments.pending.grossAmount)}
-            </div>
-            <p className="text-sm text-yellow-600">
-              {stats.payments.pending.count} faktur
-            </p>
-          </CardContent>
-        </Card>
+        <AnimatedCardWrapper delay={0.8}>
+          <Card className="border-yellow-200 bg-yellow-50/50 dark:bg-yellow-950/20 hover:shadow-md transition-all border-l-4" style={{ borderLeftColor: '#f59e0b' }}>
+            <CardHeader className="pb-2 py-2 px-4">
+              <CardTitle className="text-xs font-medium flex items-center gap-2">
+                <Clock className="h-4 w-4 text-yellow-600" />
+                Oczekujące
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 px-4 pb-3">
+              <div className="text-2xl font-bold text-yellow-700">
+                {formatCurrency(stats.payments.pending.grossAmount)}
+              </div>
+              <p className="text-xs text-yellow-600 mt-1">
+                {stats.payments.pending.count} faktur
+              </p>
+            </CardContent>
+          </Card>
+        </AnimatedCardWrapper>
 
-        <Card className="border-red-200 bg-red-50/50 dark:bg-red-950/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-              Przeterminowane
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-700">
-              {formatCurrency(stats.payments.overdue.grossAmount)}
-            </div>
-            <p className="text-sm text-red-600">
-              {stats.payments.overdue.count} faktur
-            </p>
-          </CardContent>
-        </Card>
+        <AnimatedCardWrapper delay={0.9}>
+          <Card className="border-red-200 bg-red-50/50 dark:bg-red-950/20 hover:shadow-md transition-all border-l-4" style={{ borderLeftColor: '#ef4444' }}>
+            <CardHeader className="pb-2 py-2 px-4">
+              <CardTitle className="text-xs font-medium flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                Przeterminowane
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 px-4 pb-3">
+              <div className="text-2xl font-bold text-red-700">
+                {formatCurrency(stats.payments.overdue.grossAmount)}
+              </div>
+              <p className="text-xs text-red-600 mt-1">
+                {stats.payments.overdue.count} faktur
+              </p>
+            </CardContent>
+          </Card>
+        </AnimatedCardWrapper>
       </div>
     </div>
   )

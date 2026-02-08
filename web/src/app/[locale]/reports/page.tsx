@@ -37,6 +37,7 @@ import { useContextInvoices } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
 import { Invoice } from '@/lib/api'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AnimatedKpiCard, AnimatedCardGrid } from '@/components/dashboard/animated-kpi-card'
 
 interface MonthlyData {
   month: string
@@ -366,56 +367,50 @@ export default function ReportsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium">{t('allInvoices')}</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl md:text-2xl font-bold">{summary.count}</div>
-            <p className="text-xs text-muted-foreground">
-              {summary.uniqueSuppliers} {t('suppliers')}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium">{t('totalGross')}</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl md:text-2xl font-bold">{formatCurrency(summary.total)}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="hidden sm:inline">{t('average')}</span> {formatCurrency(summary.avgInvoice)}<span className="hidden sm:inline"> {t('perInvoice')}</span>
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium">{t('paidAmount')}</CardTitle>
-            <CreditCard className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl md:text-2xl font-bold text-green-600">{formatCurrency(summary.paid)}</div>
-            <p className="text-xs text-muted-foreground">
-              {summary.count > 0 ? ((summary.paid / summary.total) * 100).toFixed(1) : 0}% {t('ofTotal')}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium">{t('pendingAmount')}</CardTitle>
-            <CreditCard className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl md:text-2xl font-bold text-red-600">{formatCurrency(summary.pending)}</div>
-            <p className="text-xs text-muted-foreground">
-              {summary.count > 0 ? ((summary.pending / summary.total) * 100).toFixed(1) : 0}% {t('ofTotal')}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <AnimatedCardGrid className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
+        <AnimatedKpiCard
+          title={t('allInvoices')}
+          value={summary.count}
+          format="number"
+          icon={FileText}
+          iconColor="#64748b"
+          borderColor="#64748b"
+          subtitle={`${summary.uniqueSuppliers} ${t('suppliers')}`}
+          delay={0}
+        />
+        <AnimatedKpiCard
+          title={t('totalGross')}
+          value={summary.total}
+          format="currency"
+          icon={TrendingUp}
+          iconColor="#3b82f6"
+          borderColor="#3b82f6"
+          subtitle={`${t('average')} ${formatCurrency(summary.avgInvoice)} ${t('perInvoice')}`}
+          delay={0.1}
+        />
+        <AnimatedKpiCard
+          title={t('paidAmount')}
+          value={summary.paid}
+          format="currency"
+          icon={CreditCard}
+          iconColor="#10b981"
+          valueColor="#16a34a"
+          borderColor="#10b981"
+          subtitle={`${summary.count > 0 ? ((summary.paid / summary.total) * 100).toFixed(1) : 0}% ${t('ofTotal')}`}
+          delay={0.2}
+        />
+        <AnimatedKpiCard
+          title={t('pendingAmount')}
+          value={summary.pending}
+          format="currency"
+          icon={CreditCard}
+          iconColor="#ef4444"
+          valueColor="#dc2626"
+          borderColor="#ef4444"
+          subtitle={`${summary.count > 0 ? ((summary.pending / summary.total) * 100).toFixed(1) : 0}% ${t('ofTotal')}`}
+          delay={0.3}
+        />
+      </AnimatedCardGrid>
 
       <Tabs defaultValue="monthly">
         <TabsList className="w-full md:w-auto overflow-x-auto">

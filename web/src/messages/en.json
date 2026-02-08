@@ -83,7 +83,15 @@
     "recentActivity": "Recent activity",
     "recentActivityDesc": "Recently imported invoices",
     "noInvoices": "No invoices in the system. Run sync to fetch invoices.",
-    "viewAll": "View all ({count})"
+    "viewAll": "View all ({count})",
+    "allInvoices": "All invoices",
+    "suppliers": "suppliers",
+    "totalGross": "Total gross",
+    "average": "Average",
+    "perInvoice": "/ invoice",
+    "paidAmount": "Paid",
+    "pendingAmount": "Pending payment",
+    "ofTotal": "of total"
   },
   "invoices": {
     "title": "Invoices",

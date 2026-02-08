@@ -1,13 +1,40 @@
 # Ignore files for Azure Functions deployment
-*.js.map
+
+# Source files (only dist is needed)
 *.ts
-.git*
-.vscode
-local.settings.json
-test
-tests
-*.test.js
-*.spec.js
-src
+src/
 tsconfig.json
+
+# Tests
+test/
+tests/
+coverage/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
 vitest.config.ts
+
+# Build artifacts
+*.js.map
+*.d.ts.map
+
+# Development files
+.git*
+.vscode/
+.env
+.env.local
+local.settings.json
+# node_modules/ — must be included for Flex Consumption (no remote build)
+
+# Scripts and documentation
+scripts/
+*.md
+README*
+LICENSE
+
+# Logs and temp files
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db

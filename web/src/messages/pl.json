@@ -83,7 +83,15 @@
     "recentActivity": "Ostatnia aktywność",
     "recentActivityDesc": "Ostatnio zaimportowane faktury",
     "noInvoices": "Brak faktur w systemie. Uruchom synchronizację, aby pobrać faktury.",
-    "viewAll": "Zobacz wszystkie ({count})"
+    "viewAll": "Zobacz wszystkie ({count})",
+    "allInvoices": "Wszystkie faktury",
+    "suppliers": "dostawców",
+    "totalGross": "Suma brutto",
+    "average": "Średnio",
+    "perInvoice": "/ faktura",
+    "paidAmount": "Opłacone",
+    "pendingAmount": "Do zapłaty",
+    "ofTotal": "całości"
   },
   "invoices": {
     "title": "Faktury",

@@ -6,6 +6,37 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.6.3] - 2026-02-08
+
+### ✨ Dodane - Animowane Kafelki Dashboard
+
+- **Nowy komponent `AnimatedKpiCard`** — kafelki KPI z animacjami wejścia i licznikami
+- **Biblioteka framer-motion** — płynne animacje wejścia dla kafelków z opóźnieniem staggered (0s, 0.1s, 0.2s, 0.3s)
+- **Biblioteka react-countup** — animowane liczniki wartości w kafelkach
+- **Wrapper AnimatedCardGrid** — kontener z animacją staggerChildren dla grupy kafelków
+- **Helper formatCurrency** — wyeksportowana funkcja formatowania walut PLN
+
+### 🎨 Ulepszenia UI - Dashboard
+
+- **Unifikacja stylistyki kafelków** — identyczne kolory, ikony i format między stroną główną a raportami
+- **Kafelki z wartościami finansowymi**:
+  - **Wszystkie faktury** — liczba faktur z informacją o dostawcach (ikona: FileText, kolor: #64748b szary)
+  - **Suma brutto** — łączna wartość w PLN ze średnią na fakturę (ikona: TrendingUp, kolor: #3b82f6 niebieski)
+  - **Opłacone** — kwota opłacona z procentem całości (ikona: CreditCard, kolor: #10b981 zielony)
+  - **Do zapłaty** — kwota do zapłaty z procentem całości (ikona: CreditCard, kolor: #ef4444 czerwony)
+- **Lewa ramka akcentująca** — kolorowe `border-l-4` na każdym kafelku odpowiadające tematowi
+- **Efekty hover** — podniesienie cienia przy najechaniu myszką
+- **Ikony z okrągłym tłem** — kolorowe ikony w kółkach dopasowane do kafelka
+
+### 🔧 Zmiany Techniczne
+
+- **Instalacja `framer-motion@^12.33.0`** — biblioteka animacji dla React
+- **Instalacja `react-countup@^6.5.3`** — animowane liczniki wartości
+- **Nowe klucze tłumaczeń** — dodano 8 kluczy (`allInvoices`, `suppliers`, `totalGross`, `average`, `perInvoice`, `paidAmount`, `pendingAmount`, `ofTotal`) do namespace'u `dashboard` w plikach EN i PL
+- **Aktualizacja kalkulacji statystyk** — strona główna oblicza kwoty zamiast liczników (suma brutto, kwota opłacona, kwota do zapłaty)
+
+---
+
 ## [0.6.2] - 2026-02-08
 
 ### ✨ Dodane - Generator Danych Testowych
