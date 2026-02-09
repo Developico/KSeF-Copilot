@@ -45,22 +45,22 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (companiesLoading || initialized) return
     
-    const savedNip = getCookie(COOKIE_NAME)
+    const savedId = getCookie(COOKIE_NAME)
     
-    if (savedNip && companies.length > 0) {
-      // Find company by NIP from cookie
-      const savedCompany = companies.find(c => c.nip === savedNip)
+    if (savedId && companies.length > 0) {
+      // Find company by ID from cookie (unique per company+environment)
+      const savedCompany = companies.find(c => c.id === savedId)
       if (savedCompany) {
         setSelectedCompanyState(savedCompany)
       } else {
         // Cookie company doesn't exist anymore, fallback to first
         setSelectedCompanyState(companies[0])
-        setCookie(COOKIE_NAME, companies[0].nip, COOKIE_MAX_AGE)
+        setCookie(COOKIE_NAME, companies[0].id, COOKIE_MAX_AGE)
       }
     } else if (companies.length > 0) {
       // No cookie, select first company
       setSelectedCompanyState(companies[0])
-      setCookie(COOKIE_NAME, companies[0].nip, COOKIE_MAX_AGE)
+      setCookie(COOKIE_NAME, companies[0].id, COOKIE_MAX_AGE)
     }
     
     setInitialized(true)
@@ -76,7 +76,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       if (!stillExists) {
         const newSelection = companies[0]
         setSelectedCompanyState(newSelection)
-        setCookie(COOKIE_NAME, newSelection.nip, COOKIE_MAX_AGE)
+        setCookie(COOKIE_NAME, newSelection.id, COOKIE_MAX_AGE)
         // Invalidate all queries when selection changes due to deletion
         queryClient.invalidateQueries()
       }
@@ -85,26 +85,26 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     // If no selection but companies exist, select first
     if (!selectedCompany && companies.length > 0) {
       setSelectedCompanyState(companies[0])
-      setCookie(COOKIE_NAME, companies[0].nip, COOKIE_MAX_AGE)
+      setCookie(COOKIE_NAME, companies[0].id, COOKIE_MAX_AGE)
     }
   }, [companies, companiesLoading, initialized, selectedCompany, queryClient])
 
   const setSelectedCompany = useCallback((company: KsefSetting | null) => {
-    const previousNip = selectedCompany?.nip
+    const previousId = selectedCompany?.id
     
     setSelectedCompanyState(company)
     
     if (company) {
-      setCookie(COOKIE_NAME, company.nip, COOKIE_MAX_AGE)
+      setCookie(COOKIE_NAME, company.id, COOKIE_MAX_AGE)
     } else {
       deleteCookie(COOKIE_NAME)
     }
     
     // Invalidate all queries when company changes to force refetch with new context
-    if (previousNip !== company?.nip) {
+    if (previousId !== company?.id) {
       queryClient.invalidateQueries()
     }
-  }, [selectedCompany?.nip, queryClient])
+  }, [selectedCompany?.id, queryClient])
 
   const value: CompanyContextType = {
     selectedCompany,
