@@ -1,3 +1,8 @@
 ﻿.deploy/
 deploy.zip
+deploy-package.zip
+*.logs.zip
+app-logs.zip
+logs2.zip
+logs2/
 azure-logs*/
