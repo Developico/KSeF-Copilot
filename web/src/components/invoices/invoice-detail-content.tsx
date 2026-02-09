@@ -259,6 +259,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
     mutationFn: () => api.invoices.markAsPaid(invoiceId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
     },
   })
 
@@ -275,6 +276,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
       toast({
         title: 'Sukces',
         description: 'Sugestie AI zostały zastosowane',
@@ -287,6 +289,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
     mutationFn: () => api.invoices.categorizeWithAI(invoiceId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
       toast({
         title: 'Sukces',
         description: 'Faktura została skategoryzowana przez AI',
@@ -307,6 +310,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
       api.invoices.update(invoiceId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
       setIsEditingClassification(false)
       toast({
         title: 'Sukces',
@@ -376,6 +380,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
     }) => api.invoices.update(invoiceId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
       setIsEditingInvoice(false)
       toast({
         title: 'Sukces',

@@ -293,7 +293,7 @@ export async function updateInvoice(id: string, data: InvoiceUpdate): Promise<In
   }
 
   if (data.paymentDate !== undefined) {
-    body[InvoiceEntity.fields.paymentDate] = data.paymentDate
+    body[InvoiceEntity.fields.paymentDate] = sanitizeDateForDataverse(data.paymentDate)
   }
 
   await dataverseRequest(`${InvoiceEntity.entitySet}(${id})`, {
@@ -441,6 +441,20 @@ function mapFromDataverse(record: DataverseInvoice): Invoice {
   }
 }
 
+/**
+ * Sanitize a date value for Dataverse CRM DateTime fields.
+ * Dataverse rejects dates before 01/01/1753.
+ * Converts empty strings, undefined, and invalid dates to null.
+ */
+function sanitizeDateForDataverse(value: string | undefined | null): string | null {
+  if (!value || typeof value !== 'string' || value.trim() === '') return null
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return null
+  // CRM DateTime minimum: 1753-01-01
+  if (date.getFullYear() < 1753) return null
+  return value
+}
+
 function mapToDataverse(data: InvoiceCreate): Record<string, unknown> {
   const f = InvoiceEntity.fields
   const sourceValue = data.source
@@ -455,8 +469,8 @@ function mapToDataverse(data: InvoiceCreate): Record<string, unknown> {
     [f.invoiceNumberField]: data.invoiceNumber, // Also save to dedicated field
     [f.supplierNip]: data.supplierNip,
     [f.supplierName]: data.supplierName,
-    [f.invoiceDate]: data.invoiceDate,
-    [f.dueDate]: data.dueDate,
+    [f.invoiceDate]: sanitizeDateForDataverse(data.invoiceDate),
+    [f.dueDate]: sanitizeDateForDataverse(data.dueDate),
     [f.netAmount]: data.netAmount,
     [f.vatAmount]: data.vatAmount,
     [f.grossAmount]: data.grossAmount,

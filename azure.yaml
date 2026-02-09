@@ -23,8 +23,8 @@ services:
         shell: pwsh
         run: |
           cd api
-          pnpm install
-          pnpm run build
+          npm install
+          npm run build
 
   web:
     project: ./web
@@ -35,5 +35,5 @@ services:
         shell: pwsh
         run: |
           cd web
-          pnpm install
-          pnpm run build
+          npm install
+          npm run build

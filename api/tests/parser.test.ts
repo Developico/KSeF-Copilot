@@ -217,4 +217,57 @@ describe('Multiple line items', () => {
     expect(result.items[0].description).toBe('Produkt A')
     expect(result.items[1].description).toBe('Usługa B')
   })
+
+  it('should parse namespaced XML (FA(3) / KSeF API 2.0)', () => {
+    const namespacedXml = `<?xml version="1.0" encoding="UTF-8"?>
+<tns:Faktura xmlns:tns="http://crd.gov.pl/wzor/2025/06/25/1377">
+  <tns:Naglowek>
+    <tns:KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</tns:KodFormularza>
+    <tns:WariantFormularza>3</tns:WariantFormularza>
+  </tns:Naglowek>
+  <tns:Podmiot1>
+    <tns:DaneIdentyfikacyjne>
+      <tns:NIP>1132737324</tns:NIP>
+      <tns:Nazwa>BeInteractive.pl Arkadiusz Zwierzyński</tns:Nazwa>
+    </tns:DaneIdentyfikacyjne>
+  </tns:Podmiot1>
+  <tns:Podmiot2>
+    <tns:DaneIdentyfikacyjne>
+      <tns:NIP>5272926470</tns:NIP>
+      <tns:Nazwa>Developico sp. z o.o.</tns:Nazwa>
+    </tns:DaneIdentyfikacyjne>
+  </tns:Podmiot2>
+  <tns:Fa>
+    <tns:KodWaluty>PLN</tns:KodWaluty>
+    <tns:P_1>2026-02-03</tns:P_1>
+    <tns:P_2>2026/02/3</tns:P_2>
+    <tns:P_13_1>649.19</tns:P_13_1>
+    <tns:P_14_1>149.31</tns:P_14_1>
+    <tns:P_15>799.50</tns:P_15>
+    <tns:FaWiersz>
+      <tns:NrWierszaFa>1</tns:NrWierszaFa>
+      <tns:P_7>Usługi programistyczne</tns:P_7>
+      <tns:P_8A>1</tns:P_8A>
+      <tns:P_8B>szt.</tns:P_8B>
+      <tns:P_9A>649.19</tns:P_9A>
+      <tns:P_11>649.19</tns:P_11>
+      <tns:P_12>23</tns:P_12>
+    </tns:FaWiersz>
+  </tns:Fa>
+</tns:Faktura>`
+
+    const result = parseInvoiceXml(namespacedXml)
+
+    expect(result.invoiceNumber).toBe('2026/02/3')
+    expect(result.invoiceDate).toBe('2026-02-03')
+    expect(result.supplier.nip).toBe('1132737324')
+    expect(result.supplier.name).toBe('BeInteractive.pl Arkadiusz Zwierzyński')
+    expect(result.buyer.nip).toBe('5272926470')
+    expect(result.buyer.name).toBe('Developico sp. z o.o.')
+    expect(result.netAmount).toBe(649.19)
+    expect(result.grossAmount).toBe(799.5)
+    expect(result.vatAmount).toBeCloseTo(150.31, 2)
+    expect(result.items).toHaveLength(1)
+    expect(result.items[0].description).toBe('Usługi programistyczne')
+  })
 })

@@ -2,9 +2,24 @@ import { XMLParser, XMLBuilder } from 'fast-xml-parser'
 import { ParsedInvoice, ParsedInvoiceItem, KsefInvoice, KsefInvoiceItem } from './types'
 
 /**
- * Parse FA(2) invoice XML from KSeF
+ * Strip XML namespace prefixes (e.g. tns:Faktura → Faktura) and xmlns declarations
+ * so that the parser can handle FA(2) and FA(3) schemas uniformly.
+ */
+function stripNamespaces(xml: string): string {
+  // Remove namespace declarations: xmlns:tns="..." and xmlns="..."
+  let cleaned = xml.replace(/\s+xmlns(?::\w+)?="[^"]*"/g, '')
+  // Remove namespace prefixes from tags: <tns:Faktura> → <Faktura>, </tns:Fa> → </Fa>
+  cleaned = cleaned.replace(/<\/?[\w-]+:/g, (match) => match.charAt(0) === '<' && match.charAt(1) === '/' ? '</' : '<')
+  return cleaned
+}
+
+/**
+ * Parse FA(2)/FA(3) invoice XML from KSeF
  */
 export function parseInvoiceXml(xml: string): ParsedInvoice {
+  // Strip namespace prefixes to handle both FA(2) and FA(3) schemas
+  const cleanXml = stripNamespaces(xml)
+
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '@_',
@@ -14,10 +29,10 @@ export function parseInvoiceXml(xml: string): ParsedInvoice {
     trimValues: true,
   })
 
-  const doc = parser.parse(xml)
+  const doc = parser.parse(cleanXml)
 
-  // FA(2) structure - the root element is Faktura
-  const faktura = doc.Faktura || doc['tns:Faktura'] || doc
+  // FA(2)/FA(3) structure - the root element is Faktura
+  const faktura = doc.Faktura || doc
 
   // Extract header info
   const naglowek = faktura.Naglowek || {}

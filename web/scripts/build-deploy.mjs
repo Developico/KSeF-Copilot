@@ -4,14 +4,13 @@
  *
  * Usage: node scripts/build-deploy.mjs
  *
- * Strategy: Local build + deploy artifacts with WEBSITE_RUN_FROM_PACKAGE=1.
- * Azure mounts the ZIP directly as read-only filesystem — no tar extraction needed.
+ * Strategy: Next.js standalone output — self-contained server with minimal deps.
+ * No Oryx build needed on Azure. Deploy as-is.
  *
  * Steps:
- * 1. `next build` using existing pnpm node_modules
- * 2. Creates .deploy/ with: .next/, public/, server.js, config, deps
- * 3. Runs `npm install --omit=dev` inside .deploy/ — flat node_modules
- * 4. Installs Linux native binaries for Azure
+ * 1. `next build` (with output: 'standalone' in next.config.mjs)
+ * 2. Creates .deploy/ from .next/standalone/ + .next/static/ + public/
+ * 3. Installs Linux native binaries for Azure
  */
 
 import { execSync } from 'child_process'
@@ -20,34 +19,71 @@ import { join, sep } from 'path'
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1')
 const DEPLOY_DIR = join(ROOT, '.deploy')
+const STANDALONE_DIR = join(ROOT, '.next', 'standalone')
 
-console.log('=== KSeF Web — Azure Deploy Build ===\n')
+// In npm workspaces the standalone output nests the app under the workspace folder name.
+// Detect automatically: if standalone/web/ exists, the app is there; otherwise it's at top level.
+function findStandaloneApp(standaloneDir) {
+  const nested = join(standaloneDir, 'web')
+  if (existsSync(join(nested, 'server.js'))) return nested
+  if (existsSync(join(standaloneDir, 'server.js'))) return standaloneDir
+  return null
+}
+
+// Shared node_modules live at the standalone root when using workspaces.
+function findStandaloneNodeModules(standaloneDir, appDir) {
+  if (appDir !== standaloneDir) {
+    const rootNM = join(standaloneDir, 'node_modules')
+    if (existsSync(rootNM)) return rootNM
+  }
+  return null
+}
+
+console.log('=== KSeF Web — Azure Deploy Build (standalone) ===\n')
 
 // ── Step 1: next build ──────────────────────────────────────────────
-console.log('1/4  Building Next.js...')
+console.log('1/3  Building Next.js (standalone)...')
 execSync('npx next build', {
   cwd: ROOT,
   stdio: 'inherit',
   env: { ...process.env, NODE_ENV: 'production' },
 })
 
-if (!existsSync(join(ROOT, '.next'))) {
-  console.error('ERROR: .next/ not created — build failed.')
+if (!existsSync(STANDALONE_DIR)) {
+  console.error('ERROR: .next/standalone/ not created — is output: "standalone" set in next.config.mjs?')
   process.exit(1)
 }
-console.log('     ✓ Build OK\n')
+
+const APP_DIR = findStandaloneApp(STANDALONE_DIR)
+if (!APP_DIR) {
+  console.error('ERROR: Cannot find server.js in standalone output.')
+  console.error('Contents:', readdirSync(STANDALONE_DIR))
+  process.exit(1)
+}
+console.log(`     ✓ Build OK (app at: ${APP_DIR === STANDALONE_DIR ? 'root' : 'web/'})\n`)
 
 // ── Step 2: Prepare .deploy/ ────────────────────────────────────────
-console.log('2/4  Preparing .deploy/ ...')
+console.log('2/3  Preparing .deploy/ ...')
 if (existsSync(DEPLOY_DIR)) rmSync(DEPLOY_DIR, { recursive: true })
-mkdirSync(DEPLOY_DIR, { recursive: true })
 
-// Copy .next/ (build output — without cache)
-cpSync(join(ROOT, '.next'), join(DEPLOY_DIR, '.next'), {
-  recursive: true,
-  filter: (src) => !src.includes('.next' + sep + 'cache'),
-})
-console.log('     ✓ .next/ (without cache)')
+// Copy the actual app (server.js, .next/, package.json, etc.)
+cpSync(APP_DIR, DEPLOY_DIR, { recursive: true })
+console.log('     ✓ standalone app → .deploy/')
+
+// Copy shared workspace node_modules to .deploy/node_modules (merge with app's)
+const sharedNM = findStandaloneNodeModules(STANDALONE_DIR, APP_DIR)
+if (sharedNM) {
+  cpSync(sharedNM, join(DEPLOY_DIR, 'node_modules'), { recursive: true })
+  console.log('     ✓ workspace node_modules (merged)')
+}
+
+// Copy static assets (.next/static → .deploy/.next/static)
+const staticSrc = join(ROOT, '.next', 'static')
+const staticDst = join(DEPLOY_DIR, '.next', 'static')
+if (existsSync(staticSrc)) {
+  cpSync(staticSrc, staticDst, { recursive: true })
+  console.log('     ✓ .next/static/')
+}
 
 // Copy public/
 if (existsSync(join(ROOT, 'public'))) {
@@ -55,17 +91,9 @@ if (existsSync(join(ROOT, 'public'))) {
   console.log('     ✓ public/')
 }
 
-// Copy server.js
-copyFileSync(join(ROOT, 'server.js'), join(DEPLOY_DIR, 'server.js'))
-console.log('     ✓ server.js')
-
 // Copy startup.sh
 copyFileSync(join(ROOT, 'startup.sh'), join(DEPLOY_DIR, 'startup.sh'))
 console.log('     ✓ startup.sh')
-
-// Copy next.config.mjs
-copyFileSync(join(ROOT, 'next.config.mjs'), join(DEPLOY_DIR, 'next.config.mjs'))
-console.log('     ✓ next.config.mjs')
 
 // Copy .env.production
 if (existsSync(join(ROOT, '.env.production'))) {
@@ -73,58 +101,46 @@ if (existsSync(join(ROOT, '.env.production'))) {
   console.log('     ✓ .env.production')
 }
 
-// Create src/app/ directory with placeholder (Next.js findPagesDir() requires it at runtime)
-// Note: empty dirs are dropped by ZIP — must include a file
-mkdirSync(join(DEPLOY_DIR, 'src', 'app'), { recursive: true })
-writeFileSync(join(DEPLOY_DIR, 'src', 'app', '.gitkeep'), '')
-console.log('     ✓ src/app/ (required by Next.js findPagesDir)')
-
-// Create production package.json (only production deps)
-const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'))
-const deployPkg = {
-  name: pkg.name,
-  version: pkg.version,
-  private: true,
-  scripts: { start: 'node server.js' },
-  dependencies: pkg.dependencies,
-}
-writeFileSync(join(DEPLOY_DIR, 'package.json'), JSON.stringify(deployPkg, null, 2))
-console.log('     ✓ package.json (prod only)')
-
-// Copy .npmrc
-if (existsSync(join(ROOT, '.npmrc'))) {
-  copyFileSync(join(ROOT, '.npmrc'), join(DEPLOY_DIR, '.npmrc'))
-  console.log('     ✓ .npmrc')
-}
-
 // Create .deployment (disable Oryx build on Azure)
 writeFileSync(join(DEPLOY_DIR, '.deployment'), '[config]\nSCM_DO_BUILD_DURING_DEPLOYMENT=false\n')
 console.log('     ✓ .deployment (Oryx disabled)')
 
-// ── Step 3: npm install (production deps, flat node_modules) ────────
-console.log('\n3/4  Installing production dependencies in .deploy/ ...')
-execSync('npm install --omit=dev --legacy-peer-deps', {
-  cwd: DEPLOY_DIR,
-  stdio: 'inherit',
-  env: { ...process.env, NODE_ENV: 'production' },
-})
+// Create package.json for Azure detection
+writeFileSync(join(DEPLOY_DIR, 'package.json'), JSON.stringify({
+  name: '@dvlp-ksef/web',
+  version: '0.1.0',
+  private: true,
+  scripts: { start: 'node server.js' },
+}, null, 2))
+console.log('     ✓ package.json')
 
-// Install Linux-specific native binaries needed on Azure (we build on Windows)
+// ── Step 3: Install Linux native binaries ───────────────────────────
+console.log('\n3/3  Installing Linux native binaries for Azure...')
 const linuxPkgs = [
   '@next/swc-linux-x64-gnu',
-  '@swc/core-linux-x64-gnu',
-  '@parcel/watcher-linux-x64-glibc',
-  '@img/sharp-linux-x64',
 ]
-console.log('     Installing Linux native binaries for Azure...')
 execSync(`npm install --no-save --force ${linuxPkgs.join(' ')}`, {
   cwd: DEPLOY_DIR,
   stdio: 'inherit',
   env: { ...process.env, NODE_ENV: 'production' },
 })
-console.log('     ✓ node_modules installed (with Linux binaries)\n')
+console.log('     ✓ Linux binaries installed\n')
 
-// ── Step 4: Summary ─────────────────────────────────────────────────
+// ── Verify deploy contents ──────────────────────────────────────────
+const buildId = join(DEPLOY_DIR, '.next', 'BUILD_ID')
+const serverJs = join(DEPLOY_DIR, 'server.js')
+if (!existsSync(buildId)) {
+  console.error('ERROR: .deploy/.next/BUILD_ID is missing — build is broken!')
+  process.exit(1)
+}
+if (!existsSync(serverJs)) {
+  console.error('ERROR: .deploy/server.js is missing!')
+  process.exit(1)
+}
+console.log(`     ✓ Verified: BUILD_ID = ${readFileSync(buildId, 'utf8').trim()}`)
+console.log(`     ✓ Verified: server.js present`)
+
+// ── Summary ─────────────────────────────────────────────────────────
 function dirSize(dir) {
   let total = 0
   try {
@@ -137,6 +153,7 @@ function dirSize(dir) {
 }
 
 const sizeMB = (dirSize(DEPLOY_DIR) / 1024 / 1024).toFixed(1)
-console.log(`4/4  Summary`)
+console.log(`Summary`)
 console.log(`     .deploy/ size: ${sizeMB} MB`)
-console.log(`\n✓ Ready! Deploy via VS Code "Deploy to Web App"`)
+console.log(`\n✓ Ready! Deploy .deploy/ via VS Code "Deploy to Web App"`)
+

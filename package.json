@@ -18,18 +18,20 @@
     "ai-categorization"
   ],
   "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
+    "node": ">=20.0.0"
   },
-  "packageManager": "pnpm@9.15.0",
+  "workspaces": [
+    "api",
+    "web"
+  ],
   "scripts": {
-    "dev": "pnpm run --parallel dev",
-    "build": "pnpm run --recursive build",
-    "test": "pnpm run --recursive test",
-    "typecheck": "pnpm run --recursive typecheck",
-    "lint": "pnpm run --recursive lint",
-    "lint:fix": "pnpm run --recursive lint:fix",
-    "clean": "pnpm run --recursive clean",
+    "dev": "npm run dev --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "lint:fix": "npm run lint:fix --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present",
     "prepare": "husky"
   },
   "devDependencies": {
