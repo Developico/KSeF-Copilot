@@ -2,8 +2,8 @@
 
 Dokument opisuje proces przygotowania, przeprowadzenia i weryfikacji wdrożenia API (`YOUR_FUNCTION_APP`) na platformę Azure Functions w planie Flex Consumption.
 
-**Data wdrożenia:** 2026-02-08  
-**Wersja:** 0.6.0  
+**Data wdrożenia:** 2026-02-09  
+**Wersja:** 0.6.1  
 
 ---
 
@@ -61,13 +61,31 @@ Komenda `build` wykonuje:
 
 Flex Consumption **nie wykonuje `npm install` na serwerze** (brak remote build). Zależności muszą być dołączone do paczki.
 
+> **⚠️ WAŻNE — npm workspaces:**  
+> Projekt używa npm workspaces (root `package.json` → `"workspaces": ["api", "web"]`).  
+> Domyślnie `npm install` hoistuje zależności do root `dvlp-ksef/node_modules/`,  
+> pozostawiając `api/node_modules/` pusty. Paczka ZIP deployu nie zawiera wtedy  
+> zależności, co powoduje **404 na wszystkich endpointach** (funkcje się nie rejestrują).  
+>  
+> **Rozwiązanie:** Użyj flagi `--no-workspaces`, aby wymusić instalację lokalnie w `api/node_modules/`.  
+> Dodaj `--ignore-scripts`, ponieważ skrypt `prepare` (husky) jest niedostępny bez devDependencies.
+
 ```bash
-npm install --omit=dev
+npm install --omit=dev --no-workspaces --ignore-scripts
+```
+
+**Weryfikacja:** Po instalacji upewnij się, że `api/node_modules/@azure/functions` istnieje:
+```bash
+# PowerShell
+Test-Path "api/node_modules/@azure/functions"   # → True
+
+# bash
+ls api/node_modules/@azure/functions/             # powinien istnieć
 ```
 
 Wersja z dev dependencies po deployu — przywrócenie:
 ```bash
-npm install
+npm install --ignore-scripts
 ```
 
 ### 3. Struktura plików do deployu
@@ -227,7 +245,29 @@ Rozmiar paczki: ~90 MB (głównie `node_modules/` z zależnościami produkcyjnym
 Remove-Item -Recurse -Force node_modules_prod, deploy-final, check-pkg
 ```
 
-### Problem 3: `FUNCTIONS_WORKER_RUNTIME` na Flex Consumption
+### Problem 3: npm workspaces hoisting — pusty `api/node_modules/`
+
+**Objaw:** Deploy raportował sukces, `func` CLI wyświetlał "The deployment was successful!", ale sekcja "Functions in YOUR_FUNCTION_APP:" była pusta. Wszystkie endpointy zwracały 404.
+
+**Przyczyna:** Projekt używa npm workspaces (`"workspaces": ["api", "web"]` w root `package.json`). Komenda `npm install --omit=dev` wykonywana w `api/` instalowała zależności do root `dvlp-ksef/node_modules/` (hoisting). Katalog `api/node_modules/` zawierał jedynie `.vite` i nie miał `@azure/functions` ani żadnych innych pakietów. Paczka ZIP deployowana na Azure nie zawierała żadnych zależności runtime.
+
+**Diagnoza:**
+```bash
+# Sprawdź czy @azure/functions jest w api/node_modules
+Test-Path "api/node_modules/@azure/functions"   # → False = problem!
+
+# Sprawdź liczbę pakietów w api/node_modules
+Get-ChildItem "api/node_modules" | Measure-Object   # → Count: 1 (.vite tylko)
+```
+
+**Rozwiązanie:** Użycie flagi `--no-workspaces` wymusza instalację lokalnie:
+```bash
+npm install --omit=dev --no-workspaces --ignore-scripts
+```
+
+Po tej zmianie `api/node_modules/` zawiera ~57 pakietów, paczka ZIP waży ~90 MB, a funkcje są poprawnie odkrywane.
+
+### Problem 4: `FUNCTIONS_WORKER_RUNTIME` na Flex Consumption
 
 **Obserwacja:** Na Flex Consumption ustawienie `FUNCTIONS_WORKER_RUNTIME` jest **zablokowane** jako app setting (Azure zwraca błąd). Runtime jest konfigurowany na poziomie infrastruktury (`functionAppConfig.runtime.name=node`).
 
@@ -252,7 +292,7 @@ az functionapp function list \
   --query "[].name" -o tsv
 ```
 
-Oczekiwany wynik: 62 nazw funkcji.
+Oczekiwany wynik: 72 nazwy funkcji.
 
 ### 2. Health check (podstawowy)
 
@@ -284,13 +324,13 @@ Oczekiwany wynik — wszystkie 3 serwisy `healthy`:
 | Dataverse | `healthy` | Autentykacja i połączenie z CRM OK |
 | KSeF API | `healthy` | Połączenie ze środowiskiem testowym OK |
 
-### 4. Wynik weryfikacji z 2026-02-08
+### 4. Wynik weryfikacji z 2026-02-09
 
 ```
 ✅ Health check:      200 OK — status: healthy
-✅ Health detailed:   200 OK — Key Vault (395ms), Dataverse (569ms), KSeF (129ms)
-✅ Funkcje:           62 zarejestrowane httpTrigger
-✅ Rozmiar paczki:    89.91 MB
+✅ Health detailed:   200 OK — Key Vault (370ms), Dataverse (460ms), KSeF (83ms)
+✅ Funkcje:           72 zarejestrowane httpTrigger
+✅ Rozmiar paczki:    89.87 MB
 ✅ Runtime:           Node.js 22 (Flex Consumption)
 ```
 
@@ -306,14 +346,17 @@ cd api
 # 1. Build
 npm run build
 
-# 2. Zależności produkcyjne
-npm install --omit=dev
+# 2. Zależności produkcyjne (--no-workspaces wymusza instalację w api/node_modules!)
+npm install --omit=dev --no-workspaces --ignore-scripts
 
-# 3. Deploy
+# 3. Weryfikacja — upewnij się, że @azure/functions jest lokalnie
+#    Test-Path "node_modules/@azure/functions"  → powinno zwrócić True
+
+# 4. Deploy
 func azure functionapp publish YOUR_FUNCTION_APP
 
-# 4. Przywróć dev dependencies (do dalszego developmentu)
-npm install
+# 5. Przywróć dev dependencies (do dalszego developmentu)
+npm install --ignore-scripts
 ```
 
 ### Sprawdzenie logów

@@ -50,6 +50,7 @@
     "react-countup": "^6.5.3",
     "react-day-picker": "^9.13.0",
     "react-dom": "^19.0.0",
+    "react-is": "^19.2.4",
     "react-markdown": "^10.1.0",
     "react-medium-image-zoom": "^5.4.0",
     "react-pdf": "^10.3.0",

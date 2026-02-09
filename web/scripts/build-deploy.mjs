@@ -70,13 +70,6 @@ if (existsSync(DEPLOY_DIR)) rmSync(DEPLOY_DIR, { recursive: true })
 cpSync(APP_DIR, DEPLOY_DIR, { recursive: true })
 console.log('     ✓ standalone app → .deploy/')
 
-// Copy shared workspace node_modules to .deploy/node_modules (merge with app's)
-const sharedNM = findStandaloneNodeModules(STANDALONE_DIR, APP_DIR)
-if (sharedNM) {
-  cpSync(sharedNM, join(DEPLOY_DIR, 'node_modules'), { recursive: true })
-  console.log('     ✓ workspace node_modules (merged)')
-}
-
 // Copy static assets (.next/static → .deploy/.next/static)
 const staticSrc = join(ROOT, '.next', 'static')
 const staticDst = join(DEPLOY_DIR, '.next', 'static')
@@ -115,6 +108,9 @@ writeFileSync(join(DEPLOY_DIR, 'package.json'), JSON.stringify({
 console.log('     ✓ package.json')
 
 // ── Step 3: Install Linux native binaries ───────────────────────────
+// IMPORTANT: npm install runs BEFORE copying shared node_modules because
+// npm prunes modules not listed in package.json. The shared modules copy
+// must happen AFTER to preserve all standalone dependencies (next, react, etc.).
 console.log('\n3/3  Installing Linux native binaries for Azure...')
 const linuxPkgs = [
   '@next/swc-linux-x64-gnu',
@@ -124,7 +120,19 @@ execSync(`npm install --no-save --force ${linuxPkgs.join(' ')}`, {
   stdio: 'inherit',
   env: { ...process.env, NODE_ENV: 'production' },
 })
-console.log('     ✓ Linux binaries installed\n')
+console.log('     ✓ Linux binaries installed')
+
+// Copy shared workspace node_modules AFTER npm install to prevent pruning.
+// In npm workspaces, standalone output splits modules between the workspace root
+// (shared: next, react, sharp, etc.) and the app directory (workspace-specific).
+// npm install above prunes modules not in package.json, so we copy shared modules
+// last to ensure they are present in the final .deploy/node_modules/.
+const sharedNM = findStandaloneNodeModules(STANDALONE_DIR, APP_DIR)
+if (sharedNM) {
+  cpSync(sharedNM, join(DEPLOY_DIR, 'node_modules'), { recursive: true })
+  console.log('     ✓ workspace node_modules (merged after npm install)')
+}
+console.log('')
 
 // ── Verify deploy contents ──────────────────────────────────────────
 const buildId = join(DEPLOY_DIR, '.next', 'BUILD_ID')

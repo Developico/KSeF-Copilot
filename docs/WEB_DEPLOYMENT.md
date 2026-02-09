@@ -4,6 +4,7 @@ Dokument opisuje proces przygotowania, przeprowadzenia i weryfikacji wdrożenia 
 
 **Data wdrożenia:** 2026-02-09  
 **Wersja:** 0.1.0  
+**Ostatnia aktualizacja dokumentu:** 2026-02-09  
 
 ---
 
@@ -126,9 +127,14 @@ web/.deploy/
 | Krok | Opis |
 |---|---|
 | 1/3 Build | `npx next build` z `NODE_ENV=production` |
-| 2/3 Prepare | Kopiuje standalone app → `.deploy/`, merguje workspace `node_modules`, kopiuje `.next/static/`, `public/`, `startup.sh`, `.env.production`, tworzy `.deployment` i minimalny `package.json` |
-| 3/3 Linux binaries | `npm install --no-save --force @next/swc-linux-x64-gnu` w `.deploy/` |
+| 2/3 Prepare | Kopiuje standalone app → `.deploy/`, kopiuje `.next/static/`, `public/`, `startup.sh`, `.env.production`, tworzy `.deployment` i minimalny `package.json` |
+| 3/3 Native + Merge | Najpierw `npm install --no-save --force @next/swc-linux-x64-gnu` (Linux binaries), **potem** kopiuje współdzielone workspace `node_modules` — kolejność jest krytyczna! |
 | Verify | Sprawdza obecność `.next/BUILD_ID` i `server.js` |
+
+> **WAŻNE:** Krok 3/3 musi najpierw zainstalować Linux binaries, a **dopiero potem** skopiować
+> współdzielone `node_modules` z standalone output. W odwrotnej kolejności `npm install`
+> czyści (prune) moduły nie wymienione w `package.json` (np. `next`, `react`, `sharp`),
+> co skutkuje błędem `Cannot find module 'next'` na serwerze. Zobacz [Problem 7](#problem-7).
 
 ### 4. Skrypt `startup.sh`
 
@@ -240,7 +246,7 @@ az webapp log tail --name dvlp-ksef --resource-group rg-ksef
 |---|---|---|
 | `SCM_DO_BUILD_DURING_DEPLOYMENT` | `false` | Wyłącza Oryx build — app jest pre-built |
 | `ENABLE_ORYX_BUILD` | `false` | Dodatkowe wyłączenie Oryx |
-| `WEBSITE_RUN_FROM_PACKAGE` | `0` | Uruchamianie z filesystem (nie z ZIP) |
+| `WEBSITE_RUN_FROM_PACKAGE` | **`1`** | Montuje ZIP jako read-only filesystem — **kluczowe!** Zobacz [Problem 8](#problem-8) |
 | `API_URL` | `https://YOUR_FUNCTION_APP-...azurewebsites.net` | URL do Azure Functions API |
 
 ### Startup command
@@ -263,14 +269,14 @@ az webapp config set \
   --resource-group rg-ksef \
   --startup-file "node server.js"
 
-# Wyłączenie Oryx build
+# Wyłączenie Oryx build + run-from-package
 az webapp config appsettings set \
   --name dvlp-ksef \
   --resource-group rg-ksef \
   --settings \
     SCM_DO_BUILD_DURING_DEPLOYMENT=false \
     ENABLE_ORYX_BUILD=false \
-    WEBSITE_RUN_FROM_PACKAGE=0
+    WEBSITE_RUN_FROM_PACKAGE=1
 ```
 
 ---
@@ -360,6 +366,83 @@ tar -acf ../deploy-package.zip *
 3. `azure.yaml` — zmiana `pnpm` → `npm` w hookach
 4. Usunięcie: `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `web/.npmrc`
 
+### Problem 7: `Cannot find module 'next'` — npm prune niszczy standalone modules
+
+**Objaw:** Server crashował z `Error: Cannot find module 'next'` (exit code 1). W `node_modules/` na serwerze znajdowały się tylko `@img/`, `@next/` — brakowało `next`, `react`, `sharp` i 11 innych pakietów.
+
+**Przyczyna:** W skrypcie `build-deploy.mjs` krok instalacji Linux binaries (`npm install --no-save --force @next/swc-linux-x64-gnu`) uruchamiany był **po** skopiowaniu współdzielonych workspace `node_modules`. Ponieważ `.deploy/package.json` nie zawiera żadnych zależności (ma tylko `scripts.start`), npm **automatycznie prune'ował** wszystkie moduły nie wymienione w `package.json`, pozostawiając jedynie zainstalowany `@next/swc-linux-x64-gnu` oraz `@img`. Współdzielone moduły (`next`, `react`, `react-dom`, `sharp` itd.) były usuwane.
+
+**Rozwiązanie:** Zmiana kolejności w `build-deploy.mjs`:
+1. **Najpierw** `npm install --no-save --force @next/swc-linux-x64-gnu` (Linux binaries)
+2. **Potem** `cpSync(sharedNM, ...)` — skopiowanie współdzielonych workspace `node_modules`
+
+Dzięki temu npm prune nie ma czego usunąć (tylko Linux binary), a następnie kopia nadpisuje `node_modules/` pełnym zestawem z standalone output.
+
+```js
+// ✅ POPRAWNA kolejność (w build-deploy.mjs)
+// 1. npm install Linux binaries (npm może prune'ować)
+execSync(`npm install --no-save --force @next/swc-linux-x64-gnu`, { cwd: DEPLOY_DIR })
+// 2. Kopia shared node_modules NADPISUJE wynik npm install
+cpSync(sharedNM, join(DEPLOY_DIR, 'node_modules'), { recursive: true })
+```
+
+### Problem 8: Kudu tworzy `node_modules.tar.gz` — Oryx niszczy standalone modules przy starcie
+
+**Objaw:** Mimo `SCM_DO_BUILD_DURING_DEPLOYMENT=false` i `ENABLE_ORYX_BUILD=false`, serwer zwracał 503 z błędem `Cannot find module 'next'`. W Docker logach widoczne:
+```
+Found tar.gz based node_modules.
+Removing existing modules directory from root...
+Extracting modules...
+Done.
+Error: Cannot find module 'next'
+```
+
+**Przyczyna:** To osobny mechanizm od Oryx build! Kudu podczas ekstrakcji ZIP automatycznie:
+1. Wykrywa folder `node_modules/` w paczce ZIP
+2. Kompresuje go do `node_modules.tar.gz` (~40 MB) i **usuwa oryginalny** `node_modules/`
+3. Tworzy plik `oryx-manifest.toml`
+
+Następnie przy starcie kontenera, Oryx init script:
+1. Znajduje `oryx-manifest.toml` → generuje skrypt startowy
+2. Znajduje `node_modules.tar.gz` → rozpakowuje do `/node_modules` (globalnie!)
+3. Przenosi `mv -f node_modules _del_node_modules` (usuwa standalone modules)
+4. Tworzy symlink `node_modules -> /node_modules`
+
+Rozpakowane moduły nie zawierają `next` bo archiwizacja/ekstrakcja gubi strukturę standalone.
+
+**Rozwiązanie:** Zmiana `WEBSITE_RUN_FROM_PACKAGE` z `0` na **`1`**:
+```bash
+az webapp config appsettings set \
+  --name dvlp-ksef \
+  --resource-group rg-ksef \
+  --settings WEBSITE_RUN_FROM_PACKAGE=1
+```
+
+Z `WEBSITE_RUN_FROM_PACKAGE=1`:
+- ZIP jest montowany bezpośrednio jako read-only filesystem
+- **Kudu nie ekstrahuje** zawartości → nie tworzy `node_modules.tar.gz`
+- **Oryx nie ingeruje** w `node_modules` → wszystko działa jak lokalnie
+- Filesystem jest read-only (co nie jest problemem dla Next.js standalone)
+
+> **UWAGA:** Z `WEBSITE_RUN_FROM_PACKAGE=0` Kudu **ZAWSZE** tworzy `node_modules.tar.gz` z ZIP,
+> nawet gdy `SCM_DO_BUILD_DURING_DEPLOYMENT=false`. Te ustawienia dotyczą tylko Oryx build,
+> nie mechanizmu archiwizacji Kudu. Jedynym skutecznym rozwiązaniem jest `=1`.
+
+### Problem 9: Brakująca zależność `react-is`
+
+**Objaw:** Build Next.js kończył się błędem:
+```
+Module not found: Can't resolve 'react-is'
+```
+
+**Przyczyna:** Biblioteka `recharts` wymaga `react-is` jako peer dependency, ale nie była ona wymieniona w `package.json`.
+
+**Rozwiązanie:**
+```bash
+cd web
+npm install react-is --save
+```
+
 ---
 
 ## Weryfikacja
@@ -416,10 +499,12 @@ az webapp log tail --name dvlp-ksef --resource-group rg-ksef
 ```
 ✅ HTTP Status:       200 OK
 ✅ Startup:           node server.js — Ready on 0.0.0.0:8080
-✅ BUILD_ID:          JfTDH9BsNKEROoRLqDA3S
-✅ Rozmiar paczki:    ~40 MB
+✅ BUILD_ID:          6gKdwfXbEoVGE-FIUloY-
+✅ Rozmiar .deploy/:  ~176 MB (ZIP: ~119 MB)
 ✅ Runtime:           Node.js 22 LTS (Linux)
 ✅ Oryx build:        Wyłączony
+✅ Run-from-package:  Włączony (WEBSITE_RUN_FROM_PACKAGE=1)
+✅ node_modules:      14 pakietów (w tym next, react, sharp)
 ```
 
 ---
@@ -514,3 +599,6 @@ Jeśli istnieje w `web/`, jest kopiowany do `.deploy/` przez `build-deploy.mjs`.
 5. **`Compress-Archive` bug** — NIGDY nie używać PowerShell `Compress-Archive` do tworzenia paczki. Używać `tar -acf`.
 6. **npm workspaces** — standalone output zagnieżdża app w `web/`. Skrypt `build-deploy.mjs` automatycznie to obsługuje.
 7. **Oryx musi być wyłączony** — bez tego Azure próbuje `npm install` i `npm run build` na serwerze, co kończy się błędami uprawnień.
+8. **`WEBSITE_RUN_FROM_PACKAGE=1`** — **KRYTYCZNE!** Bez tego Kudu tworzy `node_modules.tar.gz` z paczki ZIP i niszczy standalone modules. Z `=1` ZIP jest montowany bezpośrednio jako read-only filesystem, omijając cały problem.
+9. **Kolejność w build-deploy.mjs** — Linux binaries (`npm install`) muszą być instalowane PRZED kopiowaniem shared workspace `node_modules`. Inaczej `npm` prune'uje standalone moduły.
+10. **Debugowanie Docker logów** — Najszybsza metoda diagnozy 503: `az rest --method get --url "<SCM_URL>/api/vfs/LogFiles/" ...` → znaleźć najnowszy `*_default_docker.log` → przeczytać ostatnie linie.
