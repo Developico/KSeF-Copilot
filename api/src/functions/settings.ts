@@ -79,6 +79,53 @@ app.http('settings-list', {
 })
 
 /**
+ * GET /api/settings/companies - List registered companies (simplified)
+ * 
+ * Returns a lightweight list of companies registered in Dataverse
+ * with companyName, NIP, environment, and settingId.
+ * Useful for dropdowns and selectors in Custom Connectors / Power Apps.
+ * Note: This route MUST be registered BEFORE settings/{id} to avoid being matched as an ID.
+ */
+app.http('settings-companies-list', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  route: 'settings/companies',
+  handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    try {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      const roleCheck = requireRole(auth.user, 'Reader')
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: 'Forbidden' } }
+      }
+
+      const settings = await settingService.getAll(true) // only active
+
+      const companies = settings.map(s => ({
+        settingId: s.id,
+        companyName: s.companyName,
+        nip: s.nip,
+        environment: s.environment,
+      }))
+
+      return {
+        status: 200,
+        jsonBody: { companies, count: companies.length },
+      }
+    } catch (error) {
+      context.error('Failed to list companies:', error)
+      return {
+        status: 500,
+        jsonBody: { error: 'Failed to list companies' },
+      }
+    }
+  },
+})
+
+/**
  * GET /api/settings/costcenters - List all cost centers (MPK)
  * 
  * Returns the static list of available cost centers.
