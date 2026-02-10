@@ -555,6 +555,67 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden — requires Reader role
+  /documents/extract:
+    post:
+      operationId: ExtractDocument
+      summary: Extract Invoice Data from Document
+      description: >-
+        Extracts structured invoice data from an uploaded document (PDF or image)
+        using AI (OCR/Vision). Returns supplier info, amounts, line items,
+        and suggested MPK/category classification.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - fileName
+              - mimeType
+              - content
+            properties:
+              fileName:
+                type: string
+                description: Nazwa pliku (max 255 znaków)
+              mimeType:
+                type: string
+                description: >-
+                  Typ MIME dokumentu (application/pdf, image/jpeg, image/png,
+                  image/webp, image/tiff)
+                enum:
+                  - application/pdf
+                  - image/jpeg
+                  - image/png
+                  - image/webp
+                  - image/tiff
+              content:
+                type: string
+                description: Zawartość pliku zakodowana w Base64 (max ~10 MB)
+      responses:
+        '200':
+          description: Extraction result with structured invoice data
+          schema:
+            $ref: '#/definitions/ExtractionResult'
+        '400':
+          description: Invalid request or file too large
+          schema:
+            $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '422':
+          description: Extraction failed (unreadable document)
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              error:
+                type: string
+              extractedAt:
+                type: string
+                format: date-time
   /ai/categorize:
     post:
       operationId: AICategorize
@@ -1046,6 +1107,115 @@ definitions:
             description: AI confidence (0–1)
       message:
         type: string
+  ExtractionResult:
+    type: object
+    properties:
+      success:
+        type: boolean
+      data:
+        $ref: '#/definitions/ExtractedInvoiceData'
+      confidence:
+        type: number
+        description: AI confidence (0–1)
+      extractedAt:
+        type: string
+        format: date-time
+      sourceType:
+        type: string
+        enum:
+          - pdf
+          - image
+      processingTimeMs:
+        type: number
+        description: Czas przetwarzania w ms
+      error:
+        type: string
+  ExtractedInvoiceData:
+    type: object
+    properties:
+      invoiceNumber:
+        type: string
+      issueDate:
+        type: string
+        description: Data wystawienia (YYYY-MM-DD)
+      dueDate:
+        type: string
+        description: Termin płatności (YYYY-MM-DD)
+      supplierName:
+        type: string
+      supplierNip:
+        type: string
+      supplierAddress:
+        $ref: '#/definitions/ExtractedAddress'
+      supplierBankAccount:
+        type: string
+      buyerName:
+        type: string
+      buyerNip:
+        type: string
+      buyerAddress:
+        $ref: '#/definitions/ExtractedAddress'
+      netAmount:
+        type: number
+      vatAmount:
+        type: number
+      grossAmount:
+        type: number
+      currency:
+        type: string
+        description: Waluta (domyślnie PLN)
+      items:
+        type: array
+        items:
+          $ref: '#/definitions/ExtractedItem'
+      paymentMethod:
+        type: string
+      bankAccountNumber:
+        type: string
+      suggestedMpk:
+        type: string
+        description: Sugerowane MPK (AI)
+      suggestedCategory:
+        type: string
+        description: Sugerowana kategoria (AI)
+      suggestedDescription:
+        type: string
+        description: Sugerowany opis (AI)
+  ExtractedAddress:
+    type: object
+    properties:
+      street:
+        type: string
+      buildingNumber:
+        type: string
+      apartmentNumber:
+        type: string
+      postalCode:
+        type: string
+      city:
+        type: string
+      country:
+        type: string
+  ExtractedItem:
+    type: object
+    properties:
+      description:
+        type: string
+      quantity:
+        type: number
+      unit:
+        type: string
+      netPrice:
+        type: number
+      vatRate:
+        type: number
+        description: Stawka VAT (%)
+      netAmount:
+        type: number
+      vatAmount:
+        type: number
+      grossAmount:
+        type: number
   EnvironmentsResult:
     type: object
     properties:
