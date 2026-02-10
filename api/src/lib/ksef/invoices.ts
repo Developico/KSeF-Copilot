@@ -4,7 +4,7 @@
  */
 
 import { getKsefConfigForNip } from './config'
-import { getActiveSession, ensureActiveSession, decodeJwtPayload, checkRateLimit, getRateLimitStatus } from './session'
+import { getActiveSession, ensureActiveSession, checkRateLimit, getRateLimitStatus } from './session'
 import { parseInvoiceFromXml, buildInvoiceXml } from './parser'
 import {
   KsefInvoice,
@@ -72,15 +72,7 @@ export async function getInvoice(
   console.log(`[KSEF] Getting invoice: ${ksefReferenceNumber}`)
   console.log(`[KSEF] Base URL: ${config.baseUrl}`)
   console.log(`[KSEF] Session NIP: ${session.nip}`)
-  console.log(`[KSEF] Session token length: ${session.sessionToken?.length || 0}`)
-  
-  // Decode and log JWT payload to see permissions
-  if (session.sessionToken) {
-    const jwtPayload = decodeJwtPayload(session.sessionToken)
-    if (jwtPayload) {
-      console.log(`[KSEF] JWT Payload for getInvoice:`, JSON.stringify(jwtPayload, null, 2))
-    }
-  }
+  console.log(`[KSEF] Session token present: ${!!session.sessionToken}`)
   
   // API 2.0 uses /invoices/ksef/{ksefNumber}
   const url = `${config.baseUrl}/invoices/ksef/${ksefReferenceNumber}`
@@ -213,28 +205,16 @@ export async function queryInvoices(
   console.log(`[KSEF] Querying invoices: POST ${config.baseUrl}${endpoint}`)
   console.log(`[KSEF] Request body:`, JSON.stringify(requestBody))
   console.log(`[KSEF] Session NIP: ${session.nip}, Config NIP: ${config.nip}`)
-  console.log(`[KSEF] Session token length:`, session.sessionToken?.length || 0)
+  console.log(`[KSEF] Session token present: ${!!session.sessionToken}`)
   console.log(`[KSEF] Session created at: ${session.createdAt}, expires at: ${session.expiresAt}`)
   console.log(`[KSEF] Environment: ${config.environment}, Base URL: ${config.baseUrl}`)
-  
-  // Decode and log JWT payload to see permissions
-  if (session.sessionToken) {
-    const jwtPayload = decodeJwtPayload(session.sessionToken)
-    if (jwtPayload) {
-      console.log(`[KSEF] JWT Payload:`, JSON.stringify(jwtPayload, null, 2))
-      console.log(`[KSEF] JWT permissions:`, jwtPayload.permissions || jwtPayload.perm || jwtPayload.scope || 'NOT FOUND')
-      console.log(`[KSEF] JWT context:`, jwtPayload.context || jwtPayload.ctx || jwtPayload.sub || 'NOT FOUND')
-    } else {
-      console.log(`[KSEF] Failed to decode JWT payload`)
-    }
-  }
   
   const headers = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
     Authorization: `Bearer ${session.sessionToken}`,
   }
-  console.log(`[KSEF] Request headers (Authorization redacted):`, { ...headers, Authorization: `Bearer ${session.sessionToken?.substring(0, 20)}...` })
+  console.log(`[KSEF] Request headers (Authorization redacted):`, { ...headers, Authorization: '[REDACTED]' })
   
   const response = await fetch(
     `${config.baseUrl}${endpoint}`,

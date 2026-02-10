@@ -11,6 +11,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { getSecret } from '../lib/keyvault/secrets'
 import { dataverseClient } from '../lib/dataverse/client'
 import { KSEF_ENDPOINTS } from '../lib/ksef/config'
+import { verifyAuth, requireRole } from '../lib/auth/middleware'
 
 interface ServiceStatus {
   name: string
@@ -190,6 +191,16 @@ app.http('health-detailed', {
   route: 'health/detailed',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
+      // Require Admin role — endpoint exposes infrastructure details
+      const authResult = await verifyAuth(request)
+      if (!authResult.success) {
+        return { status: 401, jsonBody: { error: 'Unauthorized' } }
+      }
+      const roleCheck = requireRole(authResult.user, 'Admin')
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: 'Forbidden' } }
+      }
+
       // Get optional environment parameter
       const environment = request.query.get('environment') || undefined
       

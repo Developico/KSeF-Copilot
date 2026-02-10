@@ -17,6 +17,7 @@ import * as crypto from 'crypto'
 import { sessionService, settingService } from '../dataverse/services'
 import { dataverseClient } from '../dataverse/client'
 import { DV, SESSION_STATUS, KSEF_ENVIRONMENT } from '../dataverse/config'
+import { escapeOData } from '../dataverse/odata-utils'
 import type { DvSession } from '../../types/dataverse'
 
 // Active session storage (in-memory for now, should be in Dataverse for production)
@@ -533,7 +534,7 @@ export async function getActiveSessionAsync(nip?: string): Promise<KsefSession |
   try {
     const s = DV.session
     const filter = nip 
-      ? `${s.nip} eq '${nip}' and ${s.status} eq ${SESSION_STATUS.ACTIVE}`
+      ? `${s.nip} eq '${escapeOData(nip)}' and ${s.status} eq ${SESSION_STATUS.ACTIVE}`
       : `${s.status} eq ${SESSION_STATUS.ACTIVE}`
     const query = `$filter=${filter}&$orderby=${s.startedAt} desc&$top=1`
     
@@ -620,7 +621,7 @@ export async function terminateSession(nip?: string): Promise<KsefTerminateSessi
     if (nip) {
       // Query Dataverse for active session by NIP
       const s = DV.session
-      const filter = `${s.nip} eq '${nip}' and ${s.status} eq ${SESSION_STATUS.ACTIVE}`
+      const filter = `${s.nip} eq '${escapeOData(nip)}' and ${s.status} eq ${SESSION_STATUS.ACTIVE}`
       const query = `$filter=${filter}&$orderby=${s.startedAt} desc&$top=1`
       
       try {

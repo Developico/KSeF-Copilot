@@ -1,6 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { lookupByNip, searchByCompanyName, validateNip } from '../lib/gus'
-import { verifyAuth } from '../lib/auth/middleware'
+import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { z } from 'zod'
 
 // Validation schemas
@@ -27,6 +27,12 @@ export async function gusLookupHandler(
     const authResult = await verifyAuth(request)
     if (!authResult.success) {
       return { status: 401, jsonBody: { error: 'Unauthorized' } }
+    }
+
+    // Require at least Reader role (reject users without AD group)
+    const roleCheck = requireRole(authResult.user, 'Reader')
+    if (!roleCheck.success) {
+      return { status: 403, jsonBody: { error: roleCheck.error || 'Forbidden' } }
     }
 
     const body = await request.json()
@@ -128,6 +134,12 @@ export async function gusSearchHandler(
     const authResult = await verifyAuth(request)
     if (!authResult.success) {
       return { status: 401, jsonBody: { error: 'Unauthorized' } }
+    }
+
+    // Require at least Reader role (reject users without AD group)
+    const roleCheck = requireRole(authResult.user, 'Reader')
+    if (!roleCheck.success) {
+      return { status: 403, jsonBody: { error: roleCheck.error || 'Forbidden' } }
     }
 
     const body = await request.json()

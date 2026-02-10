@@ -3,6 +3,7 @@ import { dataverseRequest } from '../lib/dataverse/client'
 import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { InvoiceEntity, PaymentStatusValues, MpkValues } from '../lib/dataverse/entities'
 import { getMpkKey, getPaymentStatusKey } from '../lib/dataverse/entities'
+import { escapeOData } from '../lib/dataverse/odata-utils'
 
 /**
  * Dashboard statistics types
@@ -95,7 +96,7 @@ export async function getDashboardStatsHandler(
     if (settingId) {
       filters.push(`_dvlp_settingid_value eq ${settingId}`)
     } else if (tenantNip) {
-      filters.push(`${InvoiceEntity.fields.tenantNip} eq '${tenantNip}'`)
+      filters.push(`${InvoiceEntity.fields.tenantNip} eq '${escapeOData(tenantNip)}'`)
     }
 
     const selectFields = [
@@ -111,7 +112,7 @@ export async function getDashboardStatsHandler(
       InvoiceEntity.fields.supplierName,
     ].join(',')
 
-    const path = `${InvoiceEntity.entitySet}?$select=${selectFields}&$filter=${filters.join(' and ')}&$orderby=${InvoiceEntity.fields.invoiceDate} desc&$top=5000`
+    const path = `${InvoiceEntity.entitySet}?$select=${selectFields}&$filter=${filters.join(' and ')}&$orderby=${InvoiceEntity.fields.invoiceDate} desc&$top=1000`
 
     const response = await dataverseRequest<{ value: Record<string, unknown>[] }>(path)
     const invoices = response.value

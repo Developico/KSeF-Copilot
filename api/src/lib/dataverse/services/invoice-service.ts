@@ -8,6 +8,7 @@ import { dataverseClient } from '../client'
 import { DV, KSEF_DIRECTION, PAYMENT_STATUS } from '../config'
 import { mapDvInvoiceToApp, mapAppInvoiceToDv } from '../mappers'
 import { logDataverseInfo, logDataverseError } from '../logger'
+import { escapeOData } from '../odata-utils'
 import type { DvInvoice } from '../../../types/dataverse'
 import type { Invoice, InvoiceCreate, InvoiceUpdate } from '../../../types/invoice'
 
@@ -50,11 +51,11 @@ function buildInvoiceFilter(filters: InvoiceFilters): string {
   }
 
   if (filters.tenantNip) {
-    conditions.push(`${s.buyerNip} eq '${filters.tenantNip}'`)
+    conditions.push(`${s.buyerNip} eq '${escapeOData(filters.tenantNip)}'`)
   }
 
   if (filters.supplierNip) {
-    conditions.push(`${s.sellerNip} eq '${filters.supplierNip}'`)
+    conditions.push(`${s.sellerNip} eq '${escapeOData(filters.supplierNip)}'`)
   }
 
   if (filters.paymentStatus) {
@@ -83,11 +84,11 @@ function buildInvoiceFilter(filters: InvoiceFilters): string {
   }
 
   if (filters.ksefReference) {
-    conditions.push(`${s.ksefReferenceNumber} eq '${filters.ksefReference}'`)
+    conditions.push(`${s.ksefReferenceNumber} eq '${escapeOData(filters.ksefReference)}'`)
   }
 
   if (filters.search) {
-    const searchTerm = filters.search.replace(/'/g, "''")
+    const searchTerm = escapeOData(filters.search)
     conditions.push(
       `(contains(${s.name}, '${searchTerm}') or contains(${s.sellerName}, '${searchTerm}'))`
     )

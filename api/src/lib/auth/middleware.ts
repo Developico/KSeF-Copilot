@@ -1,6 +1,7 @@
 import { HttpRequest } from '@azure/functions'
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
 import { AuthResult, AuthUser, RoleCheckResult } from '../../types/api'
+import { checkHttpRateLimit } from './rate-limit'
 
 // =============================================================================
 // Security Configuration
@@ -100,6 +101,48 @@ export async function verifyAuth(request: HttpRequest): Promise<AuthResult> {
   }
 }
 
+/**
+ * Helper: extract caller IP from Azure Functions request headers
+ */
+function getCallerIp(request: HttpRequest): string {
+  return (
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-client-ip') ||
+    'unknown'
+  )
+}
+
+/**
+ * Rate-limit aware wrapper around verifyAuth.
+ * Checks per-IP limit *before* expensive JWT verification,
+ * then refines to per-user limit on success.
+ *
+ * Returns 429 info inside AuthResult when limit is exceeded.
+ */
+export async function verifyAuthWithRateLimit(
+  request: HttpRequest,
+  opts?: { windowMs?: number; maxRequests?: number },
+): Promise<AuthResult & { retryAfterMs?: number }> {
+  // Pre-auth: per-IP limit (protects JWT verification cost)
+  const ip = getCallerIp(request)
+  const ipCheck = checkHttpRateLimit(`ip:${ip}`, opts)
+  if (!ipCheck.allowed) {
+    return { success: false, error: 'Rate limit exceeded', retryAfterMs: ipCheck.retryAfterMs }
+  }
+
+  const result = await verifyAuth(request)
+
+  // Post-auth: per-user tighter limit
+  if (result.success && result.user) {
+    const userCheck = checkHttpRateLimit(`user:${result.user.id}`, opts)
+    if (!userCheck.allowed) {
+      return { success: false, error: 'Rate limit exceeded', retryAfterMs: userCheck.retryAfterMs }
+    }
+  }
+
+  return result
+}
+
 // =============================================================================
 // Role Management
 // =============================================================================
@@ -113,6 +156,11 @@ export function requireRole(
 ): RoleCheckResult {
   if (!user) {
     return { success: false, error: 'User not authenticated' }
+  }
+
+  // Reject users with no roles (not assigned to any AD group)
+  if (!user.roles || user.roles.length === 0) {
+    return { success: false, error: 'No role assigned — contact your administrator' }
   }
 
   // Admin has access to everything
@@ -170,10 +218,8 @@ function extractRoles(payload: JWTPayload): string[] {
     }
   }
 
-  // Default to Reader if no roles found (authenticated but no specific role)
-  if (roles.length === 0) {
-    roles.push('Reader')
-  }
+  // No default role fallback — users without AD group assignment get empty roles
+  // The API must reject requests from users with no roles (handled by requireRole)
 
   return roles
 }

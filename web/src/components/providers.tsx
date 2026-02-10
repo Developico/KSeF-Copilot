@@ -3,7 +3,7 @@
 import { ThemeProvider } from 'next-themes'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
-import { AuthProvider, RequireAuth } from './auth/auth-provider'
+import { AuthProvider, RequireAuth, RequireAuthorization } from './auth/auth-provider'
 import { CompanyProvider } from '@/contexts/company-context'
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -29,7 +29,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           disableTransitionOnChange
         >
           <RequireAuth>
-            <CompanyProvider>{children}</CompanyProvider>
+            <RequireAuthorization>
+              <CompanyProvider>{children}</CompanyProvider>
+            </RequireAuthorization>
           </RequireAuth>
         </ThemeProvider>
       </QueryClientProvider>

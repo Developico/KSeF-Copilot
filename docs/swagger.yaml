@@ -1,0 +1,954 @@
+swagger: '2.0'
+info:
+  title: DVLP-KSeF-PP-Connector
+  description: >-
+    /PL/: Konektor Developico do KSeF API — zarządzanie fakturami,
+    synchronizacja z KSeF, dashboard.
+
+    /EN/: Developico Connector for the KSeF API — invoice management,
+    synchronization with KSeF, dashboard.
+  version: '1.0'
+host: YOUR_FUNCTION_APP.azurewebsites.net
+basePath: /api
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /health:
+    get:
+      responses:
+        default:
+          description: default
+          schema:
+            title: Status
+            type: string
+            x-ms-visibility: important
+      summary: Health Check
+      operationId: HealthCheck
+      parameters: []
+      x-ms-visibility: important
+  /invoices:
+    get:
+      responses:
+        default:
+          description: default
+          schema: {}
+      summary: List Invoices
+      operationId: ListInvoices
+      x-ms-visibility: important
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          required: false
+          description: Numer strony (domyślnie 1)
+        - name: pageSize
+          in: query
+          type: integer
+          required: false
+          description: Rozmiar strony (domyślnie 20)
+        - name: search
+          in: query
+          type: string
+          required: false
+          description: Wyszukiwanie tekstowe (numer faktury, NIP, nazwa)
+        - name: direction
+          in: query
+          type: string
+          required: false
+          description: Kierunek faktury
+          enum:
+            - income
+            - outcome
+        - name: status
+          in: query
+          type: string
+          required: false
+          description: Status faktury
+        - name: dateFrom
+          in: query
+          type: string
+          format: date-time
+          required: false
+          description: Data od (ISO 8601)
+        - name: dateTo
+          in: query
+          type: string
+          format: date-time
+          required: false
+          description: Data do (ISO 8601)
+  '/invoices/{id}':
+    get:
+      responses:
+        '200':
+          description: Invoice details
+          schema:
+            $ref: '#/definitions/Invoice'
+        default:
+          description: default
+          schema: {}
+      summary: Get Invoice
+      operationId: GetInvoice
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: ID faktury (GUID)
+    patch:
+      operationId: UpdateInvoice
+      summary: Update Invoice
+      description: Partially update an existing invoice. All fields are optional.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (Dataverse GUID)
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              mpk:
+                type: string
+                description: Miejsce powstawania kosztów
+                enum:
+                  - Consultants
+                  - BackOffice
+                  - Management
+                  - Cars
+                  - Legal
+                  - Marketing
+                  - Sales
+                  - Delivery
+                  - Finance
+                  - Other
+              category:
+                type: string
+                description: Kategoria faktury (max 50 znaków)
+              description:
+                type: string
+                description: Opis (max 500 znaków)
+              project:
+                type: string
+                description: Projekt (max 100 znaków)
+              tags:
+                type: array
+                items:
+                  type: string
+              paymentStatus:
+                type: string
+                description: Status płatności
+                enum:
+                  - pending
+                  - paid
+              paymentDate:
+                type: string
+                format: date
+                description: Data płatności
+              supplierName:
+                type: string
+                description: Nazwa dostawcy (max 200 znaków)
+              supplierNip:
+                type: string
+                description: NIP dostawcy (max 20 znaków)
+              invoiceNumber:
+                type: string
+                description: Numer faktury (max 100 znaków)
+              invoiceDate:
+                type: string
+                format: date
+              dueDate:
+                type: string
+                format: date
+              netAmount:
+                type: number
+                description: Kwota netto (> 0)
+              vatAmount:
+                type: number
+                description: Kwota VAT (>= 0)
+              grossAmount:
+                type: number
+                description: Kwota brutto (> 0)
+              currency:
+                type: string
+                enum:
+                  - PLN
+                  - EUR
+                  - USD
+              exchangeRate:
+                type: number
+              exchangeDate:
+                type: string
+              exchangeSource:
+                type: string
+              grossAmountPln:
+                type: number
+              aiMpkSuggestion:
+                type: string
+                enum:
+                  - Consultants
+                  - BackOffice
+                  - Management
+                  - Cars
+                  - Legal
+                  - Marketing
+                  - Sales
+                  - Delivery
+                  - Finance
+                  - Other
+              aiCategorySuggestion:
+                type: string
+              aiDescription:
+                type: string
+              aiConfidence:
+                type: number
+                description: AI confidence (0–1)
+              aiProcessedAt:
+                type: string
+                format: date-time
+      responses:
+        '200':
+          description: Updated invoice
+          schema:
+            $ref: '#/definitions/Invoice'
+        '400':
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Invoice not found
+  /invoices/manual:
+    post:
+      operationId: CreateManualInvoice
+      summary: Create Manual Invoice
+      description: Create a new invoice manually (not synced from KSeF).
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - tenantNip
+              - tenantName
+              - invoiceNumber
+              - supplierNip
+              - supplierName
+              - invoiceDate
+              - netAmount
+              - vatAmount
+              - grossAmount
+            properties:
+              tenantNip:
+                type: string
+                pattern: '^\d{10}$'
+                description: NIP firmy (10 cyfr)
+              tenantName:
+                type: string
+                description: Nazwa firmy (1–255 znaków)
+              invoiceNumber:
+                type: string
+                description: Numer faktury (1–100 znaków)
+              supplierNip:
+                type: string
+                pattern: '^\d{10}$'
+                description: NIP dostawcy (10 cyfr)
+              supplierName:
+                type: string
+                description: Nazwa dostawcy (1–255 znaków)
+              supplierAddress:
+                type: string
+              supplierCity:
+                type: string
+              supplierPostalCode:
+                type: string
+              supplierCountry:
+                type: string
+              invoiceDate:
+                type: string
+                format: date
+              dueDate:
+                type: string
+                format: date
+              netAmount:
+                type: number
+                description: Kwota netto (>= 0)
+              vatAmount:
+                type: number
+                description: Kwota VAT (>= 0)
+              grossAmount:
+                type: number
+                description: Kwota brutto (>= 0)
+              description:
+                type: string
+                description: Opis (max 500 znaków)
+              mpk:
+                type: string
+                enum:
+                  - Consultants
+                  - BackOffice
+                  - Management
+                  - Cars
+                  - Legal
+                  - Marketing
+                  - Sales
+                  - Delivery
+                  - Finance
+                  - Other
+              category:
+                type: string
+              aiMpkSuggestion:
+                type: string
+                enum:
+                  - Consultants
+                  - BackOffice
+                  - Management
+                  - Cars
+                  - Legal
+                  - Marketing
+                  - Sales
+                  - Delivery
+                  - Finance
+                  - Other
+              aiCategorySuggestion:
+                type: string
+              aiDescription:
+                type: string
+              aiConfidence:
+                type: number
+                description: AI confidence (0–1)
+      responses:
+        '201':
+          description: Created invoice
+          schema:
+            $ref: '#/definitions/Invoice'
+        '400':
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+  /dashboard/stats:
+    get:
+      operationId: GetDashboardStats
+      summary: Get Dashboard Stats
+      description: Returns invoice statistics for the selected company and period.
+      x-ms-visibility: important
+      parameters:
+        - name: fromDate
+          in: query
+          type: string
+          format: date
+          required: false
+          description: Data od (YYYY-MM-DD, domyślnie 12 miesięcy wstecz)
+        - name: toDate
+          in: query
+          type: string
+          format: date
+          required: false
+          description: Data do (YYYY-MM-DD, domyślnie dziś)
+        - name: settingId
+          in: query
+          type: string
+          required: false
+          description: ID ustawienia firmy (UUID)
+        - name: tenantNip
+          in: query
+          type: string
+          required: false
+          description: NIP firmy (fallback jeśli brak settingId)
+      responses:
+        '200':
+          description: Dashboard statistics
+          schema:
+            $ref: '#/definitions/DashboardStats'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+  /sync:
+    post:
+      operationId: StartSync
+      summary: Start KSeF Sync
+      description: Start synchronization of invoices from KSeF for a given company setting.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - settingId
+            properties:
+              settingId:
+                type: string
+                description: ID ustawienia firmy (UUID)
+              direction:
+                type: string
+                description: Kierunek synchronizacji
+                default: incoming
+                enum:
+                  - incoming
+                  - outgoing
+                  - both
+              dateFrom:
+                type: string
+                format: date-time
+                description: Data od (ISO 8601, domyślnie 30 dni wstecz)
+              dateTo:
+                type: string
+                format: date-time
+                description: Data do (ISO 8601, domyślnie teraz)
+      responses:
+        '200':
+          description: Sync result
+          schema:
+            $ref: '#/definitions/SyncResult'
+        '400':
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+  /sync/logs:
+    get:
+      operationId: GetSyncLogs
+      summary: Get Sync Logs
+      description: Returns history of synchronization logs.
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: false
+          description: Filtruj po ID ustawienia firmy (UUID)
+        - name: limit
+          in: query
+          type: integer
+          required: false
+          description: Limit wyników (domyślnie 50)
+      responses:
+        '200':
+          description: Sync logs
+          schema:
+            type: object
+            properties:
+              logs:
+                type: array
+                items:
+                  type: object
+              count:
+                type: integer
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+  /settings:
+    get:
+      operationId: ListSettings
+      summary: List Settings
+      description: Returns list of company settings (KSeF configurations).
+      x-ms-visibility: important
+      parameters:
+        - name: activeOnly
+          in: query
+          type: string
+          required: false
+          description: 'Tylko aktywne (domyślnie true)'
+          enum:
+            - 'true'
+            - 'false'
+      responses:
+        '200':
+          description: Company settings list
+          schema:
+            type: object
+            properties:
+              settings:
+                type: array
+                items:
+                  $ref: '#/definitions/Setting'
+              count:
+                type: integer
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+  /gus/lookup:
+    post:
+      operationId: GusLookup
+      summary: GUS Lookup by NIP
+      description: Look up company details from GUS (Polish Central Statistical Office) by NIP.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - nip
+            properties:
+              nip:
+                type: string
+                pattern: '^\d{10}$'
+                description: NIP firmy (10 cyfr)
+      responses:
+        '200':
+          description: Company data from GUS
+          schema:
+            $ref: '#/definitions/GusResult'
+        '400':
+          description: Invalid NIP
+          schema:
+            $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Company not found in GUS
+  /exchange-rates:
+    get:
+      operationId: GetExchangeRate
+      summary: Get Exchange Rate
+      description: Returns NBP exchange rate for a given currency and date.
+      parameters:
+        - name: currency
+          in: query
+          type: string
+          required: true
+          description: Kod waluty
+          enum:
+            - EUR
+            - USD
+        - name: date
+          in: query
+          type: string
+          format: date
+          required: false
+          description: Data kursu (YYYY-MM-DD, domyślnie dziś)
+      responses:
+        '200':
+          description: Exchange rate data
+          schema:
+            $ref: '#/definitions/ExchangeRate'
+        '400':
+          description: Invalid currency or date
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+  /ai/categorize:
+    post:
+      operationId: AICategorize
+      summary: AI Categorize Invoice
+      description: Use AI to suggest MPK and category for an invoice.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - invoiceId
+            properties:
+              invoiceId:
+                type: string
+                description: ID faktury (UUID)
+              supplierName:
+                type: string
+                description: Nazwa dostawcy (opcjonalnie nadpisuje dane z faktury)
+              supplierNip:
+                type: string
+                description: NIP dostawcy (opcjonalnie nadpisuje dane z faktury)
+              items:
+                type: array
+                items:
+                  type: string
+                description: Opisy pozycji fakturowych
+              grossAmount:
+                type: number
+                description: Kwota brutto (opcjonalnie nadpisuje dane z faktury)
+      responses:
+        '200':
+          description: AI categorization result
+          schema:
+            $ref: '#/definitions/AiCategorizeResult'
+        '400':
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Invoice not found
+definitions:
+  ValidationError:
+    type: object
+    properties:
+      error:
+        type: string
+      details:
+        type: object
+  Invoice:
+    type: object
+    properties:
+      id:
+        type: string
+      tenantNip:
+        type: string
+      tenantName:
+        type: string
+      referenceNumber:
+        type: string
+      invoiceNumber:
+        type: string
+      supplierNip:
+        type: string
+      supplierName:
+        type: string
+      supplierAddress:
+        type: string
+      supplierCity:
+        type: string
+      supplierPostalCode:
+        type: string
+      supplierCountry:
+        type: string
+      invoiceDate:
+        type: string
+        format: date
+      dueDate:
+        type: string
+        format: date
+      netAmount:
+        type: number
+      vatAmount:
+        type: number
+      grossAmount:
+        type: number
+      currency:
+        type: string
+        enum:
+          - PLN
+          - EUR
+          - USD
+      exchangeRate:
+        type: number
+      exchangeDate:
+        type: string
+      exchangeSource:
+        type: string
+      grossAmountPln:
+        type: number
+      paymentStatus:
+        type: string
+        enum:
+          - pending
+          - paid
+      paymentDate:
+        type: string
+        format: date
+      mpk:
+        type: string
+      category:
+        type: string
+      description:
+        type: string
+      project:
+        type: string
+      tags:
+        type: array
+        items:
+          type: string
+      importedAt:
+        type: string
+        format: date-time
+      source:
+        type: string
+      aiMpkSuggestion:
+        type: string
+      aiCategorySuggestion:
+        type: string
+      aiDescription:
+        type: string
+      aiRationale:
+        type: string
+      aiConfidence:
+        type: number
+      aiProcessedAt:
+        type: string
+        format: date-time
+      hasDocument:
+        type: boolean
+      documentFileName:
+        type: string
+      hasAttachments:
+        type: boolean
+      attachmentCount:
+        type: integer
+  DashboardStats:
+    type: object
+    properties:
+      period:
+        type: object
+        properties:
+          from:
+            type: string
+          to:
+            type: string
+      totals:
+        type: object
+        properties:
+          invoiceCount:
+            type: integer
+          netAmount:
+            type: number
+          vatAmount:
+            type: number
+          grossAmount:
+            type: number
+      monthly:
+        type: array
+        items:
+          type: object
+          properties:
+            month:
+              type: string
+              description: 'Format: YYYY-MM'
+            netAmount:
+              type: number
+            vatAmount:
+              type: number
+            grossAmount:
+              type: number
+            invoiceCount:
+              type: integer
+      byMpk:
+        type: array
+        items:
+          type: object
+          properties:
+            mpk:
+              type: string
+            netAmount:
+              type: number
+            grossAmount:
+              type: number
+            invoiceCount:
+              type: integer
+            percentage:
+              type: number
+      topSuppliers:
+        type: array
+        items:
+          type: object
+          properties:
+            supplierNip:
+              type: string
+            supplierName:
+              type: string
+            grossAmount:
+              type: number
+            invoiceCount:
+              type: integer
+      payments:
+        type: object
+        properties:
+          pending:
+            type: object
+            properties:
+              count:
+                type: integer
+              grossAmount:
+                type: number
+          paid:
+            type: object
+            properties:
+              count:
+                type: integer
+              grossAmount:
+                type: number
+          overdue:
+            type: object
+            properties:
+              count:
+                type: integer
+              grossAmount:
+                type: number
+  SyncResult:
+    type: object
+    properties:
+      syncLogId:
+        type: string
+      status:
+        type: string
+        enum:
+          - completed
+      total:
+        type: integer
+      processed:
+        type: integer
+      created:
+        type: integer
+      updated:
+        type: integer
+      failed:
+        type: integer
+      errors:
+        type: array
+        items:
+          type: object
+          properties:
+            reference:
+              type: string
+            error:
+              type: string
+  Setting:
+    type: object
+    properties:
+      id:
+        type: string
+      nip:
+        type: string
+      companyName:
+        type: string
+      environment:
+        type: string
+        enum:
+          - test
+          - demo
+          - production
+      isActive:
+        type: boolean
+      autoSync:
+        type: boolean
+      syncIntervalMinutes:
+        type: integer
+      invoicePrefix:
+        type: string
+      keyVaultSecretName:
+        type: string
+  GusResult:
+    type: object
+    properties:
+      success:
+        type: boolean
+      data:
+        type: object
+        properties:
+          nip:
+            type: string
+          regon:
+            type: string
+          nazwa:
+            type: string
+          adres:
+            type: string
+          miejscowosc:
+            type: string
+          kodPocztowy:
+            type: string
+          ulica:
+            type: string
+          nrBudynku:
+            type: string
+          nrLokalu:
+            type: string
+          email:
+            type: string
+          telefon:
+            type: string
+          www:
+            type: string
+          pkd:
+            type: string
+          pkdNazwa:
+            type: string
+          typ:
+            type: string
+            enum:
+              - Osoba fizyczna
+              - Jednostka lokalna
+              - Osoba prawna
+          aktywny:
+            type: boolean
+  ExchangeRate:
+    type: object
+    properties:
+      rate:
+        type: number
+      currency:
+        type: string
+        enum:
+          - EUR
+          - USD
+      effectiveDate:
+        type: string
+      requestedDate:
+        type: string
+      source:
+        type: string
+      previousRate:
+        type: number
+      changePercent:
+        type: number
+      warningThreshold:
+        type: boolean
+  AiCategorizeResult:
+    type: object
+    properties:
+      invoiceId:
+        type: string
+      categorization:
+        type: object
+        properties:
+          mpk:
+            type: string
+            enum:
+              - Consultants
+              - BackOffice
+              - Management
+              - Cars
+              - Legal
+              - Marketing
+              - Sales
+              - Delivery
+              - Finance
+              - Other
+          category:
+            type: string
+          description:
+            type: string
+          confidence:
+            type: number
+            description: AI confidence (0–1)
+      message:
+        type: string
+parameters: {}
+responses: {}
+security:
+  - oauth2-auth:
+      - api://YOUR_CLIENT_ID/access_as_user
+tags: []
+securityDefinitions:
+  oauth2-auth:
+    type: oauth2
+    flow: accessCode
+    tokenUrl: https://login.windows.net/common/oauth2/authorize
+    scopes:
+      api://YOUR_CLIENT_ID/access_as_user: api://YOUR_CLIENT_ID/access_as_user
+    authorizationUrl: https://login.microsoftonline.com/common/oauth2/authorize

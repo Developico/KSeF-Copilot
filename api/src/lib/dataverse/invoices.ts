@@ -1,5 +1,6 @@
 import { dataverseRequest, dataverseClient } from './client'
 import { InvoiceEntity, PaymentStatusValues, MpkValues, InvoiceSourceValues, getPaymentStatusKey, getMpkKey, getInvoiceSourceKey } from './entities'
+import { escapeOData } from './odata-utils'
 import { mapDvCurrencyToApp } from './mappers'
 import { Invoice, InvoiceCreate, InvoiceUpdate, InvoiceListParams, ManualInvoiceCreate, InvoiceSource } from '../../types/invoice'
 import { logDataverseInfo } from './logger'
@@ -35,7 +36,7 @@ function buildInvoiceFilter(params: InvoiceListParams): string[] {
     filters.push(`_dvlp_settingid_value eq ${settingId}`)
   } else if (tenantNip) {
     // Fallback to NIP filter for backward compatibility
-    filters.push(`${InvoiceEntity.fields.tenantNip} eq '${tenantNip}'`)
+    filters.push(`${InvoiceEntity.fields.tenantNip} eq '${escapeOData(tenantNip)}'`)
   }
 
   if (paymentStatus) {
@@ -60,7 +61,7 @@ function buildInvoiceFilter(params: InvoiceListParams): string[] {
   }
 
   if (category) {
-    filters.push(`contains(${InvoiceEntity.fields.category}, '${category}')`)
+    filters.push(`contains(${InvoiceEntity.fields.category}, '${escapeOData(category)}')`)
   }
 
   // Invoice date range
@@ -89,10 +90,10 @@ function buildInvoiceFilter(params: InvoiceListParams): string[] {
 
   // Supplier filters
   if (supplierNip) {
-    filters.push(`${InvoiceEntity.fields.supplierNip} eq '${supplierNip}'`)
+    filters.push(`${InvoiceEntity.fields.supplierNip} eq '${escapeOData(supplierNip)}'`)
   }
   if (supplierName) {
-    filters.push(`contains(${InvoiceEntity.fields.supplierName}, '${supplierName}')`)
+    filters.push(`contains(${InvoiceEntity.fields.supplierName}, '${escapeOData(supplierName)}')`)
   }
 
   // Source filter
@@ -109,10 +110,11 @@ function buildInvoiceFilter(params: InvoiceListParams): string[] {
 
   // Full-text search (invoice number, supplier name)
   if (search) {
+    const safeSearch = escapeOData(search)
     const searchFilters = [
-      `contains(${InvoiceEntity.fields.invoiceNumber}, '${search}')`,
-      `contains(${InvoiceEntity.fields.supplierName}, '${search}')`,
-      `contains(${InvoiceEntity.fields.supplierNip}, '${search}')`,
+      `contains(${InvoiceEntity.fields.invoiceNumber}, '${safeSearch}')`,
+      `contains(${InvoiceEntity.fields.supplierName}, '${safeSearch}')`,
+      `contains(${InvoiceEntity.fields.supplierNip}, '${safeSearch}')`,
     ]
     filters.push(`(${searchFilters.join(' or ')})`)
   }
@@ -228,7 +230,7 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
  * Check if invoice exists by KSeF reference number
  */
 export async function invoiceExistsByReference(referenceNumber: string): Promise<boolean> {
-  const path = `${InvoiceEntity.entitySet}?$filter=${InvoiceEntity.fields.referenceNumber} eq '${referenceNumber}'&$select=${InvoiceEntity.fields.id}&$top=1`
+  const path = `${InvoiceEntity.entitySet}?$filter=${InvoiceEntity.fields.referenceNumber} eq '${escapeOData(referenceNumber)}'&$select=${InvoiceEntity.fields.id}&$top=1`
 
   const response = await dataverseRequest<{ value: unknown[] }>(path)
   return response.value.length > 0

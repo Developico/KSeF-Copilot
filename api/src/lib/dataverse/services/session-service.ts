@@ -8,6 +8,7 @@ import { dataverseClient } from '../client'
 import { DV, SESSION_STATUS, SESSION_TYPE } from '../config'
 import { mapDvSessionToApp, type AppSession } from '../mappers'
 import { logDataverseInfo, logDataverseError } from '../logger'
+import { escapeOData } from '../odata-utils'
 import type { DvSession } from '../../../types/dataverse'
 
 /**
@@ -57,7 +58,7 @@ export class SessionService {
    */
   async getActiveByNip(nip: string): Promise<AppSession | null> {
     const s = DV.session
-    const filter = `${s.nip} eq '${nip}' and ${s.status} eq ${SESSION_STATUS.ACTIVE}`
+    const filter = `${s.nip} eq '${escapeOData(nip)}' and ${s.status} eq ${SESSION_STATUS.ACTIVE}`
     const query = `$filter=${filter}&$orderby=${s.startedAt} desc&$top=1`
 
     logDataverseInfo('SessionService.getActiveByNip', 'Fetching active session', { nip })
@@ -92,7 +93,7 @@ export class SessionService {
    */
   async getByReference(sessionReference: string): Promise<AppSession | null> {
     const s = DV.session
-    const filter = `${s.sessionReference} eq '${sessionReference}'`
+    const filter = `${s.sessionReference} eq '${escapeOData(sessionReference)}'`
 
     logDataverseInfo('SessionService.getByReference', 'Fetching session by reference', { sessionReference })
 

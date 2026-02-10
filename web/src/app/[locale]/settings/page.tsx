@@ -66,6 +66,7 @@ import { KsefSetting, CostCenter } from '@/lib/api'
 import { HealthStatusPanel } from '@/components/health/health-status-panel'
 import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
+import { RequireRole } from '@/components/auth/auth-provider'
 
 type TokenStatus = 'valid' | 'expiring' | 'expired' | 'missing'
 type Environment = 'production' | 'test' | 'demo'
@@ -464,6 +465,13 @@ export default function SettingsPage() {
   }
 
   return (
+    <RequireRole role="Admin" fallback={
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <h2 className="text-xl font-semibold">{tCommon('accessDenied')}</h2>
+        <p className="text-muted-foreground">{tCommon('adminRequired')}</p>
+      </div>
+    }>
     <div className="space-y-4 md:space-y-6">
       {/* Header */}
       <div>
@@ -1102,5 +1110,6 @@ export default function SettingsPage() {
         </TabsContent>
       </Tabs>
     </div>
+    </RequireRole>
   )
 }

@@ -416,6 +416,10 @@ app.http('ksef-testdata-environments', {
         return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
 
+      if (!requireRole(auth.user, 'Reader').success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Reader role required' } }
+      }
+
       return {
         status: 200,
         jsonBody: {
@@ -629,6 +633,10 @@ app.http('ksef-testdata-cleanup-preview', {
       const auth = await verifyAuth(request)
       if (!auth.success || !auth.user) {
         return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      if (!requireRole(auth.user, 'Reader').success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Reader role required' } }
       }
 
       const nip = request.query.get('nip')

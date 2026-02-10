@@ -25,7 +25,9 @@
     "comingSoon": "coming soon",
     "select": "Select",
     "name": "Name",
-    "street": "Street"
+    "street": "Street",
+    "accessDenied": "Access Denied",
+    "adminRequired": "You need Administrator permissions to access this page."
   },
   "navigation": {
     "dashboard": "Dashboard",

@@ -25,7 +25,9 @@
     "comingSoon": "wkrótce",
     "select": "Wybierz",
     "name": "Nazwa",
-    "street": "Ulica"
+    "street": "Ulica",
+    "accessDenied": "Brak dostępu",
+    "adminRequired": "Potrzebujesz uprawnień Administratora, aby uzyskać dostęp do tej strony."
   },
   "navigation": {
     "dashboard": "Dashboard",

@@ -5,6 +5,7 @@
 
 import { DataverseClient } from '../dataverse/client'
 import { AIFeedbackEntity, FeedbackTypeValues } from '../dataverse/entities'
+import { escapeOData } from '../dataverse/odata-utils'
 import type { AIFeedback, AILearningContext, FeedbackType } from '../../types/feedback'
 import type { Invoice } from '../../types/invoice'
 
@@ -79,7 +80,7 @@ export async function getLearningContextForSupplier(
 ): Promise<AILearningContext | null> {
   const client = new DataverseClient()
   
-  const filter = `${f.tenantNip} eq '${tenantNip}' and ${f.supplierNip} eq '${supplierNip}'`
+  const filter = `${f.tenantNip} eq '${escapeOData(tenantNip)}' and ${f.supplierNip} eq '${escapeOData(supplierNip)}'`
   const select = `${f.userMpk},${f.userCategory},${f.supplierName}`
   const orderby = `${f.createdOn} desc`
   
@@ -144,7 +145,7 @@ export async function getAllLearningContexts(
   const client = new DataverseClient()
   
   // Get unique suppliers with feedback
-  const filter = `${f.tenantNip} eq '${tenantNip}'`
+  const filter = `${f.tenantNip} eq '${escapeOData(tenantNip)}'`
   const select = `${f.supplierNip},${f.supplierName},${f.userMpk},${f.userCategory}`
   const orderby = `${f.createdOn} desc`
   

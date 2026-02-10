@@ -125,6 +125,10 @@ app.http('ksef-invoice-get', {
       if (!auth.success || !auth.user) {
         return { status: 401, jsonBody: { error: 'Unauthorized' } }
       }
+
+      if (!requireRole(auth.user, 'Reader').success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Reader role required' } }
+      }
       
       const ksefReferenceNumber = request.params.ksefReferenceNumber
       const nip = request.query.get('nip')
@@ -165,6 +169,10 @@ app.http('ksef-invoice-status', {
       if (!auth.success || !auth.user) {
         return { status: 401, jsonBody: { error: 'Unauthorized' } }
       }
+
+      if (!requireRole(auth.user, 'Reader').success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Reader role required' } }
+      }
       
       const elementReferenceNumber = request.params.elementReferenceNumber
       const nip = request.query.get('nip')
@@ -202,6 +210,10 @@ app.http('ksef-invoices-query', {
       const auth = await verifyAuth(request)
       if (!auth.success || !auth.user) {
         return { status: 401, jsonBody: { error: 'Unauthorized' } }
+      }
+
+      if (!requireRole(auth.user, 'Reader').success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Reader role required' } }
       }
       
       const body = await request.json() as { nip: string; query: KsefQueryInvoicesRequest }
@@ -292,6 +304,10 @@ app.http('ksef-invoice-upo', {
       const auth = await verifyAuth(request)
       if (!auth.success || !auth.user) {
         return { status: 401, jsonBody: { error: 'Unauthorized' } }
+      }
+
+      if (!requireRole(auth.user, 'Reader').success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Reader role required' } }
       }
       
       const ksefReferenceNumber = request.params.ksefReferenceNumber

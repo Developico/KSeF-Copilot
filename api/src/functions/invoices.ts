@@ -48,7 +48,7 @@ export async function listInvoicesHandler(
       source: url.searchParams.get('source') as InvoiceSource | undefined,
       overdue: url.searchParams.get('overdue') === 'true',
       search: url.searchParams.get('search') || undefined,
-      top: parseInt(url.searchParams.get('top') || '100'),
+      top: Math.min(parseInt(url.searchParams.get('top') || '100') || 100, 500),
       skip: parseInt(url.searchParams.get('skip') || '0'),
       orderBy: url.searchParams.get('orderBy') as 'invoiceDate' | 'grossAmount' | 'supplierName' | 'dueDate' || 'invoiceDate',
       orderDirection: url.searchParams.get('orderDirection') as 'asc' | 'desc' || 'desc',

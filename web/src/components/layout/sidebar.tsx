@@ -15,6 +15,7 @@ import {
   PanelLeftClose,
   PanelRightClose
 } from 'lucide-react'
+import { useHasRole, type UserRole } from '@/components/auth/auth-provider'
 
 interface SidebarProps {
   className?: string
@@ -25,6 +26,7 @@ type NavigationItem = {
   icon: React.ElementType
   href: string
   disabled?: boolean
+  requiredRole?: UserRole
 }
 
 const navigationItems: NavigationItem[] = [
@@ -47,11 +49,13 @@ const navigationItems: NavigationItem[] = [
     nameKey: 'sync',
     icon: RefreshCw,
     href: '/sync',
+    requiredRole: 'Admin',
   },
   {
     nameKey: 'settings',
     icon: Settings,
     href: '/settings',
+    requiredRole: 'Admin',
   },
 ]
 
@@ -60,6 +64,12 @@ export function Sidebar({ className }: SidebarProps) {
   const tCommon = useTranslations('common')
   const [isCollapsed, setIsCollapsed] = useState(false)
   const pathname = usePathname()
+  const isAdmin = useHasRole('Admin')
+
+  // Filter navigation items by role
+  const visibleItems = navigationItems.filter(
+    (item) => !item.requiredRole || (item.requiredRole === 'Admin' && isAdmin)
+  )
 
   return (
     <aside
@@ -73,7 +83,7 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 space-y-1 p-2 pt-4">
         <ul className="space-y-1">
-          {navigationItems.map((item) => {
+          {visibleItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
             const name = t(item.nameKey as 'dashboard' | 'invoices' | 'reports' | 'sync' | 'settings')

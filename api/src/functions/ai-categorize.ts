@@ -219,10 +219,14 @@ export async function testAiHandler(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   try {
-    // Auth check (any authenticated user can test)
+    // Auth check — require at least Reader role
     const authResult = await verifyAuth(request)
     if (!authResult.success) {
       return { status: 401, jsonBody: { error: 'Unauthorized' } }
+    }
+
+    if (!requireRole(authResult.user, 'Reader').success) {
+      return { status: 403, jsonBody: { error: 'Forbidden: Reader role required' } }
     }
 
     const result = await testConnection()

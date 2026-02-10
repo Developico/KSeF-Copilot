@@ -8,7 +8,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { verifyAuth } from '../lib/auth/middleware'
+import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { settingService } from '../lib/dataverse'
 import { getSecret } from '../lib/keyvault/secrets'
 import { KSEF_ENDPOINTS } from '../lib/ksef/config'
@@ -39,8 +39,11 @@ app.http('settings-test-token', {
         return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
 
-      // Allow any authenticated user to test tokens
-      // (Admin role check removed - users can test their own company tokens)
+      // Require at least Reader role (reject users without AD group)
+      const roleCheck = requireRole(auth.user, 'Reader')
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: roleCheck.error || 'Forbidden' } }
+      }
 
       const id = request.params.id
       if (!id) {

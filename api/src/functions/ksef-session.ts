@@ -75,6 +75,10 @@ app.http('ksef-session-status', {
       if (!auth.success || !auth.user) {
         return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
+
+      if (!requireRole(auth.user, 'Reader').success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Reader role required' } }
+      }
       
       // Use async version that falls back to Dataverse
       const session = await getActiveSessionAsync()

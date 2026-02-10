@@ -8,6 +8,7 @@ import { dataverseClient } from '../client'
 import { DV, KSEF_ENVIRONMENT, SYNC_STATUS } from '../config'
 import { mapDvSettingToApp, mapAppSettingToDv, type AppSetting } from '../mappers'
 import { logDataverseInfo, logDataverseError } from '../logger'
+import { escapeOData } from '../odata-utils'
 import type { DvSetting } from '../../../types/dataverse'
 import { getSecret } from '../../keyvault/secrets'
 
@@ -133,7 +134,7 @@ export class SettingService {
    */
   async getByNip(nip: string): Promise<AppSetting | null> {
     const s = DV.setting
-    const filter = `${s.nip} eq '${nip}'`
+    const filter = `${s.nip} eq '${escapeOData(nip)}'`
     logDataverseInfo('SettingService.getByNip', 'Fetching setting by NIP', { nip })
 
     try {
@@ -151,7 +152,7 @@ export class SettingService {
    */
   async getByNipAndEnvironment(nip: string, environment: number): Promise<AppSetting | null> {
     const s = DV.setting
-    const filter = `${s.nip} eq '${nip}' and ${s.environment} eq ${environment}`
+    const filter = `${s.nip} eq '${escapeOData(nip)}' and ${s.environment} eq ${environment}`
     logDataverseInfo('SettingService.getByNipAndEnvironment', 'Fetching setting by NIP and environment', { nip, environment })
 
     try {
