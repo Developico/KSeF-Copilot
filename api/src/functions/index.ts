@@ -2,12 +2,15 @@
 // This file imports all function handlers to register them with the runtime
 
 import './ai-categorize'
+import './anomalies'
 import './attachments'
 import './dashboard'
 import './documents'
 import './exchange-rates'
+import './forecast'
 import './gus'
 import './health'
+import './health-detailed'
 import './invoice-document'
 import './invoices'
 import './ksef-invoices'

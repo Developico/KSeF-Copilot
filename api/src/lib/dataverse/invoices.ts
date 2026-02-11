@@ -440,6 +440,9 @@ function mapFromDataverse(record: DataverseInvoice): Invoice {
     aiRationale: record[f.aiRationale] as string | undefined,
     aiConfidence: record[f.aiConfidence] as number | undefined,
     aiProcessedAt: record[f.aiProcessedAt] as string | undefined,
+    // Document fields (File column)
+    hasDocument: !!(record[f.documentName]),
+    documentFileName: record[f.documentName] as string | undefined,
   }
 }
 

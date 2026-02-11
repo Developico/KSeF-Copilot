@@ -63,6 +63,103 @@ export interface DashboardStats {
   payments: PaymentStats
 }
 
+// Forecast Types
+export interface ForecastMonthlyData {
+  month: string
+  grossAmount: number
+  netAmount: number
+  invoiceCount: number
+}
+
+export interface ForecastPoint {
+  month: string
+  predicted: number
+  lower: number
+  upper: number
+}
+
+export interface ForecastResult {
+  historical: ForecastMonthlyData[]
+  forecast: ForecastPoint[]
+  trend: 'up' | 'down' | 'stable'
+  trendPercent: number
+  confidence: number
+  method: 'moving-average' | 'linear-regression' | 'seasonal'
+  summary: {
+    nextMonth: number
+    totalForecast: number
+    avgMonthly: number
+  }
+}
+
+export interface GroupedForecastResult {
+  group: string
+  forecast: ForecastResult
+}
+
+export interface GroupedForecastResponse {
+  groups: GroupedForecastResult[]
+}
+
+// Anomaly Types
+export type AnomalyType =
+  | 'amount-spike'
+  | 'new-supplier'
+  | 'category-shift'
+  | 'frequency-change'
+  | 'duplicate-suspect'
+
+export type AnomalySeverity = 'low' | 'medium' | 'high' | 'critical'
+
+export interface Anomaly {
+  id: string
+  invoiceId: string
+  invoiceNumber: string
+  type: AnomalyType
+  severity: AnomalySeverity
+  score: number
+  description: string
+  expected: number
+  actual: number
+  deviation: number
+  supplierName: string
+  supplierNip: string
+  grossAmount: number
+  invoiceDate: string
+  mpk?: string
+  category?: string
+}
+
+export interface AnomalySummary {
+  total: number
+  bySeverity: Record<AnomalySeverity, number>
+  totalAmount: number
+  topTypes: { type: AnomalyType; count: number }[]
+}
+
+export interface AnomalyResult {
+  anomalies: Anomaly[]
+  summary: AnomalySummary
+  analyzedInvoices: number
+  period: { from: string; to: string }
+}
+
+export type ForecastHorizon = 1 | 6 | 12
+
+export interface ForecastParams {
+  horizon?: ForecastHorizon
+  historyMonths?: number
+  settingId?: string
+  tenantNip?: string
+}
+
+export interface AnomalyParams {
+  periodDays?: number
+  sensitivity?: number
+  settingId?: string
+  tenantNip?: string
+}
+
 // Invoice Types
 export interface Invoice {
   id: string
@@ -543,6 +640,63 @@ export const api = {
       if (params?.settingId) searchParams.append('settingId', params.settingId)
       else if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
       return apiFetch<DashboardStats>(`/api/dashboard/stats?${searchParams}`)
+    },
+  },
+
+  // Forecast
+  forecast: {
+    monthly: (params?: ForecastParams) => {
+      const searchParams = new URLSearchParams()
+      if (params?.horizon) searchParams.append('horizon', String(params.horizon))
+      if (params?.historyMonths) searchParams.append('historyMonths', String(params.historyMonths))
+      if (params?.settingId) searchParams.append('settingId', params.settingId)
+      else if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
+      return apiFetch<ForecastResult>(`/api/forecast/monthly?${searchParams}`)
+    },
+    byMpk: (params?: ForecastParams) => {
+      const searchParams = new URLSearchParams()
+      if (params?.horizon) searchParams.append('horizon', String(params.horizon))
+      if (params?.historyMonths) searchParams.append('historyMonths', String(params.historyMonths))
+      if (params?.settingId) searchParams.append('settingId', params.settingId)
+      else if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
+      return apiFetch<GroupedForecastResponse>(`/api/forecast/by-mpk?${searchParams}`)
+    },
+    byCategory: (params?: ForecastParams) => {
+      const searchParams = new URLSearchParams()
+      if (params?.horizon) searchParams.append('horizon', String(params.horizon))
+      if (params?.historyMonths) searchParams.append('historyMonths', String(params.historyMonths))
+      if (params?.settingId) searchParams.append('settingId', params.settingId)
+      else if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
+      return apiFetch<GroupedForecastResponse>(`/api/forecast/by-category?${searchParams}`)
+    },
+    bySupplier: (params?: ForecastParams & { top?: number }) => {
+      const searchParams = new URLSearchParams()
+      if (params?.horizon) searchParams.append('horizon', String(params.horizon))
+      if (params?.historyMonths) searchParams.append('historyMonths', String(params.historyMonths))
+      if (params?.settingId) searchParams.append('settingId', params.settingId)
+      else if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
+      if (params?.top) searchParams.append('top', String(params.top))
+      return apiFetch<GroupedForecastResponse>(`/api/forecast/by-supplier?${searchParams}`)
+    },
+  },
+
+  // Anomalies
+  anomalies: {
+    list: (params?: AnomalyParams) => {
+      const searchParams = new URLSearchParams()
+      if (params?.periodDays) searchParams.append('periodDays', String(params.periodDays))
+      if (params?.sensitivity) searchParams.append('sensitivity', String(params.sensitivity))
+      if (params?.settingId) searchParams.append('settingId', params.settingId)
+      else if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
+      return apiFetch<AnomalyResult>(`/api/anomalies?${searchParams}`)
+    },
+    summary: (params?: AnomalyParams) => {
+      const searchParams = new URLSearchParams()
+      if (params?.periodDays) searchParams.append('periodDays', String(params.periodDays))
+      if (params?.sensitivity) searchParams.append('sensitivity', String(params.sensitivity))
+      if (params?.settingId) searchParams.append('settingId', params.settingId)
+      else if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
+      return apiFetch<AnomalySummary>(`/api/anomalies/summary?${searchParams}`)
     },
   },
 
@@ -1095,6 +1249,20 @@ export const queryKeys = {
   companies: ['settings', 'companies'] as const,
   company: (id: string) => ['settings', 'companies', id] as const,
   costCenters: ['settings', 'costCenters'] as const,
+
+  // Forecast & Anomalies
+  forecastMonthly: (params?: ForecastParams) =>
+    ['forecast', 'monthly', params] as const,
+  forecastByMpk: (params?: ForecastParams) =>
+    ['forecast', 'by-mpk', params] as const,
+  forecastByCategory: (params?: ForecastParams) =>
+    ['forecast', 'by-category', params] as const,
+  forecastBySupplier: (params?: ForecastParams) =>
+    ['forecast', 'by-supplier', params] as const,
+  anomalies: (params?: AnomalyParams) =>
+    ['anomalies', params] as const,
+  anomaliesSummary: (params?: AnomalyParams) =>
+    ['anomalies', 'summary', params] as const,
 
   // GUS/REGON query keys
   gusLookup: (nip: string) => ['gus', 'lookup', nip] as const,

@@ -6,6 +6,24 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.7.0] - 2026-02-11
+
+### ✨ Dodane - Moduł Prognoza Wydatków
+
+- **Silnik prognozowania** (`api/src/lib/forecast/engine.ts`) — regresja liniowa, ważona średnia krocząca, wykrywanie sezonowości z przedziałem ufności 80%
+- **Wykrywanie anomalii** (`api/src/lib/forecast/anomalies.ts`) — 5 reguł: amount-spike (>2σ), new-supplier, duplicate-suspect, category-shift, frequency-change
+- **4 endpointy API prognoz** — `/api/forecast/monthly`, `/by-mpk`, `/by-category`, `/by-supplier` z horyzontem 1/6/12 miesięcy
+- **2 endpointy API anomalii** — `/api/anomalies` (lista) i `/api/anomalies/summary` (podsumowanie)
+- **Strona Prognoza** — nowa zakładka w nawigacji z ikoną TrendingUp
+- **Kafelki KPI** — prognoza następnego miesiąca, trend %, łączna prognoza, pewność (AnimatedKpiCard)
+- **Wykres AreaChart** — dane historyczne + prognoza z pasmem przedziału ufności (Recharts)
+- **Zakładki** — Przegląd, Wg MPK, Wg kategorii, Wg dostawcy, Anomalie
+- **Karty anomalii** — kolorowane wg severity z linkiem do faktury
+- **i18n** — pełne tłumaczenia PL/EN dla modułu forecast
+- **Układ zgodny z Raportami** — kafelki na górze, pasek zakładek na pełną szerokość
+
+---
+
 ## [0.6.4] - 2026-02-11
 
 ### 🔧 Poprawki - Logowanie Synchronizacji (Sync Log)

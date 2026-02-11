@@ -15,8 +15,8 @@ import { ExtractedInvoiceDataSchema } from './schemas'
 const KV_OPENAI_ENDPOINT = 'AZURE-OPENAI-ENDPOINT'
 const KV_OPENAI_API_KEY = 'AZURE-OPENAI-API-KEY'
 
-// Vision model deployment (GPT-4o supports images)
-const VISION_DEPLOYMENT = process.env.AZURE_OPENAI_VISION_DEPLOYMENT || 'gpt-4o'
+// Vision model deployment (GPT-4o-mini supports images too)
+const VISION_DEPLOYMENT = process.env.AZURE_OPENAI_VISION_DEPLOYMENT || process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini'
 
 // Singleton client (shared with categorization service)
 let visionClient: OpenAI | null = null

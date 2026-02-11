@@ -12,6 +12,7 @@ import {
   Settings, 
   LayoutDashboard,
   BarChart3,
+  TrendingUp,
   PanelLeftClose,
   PanelRightClose
 } from 'lucide-react'
@@ -44,6 +45,11 @@ const navigationItems: NavigationItem[] = [
     nameKey: 'reports',
     icon: BarChart3,
     href: '/reports',
+  },
+  {
+    nameKey: 'forecast',
+    icon: TrendingUp,
+    href: '/forecast',
   },
   {
     nameKey: 'sync',

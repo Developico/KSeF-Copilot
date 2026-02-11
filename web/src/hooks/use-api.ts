@@ -529,6 +529,112 @@ export function useContextDashboardStats(params?: { fromDate?: string; toDate?: 
   })
 }
 
+// ============================================================================
+// Forecast & Anomaly Hooks
+// ============================================================================
+
+/**
+ * Hook for overall monthly expense forecast.
+ */
+export function useContextForecastMonthly(params?: { horizon?: 1 | 6 | 12; historyMonths?: number }) {
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+
+  return useQuery({
+    queryKey: ['forecast', 'monthly', 'context', selectedCompany?.id, params],
+    queryFn: () => api.forecast.monthly({
+      ...params,
+      settingId: selectedCompany?.id,
+    }),
+    enabled: !companyLoading && Boolean(selectedCompany),
+    staleTime: 5 * 60 * 1000, // 5 min — forecast data doesn't change often
+  })
+}
+
+/**
+ * Hook for forecast grouped by cost center (MPK).
+ */
+export function useContextForecastByMpk(params?: { horizon?: 1 | 6 | 12; historyMonths?: number }) {
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+
+  return useQuery({
+    queryKey: ['forecast', 'by-mpk', 'context', selectedCompany?.id, params],
+    queryFn: () => api.forecast.byMpk({
+      ...params,
+      settingId: selectedCompany?.id,
+    }),
+    enabled: !companyLoading && Boolean(selectedCompany),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/**
+ * Hook for forecast grouped by expense category.
+ */
+export function useContextForecastByCategory(params?: { horizon?: 1 | 6 | 12; historyMonths?: number }) {
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+
+  return useQuery({
+    queryKey: ['forecast', 'by-category', 'context', selectedCompany?.id, params],
+    queryFn: () => api.forecast.byCategory({
+      ...params,
+      settingId: selectedCompany?.id,
+    }),
+    enabled: !companyLoading && Boolean(selectedCompany),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/**
+ * Hook for forecast grouped by top suppliers.
+ */
+export function useContextForecastBySupplier(params?: { horizon?: 1 | 6 | 12; historyMonths?: number; top?: number }) {
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+
+  return useQuery({
+    queryKey: ['forecast', 'by-supplier', 'context', selectedCompany?.id, params],
+    queryFn: () => api.forecast.bySupplier({
+      ...params,
+      settingId: selectedCompany?.id,
+    }),
+    enabled: !companyLoading && Boolean(selectedCompany),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/**
+ * Hook for anomaly detection results.
+ */
+export function useContextAnomalies(params?: { periodDays?: number; sensitivity?: number }) {
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+
+  return useQuery({
+    queryKey: ['anomalies', 'context', selectedCompany?.id, params],
+    queryFn: () => api.anomalies.list({
+      ...params,
+      settingId: selectedCompany?.id,
+    }),
+    enabled: !companyLoading && Boolean(selectedCompany),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/**
+ * Hook for anomaly summary (quick counts).
+ */
+export function useContextAnomalySummary(params?: { periodDays?: number }) {
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+
+  return useQuery({
+    queryKey: ['anomalies', 'summary', 'context', selectedCompany?.id, params],
+    queryFn: () => api.anomalies.summary({
+      ...params,
+      settingId: selectedCompany?.id,
+    }),
+    enabled: !companyLoading && Boolean(selectedCompany),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 /**
  * Hook for creating invoice with currently selected company's NIP.
  */
