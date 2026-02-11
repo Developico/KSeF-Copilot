@@ -3,7 +3,7 @@ import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { queryInvoices, getInvoice } from '../lib/ksef/invoices'
 import { parseInvoiceXml } from '../lib/ksef/parser'
 import { createInvoice, invoiceExistsByReference } from '../lib/dataverse/invoices'
-import { settingService } from '../lib/dataverse'
+import { settingService, syncLogService, logDataverseInfo, logDataverseError } from '../lib/dataverse'
 import { getKsefConfig } from '../lib/ksef/config'
 import { InvoiceCreate } from '../types/invoice'
 
@@ -45,6 +45,8 @@ app.http('ksef-sync', {
   authLevel: 'anonymous',
   route: 'ksef/sync',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    let syncLogId: string | undefined
+    let settingId: string | undefined
     try {
       // Verify authentication
       const auth = await verifyAuth(request)
@@ -68,7 +70,6 @@ app.http('ksef-sync', {
 
       // Get setting - prefer settingId if provided, otherwise lookup by NIP
       let setting: Awaited<ReturnType<typeof settingService.getById>> | undefined
-      let settingId: string | undefined
       let nip: string
 
       if (body.settingId) {
@@ -94,6 +95,21 @@ app.http('ksef-sync', {
       }
 
       context.log(`Starting KSeF sync for NIP: ${nip}, settingId: ${settingId || 'none'}`)
+
+      // Create sync log entry in Dataverse
+      if (settingId) {
+        try {
+          const syncLog = await syncLogService.create({
+            settingId,
+            direction: 'incoming',
+          })
+          syncLogId = syncLog.id
+          logDataverseInfo('ksef-sync', 'Sync log created', { syncLogId })
+        } catch (logError) {
+          // Non-blocking: sync log creation failure should not prevent sync
+          context.warn('Failed to create sync log entry:', logError)
+        }
+      }
 
       // Default date range: last 30 days
       const dateTo = body.dateTo || new Date().toISOString()
@@ -200,15 +216,48 @@ app.http('ksef-sync', {
 
       context.log(`Sync completed: ${result.imported} imported, ${result.skipped} skipped, ${result.failed} failed`)
 
+      // Complete sync log in Dataverse
+      if (syncLogId) {
+        try {
+          await syncLogService.complete(syncLogId, {
+            created: result.imported,
+            updated: result.skipped,
+            failed: result.failed,
+          })
+          if (settingId) {
+            await settingService.updateLastSync(settingId, result.failed === 0 ? 'success' : 'error')
+          }
+        } catch (logError) {
+          context.warn('Failed to complete sync log:', logError)
+        }
+      }
+
       return {
         status: 200,
         jsonBody: {
           success: result.failed === 0,
+          syncLogId,
           ...result,
         },
       }
     } catch (error) {
       context.error('KSeF sync failed:', error)
+
+      // Mark sync log as failed
+      if (syncLogId) {
+        try {
+          await syncLogService.fail(
+            syncLogId,
+            error instanceof Error ? error.message : 'Unknown error',
+          )
+          if (settingId) {
+            await settingService.updateLastSync(settingId, 'error')
+          }
+        } catch (logError) {
+          context.warn('Failed to mark sync log as failed:', logError)
+        }
+      }
+
       return {
         status: 500,
         jsonBody: {
@@ -315,6 +364,8 @@ app.http('ksef-sync-import', {
   authLevel: 'anonymous',
   route: 'ksef/sync/import',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    let syncLogId: string | undefined
+    let settingId: string | undefined
     try {
       const auth = await verifyAuth(request)
       if (!auth.success || !auth.user) {
@@ -337,7 +388,6 @@ app.http('ksef-sync-import', {
       }
 
       // Get setting - prefer settingId if provided, otherwise lookup by NIP
-      let settingId: string | undefined
       let nip: string
 
       if (body.settingId) {
@@ -357,6 +407,19 @@ app.http('ksef-sync-import', {
       }
 
       context.log(`Importing ${body.referenceNumbers.length} specific invoices for NIP: ${nip}, settingId: ${settingId || 'none'}`)
+
+      // Create sync log entry for import operation
+      if (settingId) {
+        try {
+          const syncLog = await syncLogService.create({
+            settingId,
+            direction: 'incoming',
+          })
+          syncLogId = syncLog.id
+        } catch (logError) {
+          context.warn('Failed to create sync log for import:', logError)
+        }
+      }
 
       const result: SyncResult = {
         total: body.referenceNumbers.length,
@@ -432,15 +495,42 @@ app.http('ksef-sync-import', {
         }
       }
 
+      // Complete sync log for import
+      if (syncLogId) {
+        try {
+          await syncLogService.complete(syncLogId, {
+            created: result.imported,
+            updated: result.skipped,
+            failed: result.failed,
+          })
+        } catch (logError) {
+          context.warn('Failed to complete sync log for import:', logError)
+        }
+      }
+
       return {
         status: 200,
         jsonBody: {
           success: result.failed === 0,
+          syncLogId,
           ...result,
         },
       }
     } catch (error) {
       context.error('KSeF import failed:', error)
+
+      // Mark sync log as failed for import
+      if (syncLogId) {
+        try {
+          await syncLogService.fail(
+            syncLogId,
+            error instanceof Error ? error.message : 'Unknown error',
+          )
+        } catch (logError) {
+          context.warn('Failed to mark sync log as failed for import:', logError)
+        }
+      }
+
       return {
         status: 500,
         jsonBody: {

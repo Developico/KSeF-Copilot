@@ -6,6 +6,23 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.6.4] - 2026-02-11
+
+### 🔧 Poprawki - Logowanie Synchronizacji (Sync Log)
+
+- **Integracja `syncLogService` z endpointem `POST /api/ksef/sync`** — każda synchronizacja tworzy teraz rekord w tabeli Dataverse `dvlp_ksefsynclogs` z pełnymi statystykami (imported, skipped, failed)
+- **Integracja `syncLogService` z endpointem `POST /api/ksef/sync/import`** — selektywny import faktur również logowany do Sync Log
+- **Aktualizacja `lastSyncAt` / `lastSyncStatus` na Setting** — po każdej synchronizacji aktualizowany jest status ostatniego synca na rekordzie firmy
+- **Non-blocking logging** — błędy zapisu do Sync Log nie blokują samej synchronizacji (graceful degradation)
+- **`syncLogId` w odpowiedzi API** — endpointy sync i import zwracają ID loga synchronizacji w odpowiedzi
+- **Obsługa błędów** — w przypadku crashu synchronizacji, log jest oznaczany jako `failed` z komunikatem błędu
+
+### 📝 Kontekst
+
+- Tabela `dvlp_ksefsynclogs` była pusta, ponieważ frontend wywoływał `/api/ksef/sync` (w `ksef-sync.ts`), który nie korzystał z `syncLogService`. Istniejący endpoint `/api/sync` (w `sync.ts`) miał pełne logowanie, ale nie był używany przez UI.
+
+---
+
 ## [0.6.3] - 2026-02-08
 
 ### ✨ Dodane - Animowane Kafelki Dashboard
