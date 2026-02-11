@@ -12,6 +12,11 @@ const nextConfig = {
   },
   // Security headers
   async headers() {
+    const isDev = process.env.NODE_ENV === 'development'
+    // In dev, allow connections to local Azure Functions; in prod, only allow Azure endpoints
+    const connectSrc = isDev
+      ? "connect-src 'self' http://localhost:7071 https://login.microsoftonline.com https://*.microsoftonline.com https://*.microsoft.com https://*.azurewebsites.net;"
+      : "connect-src 'self' https://login.microsoftonline.com https://*.microsoftonline.com https://*.microsoft.com https://*.azurewebsites.net;"
     return [
       {
         source: '/(.*)',
@@ -27,7 +32,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://login.microsoftonline.com https://*.microsoftonline.com https://*.microsoft.com;",
+            value: `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; ${connectSrc}`,
           },
         ],
       },
