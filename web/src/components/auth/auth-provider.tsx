@@ -381,7 +381,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return <SignInScreen productName="KSeF" />
+    return <SignInScreen productName="KSeF Copilot" />
   }
 
   return <>{children}</>

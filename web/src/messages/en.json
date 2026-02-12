@@ -41,7 +41,7 @@
     "openMenu": "Open menu"
   },
   "header": {
-    "title": "C-Level KSeF",
+    "title": "KSeF Copilot",
     "subtitle": "Cost analysis",
     "lightMode": "Light mode",
     "darkMode": "Dark mode",
@@ -767,6 +767,20 @@
     "noAnomalies": "No anomalies detected in the selected period.",
     "anomaliesFound": "{count} anomalies detected",
     "totalAnomalyAmount": "Total amount",
-    "period": "Period"
+    "period": "Period",
+    "severityCritical": "critical",
+    "severityHigh": "high",
+    "severityMedium": "medium",
+    "severityLow": "low",
+    "typeAmountSpike": "Amount Spike",
+    "typeNewSupplier": "New Supplier",
+    "typeCategoryShift": "Category Shift",
+    "typeFrequencyChange": "Frequency Change",
+    "typeDuplicateSuspect": "Duplicate Suspect",
+    "descAmountSpike": "Invoice {percent}% higher than supplier average",
+    "descNewSupplier": "First invoice from new supplier ({amount})",
+    "descCategoryShift": "\"{category}\" spending {percent}% above monthly average",
+    "descFrequencyChange": "{count} invoices this period (avg: {avg}/month)",
+    "descDuplicateSuspect": "Possible duplicate: similar amount to {otherInvoice} ({days}d apart)"
   }
 }

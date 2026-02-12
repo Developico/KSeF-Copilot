@@ -41,7 +41,7 @@
     "openMenu": "Otwórz menu"
   },
   "header": {
-    "title": "C-Level KSeF",
+    "title": "KSeF Copilot",
     "subtitle": "Analiza wydatków",
     "lightMode": "Tryb jasny",
     "darkMode": "Tryb ciemny",
@@ -767,6 +767,20 @@
     "noAnomalies": "Nie wykryto anomalii w wybranym okresie.",
     "anomaliesFound": "Wykryto {count} anomalii",
     "totalAnomalyAmount": "Łączna kwota",
-    "period": "Okres"
+    "period": "Okres",
+    "severityCritical": "krytyczny",
+    "severityHigh": "wysoki",
+    "severityMedium": "średni",
+    "severityLow": "niski",
+    "typeAmountSpike": "Skok kwoty",
+    "typeNewSupplier": "Nowy dostawca",
+    "typeCategoryShift": "Zmiana kategorii",
+    "typeFrequencyChange": "Zmiana częstotliwości",
+    "typeDuplicateSuspect": "Podejrzenie duplikatu",
+    "descAmountSpike": "Faktura {percent}% wyższa niż średnia dostawcy",
+    "descNewSupplier": "Pierwsza faktura od nowego dostawcy ({amount})",
+    "descCategoryShift": "\"{category}\" — wydatki {percent}% powyżej średniej miesięcznej",
+    "descFrequencyChange": "{count} faktur w tym okresie (śr. {avg}/mies.)",
+    "descDuplicateSuspect": "Możliwy duplikat: podobna kwota do {otherInvoice} ({days} dni różnicy)"
   }
 }

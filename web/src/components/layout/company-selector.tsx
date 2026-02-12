@@ -58,9 +58,10 @@ function CompanyItem({
 interface CompanySelectorProps {
   collapsed?: boolean
   variant?: 'sidebar' | 'header'
+  dropdownClassName?: string
 }
 
-export function CompanySelector({ collapsed = false, variant = 'sidebar' }: CompanySelectorProps) {
+export function CompanySelector({ collapsed = false, variant = 'sidebar', dropdownClassName }: CompanySelectorProps) {
   const { selectedCompany, companies, isLoading, setSelectedCompany, hasCompanies } = useCompanyContext()
   const isHeader = variant === 'header'
 
@@ -131,7 +132,7 @@ export function CompanySelector({ collapsed = false, variant = 'sidebar' }: Comp
       <DropdownMenuContent 
         align={isHeader ? "start" : (collapsed ? "end" : "start")} 
         side={isHeader ? "bottom" : (collapsed ? "right" : "top")} 
-        className="w-[300px]"
+        className={cn("w-[300px]", dropdownClassName)}
       >
         <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wide">
           Wybierz firmę

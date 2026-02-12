@@ -400,3 +400,17 @@ Rozwiązania:
 2. Zaimplementuj retry z exponential backoff
 3. Użyj batch processing zamiast pojedynczych requestów
 ```
+
+---
+
+## Powiązane dokumenty
+
+- [Zmienne środowiskowe](./ZMIENNE_SRODOWISKOWE.md) — pełna referencja env vars
+- [Zasoby Azure](./AZURE_RESOURCES_SETUP.md) — Key Vault, Functions
+- [Rozwiązywanie problemów](./ROZWIAZYWANIE_PROBLEMOW.md) — centralna diagnostyka
+
+---
+
+**Ostatnia aktualizacja:** 2026-02-11  
+**Wersja:** 1.0  
+**Opiekun:** dvlp-dev team

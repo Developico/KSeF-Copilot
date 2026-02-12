@@ -1,7 +1,5 @@
 # Architecture Documentation
 
-> **Wersja polska (zaktualizowana):** [ARCHITEKTURA.md](./ARCHITEKTURA.md) | **English copy:** [en/ARCHITECTURE.md](./en/ARCHITECTURE.md)
-
 ## Table of Contents
 - [Overview](#overview)
 - [System Architecture](#system-architecture)

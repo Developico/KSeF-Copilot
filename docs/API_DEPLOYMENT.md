@@ -419,3 +419,18 @@ az resource show \
   --ids "/subscriptions/73d82af2-b751-4bd5-9750-70a8a5378d93/resourceGroups/rg-ksef/providers/Microsoft.Web/sites/YOUR_FUNCTION_APP" \
   --query "properties.functionAppConfig" -o json
 ```
+
+---
+
+## Powiązane dokumenty
+
+- [Wdrożenie Web](./WEB_DEPLOYMENT.md) — deploy Next.js na App Service
+- [Zmienne środowiskowe](./ZMIENNE_SRODOWISKOWE.md) — pełna referencja env vars
+- [Zasoby Azure](./AZURE_RESOURCES_SETUP.md) — tworzenie zasobów
+- [Rozwiązywanie problemów](./ROZWIAZYWANIE_PROBLEMOW.md) — centralna diagnostyka
+
+---
+
+**Ostatnia aktualizacja:** 2026-02-11  
+**Wersja:** 1.0  
+**Opiekun:** dvlp-dev team

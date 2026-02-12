@@ -12,11 +12,12 @@ import {
   LayoutDashboard, 
   FileText, 
   BarChart3, 
+  TrendingUp,
   RefreshCw, 
   Settings,
   X
 } from 'lucide-react'
-import { useAuth } from '@/components/auth/auth-provider'
+import { useAuth, useHasRole, type UserRole } from '@/components/auth/auth-provider'
 import { CompanySelector } from './company-selector'
 
 interface MobileSidebarProps {
@@ -29,6 +30,7 @@ type NavigationItem = {
   icon: React.ElementType
   href: string
   disabled?: boolean
+  requiredRole?: UserRole
 }
 
 const navigationItems: NavigationItem[] = [
@@ -48,14 +50,21 @@ const navigationItems: NavigationItem[] = [
     href: '/reports',
   },
   {
+    nameKey: 'forecast',
+    icon: TrendingUp,
+    href: '/forecast',
+  },
+  {
     nameKey: 'sync',
     icon: RefreshCw,
     href: '/sync',
+    requiredRole: 'Admin',
   },
   {
     nameKey: 'settings',
     icon: Settings,
     href: '/settings',
+    requiredRole: 'Admin',
   },
 ]
 
@@ -65,6 +74,12 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
   const tHeader = useTranslations('header')
   const pathname = usePathname()
   const { user } = useAuth()
+  const isAdmin = useHasRole('Admin')
+
+  // Filter navigation items by role
+  const visibleItems = navigationItems.filter(
+    (item) => !item.requiredRole || (item.requiredRole === 'Admin' && isAdmin)
+  )
 
   // Close drawer when route changes
   useEffect(() => {
@@ -94,10 +109,10 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
         {/* Navigation */}
         <nav className="flex-1 p-3 overflow-y-auto">
           <ul className="space-y-1">
-            {navigationItems.map((item) => {
+            {visibleItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
-              const name = t(item.nameKey as 'dashboard' | 'invoices' | 'reports' | 'sync' | 'settings')
+              const name = t(item.nameKey as 'dashboard' | 'invoices' | 'reports' | 'forecast' | 'sync' | 'settings')
 
               if (item.disabled) {
                 return (
@@ -139,7 +154,7 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
 
         {/* Company selector */}
         <div className="border-t p-3">
-          <CompanySelector />
+          <CompanySelector dropdownClassName="z-[70]" />
         </div>
 
         {/* User info footer */}

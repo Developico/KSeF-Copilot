@@ -602,3 +602,18 @@ Jeśli istnieje w `web/`, jest kopiowany do `.deploy/` przez `build-deploy.mjs`.
 8. **`WEBSITE_RUN_FROM_PACKAGE=1`** — **KRYTYCZNE!** Bez tego Kudu tworzy `node_modules.tar.gz` z paczki ZIP i niszczy standalone modules. Z `=1` ZIP jest montowany bezpośrednio jako read-only filesystem, omijając cały problem.
 9. **Kolejność w build-deploy.mjs** — Linux binaries (`npm install`) muszą być instalowane PRZED kopiowaniem shared workspace `node_modules`. Inaczej `npm` prune'uje standalone moduły.
 10. **Debugowanie Docker logów** — Najszybsza metoda diagnozy 503: `az rest --method get --url "<SCM_URL>/api/vfs/LogFiles/" ...` → znaleźć najnowszy `*_default_docker.log` → przeczytać ostatnie linie.
+
+---
+
+## Powiązane dokumenty
+
+- [Wdrożenie API](./API_DEPLOYMENT.md) — deploy Azure Functions
+- [Zmienne środowiskowe](./ZMIENNE_SRODOWISKOWE.md) — pełna referencja env vars
+- [Zasoby Azure](./AZURE_RESOURCES_SETUP.md) — tworzenie zasobów
+- [Rozwiązywanie problemów](./ROZWIAZYWANIE_PROBLEMOW.md) — centralna diagnostyka
+
+---
+
+**Ostatnia aktualizacja:** 2026-02-11  
+**Wersja:** 1.0  
+**Opiekun:** dvlp-dev team

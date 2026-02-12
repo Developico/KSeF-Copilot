@@ -161,8 +161,9 @@ export function generateForecast(
 ): ForecastResult {
   const { horizon } = params
 
-  // Sort chronologically
-  const sorted = [...historical].sort((a, b) => a.month.localeCompare(b.month))
+  // Sort chronologically and fill gaps
+  const filled = fillMissingMonths(historical)
+  const sorted = filled.sort((a, b) => a.month.localeCompare(b.month))
 
   if (sorted.length === 0) {
     return emptyForecast(horizon)
@@ -175,6 +176,8 @@ export function generateForecast(
   let method: ForecastResult['method']
   let forecastValues: number[]
   let confidenceBase: number
+  // Relative CV (coefficient of variation) of model residuals — used for CI
+  let residualCV: number
   const seasonality = detectSeasonality(sorted)
 
   if (sorted.length < 3) {
@@ -183,6 +186,8 @@ export function generateForecast(
     const avg = weightedMovingAverage(amounts, amounts.length)
     forecastValues = Array(horizon).fill(avg)
     confidenceBase = 0.3
+    // Use raw CV as fallback
+    residualCV = avg > 0 ? standardDeviation(amounts) / avg : 0.5
   } else if (sorted.length < 12 || !seasonality) {
     // Linear regression without seasonality
     method = 'linear-regression'
@@ -198,6 +203,10 @@ export function generateForecast(
       forecastValues.push(Math.max(0, regValue * 0.6 + maValue * 0.4))
     }
     confidenceBase = Math.min(0.8, 0.4 + reg.r2 * 0.4)
+    // Residual CV: how far the model's predictions are from actuals, relative to predicted
+    const fitted = xs.map((x) => reg.slope * x + reg.intercept)
+    const relErrors = amounts.map((y, i) => fitted[i] > 0 ? (y - fitted[i]) / fitted[i] : 0)
+    residualCV = standardDeviation(relErrors)
   } else {
     // Full model with seasonality
     method = 'seasonal'
@@ -220,17 +229,28 @@ export function generateForecast(
       forecastValues.push(Math.max(0, baseValue * seasonalFactor))
     }
     confidenceBase = Math.min(0.85, 0.5 + reg.r2 * 0.35)
+    // Residual CV: compare model's fitted values (with seasonality) against actuals
+    const fitted = sorted.map((d, i) => {
+      const monthNum = parseInt(d.month.split('-')[1], 10)
+      return (reg.slope * i + reg.intercept) * (seasonality[monthNum] || 1)
+    })
+    const relErrors = amounts.map((y, i) => fitted[i] > 0 ? (y - fitted[i]) / fitted[i] : 0)
+    residualCV = standardDeviation(relErrors)
   }
 
+  // Ensure residualCV has a reasonable minimum so CI is never invisibly thin
+  residualCV = Math.max(residualCV, 0.05)
+
   // Build forecast points with confidence intervals
+  // Uses relative CI (proportional to predicted value) based on model residuals.
+  // This ensures the band wraps around the forecast line rather than extending to 0.
   const lastMonth = sorted[sorted.length - 1].month
-  const stdDev = standardDeviation(amounts)
 
   const forecast: ForecastPoint[] = forecastValues.map((predicted, i) => {
     const month = addMonths(lastMonth, i + 1)
     // Confidence interval widens with horizon
     const horizonFactor = 1 + (i * 0.15) // 15% wider per month
-    const interval = stdDev * horizonFactor * 1.28 // 80% CI ≈ 1.28 σ
+    const interval = predicted * residualCV * horizonFactor * 1.28 // 80% CI ≈ 1.28 σ
 
     return {
       month,
@@ -285,6 +305,58 @@ function addMonths(yearMonth: string, count: number): string {
   const [y, m] = yearMonth.split('-').map(Number)
   const date = new Date(y, m - 1 + count, 1)
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
+/**
+ * Fill gaps in monthly data so every month between first and last is present.
+ * Months without data get zero values. This prevents visual gaps in charts.
+ */
+export function fillMissingMonths(data: MonthlyDataPoint[]): MonthlyDataPoint[] {
+  if (data.length < 2) return data
+
+  const sorted = [...data].sort((a, b) => a.month.localeCompare(b.month))
+  const first = sorted[0].month
+  const last = sorted[sorted.length - 1].month
+  const monthMap = new Map(sorted.map((d) => [d.month, d]))
+
+  const result: MonthlyDataPoint[] = []
+  let current = first
+  while (current <= last) {
+    result.push(
+      monthMap.get(current) || { month: current, grossAmount: 0, netAmount: 0, invoiceCount: 0 }
+    )
+    current = addMonths(current, 1)
+  }
+  return result
+}
+
+/**
+ * Parse a date string (ISO or other) into "YYYY-MM" format.
+ * Handles ISO 8601 with timezone offsets, plain dates, and DateTimes.
+ */
+export function parseDateToMonth(dateStr: string): string | null {
+  if (!dateStr) return null
+
+  // Try ISO substring first for "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm:ss" format
+  const isoMatch = dateStr.match(/^(\d{4})-(\d{2})/)
+  if (isoMatch) {
+    // For DateTime strings with timezone, parse properly to get correct local month
+    if (dateStr.includes('T')) {
+      const d = new Date(dateStr)
+      if (!isNaN(d.getTime())) {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      }
+    }
+    return `${isoMatch[1]}-${isoMatch[2]}`
+  }
+
+  // Fallback: try native Date parsing
+  const d = new Date(dateStr)
+  if (!isNaN(d.getTime())) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  }
+
+  return null
 }
 
 function emptyForecast(horizon: number): ForecastResult {

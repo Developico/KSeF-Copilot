@@ -16,8 +16,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Developico KSeF',
-  description: 'Open-source KSeF integration module with Dataverse backend',
+  title: 'KSeF Copilot',
+  description: 'KSeF Copilot — intelligent invoice management powered by AI',
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',

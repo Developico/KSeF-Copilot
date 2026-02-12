@@ -9,7 +9,7 @@ interface SignInScreenProps {
   productName?: string; 
 }
 
-export function SignInScreen({ productName = "KSeF" }: SignInScreenProps) {
+export function SignInScreen({ productName = "KSeF Copilot" }: SignInScreenProps) {
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
 

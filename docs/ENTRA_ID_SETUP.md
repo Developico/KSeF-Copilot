@@ -1,5 +1,9 @@
 # Konfiguracja Entra ID (Azure AD) dla integracji KSeF
 
+> **⚠️ Ten dokument został zastąpiony przez [ENTRA_ID_KONFIGURACJA.md](./ENTRA_ID_KONFIGURACJA.md)**  
+> Nowy dokument zawiera scalone i zaktualizowane treści z tego pliku oraz z `AUTH_GROUPS_SETUP.md`.  
+> Ten plik zachowano jako archiwum.
+
 Instrukcja konfiguracji App Registration w Microsoft Entra ID do autentykacji API z Dataverse.
 
 ## Spis treści

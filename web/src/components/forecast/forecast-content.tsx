@@ -39,6 +39,7 @@ import {
 import {
   AreaChart,
   Area,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -91,12 +92,12 @@ const SEVERITY_BADGE_VARIANT: Record<AnomalySeverity, 'destructive' | 'default' 
   low: 'secondary',
 }
 
-const ANOMALY_TYPE_LABELS: Record<AnomalyType, string> = {
-  'amount-spike': 'Amount Spike',
-  'new-supplier': 'New Supplier',
-  'category-shift': 'Category Shift',
-  'frequency-change': 'Frequency Change',
-  'duplicate-suspect': 'Duplicate Suspect',
+const ANOMALY_TYPE_KEYS: Record<AnomalyType, string> = {
+  'amount-spike': 'typeAmountSpike',
+  'new-supplier': 'typeNewSupplier',
+  'category-shift': 'typeCategoryShift',
+  'frequency-change': 'typeFrequencyChange',
+  'duplicate-suspect': 'typeDuplicateSuspect',
 }
 
 const CHART_COLORS = [
@@ -212,31 +213,29 @@ function ForecastChart({
       actual: d.grossAmount,
       predicted: null as number | null,
       lower: null as number | null,
-      upper: null as number | null,
+      ciBand: null as number | null,
     }))
 
-    // Bridge: last historical point appears also as first forecast
     const forecast = data.forecast.map((d) => ({
       month: formatMonth(d.month, locale),
       rawMonth: d.month,
       actual: null as number | null,
       predicted: d.predicted,
       lower: d.lower,
-      upper: d.upper,
+      ciBand: d.upper - d.lower,
     }))
 
-    // Add the last historical point to forecast for continuous line
+    // Bridge: make last historical point also start the forecast line
+    // so both lines connect without a gap
     if (historical.length > 0 && forecast.length > 0) {
       const last = historical[historical.length - 1]
-      forecast.unshift({
-        ...last,
-        predicted: last.actual,
-        lower: last.actual,
-        upper: last.actual,
-      })
+      // Set predicted on the last historical point so forecast line starts there
+      last.predicted = last.actual
+      last.lower = last.actual
+      last.ciBand = 0
     }
 
-    return [...historical, ...forecast.slice(1)] // skip duplicate bridge point
+    return [...historical, ...forecast]
   }, [data, locale])
 
   return (
@@ -263,26 +262,26 @@ function ForecastChart({
               labelFormatter={(label) => label}
             />
             <Legend />
-            {/* Confidence interval band */}
-            <Area
-              type="monotone"
-              dataKey="upper"
-              stackId="ci"
-              stroke="none"
-              fill="#3b82f6"
-              fillOpacity={0.1}
-              name={t('confidenceInterval')}
-              connectNulls={false}
-            />
+            {/* Confidence interval band (lower transparent + ciBand colored, stacked) */}
             <Area
               type="monotone"
               dataKey="lower"
               stackId="ci"
               stroke="none"
-              fill="#ffffff"
-              fillOpacity={1}
+              fill="transparent"
+              fillOpacity={0}
               name=""
               legendType="none"
+              connectNulls={false}
+            />
+            <Area
+              type="monotone"
+              dataKey="ciBand"
+              stackId="ci"
+              stroke="none"
+              fill="#3b82f6"
+              fillOpacity={0.15}
+              name={t('confidenceInterval')}
               connectNulls={false}
             />
             {/* Historical line */}
@@ -296,15 +295,14 @@ function ForecastChart({
               name={t('actual')}
               connectNulls={false}
             />
-            {/* Forecast line */}
-            <Area
+            {/* Forecast line (Line, not Area — no fill to baseline) */}
+            <Line
               type="monotone"
               dataKey="predicted"
               stroke="#3b82f6"
-              fill="#3b82f6"
-              fillOpacity={0.15}
               strokeWidth={2}
               strokeDasharray="5 5"
+              dot={false}
               name={t('predicted')}
               connectNulls={false}
             />
@@ -427,7 +425,7 @@ function AnomalySection({
   t,
 }: {
   locale: string
-  t: (key: string) => string
+  t: (key: string, params?: Record<string, string | number>) => string
 }) {
   const { data, isLoading, error } = useContextAnomalies({ periodDays: 30 })
 
@@ -470,7 +468,7 @@ function AnomalySection({
           <AlertTriangle className="h-5 w-5 text-orange-500" />
           <div>
             <p className="font-medium">
-              {t('anomaliesFound').replace('{count}', String(data.summary.total))}
+              {t('anomaliesFound', { count: data.summary.total })}
             </p>
             <p className="text-sm text-muted-foreground">
               {t('totalAnomalyAmount')}: {formatAmount(data.summary.totalAmount, locale)}
@@ -481,13 +479,19 @@ function AnomalySection({
             {(['critical', 'high', 'medium', 'low'] as AnomalySeverity[]).map((sev) => {
               const count = data.summary.bySeverity[sev]
               if (count === 0) return null
+              const severityKeys: Record<AnomalySeverity, string> = {
+                critical: 'severityCritical',
+                high: 'severityHigh',
+                medium: 'severityMedium',
+                low: 'severityLow',
+              }
               return (
                 <Badge
                   key={sev}
                   variant={SEVERITY_BADGE_VARIANT[sev]}
                   className="text-xs"
                 >
-                  {sev}: {count}
+                  {t(severityKeys[sev])}: {count}
                 </Badge>
               )
             })}
@@ -512,8 +516,20 @@ function AnomalyCard({
 }: {
   anomaly: Anomaly
   locale: string
-  t: (key: string) => string
+  t: (key: string, params?: Record<string, string | number>) => string
 }) {
+  const severityKeys: Record<AnomalySeverity, string> = {
+    critical: 'severityCritical',
+    high: 'severityHigh',
+    medium: 'severityMedium',
+    low: 'severityLow',
+  }
+
+  // Use translated description if descriptionKey is available, otherwise fallback
+  const description = anomaly.descriptionKey
+    ? t(anomaly.descriptionKey, anomaly.descriptionParams || {})
+    : anomaly.description
+
   return (
     <Card>
       <CardContent className="flex items-start gap-4 py-4">
@@ -524,14 +540,14 @@ function AnomalyCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <Badge variant={SEVERITY_BADGE_VARIANT[anomaly.severity]} className="text-xs">
-              {anomaly.severity.toUpperCase()}
+              {t(severityKeys[anomaly.severity]).toUpperCase()}
             </Badge>
             <Badge variant="outline" className="text-xs">
-              {ANOMALY_TYPE_LABELS[anomaly.type]}
+              {t(ANOMALY_TYPE_KEYS[anomaly.type])}
             </Badge>
             <span className="text-xs text-muted-foreground">{anomaly.invoiceDate}</span>
           </div>
-          <p className="text-sm font-medium">{anomaly.description}</p>
+          <p className="text-sm font-medium">{description}</p>
           <p className="text-xs text-muted-foreground mt-1">
             {anomaly.supplierName} · {anomaly.invoiceNumber}
           </p>

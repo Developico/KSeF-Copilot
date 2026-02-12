@@ -119,6 +119,8 @@ export interface Anomaly {
   severity: AnomalySeverity
   score: number
   description: string
+  descriptionKey?: string
+  descriptionParams?: Record<string, string | number>
   expected: number
   actual: number
   deviation: number

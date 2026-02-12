@@ -267,3 +267,18 @@ Tests  37 passed (37)
    - Używaj osobnych tokenów dla test/demo/production
    - Nie używaj tokenów produkcyjnych w środowisku testowym
    - Testuj przepływ z tokenami w środowisku demo przed produkcją
+
+---
+
+## Powiązane dokumenty
+
+- [Konfiguracja Entra ID](./ENTRA_ID_KONFIGURACJA.md) — App Registration, Key Vault
+- [Zasoby Azure](./AZURE_RESOURCES_SETUP.md) — tworzenie Key Vault
+- [Zmienne środowiskowe](./ZMIENNE_SRODOWISKOWE.md) — pełna referencja env vars
+- [Rozwiązywanie problemów](./ROZWIAZYWANIE_PROBLEMOW.md) — centralna diagnostyka
+
+---
+
+**Ostatnia aktualizacja:** 2026-02-11  
+**Wersja:** 1.0  
+**Opiekun:** dvlp-dev team

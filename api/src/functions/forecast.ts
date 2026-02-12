@@ -22,6 +22,7 @@ import { getMpkKey } from '../lib/dataverse/entities'
 import { escapeOData } from '../lib/dataverse/odata-utils'
 import {
   generateForecast,
+  parseDateToMonth,
   type MonthlyDataPoint,
   type ForecastParams,
   type ForecastResult,
@@ -84,17 +85,25 @@ async function fetchInvoicesForForecast(
 }
 
 /**
- * Aggregate raw invoices into monthly data points
+ * Aggregate raw invoices into monthly data points.
+ * Uses robust date parsing and excludes the current incomplete month.
  */
 function aggregateMonthly(invoices: Record<string, unknown>[]): MonthlyDataPoint[] {
   const f = InvoiceEntity.fields
   const monthMap = new Map<string, MonthlyDataPoint>()
 
+  // Current incomplete month — exclude to avoid skewing the forecast
+  const now = new Date()
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
   for (const inv of invoices) {
     const invoiceDate = inv[f.invoiceDate] as string
     if (!invoiceDate) continue
 
-    const month = invoiceDate.substring(0, 7)
+    const month = parseDateToMonth(invoiceDate)
+    if (!month) continue
+    if (month === currentMonth) continue // skip incomplete month
+
     const existing = monthMap.get(month) || { month, grossAmount: 0, netAmount: 0, invoiceCount: 0 }
     existing.grossAmount += (inv[f.grossAmount] as number) || 0
     existing.netAmount += (inv[f.netAmount] as number) || 0
@@ -106,7 +115,8 @@ function aggregateMonthly(invoices: Record<string, unknown>[]): MonthlyDataPoint
 }
 
 /**
- * Aggregate invoices by a grouping function, then into monthly data per group
+ * Aggregate invoices by a grouping function, then into monthly data per group.
+ * Uses robust date parsing and excludes the current incomplete month.
  */
 function aggregateByGroup(
   invoices: Record<string, unknown>[],
@@ -115,12 +125,19 @@ function aggregateByGroup(
   const f = InvoiceEntity.fields
   const groups = new Map<string, Map<string, MonthlyDataPoint>>()
 
+  // Current incomplete month — exclude to avoid skewing the forecast
+  const now = new Date()
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
   for (const inv of invoices) {
     const group = groupFn(inv)
     const invoiceDate = inv[f.invoiceDate] as string
     if (!invoiceDate) continue
 
-    const month = invoiceDate.substring(0, 7)
+    const month = parseDateToMonth(invoiceDate)
+    if (!month) continue
+    if (month === currentMonth) continue // skip incomplete month
+
     const monthMap = groups.get(group) || new Map()
     const existing = monthMap.get(month) || { month, grossAmount: 0, netAmount: 0, invoiceCount: 0 }
     existing.grossAmount += (inv[f.grossAmount] as number) || 0

@@ -468,3 +468,17 @@ Poniżej kompletna lista do referencji przy definiowaniu kolejnych akcji connect
 - **Zasada najmniejszych uprawnień** — jeśli flow potrzebuje tylko odczytu, użyj konta z rolą Reader
 - **Client Secret rotation** — ustaw reminder na wygaśnięcie secretu w App Registration
 - **Audit** — Power Automate loguje każde wywołanie connectora, sprawdzaj w DLP i audit logs
+
+---
+
+## Powiązane dokumenty
+
+- [API REST](./API_PL.md) — pełna dokumentacja endpointów
+- [Konfiguracja Entra ID](./ENTRA_ID_KONFIGURACJA.md) — App Registration, scope
+- [Schemat Dataverse](./DATAVERSE_SCHEMA.md) — model danych
+
+---
+
+**Ostatnia aktualizacja:** 2026-02-11  
+**Wersja:** 1.0  
+**Opiekun:** dvlp-dev team

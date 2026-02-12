@@ -30,6 +30,8 @@ export interface Anomaly {
   severity: AnomalySeverity
   score: number                     // 0-100
   description: string
+  descriptionKey: string             // i18n key for frontend translation
+  descriptionParams: Record<string, string | number>  // params for i18n interpolation
   expected: number
   actual: number
   deviation: number                 // % deviation
@@ -254,6 +256,8 @@ function detectAmountSpike(
     severity: scoreSeverity(score),
     score,
     description: `Invoice ${Math.round(deviationPct)}% higher than supplier average`,
+    descriptionKey: 'descAmountSpike',
+    descriptionParams: { percent: Math.round(deviationPct) },
     expected: Math.round(stats.avgAmount * 100) / 100,
     actual: invoice.grossAmount,
     deviation: Math.round(deviationPct * 10) / 10,
@@ -286,6 +290,8 @@ function detectNewSupplier(
     severity: scoreSeverity(score),
     score,
     description: `First invoice from new supplier (${formatAmount(invoice.grossAmount)})`,
+    descriptionKey: 'descNewSupplier',
+    descriptionParams: { amount: formatAmount(invoice.grossAmount) },
     expected: 0,
     actual: invoice.grossAmount,
     deviation: 100,
@@ -326,6 +332,8 @@ function detectDuplicateSuspect(
       severity: 'high',
       score: 80,
       description: `Possible duplicate: similar amount to ${other.invoiceNumber} (${daysDiff}d apart)`,
+      descriptionKey: 'descDuplicateSuspect',
+      descriptionParams: { otherInvoice: other.invoiceNumber, days: daysDiff },
       expected: 1,
       actual: 2,
       deviation: 100,
@@ -377,6 +385,8 @@ function detectCategoryShifts(
       severity: scoreSeverity(score),
       score,
       description: `"${category}" spending ${Math.round(deviationPct)}% above monthly average`,
+      descriptionKey: 'descCategoryShift',
+      descriptionParams: { category, percent: Math.round(deviationPct) },
       expected: Math.round(baseline.avgMonthly * 100) / 100,
       actual: Math.round(recentTotal * 100) / 100,
       deviation: Math.round(deviationPct * 10) / 10,
@@ -427,6 +437,8 @@ function detectFrequencyChanges(
       severity: scoreSeverity(score),
       score,
       description: `${recentCount} invoices this period (avg: ${Math.round(expectedPerMonth * 10) / 10}/month)`,
+      descriptionKey: 'descFrequencyChange',
+      descriptionParams: { count: recentCount, avg: Math.round(expectedPerMonth * 10) / 10 },
       expected: Math.round(expectedPerMonth * 10) / 10,
       actual: recentCount,
       deviation: Math.round(deviationPct * 10) / 10,

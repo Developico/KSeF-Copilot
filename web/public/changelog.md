@@ -205,7 +205,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 ### ✨ Dodane
 
 - **Ikony przy tytułach stron** - każda strona ma teraz ikonę obok tytułu (Dashboard, Faktury, Raporty, Synchronizacja, Ustawienia), konsystentnie z projektem planner
-- **Podpis "Cost analysis"** w nagłówku aplikacji pod tytułem "C-Level KSeF"
+- **Podpis "Cost analysis"** w nagłówku aplikacji pod tytułem "KSeF Copilot"
 - **Filtry statusu opisu faktur** - trzy nowe interaktywne filtry:
   - "Bez opisu" - faktury bez MPK i kategorii
   - "Propozycja AI" - faktury z sugestiami AI oczekującymi na akceptację
