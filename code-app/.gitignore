@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.power/
+power.config.json
+*.local
+.env
+.env.local
+.env.production
