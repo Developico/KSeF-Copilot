@@ -22,6 +22,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useToast } from '@/hooks/use-toast'
 import { api, queryKeys, ManualInvoiceCreate } from '@/lib/api'
 import { useSelectedCompany } from '@/contexts/company-context'
+import { generatePdfThumbnail, isPdfFile } from '@/lib/pdf-thumbnail'
 import { useGusLookup, validateNipChecksum, formatNipDisplay } from '@/hooks/use-gus-lookup'
 import { SupplierLookupDialog, SupplierData } from './supplier-lookup-dialog'
 import { 
@@ -255,6 +256,38 @@ export function ManualInvoiceForm() {
       return invoice
     },
     onSuccess: async (invoice) => {
+      // Upload invoice document (scan) if provided
+      if (invoiceDocument) {
+        try {
+          const base64 = await fileToBase64(invoiceDocument.file)
+
+          // Generate thumbnail for PDFs
+          let thumbnail: string | undefined
+          if (isPdfFile(invoiceDocument.file)) {
+            try {
+              const thumbResult = await generatePdfThumbnail(invoiceDocument.file)
+              thumbnail = thumbResult.base64
+            } catch (thumbErr) {
+              console.warn('Failed to generate PDF thumbnail:', thumbErr)
+            }
+          }
+
+          await api.invoices.uploadDocument(invoice.id, {
+            fileName: invoiceDocument.file.name,
+            mimeType: invoiceDocument.file.type,
+            content: base64,
+            thumbnail,
+          })
+        } catch (error) {
+          console.error('Failed to upload invoice document:', error)
+          toast({
+            title: t('manualForm.warning'),
+            description: t('manualForm.attachmentUploadFailed', { name: invoiceDocument.file.name }),
+            variant: 'destructive',
+          })
+        }
+      }
+
       // Upload attachments if any
       for (const attachment of attachments) {
         try {
@@ -496,7 +529,7 @@ export function ManualInvoiceForm() {
     
     setInvoiceDocument({
       file,
-      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+      preview: URL.createObjectURL(file),
     })
   }
 
@@ -1015,31 +1048,51 @@ export function ManualInvoiceForm() {
           </p>
           <div className="space-y-3">
             {invoiceDocument ? (
-              <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                {invoiceDocument.preview ? (
-                  <img 
-                    src={invoiceDocument.preview} 
-                    alt={invoiceDocument.file.name} 
-                    className="h-12 w-12 object-cover rounded"
-                  />
-                ) : (
-                  <FileText className="h-12 w-12 text-muted-foreground" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{invoiceDocument.file.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {(invoiceDocument.file.size / 1024).toFixed(1)} KB
-                  </p>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                  {invoiceDocument.file.type.startsWith('image/') && invoiceDocument.preview ? (
+                    <img 
+                      src={invoiceDocument.preview} 
+                      alt={invoiceDocument.file.name} 
+                      className="h-12 w-12 object-cover rounded"
+                    />
+                  ) : (
+                    <FileText className="h-12 w-12 text-muted-foreground" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{invoiceDocument.file.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(invoiceDocument.file.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={removeDocument}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={removeDocument}
-                >
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
+                {/* Inline preview for PDF and images */}
+                {invoiceDocument.preview && (
+                  <div className="border rounded-lg overflow-hidden bg-muted/50">
+                    {invoiceDocument.file.type === 'application/pdf' ? (
+                      <iframe
+                        src={invoiceDocument.preview}
+                        title={invoiceDocument.file.name}
+                        className="w-full h-[300px]"
+                      />
+                    ) : invoiceDocument.file.type.startsWith('image/') ? (
+                      <img
+                        src={invoiceDocument.preview}
+                        alt={invoiceDocument.file.name}
+                        className="w-full h-[300px] object-contain"
+                      />
+                    ) : null}
+                  </div>
+                )}
               </div>
             ) : (
               <div

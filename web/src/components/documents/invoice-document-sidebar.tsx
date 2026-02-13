@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import { generatePdfThumbnail, isPdfFile } from '@/lib/pdf-thumbnail'
 
 const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp']
 const ALLOWED_TYPES = [
@@ -75,11 +76,18 @@ function inferIsImage(fileName?: string): boolean {
   return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif'].includes(ext || '')
 }
 
+function inferIsPdf(fileName?: string): boolean {
+  return !!fileName?.toLowerCase().endsWith('.pdf')
+}
+
 /**
  * InvoiceDocumentSidebar - Compact document viewer for the right sidebar
  * 
- * Shows a thumbnail preview with click-to-fullscreen modal.
- * Upload via compact button instead of large dropzone.
+ * Features:
+ * - Thumbnail preview for PDFs (lightweight, no full download)
+ * - Full image preview for image documents (images are small)
+ * - Lazy-load full document only for fullscreen/download
+ * - Upload via compact button with auto-thumbnail for PDFs
  */
 export function InvoiceDocumentSidebar({
   invoiceId,
@@ -96,17 +104,36 @@ export function InvoiceDocumentSidebar({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const [localHasDocument, setLocalHasDocument] = useState(hasDocument)
+  // Local override: null = use prop, true = just uploaded, false = just deleted
+  const [localHasDocument, setLocalHasDocument] = useState<boolean | null>(null)
 
-  // Sync prop changes
-  if (hasDocument !== localHasDocument && hasDocument) {
-    setLocalHasDocument(true)
+  // When server confirms the state (prop changes), clear the local override
+  const prevHasDocument = useRef(hasDocument)
+  if (prevHasDocument.current !== hasDocument) {
+    prevHasDocument.current = hasDocument
+    setLocalHasDocument(null)
   }
 
-  // Effective hasDocument: either prop or local state (after upload)
-  const effectiveHasDocument = hasDocument || localHasDocument
+  // Local override takes priority over prop (optimistic UI)
+  const effectiveHasDocument = localHasDocument !== null ? localHasDocument : hasDocument
 
-  // Fetch document content for preview
+  // Determine document type from filename
+  const isPdfDoc = inferIsPdf(documentFileName)
+
+  // For PDFs: fetch lightweight thumbnail instead of full document
+  const {
+    data: thumbnailData,
+    isLoading: isLoadingThumbnail,
+  } = useQuery({
+    queryKey: ['invoice-document-thumbnail', invoiceId],
+    queryFn: () => api.invoices.downloadThumbnail(invoiceId),
+    enabled: effectiveHasDocument && isPdfDoc,
+    retry: false, // 404 = no thumbnail, don't retry
+    staleTime: 10 * 60 * 1000,
+  })
+
+  // For images: fetch full document (images are typically small)
+  // For PDFs: only fetch when fullscreen is opened
   const {
     data: documentData,
     isLoading: isLoadingDocument,
@@ -115,25 +142,45 @@ export function InvoiceDocumentSidebar({
   } = useQuery({
     queryKey: ['invoice-document', invoiceId],
     queryFn: () => api.invoices.downloadDocument(invoiceId),
-    enabled: effectiveHasDocument,
+    enabled: effectiveHasDocument && (!isPdfDoc || isFullscreen),
     staleTime: 5 * 60 * 1000,
   })
 
-  // Upload mutation
+  // Derived state
+  const isLoading = isPdfDoc ? isLoadingThumbnail : isLoadingDocument
+  const isImage = documentData?.mimeType.startsWith('image/') || (!isPdfDoc && inferIsImage(documentData?.fileName || documentFileName))
+  const isPdf = documentData?.mimeType === 'application/pdf' || isPdfDoc
+
+  // Upload mutation with auto-thumbnail generation for PDFs
   const uploadMutation = useMutation({
     mutationFn: async ({ file, base64Content }: { file: File; base64Content: string }) => {
       setUploadProgress(10)
+      
+      // Generate thumbnail for PDFs
+      let thumbnail: string | undefined
+      if (isPdfFile(file)) {
+        try {
+          const thumbResult = await generatePdfThumbnail(file)
+          thumbnail = thumbResult.base64
+          setUploadProgress(30)
+        } catch (err) {
+          console.error('[pdf-thumbnail] Failed to generate PDF thumbnail:', err)
+        }
+      }
+
       const result = await api.invoices.uploadDocument(invoiceId, {
         fileName: file.name,
         mimeType: file.type,
         content: base64Content,
+        thumbnail,
       })
       setUploadProgress(100)
       return result
     },
     onSuccess: () => {
-      setLocalHasDocument(true)
+      setLocalHasDocument(true) // Immediately show document (optimistic)
       queryClient.invalidateQueries({ queryKey: ['invoice-document', invoiceId] })
+      queryClient.invalidateQueries({ queryKey: ['invoice-document-thumbnail', invoiceId] })
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
       setUploadProgress(0)
@@ -153,8 +200,9 @@ export function InvoiceDocumentSidebar({
   const deleteMutation = useMutation({
     mutationFn: () => api.invoices.deleteDocument(invoiceId),
     onSuccess: () => {
-      setLocalHasDocument(false)
+      setLocalHasDocument(false) // Immediately hide document (optimistic)
       queryClient.removeQueries({ queryKey: ['invoice-document', invoiceId] })
+      queryClient.removeQueries({ queryKey: ['invoice-document-thumbnail', invoiceId] })
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
       toast({ title: t('success'), description: t('deleteSuccess') })
@@ -168,28 +216,49 @@ export function InvoiceDocumentSidebar({
     },
   })
 
-  const handleDownload = useCallback(() => {
-    if (!documentData) return
-    const byteCharacters = atob(documentData.content)
+  const handleDownload = useCallback(async () => {
+    // If we already have full document data, use it
+    let data = documentData
+    
+    // If not loaded yet (PDF with thumbnail-only), fetch now
+    if (!data) {
+      try {
+        data = await api.invoices.downloadDocument(invoiceId)
+      } catch {
+        toast({
+          title: t('error'),
+          description: t('loadError'),
+          variant: 'destructive',
+        })
+        return
+      }
+    }
+
+    const byteCharacters = atob(data.content)
     const byteNumbers = new Array(byteCharacters.length)
     for (let i = 0; i < byteCharacters.length; i++) {
       byteNumbers[i] = byteCharacters.charCodeAt(i)
     }
     const byteArray = new Uint8Array(byteNumbers)
-    const blob = new Blob([byteArray], { type: documentData.mimeType })
+    const blob = new Blob([byteArray], { type: data.mimeType })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = documentData.fileName
+    link.download = data.fileName
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
-  }, [documentData])
+  }, [documentData, invoiceId, toast, t])
 
   const getPreviewUrl = useCallback((data: DocumentDownload): string => {
     return `data:${data.mimeType};base64,${data.content}`
   }, [])
+
+  const getThumbnailUrl = useCallback((): string | null => {
+    if (!thumbnailData) return null
+    return `data:${thumbnailData.mimeType};base64,${thumbnailData.content}`
+  }, [thumbnailData])
 
   const handleFileSelect = useCallback(async (file: File) => {
     setUploadError(null)
@@ -218,9 +287,6 @@ export function InvoiceDocumentSidebar({
     e.target.value = ''
   }, [handleFileSelect])
 
-  const isImage = documentData?.mimeType.startsWith('image/') || inferIsImage(documentData?.fileName)
-  const isPdf = documentData?.mimeType === 'application/pdf' || documentData?.fileName?.toLowerCase().endsWith('.pdf')
-
   return (
     <>
       <Card className={cn('overflow-hidden', className)}>
@@ -230,10 +296,13 @@ export function InvoiceDocumentSidebar({
               <FileImage className="h-4 w-4 text-primary" />
               {t('title')}
             </CardTitle>
-            {effectiveHasDocument && documentData && (
+            {effectiveHasDocument && !isLoading && (
               <div className="flex items-center gap-0.5">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => refetchDocument()} disabled={isLoadingDocument}>
-                  <RefreshCw className={cn('h-3.5 w-3.5', isLoadingDocument && 'animate-spin')} />
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                  refetchDocument()
+                  queryClient.invalidateQueries({ queryKey: ['invoice-document-thumbnail', invoiceId] })
+                }} disabled={isLoading}>
+                  <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
                 </Button>
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleDownload}>
                   <Download className="h-3.5 w-3.5" />
@@ -269,12 +338,12 @@ export function InvoiceDocumentSidebar({
 
         <CardContent className="px-4 pb-4 pt-0">
           {/* Loading */}
-          {isLoadingDocument && (
+          {isLoading && (
             <Skeleton className="h-40 w-full rounded-lg" />
           )}
 
-          {/* Error */}
-          {documentError && !isLoadingDocument && (
+          {/* Error (only for images — PDF thumbnail 404 is expected) */}
+          {documentError && !isPdfDoc && !isLoading && (
             <div className="text-center py-4 text-muted-foreground">
               <FileText className="h-8 w-8 mx-auto mb-1 opacity-50" />
               <p className="text-xs">{t('loadError')}</p>
@@ -286,27 +355,40 @@ export function InvoiceDocumentSidebar({
           )}
 
           {/* Document preview thumbnail */}
-          {effectiveHasDocument && documentData && !isLoadingDocument && (
+          {effectiveHasDocument && !isLoading && !(!isPdfDoc && documentError) && (
             <div className="space-y-2">
               <div
                 className="relative bg-muted rounded-lg overflow-hidden cursor-pointer group"
                 onClick={() => setIsFullscreen(true)}
               >
-                {isImage && (
+                {/* Image inline preview (full content — images are small) */}
+                {isImage && documentData && (
                   <img
                     src={getPreviewUrl(documentData)}
                     alt={documentData.fileName}
                     className="w-full h-40 object-contain"
                   />
                 )}
-                {isPdf && (
+
+                {/* PDF inline preview — use lightweight thumbnail */}
+                {isPdf && thumbnailData && (
+                  <img
+                    src={getThumbnailUrl()!}
+                    alt={documentFileName || 'PDF'}
+                    className="w-full h-40 object-contain bg-white"
+                  />
+                )}
+
+                {/* PDF fallback when no thumbnail available */}
+                {isPdf && !thumbnailData && (
                   <div className="h-40 flex flex-col items-center justify-center bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900">
                     <FileText className="h-16 w-16 text-red-500" />
                     <p className="text-sm font-medium mt-2 text-red-700 dark:text-red-400">PDF</p>
-                    <p className="text-xs text-muted-foreground mt-1 px-4 truncate max-w-full">{documentData.fileName}</p>
+                    <p className="text-xs text-muted-foreground mt-1 px-4 truncate max-w-full">{documentFileName}</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">Kliknij aby otworzyć</p>
                   </div>
                 )}
+
                 {/* Hover overlay */}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
                   <div className="bg-white/90 rounded-full p-1.5">
@@ -317,10 +399,12 @@ export function InvoiceDocumentSidebar({
 
               {/* File info */}
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="truncate max-w-[160px]" title={documentData.fileName}>
-                  {documentData.fileName}
+                <span className="truncate max-w-[160px]" title={documentData?.fileName || documentFileName}>
+                  {documentData?.fileName || documentFileName}
                 </span>
-                <span>{formatFileSize(documentData.fileSize)}</span>
+                {documentData && (
+                  <span>{formatFileSize(documentData.fileSize)}</span>
+                )}
               </div>
 
               {/* Replace button */}
@@ -363,7 +447,7 @@ export function InvoiceDocumentSidebar({
           )}
 
           {/* No document - compact upload */}
-          {!effectiveHasDocument && !isLoadingDocument && (
+          {!effectiveHasDocument && !isLoading && (
             <div className="space-y-2">
               <input
                 ref={inputRef}
@@ -418,16 +502,23 @@ export function InvoiceDocumentSidebar({
         </CardContent>
       </Card>
 
-      {/* Fullscreen dialog */}
+      {/* Fullscreen dialog — loads full document on demand */}
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
         <DialogContent className="!max-w-6xl w-[95vw] max-h-[95vh] overflow-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileImage className="h-5 w-5" />
-              {documentData?.fileName || t('document')}
+              {documentData?.fileName || documentFileName || t('document')}
             </DialogTitle>
           </DialogHeader>
           <div className="mt-4">
+            {isLoadingDocument && (
+              <div className="flex flex-col items-center justify-center h-[60vh] gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Ładowanie dokumentu...</p>
+              </div>
+            )}
+
             {documentData && isImage && (
               <img
                 src={getPreviewUrl(documentData)}

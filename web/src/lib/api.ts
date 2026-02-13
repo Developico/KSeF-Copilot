@@ -514,6 +514,7 @@ export interface DocumentUpload {
   fileName: string
   mimeType: string
   content: string // base64
+  thumbnail?: string // base64 PNG thumbnail (for PDFs)
 }
 
 export interface DocumentDownload {
@@ -875,6 +876,15 @@ export const api = {
     deleteDocument: (invoiceId: string) =>
       apiFetch<{ success: boolean }>(`/api/invoices/${invoiceId}/document`, {
         method: 'DELETE',
+      }),
+
+    downloadThumbnail: (invoiceId: string) =>
+      apiFetch<{ content: string; mimeType: string }>(`/api/invoices/${invoiceId}/document/thumbnail`),
+
+    uploadThumbnail: (invoiceId: string, data: { content: string; mimeType?: string }) =>
+      apiFetch<{ success: boolean }>(`/api/invoices/${invoiceId}/document/thumbnail`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
       }),
 
     getDocumentConfig: () =>

@@ -6,6 +6,22 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.7.2] - 2026-02-13
+
+### 🐛 Poprawki - Formularz skanera AI i podgląd dokumentów
+
+- **Miniaturki PDF** — generowanie miniaturki pierwszej strony PDF po przesłaniu dokumentu (pdfjs-dist, client-side). Miniaturka zapisywana w Dataverse jako annotation, ładowana zamiast pełnego pliku przy liście faktur.
+- **Worker pdfjs serwowany z /public** — plik `pdf.worker.min.mjs` kopiowany do `web/public/`, workaround dla hoistingu `pdfjs-dist` w monorepo.
+- **CSP: worker-src** — dodano `worker-src 'self' blob:` do `next.config.mjs` i `staticwebapp.config.json`, aby pdfjs worker mógł się załadować.
+- **Błąd SSR Object.defineProperty** — zmiana importu `react-pdf` z top-level na lazy `await import('react-pdf')` w `pdf-thumbnail.ts`.
+- **Pusty podgląd po przesłaniu PDF** — usunięto blokujący warunek `hasPreviewData`, dodano `retry: false` dla zapytania o miniaturkę (404 = brak miniaturki, nie błąd).
+- **Błąd po usunięciu dokumentu** — sidebar pokazywał "Nie udało się załadować dokumentu" zamiast pustego stanu. Naprawiono logikę `localHasDocument` na optymistyczny override (`null | true | false`).
+- **Waluta w formularzu skanera** — dodano selektor waluty (PLN/EUR/USD) w sekcji kwot, inicjalizowany z wartości rozpoznanej przez AI. Waluta przekazywana do `ManualInvoiceCreate`.
+- **Pozycje faktury — waluta dynamiczna** — sekcja pozycji pokazuje walutę wybraną w formularzu zamiast zahardkodowanego `PLN`.
+- **Walidacja NIP w formularzu skanera** — pola NIP, nazwa i numer faktury mają wizualną walidację (czerwona ramka + komunikat) po blur i przy próbie zapisu.
+
+---
+
 ## [0.7.1] - 2026-02-13
 
 ### 🐛 Poprawki - Skaner dokumentów i Dashboard

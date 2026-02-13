@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils'
 import { api, queryKeys, type ExtractedInvoiceData, type ManualInvoiceCreate } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 import { useSelectedCompany } from '@/contexts/company-context'
+import { generatePdfThumbnail, isPdfMimeType } from '@/lib/pdf-thumbnail'
 
 // MPK options (values from Dataverse option set)
 const MPK_OPTIONS = [
@@ -102,10 +103,14 @@ export function ExtractionPreview({
     netAmount: data.netAmount?.toString() || '',
     vatAmount: data.vatAmount?.toString() || '',
     grossAmount: data.grossAmount?.toString() || '',
+    currency: (data.currency?.toUpperCase() || 'PLN') as 'PLN' | 'EUR' | 'USD',
     mpk: data.suggestedMpk || '',
     category: data.suggestedCategory || '',
     description: data.suggestedDescription || '',
   })
+
+  // Track fields that user attempted to submit without filling
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
 
   // Create invoice mutation
   const createMutation = useMutation({
@@ -113,6 +118,9 @@ export function ExtractionPreview({
       if (!selectedCompany) {
         throw new Error(t('scanner.companyNotSelected'))
       }
+
+      // Mark all required fields as touched to show validation
+      setTouched({ invoiceNumber: true, supplierNip: true, supplierName: true })
 
       // Validate required fields
       if (!formData.invoiceNumber.trim()) {
@@ -140,6 +148,7 @@ export function ExtractionPreview({
         netAmount: parseFloat(formData.netAmount) || 0,
         vatAmount: parseFloat(formData.vatAmount) || 0,
         grossAmount: parseFloat(formData.grossAmount) || 0,
+        currency: formData.currency,
         mpk: formData.mpk || undefined,
         category: formData.category || undefined,
         description: formData.description || undefined,
@@ -156,10 +165,22 @@ export function ExtractionPreview({
       // Upload the source document to the invoice document field (scan)
       if (fileBase64 && fileName) {
         try {
+          // Generate thumbnail for PDFs
+          let thumbnail: string | undefined
+          if (isPdfMimeType(fileMimeType)) {
+            try {
+              const thumbResult = await generatePdfThumbnail(fileBase64)
+              thumbnail = thumbResult.base64
+            } catch (thumbErr) {
+              console.warn('Failed to generate PDF thumbnail:', thumbErr)
+            }
+          }
+
           await api.invoices.uploadDocument(invoice.id, {
             fileName: fileName,
             mimeType: fileMimeType,
             content: fileBase64,
+            thumbnail,
           })
         } catch (docError) {
           console.error('Failed to upload document:', docError)
@@ -283,8 +304,9 @@ export function ExtractionPreview({
                     <Input
                       value={formData.invoiceNumber}
                       onChange={(e) => updateField('invoiceNumber', e.target.value)}
+                      onBlur={() => setTouched(prev => ({ ...prev, invoiceNumber: true }))}
                       placeholder={t('scanner.invoiceNumberPlaceholder')}
-                      className="h-8 text-sm"
+                      className={cn('h-8 text-sm', touched.invoiceNumber && !formData.invoiceNumber.trim() && 'border-destructive')}
                     />
                   </div>
                   <div>
@@ -324,17 +346,22 @@ export function ExtractionPreview({
                     <Input
                       value={formData.supplierNip}
                       onChange={(e) => updateField('supplierNip', e.target.value)}
+                      onBlur={() => setTouched(prev => ({ ...prev, supplierNip: true }))}
                       placeholder={t('scanner.nipPlaceholder')}
-                      className="h-8 text-sm font-mono"
+                      className={cn('h-8 text-sm font-mono', touched.supplierNip && !formData.supplierNip.trim() && 'border-destructive')}
                     />
+                    {touched.supplierNip && !formData.supplierNip.trim() && (
+                      <p className="text-[10px] text-destructive mt-0.5">{t('scanner.supplierNipRequired')}</p>
+                    )}
                   </div>
                   <div>
                     <Label className="text-xs">{tCommon('name')} *</Label>
                     <Input
                       value={formData.supplierName}
                       onChange={(e) => updateField('supplierName', e.target.value)}
+                      onBlur={() => setTouched(prev => ({ ...prev, supplierName: true }))}
                       placeholder={t('scanner.namePlaceholder')}
-                      className="h-8 text-sm"
+                      className={cn('h-8 text-sm', touched.supplierName && !formData.supplierName.trim() && 'border-destructive')}
                     />
                   </div>
                 </div>
@@ -390,6 +417,23 @@ export function ExtractionPreview({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {/* Currency selector */}
+                <div>
+                  <Label className="text-xs">{t('manualForm.currencyLabel')}</Label>
+                  <Select
+                    value={formData.currency}
+                    onValueChange={(v) => updateField('currency', v)}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder={t('manualForm.currencyPlaceholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PLN">{t('manualForm.currencyPln')}</SelectItem>
+                      <SelectItem value="EUR">{t('manualForm.currencyEur')}</SelectItem>
+                      <SelectItem value="USD">{t('manualForm.currencyUsd')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <Label className="text-xs">{t('netAmount')}</Label>
@@ -493,7 +537,7 @@ export function ExtractionPreview({
                       <div key={idx} className="flex justify-between py-1 border-b last:border-0">
                         <span className="truncate flex-1 mr-2">{item.description}</span>
                         <span className="text-muted-foreground whitespace-nowrap">
-                          {item.grossAmount?.toFixed(2) || item.netAmount?.toFixed(2) || '—'} PLN
+                          {item.grossAmount?.toFixed(2) || item.netAmount?.toFixed(2) || '—'} {formData.currency}
                         </span>
                       </div>
                     ))}

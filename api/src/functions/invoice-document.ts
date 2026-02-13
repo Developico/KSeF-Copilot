@@ -6,6 +6,7 @@ import {
   validateDocument,
   DOCUMENT_CONFIG,
 } from '../lib/dataverse/document'
+import { saveThumbnail, getThumbnail, deleteThumbnail } from '../lib/dataverse/thumbnail'
 import { getInvoiceById } from '../lib/dataverse/invoices'
 import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { z } from 'zod'
@@ -17,6 +18,7 @@ const DocumentUploadSchema = z.object({
   fileName: z.string().min(1).max(255),
   mimeType: z.string().min(1),
   content: z.string().min(1), // base64 encoded
+  thumbnail: z.string().optional(), // optional base64 PNG thumbnail
 })
 
 /**
@@ -62,7 +64,7 @@ export async function uploadDocumentHandler(
       }
     }
 
-    const { fileName, mimeType, content } = parseResult.data
+    const { fileName, mimeType, content, thumbnail } = parseResult.data
 
     // Decode base64 to buffer
     const buffer = Buffer.from(content, 'base64')
@@ -77,6 +79,17 @@ export async function uploadDocumentHandler(
     context.log(`Uploading document: ${fileName} (${(sizeBytes / 1024).toFixed(1)} KB) for invoice ${invoiceId}`)
 
     const documentInfo = await uploadInvoiceDocument(invoiceId, fileName, mimeType, buffer)
+
+    // Save thumbnail if provided (typically for PDFs)
+    if (thumbnail) {
+      try {
+        await saveThumbnail(invoiceId, thumbnail)
+        context.log(`Thumbnail saved for invoice ${invoiceId}`)
+      } catch (thumbError) {
+        // Non-fatal: document was uploaded successfully
+        context.warn('Failed to save thumbnail:', thumbError)
+      }
+    }
 
     context.log(`Document uploaded successfully: ${fileName}`)
 
@@ -233,6 +246,13 @@ export async function deleteDocumentHandler(
 
     await deleteInvoiceDocument(invoiceId)
 
+    // Also delete associated thumbnail
+    try {
+      await deleteThumbnail(invoiceId)
+    } catch {
+      // Non-fatal
+    }
+
     context.log(`Document deleted for invoice ${invoiceId}`)
 
     return {
@@ -265,6 +285,101 @@ export async function getDocumentConfigHandler(
       allowedMimeTypes: DOCUMENT_CONFIG.allowedMimeTypes,
       allowedExtensions: ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp'],
     },
+  }
+}
+
+/**
+ * GET /api/invoices/:id/document/thumbnail - Get document thumbnail
+ * 
+ * Returns a lightweight PNG thumbnail of the document's first page.
+ * Useful for previews without downloading the full (potentially large) document.
+ */
+export async function getThumbnailHandler(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  try {
+    const authResult = await verifyAuth(request)
+    if (!authResult.success) {
+      return { status: 401, jsonBody: { error: 'Unauthorized' } }
+    }
+
+    const roleCheck = requireRole(authResult.user, 'Reader')
+    if (!roleCheck.success) {
+      return { status: 403, jsonBody: { error: 'Forbidden' } }
+    }
+
+    const invoiceId = request.params.id
+    if (!invoiceId) {
+      return { status: 400, jsonBody: { error: 'Invoice ID required' } }
+    }
+
+    const thumbnail = await getThumbnail(invoiceId)
+
+    if (!thumbnail) {
+      return { status: 404, jsonBody: { error: 'Thumbnail not found' } }
+    }
+
+    return {
+      status: 200,
+      jsonBody: {
+        content: thumbnail.content,
+        mimeType: thumbnail.mimeType,
+      },
+    }
+  } catch (error) {
+    context.error('Failed to get thumbnail:', error)
+    return {
+      status: 500,
+      jsonBody: { error: error instanceof Error ? error.message : 'Failed to get thumbnail' },
+    }
+  }
+}
+
+/**
+ * PUT /api/invoices/:id/document/thumbnail - Upload document thumbnail separately
+ * 
+ * Allows uploading a thumbnail independently (e.g. generated client-side after initial upload).
+ */
+export async function uploadThumbnailHandler(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  try {
+    const authResult = await verifyAuth(request)
+    if (!authResult.success) {
+      return { status: 401, jsonBody: { error: 'Unauthorized' } }
+    }
+
+    const roleCheck = requireRole(authResult.user, 'Admin')
+    if (!roleCheck.success) {
+      return { status: 403, jsonBody: { error: 'Forbidden' } }
+    }
+
+    const invoiceId = request.params.id
+    if (!invoiceId) {
+      return { status: 400, jsonBody: { error: 'Invoice ID required' } }
+    }
+
+    const body = await request.json() as { content?: string; mimeType?: string }
+    if (!body.content) {
+      return { status: 400, jsonBody: { error: 'Thumbnail content required' } }
+    }
+
+    await saveThumbnail(invoiceId, body.content, body.mimeType || 'image/png')
+
+    context.log(`Thumbnail uploaded for invoice ${invoiceId}`)
+
+    return {
+      status: 200,
+      jsonBody: { success: true },
+    }
+  } catch (error) {
+    context.error('Failed to upload thumbnail:', error)
+    return {
+      status: 500,
+      jsonBody: { error: error instanceof Error ? error.message : 'Failed to upload thumbnail' },
+    }
   }
 }
 
@@ -302,4 +417,18 @@ app.http('document-config', {
   authLevel: 'anonymous',
   route: 'documents/config',
   handler: getDocumentConfigHandler,
+})
+
+app.http('document-thumbnail-get', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  route: 'invoices/{id}/document/thumbnail',
+  handler: getThumbnailHandler,
+})
+
+app.http('document-thumbnail-upload', {
+  methods: ['PUT'],
+  authLevel: 'anonymous',
+  route: 'invoices/{id}/document/thumbnail',
+  handler: uploadThumbnailHandler,
 })
