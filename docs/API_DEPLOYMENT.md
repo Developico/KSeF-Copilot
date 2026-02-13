@@ -283,54 +283,29 @@ az resource show \
 
 ## Weryfikacja
 
-### 1. Lista funkcji
+### Lista zarejestrowanych funkcji
+
+Po wdrożeniu weryfikujemy, czy wszystkie funkcje zostały poprawnie zarejestrowane w Azure:
 
 ```bash
 az functionapp function list \
   --name YOUR_FUNCTION_APP \
   --resource-group rg-ksef \
-  --query "[].name" -o tsv
+  --query "[].name"
 ```
 
-Oczekiwany wynik: 72 nazwy funkcji.
+Oczekiwany wynik: lista ~78 nazw funkcji w formacie `YOUR_FUNCTION_APP/<nazwa-funkcji>`.
 
-### 2. Health check (podstawowy)
+> **Uwaga:** Endpointy health (`/api/health`, `/api/health/detailed`) wymagają uwierzytelnienia
+> i zwracają 401 Unauthorized przy bezpośrednim wywołaniu z CLI. Nie należy ich używać
+> jako kroku weryfikacji wdrożenia. Lista funkcji przez Azure CLI jest wystarczającą
+> metodą potwierdzenia poprawności deployu.
 
-```bash
-curl https://YOUR_FUNCTION_APP.azurewebsites.net/api/health
-```
-
-Oczekiwany wynik:
-```json
-{
-  "status": "healthy",
-  "timestamp": "2026-02-08T...",
-  "version": "1.0.0",
-  "environment": "production"
-}
-```
-
-### 3. Health check (szczegółowy)
-
-```bash
-curl https://YOUR_FUNCTION_APP.azurewebsites.net/api/health/detailed
-```
-
-Oczekiwany wynik — wszystkie 3 serwisy `healthy`:
-
-| Serwis | Status | Opis |
-|---|---|---|
-| Key Vault | `healthy` | Połączenie z `YOUR_KEYVAULT` OK |
-| Dataverse | `healthy` | Autentykacja i połączenie z CRM OK |
-| KSeF API | `healthy` | Połączenie ze środowiskiem testowym OK |
-
-### 4. Wynik weryfikacji z 2026-02-09
+### Wynik weryfikacji z 2026-02-13
 
 ```
-✅ Health check:      200 OK — status: healthy
-✅ Health detailed:   200 OK — Key Vault (370ms), Dataverse (460ms), KSeF (83ms)
-✅ Funkcje:           72 zarejestrowane httpTrigger
-✅ Rozmiar paczki:    89.87 MB
+✅ Funkcje:           78 zarejestrowanych httpTrigger
+✅ Rozmiar paczki:    ~90 MB
 ✅ Runtime:           Node.js 22 (Flex Consumption)
 ```
 
@@ -357,6 +332,9 @@ func azure functionapp publish YOUR_FUNCTION_APP
 
 # 5. Przywróć dev dependencies (do dalszego developmentu)
 npm install --ignore-scripts
+
+# 6. Weryfikacja — lista zarejestrowanych funkcji w Azure
+az functionapp function list --name YOUR_FUNCTION_APP --resource-group rg-ksef --query "[].name"
 ```
 
 ### Sprawdzenie logów
