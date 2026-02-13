@@ -204,6 +204,7 @@ export interface InvoiceCreate {
  * Zod schema for manual invoice creation
  */
 export const ManualInvoiceCreateSchema = z.object({
+  settingId: z.string().uuid().optional(),
   tenantNip: z.string().regex(/^\d{10}$/, 'NIP musi mieć 10 cyfr'),
   tenantName: z.string().min(1).max(255),
   invoiceNumber: z.string().min(1).max(100),

@@ -56,6 +56,7 @@ import { exportInvoicesToCsv } from '@/lib/export'
 import { InvoiceFilters, GroupBy, SortColumn, SortDirection } from '@/components/invoices/invoice-filters'
 import { InvoiceMobileCard } from '@/components/invoices/invoice-mobile-card'
 import { DocumentScannerModal } from '@/components/documents'
+import { useHasRole } from '@/components/auth/auth-provider'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import {
   AlertDialog,
@@ -141,6 +142,7 @@ export default function InvoicesPage() {
   const t = useTranslations('invoices')
   const tCommon = useTranslations('common')
   const locale = useLocale()
+  const isAdmin = useHasRole('Admin')
   
   // Locale-aware formatting
   const formatCurrency = useCallback((amount: number, currency: string = 'PLN') => {
@@ -822,7 +824,7 @@ export default function InvoicesPage() {
                         key={invoice.id}
                         invoice={invoice}
                         onTogglePaymentStatus={handleTogglePaymentStatus}
-                        onDelete={invoice.source === 'Manual' ? handleDeleteInvoice : undefined}
+                        onDelete={isAdmin ? handleDeleteInvoice : undefined}
                         isUpdating={updateInvoiceMutation.isPending}
                       />
                     ))}
@@ -1118,7 +1120,7 @@ export default function InvoicesPage() {
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
-                        {invoice.source === 'Manual' ? (
+                        {isAdmin ? (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button 

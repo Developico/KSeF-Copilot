@@ -58,6 +58,12 @@ function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
+function inferIsImage(fileName?: string): boolean {
+  if (!fileName) return false
+  const ext = fileName.split('.').pop()?.toLowerCase()
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif'].includes(ext || '')
+}
+
 /**
  * InvoiceDocumentViewer - Display and manage invoice document (image/scan)
  * 
@@ -190,8 +196,8 @@ export function InvoiceDocumentViewer({
   /**
    * Check if document is an image
    */
-  const isImage = documentData?.mimeType.startsWith('image/')
-  const isPdf = documentData?.mimeType === 'application/pdf'
+  const isImage = documentData?.mimeType.startsWith('image/') || inferIsImage(documentData?.fileName)
+  const isPdf = documentData?.mimeType === 'application/pdf' || documentData?.fileName?.toLowerCase().endsWith('.pdf')
 
   return (
     <Card className={cn('overflow-hidden', className)}>

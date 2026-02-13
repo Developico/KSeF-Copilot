@@ -61,12 +61,17 @@ export interface DvSyncLog {
   dvlp_name: string
   _dvlp_ksefsettingid_value: string
   _dvlp_ksefsessionid_value?: string
-  dvlp_operationtype: number // SyncOperationType
+  dvlp_operationtype?: number // SyncOperationType (Choice)
+  dvlp_direction: number // SyncDirection (Choice)
   dvlp_startedat: string
   dvlp_completedat?: string
-  dvlp_status: number // SyncStatus
+  dvlp_synclogstatus: number // SyncStatus (Choice)
   dvlp_invoicesprocessed?: number
+  dvlp_invoicescreated?: number
+  dvlp_invoicesupdated?: number
   dvlp_invoicesfailed?: number
+  dvlp_pagefrom?: number
+  dvlp_pageto?: number
   dvlp_errormessage?: string
   dvlp_requestpayload?: string
   dvlp_responsepayload?: string

@@ -87,11 +87,12 @@ app.http('sync-start', {
 
       logDataverseInfo('sync-start', `Starting sync for NIP: ${setting.nip}`, { settingId, direction })
 
-      // Create sync log entry
+      // Create sync log entry (may return null if entity schema is incomplete)
       const syncLog = await syncLogService.create({
         settingId,
         direction,
       })
+      const syncLogId = syncLog?.id
 
       const progress: SyncProgress = {
         total: 0,
@@ -162,8 +163,8 @@ app.http('sync-start', {
             progress.created++
 
             // Update progress periodically
-            if (progress.processed % 10 === 0) {
-              await syncLogService.updateProgress(syncLog.id, {
+            if (progress.processed % 10 === 0 && syncLogId) {
+              await syncLogService.updateProgress(syncLogId, {
                 created: progress.created,
                 updated: progress.updated,
                 failed: progress.failed,
@@ -180,11 +181,13 @@ app.http('sync-start', {
         }
 
         // Complete sync log
-        await syncLogService.complete(syncLog.id, {
-          created: progress.created,
-          updated: progress.updated,
-          failed: progress.failed,
-        })
+        if (syncLogId) {
+          await syncLogService.complete(syncLogId, {
+            created: progress.created,
+            updated: progress.updated,
+            failed: progress.failed,
+          })
+        }
 
         // Update setting's last sync
         await settingService.updateLastSync(settingId, progress.failed === 0 ? 'success' : 'error')
@@ -194,18 +197,20 @@ app.http('sync-start', {
         return {
           status: 200,
           jsonBody: {
-            syncLogId: syncLog.id,
+            syncLogId,
             status: 'completed',
             ...progress,
           },
         }
       } catch (syncError) {
         // Mark sync as failed
-        await syncLogService.fail(
-          syncLog.id, 
-          syncError instanceof Error ? syncError.message : 'Unknown error',
-          { created: progress.created, updated: progress.updated, failed: progress.failed }
-        )
+        if (syncLogId) {
+          await syncLogService.fail(
+            syncLogId, 
+            syncError instanceof Error ? syncError.message : 'Unknown error',
+            { created: progress.created, updated: progress.updated, failed: progress.failed }
+          )
+        }
         await settingService.updateLastSync(settingId, 'error')
 
         logDataverseError('sync-start', syncError)

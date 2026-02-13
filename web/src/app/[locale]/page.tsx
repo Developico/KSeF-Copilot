@@ -25,8 +25,9 @@ import { AnimatedKpiCard, AnimatedCardGrid, AnimatedCardWrapper, formatCurrency 
 export default function HomePage() {
   const t = useTranslations('dashboard')
   const locale = useLocale()
-  const { selectedCompany } = useCompanyContext()
-  const { data: invoicesData, isLoading } = useContextInvoices()
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+  const { data: invoicesData, isLoading: dataLoading } = useContextInvoices()
+  const isLoading = companyLoading || dataLoading
 
   // Calculate stats from invoices
   const invoices = invoicesData?.invoices || []
@@ -68,29 +69,31 @@ export default function HomePage() {
       <AnimatedCardGrid className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <AnimatedKpiCard
           title={t('allInvoices')}
-          value={isLoading ? 0 : stats.count}
+          value={stats.count}
           format="number"
           icon={FileText}
           iconColor="#64748b"
           borderColor="#64748b"
           subtitle={`${stats.uniqueSuppliers} ${t('suppliers')}`}
           delay={0}
+          isLoading={isLoading}
         />
 
         <AnimatedKpiCard
           title={t('totalGross')}
-          value={isLoading ? 0 : stats.total}
+          value={stats.total}
           format="currency"
           icon={TrendingUp}
           iconColor="#3b82f6"
           borderColor="#3b82f6"
           subtitle={`${t('average')} ${formatCurrency(stats.avgInvoice)} ${t('perInvoice')}`}
           delay={0.1}
+          isLoading={isLoading}
         />
 
         <AnimatedKpiCard
           title={t('paidAmount')}
-          value={isLoading ? 0 : stats.paid}
+          value={stats.paid}
           format="currency"
           icon={CreditCard}
           iconColor="#10b981"
@@ -98,11 +101,12 @@ export default function HomePage() {
           borderColor="#10b981"
           subtitle={`${stats.count > 0 ? ((stats.paid / stats.total) * 100).toFixed(1) : 0}% ${t('ofTotal')}`}
           delay={0.2}
+          isLoading={isLoading}
         />
 
         <AnimatedKpiCard
           title={t('pendingAmount')}
-          value={isLoading ? 0 : stats.pending}
+          value={stats.pending}
           format="currency"
           icon={CreditCard}
           iconColor="#ef4444"
@@ -110,6 +114,7 @@ export default function HomePage() {
           borderColor="#ef4444"
           subtitle={`${stats.count > 0 ? ((stats.pending / stats.total) * 100).toFixed(1) : 0}% ${t('ofTotal')}`}
           delay={0.3}
+          isLoading={isLoading}
         />
       </AnimatedCardGrid>
 

@@ -23,9 +23,53 @@ export interface SyncLogCreate {
 
 /**
  * SyncLog Service class
+ * 
+ * Gracefully degrades if the dvlp_ksefsynclog entity or expected columns
+ * are missing from Dataverse (e.g. schema not yet deployed).
+ * After the first failure, all subsequent operations become no-ops for the
+ * lifetime of the process so we don't spam logs with repeated errors.
  */
 export class SyncLogService {
   private entitySet = DV.syncLog.entitySet
+  private _disabled = false
+  private _disableReason: string | null = null
+
+  /**
+   * Check whether the service has been disabled due to a schema/entity error.
+   * When disabled, all write operations silently return null / void.
+   */
+  get isDisabled(): boolean {
+    return this._disabled
+  }
+
+  /**
+   * Detect if an error is caused by a missing entity or missing column
+   * (Dataverse returns 400 with ODataException for unknown properties,
+   *  or 404 for unknown entity sets).
+   */
+  private isSchemaError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false
+    const msg = error.message
+    return (
+      msg.includes('does not exist on type') ||   // missing column
+      msg.includes('resource not found') ||        // missing entity (404)
+      msg.includes('Could not find a property') || // OData property error
+      (msg.includes('400') && msg.includes('property')) // 400 + property
+    )
+  }
+
+  /**
+   * Mark the service as disabled to prevent further failed calls.
+   */
+  private disable(error: unknown): void {
+    if (this._disabled) return
+    this._disabled = true
+    this._disableReason = error instanceof Error ? error.message : String(error)
+    logDataverseInfo(
+      'SyncLogService',
+      `Sync log tracking disabled — entity schema mismatch. Sync operations will continue without logging. Reason: ${this._disableReason}`,
+    )
+  }
 
   /**
    * Get all sync logs for a setting
@@ -118,9 +162,12 @@ export class SyncLogService {
   }
 
   /**
-   * Create new sync log entry
+   * Create new sync log entry.
+   * Returns null (instead of throwing) when the service is disabled due to schema mismatch.
    */
-  async create(data: SyncLogCreate): Promise<AppSyncLog> {
+  async create(data: SyncLogCreate): Promise<AppSyncLog | null> {
+    if (this._disabled) return null
+
     logDataverseInfo('SyncLogService.create', 'Creating sync log', { 
       settingId: data.settingId, 
       direction: data.direction 
@@ -172,6 +219,11 @@ export class SyncLogService {
       // If create returns the ID in OData-EntityId header, parse it
       throw new Error('Failed to retrieve created sync log - implement ID extraction from response')
     } catch (error) {
+      // Detect schema mismatch (missing entity/column) and disable gracefully
+      if (this.isSchemaError(error)) {
+        this.disable(error)
+        return null
+      }
       logDataverseError('SyncLogService.create', error)
       throw error
     }
@@ -184,6 +236,8 @@ export class SyncLogService {
     id: string, 
     stats: { created: number; updated: number; failed: number }
   ): Promise<void> {
+    if (this._disabled) return
+
     const s = DV.syncLog
     const payload: Record<string, unknown> = {
       [s.status]: SYNC_STATUS.COMPLETED,
@@ -207,6 +261,8 @@ export class SyncLogService {
    * Mark sync log as failed
    */
   async fail(id: string, errorMessage: string, stats?: { created: number; updated: number; failed: number }): Promise<void> {
+    if (this._disabled) return
+
     const s = DV.syncLog
     const payload: Record<string, unknown> = {
       [s.status]: SYNC_STATUS.FAILED,
@@ -238,6 +294,8 @@ export class SyncLogService {
     stats: { created: number; updated: number; failed: number },
     pageTo?: number
   ): Promise<void> {
+    if (this._disabled) return
+
     const s = DV.syncLog
     const payload: Record<string, unknown> = {
       [s.invoicesCreated]: stats.created,

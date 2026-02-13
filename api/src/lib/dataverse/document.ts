@@ -272,8 +272,25 @@ export async function downloadInvoiceDocument(invoiceId: string): Promise<{
     }
   }
 
-  // Get content type
-  const mimeType = response.headers.get('Content-Type') || 'application/octet-stream'
+  // Get content type - infer from filename if Dataverse returns generic octet-stream
+  let mimeType = response.headers.get('Content-Type') || 'application/octet-stream'
+  if (mimeType === 'application/octet-stream' && fileName) {
+    const ext = fileName.split('.').pop()?.toLowerCase()
+    const mimeMap: Record<string, string> = {
+      pdf: 'application/pdf',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      gif: 'image/gif',
+      webp: 'image/webp',
+      bmp: 'image/bmp',
+      tiff: 'image/tiff',
+      tif: 'image/tiff',
+    }
+    if (ext && mimeMap[ext]) {
+      mimeType = mimeMap[ext]
+    }
+  }
 
   // Get binary content
   const arrayBuffer = await response.arrayBuffer()

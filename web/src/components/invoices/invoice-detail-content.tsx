@@ -30,7 +30,7 @@ import {
 import Link from 'next/link'
 
 import { api, Invoice, Attachment } from '@/lib/api'
-import { InvoiceDocumentViewer } from '@/components/documents'
+import { InvoiceDocumentSidebar } from '@/components/documents'
 import { InvoiceNotesSection } from './invoice-notes-section'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -950,13 +950,6 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
             </Card>
           )}
 
-          {/* Invoice Document */}
-          <InvoiceDocumentViewer
-            invoiceId={invoiceId}
-            hasDocument={invoice.hasDocument}
-            documentFileName={invoice.documentFileName}
-          />
-
           {/* Attachments - Collapsible */}
           <Card className="p-4">
             <button
@@ -1061,10 +1054,19 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
           <InvoiceNotesSection invoiceId={invoiceId} />
         </div>
 
-        {/* Right Side - AI Panel (sticky) */}
+        {/* Right Side - AI Panel + Document (sticky) */}
         <div className="lg:w-80 shrink-0">
-          <div className="lg:sticky lg:top-4">
-            <Card className="border-purple-200 dark:border-purple-900 bg-gradient-to-b from-purple-50/50 to-white dark:from-purple-950/20 dark:to-background">
+          <div className="lg:sticky lg:top-4 flex flex-col gap-4">
+            {/* Document - shown first on mobile, second on desktop */}
+            <div className="order-first lg:order-last">
+              <InvoiceDocumentSidebar
+                invoiceId={invoiceId}
+                hasDocument={invoice.hasDocument}
+                documentFileName={invoice.documentFileName}
+              />
+            </div>
+
+            <Card className="order-last lg:order-first border-purple-200 dark:border-purple-900 bg-gradient-to-b from-purple-50/50 to-white dark:from-purple-950/20 dark:to-background">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-base">

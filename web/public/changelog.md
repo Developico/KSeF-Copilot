@@ -6,6 +6,20 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.7.1] - 2026-02-13
+
+### 🐛 Poprawki - Skaner dokumentów i Dashboard
+
+- **Skan faktury zapisywany do pola dokumentu** — skaner zapisywał obraz jako załącznik (`uploadAttachment`) zamiast do pola dokumentu/skanu (`uploadDocument`). Naprawiono w `extraction-preview.tsx`.
+- **Setting ID ustawiane przy tworzeniu faktury ze skanera** — faktury tworzone ze skanera nie miały ustawionego `settingId`, przez co nie były widoczne na liście. Dodano `settingId` do interfejsu `ManualInvoiceCreate` (frontend), schematu Zod `ManualInvoiceCreateSchema` (API) i przekazywanie `selectedCompany.id` w komponencie skanera.
+- **Przycisk usuwania dla wszystkich faktur (admin)** — przycisk kasowania jest teraz widoczny przy wszystkich fakturach (nie tylko manualnych), ale dostępny wyłącznie dla użytkowników z rolą Admin.
+- **Skan przeniesiony do prawego sidebara** — obraz faktury przeniesiony z głównej kolumny do prawego panelu bocznego (pod AI Asystentem), z kompaktową miniaturką i pełnoekranowym podglądem w modalu.
+- **Skeleton loading na kafelkach Dashboard** — kafelki KPI wyświetlają animację ładowania (Skeleton) zamiast wartości „0" podczas ładowania kontekstu firmy.
+- **Poprawka podglądu dokumentu (mimeType)** — Dataverse zwraca `application/octet-stream` jako Content-Type; dodano wykrywanie typu MIME na podstawie rozszerzenia pliku.
+- **Poprawka cache po usunięciu dokumentu** — zmiana z `invalidateQueries` na `removeQueries` dla natychmiastowego odświeżenia miniaturki po usunięciu.
+
+---
+
 ## [0.7.0] - 2026-02-11
 
 ### ✨ Dodane - Moduł Prognoza Wydatków

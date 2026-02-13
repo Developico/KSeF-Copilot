@@ -380,6 +380,7 @@ export interface InvoiceListParams {
 }
 
 export interface ManualInvoiceCreate {
+  settingId?: string
   tenantNip: string
   tenantName: string
   invoiceNumber: string

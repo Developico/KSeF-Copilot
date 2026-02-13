@@ -126,6 +126,7 @@ export function ExtractionPreview({
       }
 
       const invoiceData: ManualInvoiceCreate = {
+        settingId: selectedCompany.id,
         tenantNip: selectedCompany.nip,
         tenantName: selectedCompany.companyName,
         invoiceNumber: formData.invoiceNumber.trim(),
@@ -152,16 +153,16 @@ export function ExtractionPreview({
       // Create the invoice first
       const invoice = await api.invoices.createManual(invoiceData)
       
-      // Then upload the source document as attachment
+      // Upload the source document to the invoice document field (scan)
       if (fileBase64 && fileName) {
         try {
-          await api.invoices.uploadAttachment(invoice.id, {
+          await api.invoices.uploadDocument(invoice.id, {
             fileName: fileName,
             mimeType: fileMimeType,
             content: fileBase64,
           })
-        } catch (attachError) {
-          console.error('Failed to upload attachment:', attachError)
+        } catch (docError) {
+          console.error('Failed to upload document:', docError)
           // Don't fail the whole operation - invoice was created
         }
       }

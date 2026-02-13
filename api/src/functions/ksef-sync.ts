@@ -103,8 +103,10 @@ app.http('ksef-sync', {
             settingId,
             direction: 'incoming',
           })
-          syncLogId = syncLog.id
-          logDataverseInfo('ksef-sync', 'Sync log created', { syncLogId })
+          syncLogId = syncLog?.id
+          if (syncLogId) {
+            logDataverseInfo('ksef-sync', 'Sync log created', { syncLogId })
+          }
         } catch (logError) {
           // Non-blocking: sync log creation failure should not prevent sync
           context.warn('Failed to create sync log entry:', logError)
@@ -415,7 +417,7 @@ app.http('ksef-sync-import', {
             settingId,
             direction: 'incoming',
           })
-          syncLogId = syncLog.id
+          syncLogId = syncLog?.id
         } catch (logError) {
           context.warn('Failed to create sync log for import:', logError)
         }

@@ -94,7 +94,7 @@ export const DV = {
     direction: process.env.DV_FIELD_SYNCLOG_DIRECTION || 'dvlp_direction',
     startedAt: process.env.DV_FIELD_SYNCLOG_STARTED || 'dvlp_startedat',
     completedAt: process.env.DV_FIELD_SYNCLOG_COMPLETED || 'dvlp_completedat',
-    status: process.env.DV_FIELD_SYNCLOG_STATUS || 'dvlp_status',
+    status: process.env.DV_FIELD_SYNCLOG_STATUS || 'dvlp_synclogstatus',
     invoicesProcessed: process.env.DV_FIELD_SYNCLOG_PROCESSED || 'dvlp_invoicesprocessed',
     invoicesCreated: process.env.DV_FIELD_SYNCLOG_CREATED || 'dvlp_invoicescreated',
     invoicesUpdated: process.env.DV_FIELD_SYNCLOG_UPDATED || 'dvlp_invoicesupdated',

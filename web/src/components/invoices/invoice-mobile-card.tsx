@@ -246,7 +246,7 @@ export function InvoiceMobileCard({
               </Link>
             </Button>
 
-            {invoice.source === 'Manual' && onDelete && (
+            {onDelete && (
               <Button
                 variant="outline"
                 size="icon"

@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import CountUp from 'react-countup'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { LucideIcon } from 'lucide-react'
 
 type AnimatedKpiCardProps = {
@@ -20,6 +21,7 @@ type AnimatedKpiCardProps = {
   delay?: number
   className?: string
   borderColor?: string
+  isLoading?: boolean
 }
 
 export function formatCurrency(amount: number): string {
@@ -43,6 +45,7 @@ export function AnimatedKpiCard({
   delay = 0,
   className = '',
   borderColor,
+  isLoading = false,
 }: AnimatedKpiCardProps) {
   // Format helpers
   const formatValue = (val: number) => {
@@ -91,62 +94,71 @@ export function AnimatedKpiCard({
           )}
         </CardHeader>
         <CardContent className="pt-0 px-4 pb-3">
-          <div className="text-2xl font-bold" style={{ color: valueColor }}>
-            {format === 'currency' ? (
-              <CountUp
-                start={0}
-                end={value}
-                duration={1.5}
-                delay={delay}
-                separator=" "
-                decimal=","
-                decimals={0}
-                formattingFn={(v) => formatCurrency(v)}
-              />
-            ) : (
-              <CountUp
-                start={0}
-                end={value}
-                duration={1.5}
-                delay={delay}
-                separator=" "
-                decimal=","
-                decimals={decimals}
-                suffix={suffix}
-                prefix={prefix}
-              />
-            )}
-          </div>
-          {subtitle && (
-            <motion.p
-              className="text-xs text-muted-foreground mt-1"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: delay + 0.3 }}
-            >
-              {subtitle}
-            </motion.p>
-          )}
-          {trend && (
-            <motion.div
-              className="flex items-center gap-1 mt-2"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: delay + 0.4 }}
-            >
-              <span
-                className={`text-xs font-medium ${
-                  trend.direction === 'up'
-                    ? 'text-green-500'
-                    : trend.direction === 'down'
-                    ? 'text-red-500'
-                    : 'text-muted-foreground'
-                }`}
-              >
-                {trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '→'}{' '}
-                {trend.value.toFixed(1)}%
-              </span>
-            </motion.div>
+          {isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-7 w-24 rounded" />
+              {subtitle && <Skeleton className="h-3 w-32 rounded" />}
+            </div>
+          ) : (
+            <>
+              <div className="text-2xl font-bold" style={{ color: valueColor }}>
+                {format === 'currency' ? (
+                  <CountUp
+                    start={0}
+                    end={value}
+                    duration={1.5}
+                    delay={delay}
+                    separator=" "
+                    decimal=","
+                    decimals={0}
+                    formattingFn={(v) => formatCurrency(v)}
+                  />
+                ) : (
+                  <CountUp
+                    start={0}
+                    end={value}
+                    duration={1.5}
+                    delay={delay}
+                    separator=" "
+                    decimal=","
+                    decimals={decimals}
+                    suffix={suffix}
+                    prefix={prefix}
+                  />
+                )}
+              </div>
+              {subtitle && (
+                <motion.p
+                  className="text-xs text-muted-foreground mt-1"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: delay + 0.3 }}
+                >
+                  {subtitle}
+                </motion.p>
+              )}
+              {trend && (
+                <motion.div
+                  className="flex items-center gap-1 mt-2"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: delay + 0.4 }}
+                >
+                  <span
+                    className={`text-xs font-medium ${
+                      trend.direction === 'up'
+                        ? 'text-green-500'
+                        : trend.direction === 'down'
+                        ? 'text-red-500'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
+                    {trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '→'}{' '}
+                    {trend.value.toFixed(1)}%
+                  </span>
+                </motion.div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

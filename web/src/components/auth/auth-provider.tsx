@@ -203,6 +203,7 @@ function AuthContextProvider({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useIsAuthenticated()
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isResolvingGroups, setIsResolvingGroups] = useState(false)
+  const [hasResolvedUser, setHasResolvedUser] = useState(false)
 
   // Resolve user and groups
   useEffect(() => {
@@ -241,6 +242,7 @@ function AuthContextProvider({ children }: { children: React.ReactNode }) {
         roles,
         primaryRole,
       })
+      setHasResolvedUser(true)
     }
 
     resolveUser()
@@ -267,7 +269,9 @@ function AuthContextProvider({ children }: { children: React.ReactNode }) {
     }
   }, [instance, accounts])
 
-  const isLoading = inProgress !== InteractionStatus.None || isResolvingGroups
+  // Loading while: MSAL interaction in progress, groups being fetched,
+  // OR user is authenticated but user object not yet resolved (prevents Access Denied flash)
+  const isLoading = inProgress !== InteractionStatus.None || isResolvingGroups || (isAuthenticated && !hasResolvedUser)
 
   return (
     <AuthContext.Provider value={{
