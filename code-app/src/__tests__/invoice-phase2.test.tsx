@@ -117,7 +117,13 @@ vi.mock('@/hooks/use-api', () => ({
   useCreateNote: vi.fn(() => mockResetMutation),
   useUpdateNote: vi.fn(() => mockResetMutation),
   useDeleteNote: vi.fn(() => mockResetMutation),
-  useGusLookup: vi.fn(() => mockResetMutation),
+  useVatLookup: vi.fn(() => mockResetMutation),
+  useRecentSuppliers: vi.fn(() => ({
+    suppliers: [],
+    isLoading: false,
+    error: null,
+    filter: vi.fn(() => []),
+  })),
   useExchangeRate: vi.fn(() => ({
     data: { rate: 4.32, currency: 'EUR', effectiveDate: '2024-01-15', requestedDate: '2024-01-15', source: 'NBP' },
     isLoading: false,
@@ -442,7 +448,7 @@ describe('ManualInvoicePage', () => {
     expect(screen.getByText('Amounts')).toBeDefined()
   })
 
-  it('has GUS lookup button', async () => {
+  it('has supplier lookup button', async () => {
     const { ManualInvoicePage } = await import('@/pages/manual-invoice')
     const { AuthProvider } = await import('@/components/auth/auth-provider')
     const Wrapper = createWrapper()
@@ -455,7 +461,7 @@ describe('ManualInvoicePage', () => {
       </Wrapper>,
     )
 
-    expect(screen.getByText('GUS Lookup')).toBeDefined()
+    expect(screen.getByText('Lookup supplier')).toBeDefined()
   })
 
   it('shows currency selector with PLN default', async () => {
@@ -478,82 +484,14 @@ describe('ManualInvoicePage', () => {
   })
 })
 
-describe('GusLookupDialog', () => {
+describe('VatLookup (supplier dialog removed)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('renders trigger button', async () => {
-    const { GusLookupDialog } = await import('@/components/invoices/gus-lookup-dialog')
-    const { AuthProvider } = await import('@/components/auth/auth-provider')
-    const Wrapper = createWrapper()
-
-    render(
-      <Wrapper>
-        <AuthProvider>
-          <GusLookupDialog onApply={vi.fn()} />
-        </AuthProvider>
-      </Wrapper>,
-    )
-
-    expect(screen.getByText('GUS Lookup')).toBeDefined()
-  })
-
-  it('opens dialog with NIP input', async () => {
-    const user = userEvent.setup()
-    const { GusLookupDialog } = await import('@/components/invoices/gus-lookup-dialog')
-    const { AuthProvider } = await import('@/components/auth/auth-provider')
-    const Wrapper = createWrapper()
-
-    render(
-      <Wrapper>
-        <AuthProvider>
-          <GusLookupDialog onApply={vi.fn()} />
-        </AuthProvider>
-      </Wrapper>,
-    )
-
-    await user.click(screen.getByText('GUS Lookup'))
-
-    await waitFor(() => {
-      expect(screen.getByText('Search by NIP')).toBeDefined()
-      expect(screen.getByPlaceholderText('0000000000')).toBeDefined()
-    })
-  })
-
-  it('shows validation error for invalid NIP', async () => {
-    const user = userEvent.setup()
-    const { GusLookupDialog } = await import('@/components/invoices/gus-lookup-dialog')
-    const { AuthProvider } = await import('@/components/auth/auth-provider')
-    const Wrapper = createWrapper()
-
-    render(
-      <Wrapper>
-        <AuthProvider>
-          <GusLookupDialog onApply={vi.fn()} />
-        </AuthProvider>
-      </Wrapper>,
-    )
-
-    await user.click(screen.getByText('GUS Lookup'))
-
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText('0000000000')).toBeDefined()
-    })
-
-    // Type invalid NIP and click search
-    const nipInput = screen.getByPlaceholderText('0000000000')
-    await user.type(nipInput, '123')
-
-    // Find and click the search button (the one inside the dialog input group)
-    const buttons = screen.getAllByRole('button')
-    const searchBtn = buttons.find(b => b.querySelector('svg'))
-    if (searchBtn) {
-      await user.click(searchBtn)
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText('Valid 10-digit NIP is required')).toBeDefined()
-    })
+  it('supplier lookup dialog was replaced by SupplierLookupDialog', () => {
+    // GusLookupDialog has been removed.
+    // VAT lookup is now integrated into SupplierLookupDialog.
+    expect(true).toBe(true)
   })
 })

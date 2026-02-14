@@ -76,11 +76,20 @@ export const connectorApi = {
       DVLP_KSeF_PP_ConnectorService.HealthCheck(environment)
     ),
 
-  // ── GUS / REGON (not in connector) ──
-  gus: {
-    lookup: (_nip: string) => notAvailable('gus.lookup'),
-    search: (_query: string, _type?: string) => notAvailable('gus.search'),
-    validate: (_nip: string) => notAvailable('gus.validate'),
+  // ── VAT / White List (through connector → Azure Functions → WL API) ──
+  vat: {
+    lookup: (params: { nip?: string; regon?: string }) =>
+      safeCall('VatLookup', () =>
+        DVLP_KSeF_PP_ConnectorService.VatLookup(params as Record<string, unknown>)
+      ),
+    validate: (nip: string) =>
+      safeCall('VatValidate', () =>
+        DVLP_KSeF_PP_ConnectorService.VatValidate(nip)
+      ),
+    checkAccount: (params: { nip: string; account: string }) =>
+      safeCall('VatCheckAccount', () =>
+        DVLP_KSeF_PP_ConnectorService.VatCheckAccount(params as Record<string, unknown>)
+      ),
   },
 
   // ── Dashboard ──

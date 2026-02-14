@@ -87,7 +87,7 @@ pnpm run build | pac code push
 Aby wdrożyć do **konkretnej solucji**:
 
 ```powershell
-pnpm run build | pac code push --solutionName "KSeF"
+pnpm run build | pac code push --solutionName "KSeF Copilot by Developico"
 ```
 
 Po udanym wdrożeniu CLI zwraca URL Power Apps, pod którym można uruchomić aplikację.

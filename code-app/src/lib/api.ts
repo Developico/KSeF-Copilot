@@ -42,10 +42,10 @@ import type {
   TokenTestResult,
   // Health
   DetailedHealthResponse,
-  // GUS
-  GusLookupResponse,
-  GusSearchResponse,
-  GusValidateResponse,
+  // VAT White List
+  VatLookupResponse,
+  VatValidateResponse,
+  VatCheckResponse,
   // Attachments
   Attachment,
   AttachmentUpload,
@@ -215,25 +215,22 @@ const _directApi = {
       params: environment ? { environment } : undefined,
     }),
 
-  // ── GUS / REGON ──
-  gus: {
-    lookup: (nip: string) =>
-      apiFetch<GusLookupResponse>('/api/gus/lookup', {
+  // ── VAT White List ──
+  vat: {
+    lookup: (params: { nip?: string; regon?: string }) =>
+      apiFetch<VatLookupResponse>('/api/vat/lookup', {
         method: 'POST',
-        body: JSON.stringify({ nip }),
-      }),
-
-    search: (
-      query: string,
-      type: 'nip' | 'regon' | 'krs' | 'name' = 'name'
-    ) =>
-      apiFetch<GusSearchResponse>('/api/gus/search', {
-        method: 'POST',
-        body: JSON.stringify({ query, type }),
+        body: JSON.stringify(params),
       }),
 
     validate: (nip: string) =>
-      apiFetch<GusValidateResponse>(`/api/gus/validate/${nip}`),
+      apiFetch<VatValidateResponse>(`/api/vat/validate/${nip}`),
+
+    checkAccount: (nip: string, account: string) =>
+      apiFetch<VatCheckResponse>('/api/vat/check-account', {
+        method: 'POST',
+        body: JSON.stringify({ nip, account }),
+      }),
   },
 
   // ── Dashboard ──

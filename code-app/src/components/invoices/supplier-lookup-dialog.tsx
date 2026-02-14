@@ -8,7 +8,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -23,12 +22,44 @@ import {
   AlertCircle,
   FileText,
   MapPin,
+  ShieldCheck,
+  ShieldAlert,
+  Landmark,
 } from 'lucide-react'
-import { useGusLookup, useGusSearch, useRecentSuppliers } from '@/hooks/use-api'
+import { useVatLookup, useRecentSuppliers } from '@/hooks/use-api'
 import type { RecentSupplier } from '@/hooks/use-api'
-import type { GusSearchResult, GusCompanyData } from '@/lib/types'
+import type { VatSubjectData } from '@/lib/types'
 import { formatNip, stripNip, validateNipChecksum } from '@/lib/nip-utils'
 import { cn } from '@/lib/utils'
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * Parse a Polish address from WL VAT API into street, postalCode, city.
+ *
+ * Input examples:
+ *   "JANA KOCHANOWSKIEGO 42/23, 01-864 WARSZAWA"
+ *   "ul. Grunwaldzka 5, 80-244 GDAŃSK"
+ *
+ * Polish postal code format: XX-XXX (always 2 digits, dash, 3 digits)
+ */
+function parsePolishAddress(raw: string): {
+  street: string
+  postalCode: string
+  city: string
+} {
+  const match = raw.match(/(\d{2}-\d{3})\s+(.+)$/)
+  if (match) {
+    const postalCode = match[1]
+    const city = match[2].trim()
+    const postalIdx = raw.indexOf(postalCode)
+    const street = raw.substring(0, postalIdx).replace(/[,\s]+$/, '').trim()
+    return { street, postalCode, city }
+  }
+  return { street: raw, postalCode: '', city: '' }
+}
 
 // ============================================================================
 // Types
@@ -166,13 +197,11 @@ export function SupplierLookupDialog({
 
   const [activeTab, setActiveTab] = useState<'recent' | 'search'>('recent')
   const [searchInput, setSearchInput] = useState('')
-  const [nipResult, setNipResult] = useState<GusCompanyData | null>(null)
-  const [searchResults, setSearchResults] = useState<GusSearchResult[]>([])
+  const [vatResult, setVatResult] = useState<VatSubjectData | null>(null)
   const [searchError, setSearchError] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const gusLookup = useGusLookup()
-  const gusSearch = useGusSearch()
+  const vatLookup = useVatLookup()
 
   const {
     suppliers: recentSuppliers,
@@ -185,86 +214,90 @@ export function SupplierLookupDialog({
     enabled: open,
   })
 
-  // Detect if input looks like a NIP (10 digits)
-  const cleanInput = stripNip(searchInput)
-  const isNipQuery = /^\d+$/.test(cleanInput) && cleanInput.length >= 7
-
-  // Handle search input change
+  /**
+   * Auto-detect input type:
+   *  - 10 digits → NIP lookup
+   *  - 9 or 14 digits → REGON lookup
+   *  - text → filter recent suppliers
+   */
   const handleSearchChange = useCallback(
     (value: string) => {
       setSearchInput(value)
-      setNipResult(null)
-      setSearchResults([])
+      setVatResult(null)
       setSearchError('')
 
       if (debounceRef.current) clearTimeout(debounceRef.current)
 
       const clean = stripNip(value)
 
-      // Auto NIP lookup when 10 digits are typed
+      // NIP lookup (10 digits)
       if (/^\d{10}$/.test(clean)) {
         if (!validateNipChecksum(clean)) {
           setSearchError(t('invoices.nipChecksumError'))
           return
         }
+        setActiveTab('search')
         debounceRef.current = setTimeout(() => {
-          gusLookup.mutate(clean, {
-            onSuccess: (res) => {
-              if (res.success && res.data) {
-                setNipResult(res.data)
-                setSearchError('')
-              } else {
-                setSearchError(t('invoices.supplierNotFound'))
-              }
-            },
-            onError: (err) => setSearchError(err.message),
-          })
-        }, 300)
-        return
-      }
-
-      // Name search for 3+ chars
-      if (value.trim().length >= 3 && !/^\d+$/.test(value.trim())) {
-        debounceRef.current = setTimeout(() => {
-          gusSearch.mutate(
-            { query: value.trim() },
+          vatLookup.mutate(
+            { nip: clean },
             {
               onSuccess: (res) => {
-                if (res.success) {
-                  setSearchResults(res.results)
+                if (res.success && res.data) {
+                  setVatResult(res.data)
                   setSearchError('')
                 } else {
-                  setSearchError(res.error || t('common.error'))
+                  setSearchError(t('invoices.supplierNotFound'))
                 }
               },
               onError: (err) => setSearchError(err.message),
             },
           )
-        }, 400)
+        }, 300)
+        return
+      }
+
+      // REGON lookup (9 or 14 digits)
+      if (/^\d{9}$/.test(clean) || /^\d{14}$/.test(clean)) {
+        setActiveTab('search')
+        debounceRef.current = setTimeout(() => {
+          vatLookup.mutate(
+            { regon: clean },
+            {
+              onSuccess: (res) => {
+                if (res.success && res.data) {
+                  setVatResult(res.data)
+                  setSearchError('')
+                } else {
+                  setSearchError(t('invoices.supplierNotFound'))
+                }
+              },
+              onError: (err) => setSearchError(err.message),
+            },
+          )
+        }, 300)
+        return
+      }
+
+      // Text → stay on recent tab for filtering
+      if (value.trim().length > 0) {
+        setActiveTab('recent')
       }
     },
-    [gusLookup, gusSearch, t],
+    [vatLookup, t],
   )
 
-  // Handle selecting a GUS result
-  const handleSelectGus = useCallback(
-    (result: GusSearchResult | GusCompanyData) => {
-      const address =
-        'ulica' in result && result.ulica
-          ? [result.ulica, 'nrBudynku' in result ? result.nrBudynku : '']
-              .filter(Boolean)
-              .join(' ')
-          : 'adres' in result
-            ? result.adres
-            : undefined
+  // Handle selecting a VAT result
+  const handleSelectVat = useCallback(
+    (data: VatSubjectData) => {
+      const rawAddress = data.workingAddress || data.residenceAddress || ''
+      const parsed = parsePolishAddress(rawAddress)
 
       onSelect({
-        supplierNip: result.nip,
-        supplierName: result.nazwa,
-        supplierAddress: address,
-        supplierCity: result.miejscowosc,
-        supplierPostalCode:
-          'kodPocztowy' in result ? result.kodPocztowy : undefined,
+        supplierNip: data.nip,
+        supplierName: data.name,
+        supplierAddress: parsed.street || undefined,
+        supplierCity: parsed.city || undefined,
+        supplierPostalCode: parsed.postalCode || undefined,
         supplierCountry: 'PL',
       })
       onOpenChange(false)
@@ -291,8 +324,7 @@ export function SupplierLookupDialog({
     if (!open) {
       setSearchInput('')
       setActiveTab('recent')
-      setNipResult(null)
-      setSearchResults([])
+      setVatResult(null)
       setSearchError('')
     }
   }, [open])
@@ -304,10 +336,10 @@ export function SupplierLookupDialog({
     }
   }, [])
 
-  // Filter recent suppliers
+  // Filter recent suppliers by text input
   const filteredRecent = searchInput ? filterRecent(searchInput) : recentSuppliers
 
-  const isSearching = gusLookup.isPending || gusSearch.isPending
+  const isSearching = vatLookup.isPending
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -392,7 +424,7 @@ export function SupplierLookupDialog({
             </ScrollArea>
           </TabsContent>
 
-          {/* GUS Search tab */}
+          {/* VAT Search tab */}
           <TabsContent value="search" className="flex-1 mt-2">
             <ScrollArea className="h-[360px]">
               {isSearching ? (
@@ -402,50 +434,20 @@ export function SupplierLookupDialog({
                   <AlertCircle className="h-8 w-8 mb-2" />
                   <p className="text-center text-sm">{searchError}</p>
                 </div>
-              ) : nipResult ? (
-                <div className="space-y-2">
-                  <SupplierCard
-                    nip={nipResult.nip}
-                    name={nipResult.nazwa}
-                    address={nipResult.adres}
-                    isSelected={nipResult.nip === currentNip}
-                    onSelect={() => handleSelectGus(nipResult)}
-                  />
-                </div>
-              ) : searchResults.length > 0 ? (
-                <div className="space-y-2">
-                  {searchResults.map((result) => (
-                    <SupplierCard
-                      key={result.regon || result.nip}
-                      nip={result.nip}
-                      name={result.nazwa}
-                      address={result.adres}
-                      isSelected={result.nip === currentNip}
-                      onSelect={() => handleSelectGus(result)}
-                    />
-                  ))}
-                </div>
-              ) : searchInput.length > 0 && searchInput.length < 3 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                  <Search className="h-8 w-8 mb-2 opacity-50" />
-                  <p>{t('invoices.supplierLookup.minCharsHint')}</p>
-                </div>
-              ) : searchInput.length >= 3 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                  <Building2 className="h-8 w-8 mb-2 opacity-50" />
-                  <p>
-                    {t('invoices.supplierLookup.notFoundForQuery', {
-                      query: searchInput,
-                    })}
-                  </p>
-                  <p className="text-sm mt-1">
-                    {t('invoices.supplierLookup.checkSpelling')}
-                  </p>
-                </div>
+              ) : vatResult ? (
+                <VatResultCard
+                  data={vatResult}
+                  isSelected={vatResult.nip === currentNip}
+                  onSelect={() => handleSelectVat(vatResult)}
+                  t={t}
+                />
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                   <Search className="h-8 w-8 mb-2 opacity-50" />
                   <p>{t('invoices.supplierLookup.searchPrompt')}</p>
+                  <p className="text-sm mt-1">
+                    {t('invoices.supplierLookup.nipOrRegonHint')}
+                  </p>
                 </div>
               )}
             </ScrollArea>
@@ -458,10 +460,98 @@ export function SupplierLookupDialog({
           <span>
             {activeTab === 'recent'
               ? t('invoices.supplierLookup.suppliersFromHistory')
-              : t('invoices.supplierLookup.gusSource')}
+              : t('invoices.supplierLookup.vatSource')}
           </span>
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// ============================================================================
+// VAT Result Card — detailed display of White List data
+// ============================================================================
+
+interface VatResultCardProps {
+  data: VatSubjectData
+  isSelected: boolean
+  onSelect: () => void
+  t: (id: string, values?: Record<string, string | number>) => string
+}
+
+function VatResultCard({ data, isSelected, onSelect, t }: VatResultCardProps) {
+  const isActive = data.statusVat === 'Czynny'
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'w-full text-left p-4 rounded-lg border transition-all',
+        'hover:bg-accent hover:border-accent-foreground/20',
+        'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+        isSelected && 'border-primary bg-primary/5',
+      )}
+    >
+      <div className="space-y-3">
+        {/* Name + status badge */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <span className="font-medium">{data.name}</span>
+          </div>
+          <Badge
+            variant={isActive ? 'default' : 'destructive'}
+            className="flex-shrink-0 gap-1"
+          >
+            {isActive ? (
+              <ShieldCheck className="h-3 w-3" />
+            ) : (
+              <ShieldAlert className="h-3 w-3" />
+            )}
+            {data.statusVat}
+          </Badge>
+        </div>
+
+        {/* NIP + REGON */}
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <span>
+            NIP: <span className="font-mono">{formatNip(data.nip)}</span>
+          </span>
+          {data.regon && (
+            <span>
+              REGON: <span className="font-mono">{data.regon}</span>
+            </span>
+          )}
+          {data.krs && <span>KRS: {data.krs}</span>}
+        </div>
+
+        {/* Address */}
+        {(data.workingAddress || data.residenceAddress) && (
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <MapPin className="h-3 w-3 flex-shrink-0" />
+            <span>{data.workingAddress || data.residenceAddress}</span>
+          </div>
+        )}
+
+        {/* Bank accounts count */}
+        {data.accountNumbers.length > 0 && (
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <Landmark className="h-3 w-3 flex-shrink-0" />
+            <span>
+              {t('invoices.supplierLookup.bankAccounts', {
+                count: data.accountNumbers.length,
+              })}
+            </span>
+          </div>
+        )}
+
+        {isSelected && (
+          <div className="flex justify-end">
+            <CheckCircle className="h-5 w-5 text-primary" />
+          </div>
+        )}
+      </div>
+    </button>
   )
 }

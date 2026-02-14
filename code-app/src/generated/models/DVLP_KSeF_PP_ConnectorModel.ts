@@ -300,3 +300,39 @@ export interface TestDataGenerateResult {
     errors?: string[];
   };
 }
+
+// ── VAT White List (Biała Lista) ──
+
+export interface VatLookupResult {
+  success?: boolean;
+  data?: VatSubjectData;
+  error?: string;
+}
+
+export interface VatSubjectData {
+  name?: string;
+  nip?: string;
+  regon?: string;
+  krs?: string;
+  // Status VAT (Czynny, Zwolniony, Niezarejestrowany)
+  statusVat?: string;
+  residenceAddress?: string;
+  workingAddress?: string;
+  accountNumbers?: string[];
+  registrationLegalDate?: string;
+  hasVirtualAccounts?: boolean;
+}
+
+export interface VatValidateResult {
+  valid?: boolean;
+  nip?: string;
+  error?: string;
+}
+
+export interface VatCheckAccountResult {
+  accountAssigned?: boolean;
+  nip?: string;
+  account?: string;
+  requestId?: string;
+  error?: string;
+}

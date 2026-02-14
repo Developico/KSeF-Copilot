@@ -411,53 +411,39 @@ export interface ManualInvoiceCreate {
 }
 
 // ============================================================================
-// GUS/REGON Types
+// VAT White List Types
 // ============================================================================
 
-export interface GusCompanyData {
+export interface VatSubjectData {
+  name: string
   nip: string
   regon: string
-  nazwa: string
-  adres: string
-  miejscowosc: string
-  kodPocztowy: string
-  ulica: string
-  nrBudynku: string
-  nrLokalu?: string
-  email?: string
-  telefon?: string
-  www?: string
-  pkd?: string
-  pkdNazwa?: string
-  typ: string
-  aktywny: boolean
+  krs: string
+  statusVat: string
+  residenceAddress: string
+  workingAddress: string
+  accountNumbers: string[]
+  registrationLegalDate: string | null
+  hasVirtualAccounts: boolean
 }
 
-export interface GusLookupResponse {
+export interface VatLookupResponse {
   success: boolean
-  data?: GusCompanyData
-  error?: string
-  errorCode?: string
-}
-
-export interface GusSearchResult {
-  nip: string
-  regon: string
-  nazwa: string
-  adres: string
-  miejscowosc: string
-}
-
-export interface GusSearchResponse {
-  success: boolean
-  results: GusSearchResult[]
-  totalCount: number
+  data?: VatSubjectData
   error?: string
 }
 
-export interface GusValidateResponse {
+export interface VatValidateResponse {
   valid: boolean
   nip?: string
+  error?: string
+}
+
+export interface VatCheckResponse {
+  accountAssigned: boolean
+  nip: string
+  account: string
+  requestId?: string
   error?: string
 }
 
@@ -617,22 +603,22 @@ export const api = {
     return apiFetch<DetailedHealthResponse>(`/api/health/detailed${params}`)
   },
 
-  // GUS/REGON API
-  gus: {
-    lookup: (nip: string) =>
-      apiFetch<GusLookupResponse>('/api/gus/lookup', {
+  // VAT White List API
+  vat: {
+    lookup: (params: { nip?: string; regon?: string }) =>
+      apiFetch<VatLookupResponse>('/api/vat/lookup', {
         method: 'POST',
-        body: JSON.stringify({ nip: nip.replace(/\D/g, '') }),
-      }),
-
-    search: (query: string, type: 'nip' | 'regon' | 'krs' | 'name' = 'name') =>
-      apiFetch<GusSearchResponse>('/api/gus/search', {
-        method: 'POST',
-        body: JSON.stringify({ query, type }),
+        body: JSON.stringify(params),
       }),
 
     validate: (nip: string) =>
-      apiFetch<GusValidateResponse>(`/api/gus/validate/${nip.replace(/\D/g, '')}`),
+      apiFetch<VatValidateResponse>(`/api/vat/validate/${nip.replace(/\D/g, '')}`),
+
+    checkAccount: (nip: string, account: string) =>
+      apiFetch<VatCheckResponse>('/api/vat/check-account', {
+        method: 'POST',
+        body: JSON.stringify({ nip, account }),
+      }),
   },
 
   // Dashboard
@@ -1277,9 +1263,8 @@ export const queryKeys = {
   anomaliesSummary: (params?: AnomalyParams) =>
     ['anomalies', 'summary', params] as const,
 
-  // GUS/REGON query keys
-  gusLookup: (nip: string) => ['gus', 'lookup', nip] as const,
-  gusSearch: (query: string) => ['gus', 'search', query] as const,
+  // VAT White List query keys
+  vatLookup: (identifier: string) => ['vat', 'lookup', identifier] as const,
   recentSuppliers: (tenantNip?: string) => ['suppliers', 'recent', tenantNip] as const,
 
   // Dataverse query keys

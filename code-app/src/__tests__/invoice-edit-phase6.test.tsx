@@ -121,7 +121,13 @@ vi.mock('@/hooks/use-api', () => ({
   useCreateNote: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useUpdateNote: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useDeleteNote: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-  useGusLookup: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useVatLookup: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useRecentSuppliers: vi.fn(() => ({
+    suppliers: [],
+    isLoading: false,
+    error: null,
+    filter: vi.fn(() => []),
+  })),
   useExchangeRate: vi.fn(() => ({
     data: null,
     isLoading: false,

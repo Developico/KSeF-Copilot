@@ -1,5 +1,5 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { listInvoices, getInvoiceById, updateInvoice, deleteInvoice } from '../lib/dataverse/invoices'
+import { listAllInvoices, getInvoiceById, updateInvoice, deleteInvoice } from '../lib/dataverse/invoices'
 import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { InvoiceUpdateSchema, InvoiceSource } from '../types/invoice'
 import { recordAIFeedback, determineFeedbackType } from '../lib/ai/feedback'
@@ -48,13 +48,12 @@ export async function listInvoicesHandler(
       source: url.searchParams.get('source') as InvoiceSource | undefined,
       overdue: url.searchParams.get('overdue') === 'true',
       search: url.searchParams.get('search') || undefined,
-      top: Math.min(parseInt(url.searchParams.get('top') || '100') || 100, 500),
-      skip: parseInt(url.searchParams.get('skip') || '0'),
       orderBy: url.searchParams.get('orderBy') as 'invoiceDate' | 'grossAmount' | 'supplierName' | 'dueDate' || 'invoiceDate',
       orderDirection: url.searchParams.get('orderDirection') as 'asc' | 'desc' || 'desc',
     }
 
-    const invoices = await listInvoices(params)
+    // Use listAllInvoices to follow @odata.nextLink and return all matching records
+    const invoices = await listAllInvoices(params)
 
     return {
       status: 200,

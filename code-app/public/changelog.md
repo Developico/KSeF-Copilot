@@ -6,6 +6,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.4.0] - 2026-02-14
+
+### 🔄 GUS → VAT (Biała Lista) Migration
+
+- **WL VAT API Integration** — replaced GUS SOAP API with free White List VAT REST API (`wl-api.mf.gov.pl`) for supplier verification by NIP
+- **Connector-routed VAT calls** — VAT lookup/validate/check-account routed through Power Platform Custom Connector → Azure Functions (server-side proxy), bypassing CORS restrictions in Power Apps iframe
+- **Generated SDK updated** — added `VatLookup()`, `VatValidate()`, `VatCheckAccount()` methods to `DVLP_KSeF_PP_ConnectorService` and 4 model interfaces (`VatLookupResult`, `VatSubjectData`, `VatValidateResult`, `VatCheckAccountResult`)
+- **Custom Connector swagger** — added 3 VAT paths (`/vat/lookup`, `/vat/validate/{nip}`, `/vat/check-account`) to `apiDefinition.swagger.json` and `swagger.yaml`, removed GUS operations
+- **Address parsing** — `parsePolishAddress()` helper splits WL VAT API address string (e.g. `"ul. Kochanowskiego 42, 01-864 WARSZAWA"`) into street, postal code, and city for form fields
+- **Removed direct WL API fetch** — eliminated 130+ lines of direct `fetch` code that was blocked by CORS; all calls now go through connector SDK `safeCall()`
+
+---
+
 ## [2.3.0] - 2026-02-14
 
 ### 🔌 Power Apps Code App — Connector Integration

@@ -35,9 +35,8 @@ import type {
   CostCenter,
   TokenTestResult,
   DetailedHealthResponse,
-  GusLookupResponse,
-  GusSearchResponse,
-  GusValidateResponse,
+  VatLookupResponse,
+  VatValidateResponse,
   Attachment,
   AttachmentUpload,
   Note,
@@ -761,37 +760,24 @@ export function useDeleteCostCenter(
   })
 }
 
-// ─── GUS / REGON ─────────────────────────────────────────────────
+// ─── VAT White List ──────────────────────────────────────────────
 
-export function useGusLookup(
-  options?: UseMutationOptions<GusLookupResponse, Error, string>
+export function useVatLookup(
+  options?: UseMutationOptions<VatLookupResponse, Error, { nip?: string; regon?: string }>
 ) {
   return useMutation({
-    mutationFn: (nip) => api.gus.lookup(nip),
+    mutationFn: (params) => api.vat.lookup(params),
     ...options,
   })
 }
 
-export function useGusSearch(
-  options?: UseMutationOptions<
-    GusSearchResponse,
-    Error,
-    { query: string; type?: 'nip' | 'regon' | 'krs' | 'name' }
-  >
-) {
-  return useMutation({
-    mutationFn: ({ query, type }) => api.gus.search(query, type),
-    ...options,
-  })
-}
-
-export function useGusValidate(
+export function useVatValidate(
   nip: string,
-  options?: Partial<UseQueryOptions<GusValidateResponse>>
+  options?: Partial<UseQueryOptions<VatValidateResponse>>
 ) {
   return useQuery({
-    queryKey: queryKeys.gusLookup(nip),
-    queryFn: () => api.gus.validate(nip),
+    queryKey: queryKeys.vatLookup(nip),
+    queryFn: () => api.vat.validate(nip),
     enabled: !!nip && nip.length === 10,
     ...options,
   })
@@ -819,7 +805,6 @@ export function useRecentSuppliers(options?: {
     queryFn: async () => {
       const response = await api.invoices.list({
         tenantNip,
-        top: 100,
         orderBy: 'invoiceDate',
         orderDirection: 'desc',
       })

@@ -61,9 +61,8 @@ export const queryKeys = {
   anomaliesSummary: (params?: AnomalyParams) =>
     ['anomalies', 'summary', params] as const,
 
-  // GUS
-  gusLookup: (nip: string) => ['gus', 'lookup', nip] as const,
-  gusSearch: (query: string) => ['gus', 'search', query] as const,
+  // VAT White List
+  vatLookup: (identifier: string) => ['vat', 'lookup', identifier] as const,
 
   // Recent suppliers
   recentSuppliers: (tenantNip?: string) =>

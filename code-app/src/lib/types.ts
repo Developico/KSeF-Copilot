@@ -427,52 +427,38 @@ export interface DetailedHealthResponse {
   }
 }
 
-// ─── GUS / REGON ─────────────────────────────────────────────────
+// ─── VAT White List (Biała Lista) ────────────────────────────────
 
-export interface GusCompanyData {
+export interface VatSubjectData {
+  name: string
   nip: string
   regon: string
-  nazwa: string
-  adres: string
-  miejscowosc: string
-  kodPocztowy: string
-  ulica: string
-  nrBudynku: string
-  nrLokalu?: string
-  email?: string
-  telefon?: string
-  www?: string
-  pkd?: string
-  pkdNazwa?: string
-  typ: string
-  aktywny: boolean
+  krs: string
+  statusVat: string
+  residenceAddress: string
+  workingAddress: string
+  accountNumbers: string[]
+  registrationLegalDate: string | null
+  hasVirtualAccounts: boolean
 }
 
-export interface GusLookupResponse {
+export interface VatLookupResponse {
   success: boolean
-  data?: GusCompanyData
-  error?: string
-  errorCode?: string
-}
-
-export interface GusSearchResult {
-  nip: string
-  regon: string
-  nazwa: string
-  adres: string
-  miejscowosc: string
-}
-
-export interface GusSearchResponse {
-  success: boolean
-  results: GusSearchResult[]
-  totalCount: number
+  data?: VatSubjectData
   error?: string
 }
 
-export interface GusValidateResponse {
+export interface VatValidateResponse {
   valid: boolean
   nip?: string
+  error?: string
+}
+
+export interface VatCheckResponse {
+  accountAssigned: boolean
+  nip: string
+  account: string
+  requestId?: string
   error?: string
 }
 

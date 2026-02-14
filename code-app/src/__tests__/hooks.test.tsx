@@ -9,10 +9,10 @@ vi.mock('@/lib/api', () => ({
   api: {
     health: vi.fn().mockResolvedValue({ status: 'ok' }),
     healthDetailed: vi.fn().mockResolvedValue({ status: 'ok', services: {} }),
-    gus: {
-      lookup: vi.fn().mockResolvedValue({ found: true }),
-      search: vi.fn().mockResolvedValue({ results: [] }),
+    vat: {
+      lookup: vi.fn().mockResolvedValue({ found: true, subject: null }),
       validate: vi.fn().mockResolvedValue({ valid: true }),
+      checkAccount: vi.fn().mockResolvedValue({ accountAssigned: false }),
     },
     dashboard: {
       stats: vi.fn().mockResolvedValue({

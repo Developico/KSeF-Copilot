@@ -13,6 +13,9 @@ import type { IOperationResult } from '@microsoft/power-apps/data';
 import type { Invoice } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { SyncResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { TestDataGenerateResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { VatCheckAccountResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { VatLookupResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { VatValidateResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import { dataSourcesInfo } from '../../../.power/schemas/appschemas/dataSourcesInfo';
 import { getClient } from '@microsoft/power-apps/data';
 
@@ -263,6 +266,57 @@ export class DVLP_KSeF_PP_ConnectorService {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
           operationName: 'GenerateTestData',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * VAT White List Lookup
+   * Search for a subject in the White List of VAT Taxpayers by NIP or REGON.
+   */
+  public static async VatLookup(body: Record<string, unknown>): Promise<IOperationResult<VatLookupResult>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, VatLookupResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'VatLookup',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Validate NIP Checksum
+   * Offline NIP validation (checksum algorithm only, no API call).
+   */
+  public static async VatValidate(nip: string): Promise<IOperationResult<VatValidateResult>> {
+    const params: { nip: string } = { nip };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ nip: string }, VatValidateResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'VatValidate',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Check Bank Account in VAT White List
+   * Verify whether a bank account number is registered for a given NIP.
+   */
+  public static async VatCheckAccount(body: Record<string, unknown>): Promise<IOperationResult<VatCheckAccountResult>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, VatCheckAccountResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'VatCheckAccount',
           parameters: params
         },
       });

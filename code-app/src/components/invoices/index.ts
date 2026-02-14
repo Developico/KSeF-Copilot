@@ -1,7 +1,6 @@
 export { ClassificationEditDialog } from './classification-edit-dialog'
 export { AttachmentsSection } from './attachments-section'
 export { NotesSection } from './notes-section'
-export { GusLookupDialog } from './gus-lookup-dialog'
 export { SupplierLookupDialog } from './supplier-lookup-dialog'
 export type { SupplierData } from './supplier-lookup-dialog'
 export { NoteTimeline } from './note-timeline'

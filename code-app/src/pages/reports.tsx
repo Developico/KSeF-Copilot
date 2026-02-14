@@ -124,7 +124,7 @@ export function ReportsPage() {
 
   // Fetch invoices for category aggregation (same date range)
   const { data: invoiceData } = useInvoices(
-    { settingId: selectedCompany?.id, ...dateParams, top: 1000 },
+    { settingId: selectedCompany?.id, ...dateParams },
     { enabled: !companyLoading && Boolean(selectedCompany?.id) }
   )
 

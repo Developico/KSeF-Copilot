@@ -209,7 +209,6 @@ export default function InvoicesPage() {
   const [filters, setFilters] = useState<InvoiceListParams>({
     orderBy: 'invoiceDate',
     orderDirection: 'desc',
-    top: 100,
   })
   
   // Description status filter (client-side)

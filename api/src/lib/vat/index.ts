@@ -1,5 +1,5 @@
 /**
- * GUS API module exports
+ * VAT White List API module exports
  */
 
 export * from './types'

@@ -3,10 +3,10 @@ info:
   title: DVLP-KSeF-PP-Connector
   description: >-
     /PL/: Konektor Developico do KSeF API — zarządzanie fakturami,
-    synchronizacja z KSeF, dashboard.
+    synchronizacja z KSeF, dashboard, wyszukiwanie w rejestrze VAT (Biała Lista).
 
     /EN/: Developico Connector for the KSeF API — invoice management,
-    synchronization with KSeF, dashboard.
+    synchronization with KSeF, dashboard, VAT White List (Biała Lista) lookup.
   version: '1.0'
 host: YOUR_FUNCTION_APP.azurewebsites.net
 basePath: /api
@@ -662,6 +662,98 @@ paths:
           description: Forbidden — requires Admin role
         '404':
           description: Invoice not found
+  /vat/lookup:
+    post:
+      operationId: VatLookup
+      summary: VAT White List Lookup
+      description: >-
+        Search for a subject in the White List of VAT Taxpayers (Biała Lista Podatników VAT)
+        by NIP or REGON. Returns company details, VAT status, registered bank accounts.
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              nip:
+                type: string
+                pattern: ^\d{10}$
+                description: NIP (10 cyfr)
+              regon:
+                type: string
+                description: REGON (9 lub 14 cyfr)
+      responses:
+        '200':
+          description: VAT lookup result
+          schema:
+            $ref: '#/definitions/VatLookupResult'
+        '400':
+          description: Invalid NIP/REGON
+          schema:
+            $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Subject not found
+  /vat/validate/{nip}:
+    get:
+      operationId: VatValidate
+      summary: Validate NIP Checksum
+      description: >-
+        Offline NIP validation (checksum algorithm only, no API call).
+        Returns whether the NIP number has a valid checksum.
+      parameters:
+        - name: nip
+          in: path
+          type: string
+          required: true
+          description: NIP do walidacji (10 cyfr)
+      responses:
+        '200':
+          description: NIP validation result
+          schema:
+            $ref: '#/definitions/VatValidateResult'
+  /vat/check-account:
+    post:
+      operationId: VatCheckAccount
+      summary: Check Bank Account in VAT White List
+      description: >-
+        Verify whether a bank account number is registered for a given NIP
+        in the White List of VAT Taxpayers.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - nip
+              - account
+            properties:
+              nip:
+                type: string
+                pattern: ^\d{10}$
+                description: NIP (10 cyfr)
+              account:
+                type: string
+                description: Numer rachunku bankowego (NRB, 26 cyfr)
+      responses:
+        '200':
+          description: Bank account check result
+          schema:
+            $ref: '#/definitions/VatCheckAccountResult'
+        '400':
+          description: Invalid NIP or account number
+          schema:
+            $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
   /ksef/testdata/environments:
     get:
       operationId: GetTestdataEnvironments
@@ -744,6 +836,64 @@ paths:
         '404':
           description: Company not found in settings
 definitions:
+  VatLookupResult:
+    type: object
+    properties:
+      success:
+        type: boolean
+      data:
+        $ref: '#/definitions/VatSubjectData'
+      error:
+        type: string
+  VatSubjectData:
+    type: object
+    properties:
+      name:
+        type: string
+      nip:
+        type: string
+      regon:
+        type: string
+      krs:
+        type: string
+      statusVat:
+        type: string
+        description: Status VAT (Czynny, Zwolniony, Niezarejestrowany)
+      residenceAddress:
+        type: string
+      workingAddress:
+        type: string
+      accountNumbers:
+        type: array
+        items:
+          type: string
+      registrationLegalDate:
+        type: string
+        format: date
+      hasVirtualAccounts:
+        type: boolean
+  VatValidateResult:
+    type: object
+    properties:
+      valid:
+        type: boolean
+      nip:
+        type: string
+      error:
+        type: string
+  VatCheckAccountResult:
+    type: object
+    properties:
+      accountAssigned:
+        type: boolean
+      nip:
+        type: string
+      account:
+        type: string
+      requestId:
+        type: string
+      error:
+        type: string
   DetailedHealth:
     type: object
     properties:

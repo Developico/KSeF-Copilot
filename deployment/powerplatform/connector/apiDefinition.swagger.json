@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "KSeF Integration",
-    "description": "Custom connector for KSeF (Krajowy System e-Faktur) integration. Provides invoice management, KSeF synchronization, AI categorization, and GUS registry lookup.",
+    "description": "Custom connector for KSeF (Krajowy System e-Faktur) integration. Provides invoice management, KSeF synchronization, AI categorization, and VAT White List lookup.",
     "version": "1.0.0",
     "contact": {
       "name": "DVLP Solutions",
@@ -887,11 +887,11 @@
         }
       }
     },
-    "/gus/lookup": {
+    "/vat/lookup": {
       "post": {
-        "operationId": "LookupCompanyByNip",
-        "summary": "GUS lookup by NIP",
-        "description": "Looks up company information from Polish GUS REGON registry by NIP number.",
+        "operationId": "VatLookup",
+        "summary": "VAT White List Lookup",
+        "description": "Search for a subject in the White List of VAT Taxpayers (Bia\u0142a Lista) by NIP or REGON. Returns company details, VAT status, registered bank accounts.",
         "x-ms-visibility": "important",
         "parameters": [
           {
@@ -900,13 +900,17 @@
             "required": true,
             "schema": {
               "type": "object",
-              "required": ["nip"],
               "properties": {
                 "nip": {
                   "type": "string",
                   "pattern": "^\\d{10}$",
-                  "description": "Company NIP (10 digits)",
+                  "description": "NIP (10 digits)",
                   "x-ms-summary": "NIP"
+                },
+                "regon": {
+                  "type": "string",
+                  "description": "REGON (9 or 14 digits)",
+                  "x-ms-summary": "REGON"
                 }
               }
             }
@@ -914,25 +918,25 @@
         ],
         "responses": {
           "200": {
-            "description": "Company data",
+            "description": "VAT lookup result",
             "schema": {
-              "$ref": "#/definitions/GusCompany"
+              "$ref": "#/definitions/VatLookupResult"
             }
           },
           "400": {
-            "description": "Invalid NIP"
+            "description": "Invalid NIP or REGON"
           },
           "404": {
-            "description": "Company not found in GUS"
+            "description": "Subject not found in White List"
           }
         }
       }
     },
-    "/gus/validate/{nip}": {
+    "/vat/validate/{nip}": {
       "get": {
-        "operationId": "ValidateNip",
+        "operationId": "VatValidate",
         "summary": "Validate NIP checksum",
-        "description": "Validates NIP checksum without querying GUS registry.",
+        "description": "Offline NIP validation (checksum algorithm only, no API call).",
         "x-ms-visibility": "advanced",
         "parameters": [
           {
@@ -948,16 +952,50 @@
           "200": {
             "description": "Validation result",
             "schema": {
+              "$ref": "#/definitions/VatValidateResult"
+            }
+          }
+        }
+      }
+    },
+    "/vat/check-account": {
+      "post": {
+        "operationId": "VatCheckAccount",
+        "summary": "Check Bank Account in VAT White List",
+        "description": "Verify whether a bank account number is registered for a given NIP in the White List.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
               "type": "object",
+              "required": ["nip", "account"],
               "properties": {
-                "valid": {
-                  "type": "boolean"
-                },
                 "nip": {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^\\d{10}$",
+                  "description": "NIP (10 digits)",
+                  "x-ms-summary": "NIP"
+                },
+                "account": {
+                  "type": "string",
+                  "description": "Bank account number (NRB, 26 digits)",
+                  "x-ms-summary": "Bank Account"
                 }
               }
             }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bank account check result",
+            "schema": {
+              "$ref": "#/definitions/VatCheckAccountResult"
+            }
+          },
+          "400": {
+            "description": "Invalid NIP or account"
           }
         }
       }
@@ -1687,7 +1725,7 @@
         }
       }
     },
-    "GusCompany": {
+    "VatLookupResult": {
       "type": "object",
       "properties": {
         "success": {
@@ -1696,71 +1734,85 @@
         "data": {
           "type": "object",
           "properties": {
+            "name": {
+              "type": "string",
+              "description": "Company/person name"
+            },
             "nip": {
               "type": "string",
-              "description": "Company NIP"
+              "description": "NIP"
             },
             "regon": {
               "type": "string",
-              "description": "Company REGON"
+              "description": "REGON"
             },
-            "nazwa": {
+            "krs": {
               "type": "string",
-              "description": "Company name"
+              "description": "KRS number"
             },
-            "adres": {
+            "statusVat": {
               "type": "string",
-              "description": "Full address"
+              "description": "VAT status (Czynny, Zwolniony, Niezarejestrowany)"
             },
-            "miejscowosc": {
+            "residenceAddress": {
               "type": "string",
-              "description": "City"
+              "description": "Residence address"
             },
-            "kodPocztowy": {
+            "workingAddress": {
               "type": "string",
-              "description": "Postal code"
+              "description": "Working address"
             },
-            "ulica": {
+            "accountNumbers": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Registered bank accounts"
+            },
+            "registrationLegalDate": {
               "type": "string",
-              "description": "Street"
+              "description": "Registration date"
             },
-            "nrBudynku": {
-              "type": "string",
-              "description": "Building number"
-            },
-            "nrLokalu": {
-              "type": "string",
-              "description": "Unit number"
-            },
-            "email": {
-              "type": "string",
-              "description": "Email address"
-            },
-            "telefon": {
-              "type": "string",
-              "description": "Phone number"
-            },
-            "www": {
-              "type": "string",
-              "description": "Website"
-            },
-            "pkd": {
-              "type": "string",
-              "description": "Main PKD code"
-            },
-            "pkdNazwa": {
-              "type": "string",
-              "description": "PKD description"
-            },
-            "typ": {
-              "type": "string",
-              "description": "Entity type"
-            },
-            "aktywny": {
+            "hasVirtualAccounts": {
               "type": "boolean",
-              "description": "Is company active"
+              "description": "Has virtual accounts"
             }
           }
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "VatValidateResult": {
+      "type": "object",
+      "properties": {
+        "valid": {
+          "type": "boolean"
+        },
+        "nip": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "VatCheckAccountResult": {
+      "type": "object",
+      "properties": {
+        "accountAssigned": {
+          "type": "boolean"
+        },
+        "nip": {
+          "type": "string"
+        },
+        "account": {
+          "type": "string"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
         }
       }
     }

@@ -87,7 +87,7 @@ pnpm run build | pac code push
 To deploy into a **specific solution**:
 
 ```powershell
-pnpm run build | pac code push --solutionName "KSeF"
+pnpm run build | pac code push --solutionName "KSeF Copilot by Developico"
 ```
 
 If successful, the CLI returns a Power Apps URL where you can run the app.

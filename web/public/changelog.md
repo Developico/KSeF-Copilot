@@ -6,6 +6,16 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.7.3] - 2026-02-14
+
+### 🔄 GUS → VAT (Biała Lista) Migration
+
+- **WL VAT API** — replaced GUS SOAP API with free White List VAT REST API (`wl-api.mf.gov.pl`) for supplier verification by NIP
+- **Address parsing** — `parsePolishAddress()` helper in `supplier-lookup-dialog.tsx` splits WL VAT API address string (e.g. `"ul. Kochanowskiego 42, 01-864 WARSZAWA"`) into street, postal code, and city for form auto-fill
+- **VAT Azure Functions endpoints** — 3 new API endpoints deployed: `POST /api/vat/lookup`, `GET /api/vat/validate/{nip}`, `POST /api/vat/check-account`
+
+---
+
 ## [0.7.2] - 2026-02-13
 
 ### 🐛 Poprawki - Formularz skanera AI i podgląd dokumentów

@@ -125,7 +125,7 @@ describe('api client', () => {
       // Verify all top-level groups exist
       expect(api.health).toBeDefined()
       expect(api.healthDetailed).toBeDefined()
-      expect(api.gus).toBeDefined()
+      expect(api.vat).toBeDefined()
       expect(api.dashboard).toBeDefined()
       expect(api.forecast).toBeDefined()
       expect(api.anomalies).toBeDefined()

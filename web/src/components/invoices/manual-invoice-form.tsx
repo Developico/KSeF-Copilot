@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast'
 import { api, queryKeys, ManualInvoiceCreate } from '@/lib/api'
 import { useSelectedCompany } from '@/contexts/company-context'
 import { generatePdfThumbnail, isPdfFile } from '@/lib/pdf-thumbnail'
-import { useGusLookup, validateNipChecksum, formatNipDisplay } from '@/hooks/use-gus-lookup'
+import { useVatLookup, validateNipChecksum, formatNipDisplay } from '@/hooks/use-vat-lookup'
 import { SupplierLookupDialog, SupplierData } from './supplier-lookup-dialog'
 import { 
   FileText, 
@@ -146,9 +146,9 @@ export function ManualInvoiceForm() {
   const [invoiceDocument, setInvoiceDocument] = useState<FileAttachment | null>(null)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
   
-  // GUS lookup state
+  // VAT lookup state
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false)
-  const [gusDataLoaded, setGusDataLoaded] = useState(false)
+  const [vatDataLoaded, setVatDataLoaded] = useState(false)
   
   // Category combobox state
   const [categoryOpen, setCategoryOpen] = useState(false)
@@ -158,34 +158,32 @@ export function ManualInvoiceForm() {
   // All available categories (default + custom)
   const allCategories = [...DEFAULT_CATEGORIES, ...customCategories]
   
-  // GUS lookup hook
+  // VAT lookup hook
   const {
-    lookup: gusLookup,
-    data: gusData,
-    isLoading: isGusLoading,
-    error: gusError,
-    isSuccess: isGusSuccess,
-    clear: clearGus,
-    validateNip,
-  } = useGusLookup({
-    autoLookup: false, // We'll trigger manually
+    lookup: vatLookup,
+    data: vatData,
+    isLoading: isVatLoading,
+    error: vatError,
+    isSuccess: isVatSuccess,
+    clear: clearVat,
+  } = useVatLookup({
     onSuccess: (data) => {
-      // Auto-fill supplier name from GUS data
+      // Auto-fill supplier name from VAT data
       setFormData(prev => ({
         ...prev,
-        supplierName: data.nazwa,
+        supplierName: data.name,
       }))
-      setGusDataLoaded(true)
+      setVatDataLoaded(true)
       setErrors(prev => ({ ...prev, supplierName: undefined }))
       toast({
-        title: t('manualForm.gusDataFetched'),
-        description: t('manualForm.gusFound', { name: data.nazwa }),
+        title: t('manualForm.vatDataFetched'),
+        description: t('manualForm.vatFound', { name: data.name }),
       })
     },
     onError: (error) => {
-      setGusDataLoaded(false)
+      setVatDataLoaded(false)
       toast({
-        title: t('manualForm.gusSearchError'),
+        title: t('manualForm.vatSearchError'),
         description: error,
         variant: 'destructive',
       })
@@ -202,7 +200,7 @@ export function ManualInvoiceForm() {
       supplierCity: supplier.city || '',
       supplierPostalCode: supplier.postalCode || '',
     }))
-    setGusDataLoaded(true)
+    setVatDataLoaded(true)
     setErrors(prev => ({ 
       ...prev, 
       supplierNip: undefined, 
@@ -214,8 +212,8 @@ export function ManualInvoiceForm() {
   const handleNipChange = useCallback((value: string) => {
     const cleanNip = value.replace(/\D/g, '').slice(0, 10)
     setFormData(prev => ({ ...prev, supplierNip: cleanNip }))
-    setGusDataLoaded(false)
-    clearGus()
+    setVatDataLoaded(false)
+    clearVat()
     
     // Clear error on change
     if (errors.supplierNip) {
@@ -224,19 +222,19 @@ export function ManualInvoiceForm() {
     
     // Validate NIP when 10 digits
     if (cleanNip.length === 10) {
-      const validation = validateNip(cleanNip)
+      const validation = validateNipChecksum(cleanNip)
       if (!validation.valid && validation.error) {
         setErrors(prev => ({ ...prev, supplierNip: validation.error }))
       }
     }
-  }, [errors.supplierNip, validateNip, clearGus])
+  }, [errors.supplierNip, clearVat])
 
-  // Trigger GUS lookup
-  const handleGusLookup = useCallback(() => {
+  // Trigger VAT lookup
+  const handleVatLookup = useCallback(() => {
     if (formData.supplierNip.length === 10) {
-      gusLookup(formData.supplierNip)
+      vatLookup({ nip: formData.supplierNip })
     }
-  }, [formData.supplierNip, gusLookup])
+  }, [formData.supplierNip, vatLookup])
 
   // Sync form with selected company from context
   useEffect(() => {
