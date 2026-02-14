@@ -12,7 +12,7 @@
   - [Attachments](#attachments)
   - [AI Categorization](#ai-categorization)
   - [Dashboard & Analytics](#dashboard--analytics)
-  - [GUS Integration](#gus-integration)
+  - [WL VAT API (White List)](#wl-vat-api-white-list)
   - [Document Processing](#document-processing)
 - [Error Handling](#error-handling)
 - [Rate Limits](#rate-limits)
@@ -766,12 +766,16 @@ Get dashboard statistics.
 
 ---
 
-### GUS Integration
+### WL VAT API (White List)
 
-#### POST /api/gus/lookup
-Look up company by NIP in GUS (Polish business registry).
+VAT taxpayer verification using the White List of VAT Taxpayers (KAS).  
+**Source API**: `https://wl-api.mf.gov.pl` | **Authentication**: public (no API key)  
+**Limits**: 100 search queries/day, 5000 check queries/day
 
-**Auth**: User
+#### POST /api/vat/lookup
+Look up company by NIP or REGON in the VAT White List.
+
+**Auth**: Reader
 
 **Request Body**:
 ```json
@@ -779,56 +783,68 @@ Look up company by NIP in GUS (Polish business registry).
   "nip": "1234567890"
 }
 ```
-
-**Response** (200):
+or:
 ```json
 {
-  "nip": "1234567890",
-  "name": "Company Name Sp. z o.o.",
-  "address": "ul. Example 1, 00-000 Warsaw",
-  "status": "active",
   "regon": "123456789"
 }
 ```
 
-#### POST /api/gus/search
-Search companies by name.
-
-**Auth**: User
-
-**Request Body**:
-```json
-{
-  "query": "Microsoft"
-}
-```
-
 **Response** (200):
 ```json
 {
-  "results": [
-    {
-      "nip": "1234567890",
-      "name": "Microsoft Sp. z o.o.",
-      "regon": "123456789"
-    }
-  ]
+  "subject": {
+    "name": "EXAMPLE SP. Z O.O.",
+    "nip": "1234567890",
+    "regon": "123456789",
+    "statusVat": "Czynny",
+    "krs": "0000123456",
+    "workingAddress": "ul. Przykładowa 1, 00-000 Warszawa",
+    "accountNumbers": ["PL12345678901234567890123456"]
+  },
+  "requestId": "abc-123"
 }
 ```
 
-#### GET /api/gus/validate/{nip}
-Validate NIP format and existence.
+**Errors**: `400` — invalid NIP/REGON format, `404` — not found in registry
 
-**Auth**: User
+#### GET /api/vat/validate/{nip}
+Offline NIP checksum validation (no external API call).
+
+**Auth**: none
 
 **Response** (200):
 ```json
 {
   "nip": "1234567890",
-  "valid": true,
-  "exists": true
+  "valid": true
 }
 ```
+
+#### POST /api/vat/check-account
+Verify bank account number against the VAT White List.
+
+**Auth**: Reader
+
+**Request Body**:
+```json
+{
+  "nip": "1234567890",
+  "accountNumber": "PL12345678901234567890123456"
+}
+```
+
+**Response** (200):
+```json
+{
+  "nip": "1234567890",
+  "accountNumber": "PL12345678901234567890123456",
+  "registered": true,
+  "requestId": "xyz-789"
+}
+```
+
+**Errors**: `400` — invalid NIP or account number format
 
 ---
 

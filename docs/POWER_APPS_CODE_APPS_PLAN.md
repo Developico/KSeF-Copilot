@@ -96,7 +96,7 @@ Power Apps Code Apps to nowa usługa (preview) pozwalająca deweloperom budować
 │   react-pdf          │     │  - attachments         │
 │                      │     │  - health              │
 │   Port: 8080         │     │  - exchange-rates      │
-│   Node.js 22         │     │  - gus (REGON)         │
+│   Node.js 22         │     │  - vat (Biała Lista)   │
 │   Linux              │     │  - anomalies           │
 └──────────────────────┘     │  ...                   │
          │                   │                        │
@@ -129,7 +129,7 @@ Power Apps Code Apps to nowa usługa (preview) pozwalająca deweloperom budować
 | **State** | TanStack Query | Cache, mutations |
 | **i18n** | next-intl | PL/EN |
 | **PDF** | react-pdf, react-medium-image-zoom | Podgląd dokumentów |
-| **API backend** | Azure Functions (24 funkcje) | Dataverse, KSeF, AI, GUS |
+| **API backend** | Azure Functions (24 funkcje) | Dataverse, KSeF, AI, WL VAT |
 
 ---
 
@@ -166,11 +166,11 @@ Power Apps Code Apps to nowa usługa (preview) pozwalająca deweloperom budować
 
 | Element WEB | Problem | Rozwiązanie Code Apps |
 |---|---|---|
-| **Azure Functions API (24 funkcje)** | Backend logika — KSeF, AI, GUS | Custom Connector + Power Automate lub utrzymanie Functions |
+| **Azure Functions API (24 funkcje)** | Backend logika — KSeF, AI, WL VAT | Custom Connector + Power Automate lub utrzymanie Functions |
 | **KSeF API integration** | Złożona logika sesji, tokenów, XML | Custom Connector do KSeF API (lub HTTP connector) |
 | **AI Categorization (OpenAI)** | Wymaga server-side secrets | AI Builder / Custom Connector do Azure OpenAI |
 | **Dataverse direct access** | Web API via Functions | Natywny Dataverse connector w Code Apps (SDK) |
-| **GUS/REGON lookup** | Zewnętrzne API gov.pl | Custom Connector |
+| **WL VAT lookup** | Publiczne API KAS (Biała Lista) | Custom Connector |
 | **PDF generation/thumbnails** | Server-side processing | Power Automate flow lub Custom Connector |
 | **Exchange rates (NBP)** | Zewnętrzne API NBP | HTTP connector lub Custom Connector |
 | **Key Vault secrets** | Server-side only | Zarządzane przez Power Platform (connection auth) |
@@ -241,7 +241,7 @@ Power Apps Code Apps to nowa usługa (preview) pozwalająca deweloperom budować
 |---|---|---|---|
 | R5 | **Brak SSR** | Wolniejszy initial load dla LOB app | Akceptowalne — SPA z code splitting |
 | R6 | **i18n migration** | next-intl → react-intl/i18next | Jednorazowy wysiłek |
-| R7 | **Custom Connectors** | Trzeba utworzyć connectors dla KSeF API, GUS REGON, NBP | Czas na konfigurację i testowanie |
+| R7 | **Custom Connectors** | Trzeba utworzyć connectors dla KSeF API, WL VAT, NBP | Czas na konfigurację i testowanie |
 | R8 | **Brak Power Platform Git integration** | Code Apps nie wspierają PP Git integration | Standardowy Git repo jako source of truth |
 | R9 | **System limits** | Nieznane limity na rozmiar app, liczbę connectorów | Testować w POC |
 
@@ -291,7 +291,7 @@ Power Apps Code Apps to nowa usługa (preview) pozwalająca deweloperom budować
 
 ### Faza 2: Custom Connectors (2-3 tygodnie)
 
-**Cel:** Podłączenie zewnętrznych API (KSeF, GUS, NBP) jako Custom Connectors.
+**Cel:** Podłączenie zewnętrznych API (KSeF, WL VAT, NBP) jako Custom Connectors.
 
 | Krok | Opis |
 |---|---|
@@ -302,14 +302,14 @@ Power Apps Code Apps to nowa usługa (preview) pozwalająca deweloperom budować
 | 2.5 | **Alternatywa:** Utrzymanie bezpośredniego HTTP fetch do Functions z użyciem HTTP connector |
 | 2.6 | Test: wywołanie endpointów dashboard, invoices, settings z Code App |
 | 2.7 | **Custom Connector — KSeF API** (jeśli bezpośredni dostęp zamiast via Functions) |
-| 2.8 | **Custom Connector — GUS REGON** |
+| 2.8 | **Custom Connector — WL VAT (Biała Lista)** |
 | 2.9 | **Custom Connector — NBP exchange rates** |
 
 **Decyzja architektoniczna:**
 
 Opcja A — **Thin Custom Connector** (rekomendowana):
 ```
-Code App → Custom Connector → Azure Functions → [Dataverse | KSeF | AI | GUS]
+Code App → Custom Connector → Azure Functions → [Dataverse | KSeF | AI | WL VAT]
 ```
 - Minimalna zmiana backendu
 - Functions endpoint jako Custom Connector z OpenAPI spec
@@ -318,10 +318,10 @@ Code App → Custom Connector → Azure Functions → [Dataverse | KSeF | AI | G
 Opcja B — **Native Connectors + Functions hybrid:**
 ```
 Code App → Dataverse connector (bezpośrednio)
-Code App → Custom Connector → Functions (tylko KSeF, AI, GUS)
+Code App → Custom Connector → Functions (tylko KSeF, AI, WL VAT)
 ```
 - Dataverse CRUD bezpośrednio z SDK (eliminacja ~8 Functions: invoices, settings, sessions, dashboard, attachments, notes)
-- Functions tylko dla złożonej logiki (ksef-sync, ai-categorize, gus, forecast, anomalies)
+- Functions tylko dla złożonej logiki (ksef-sync, ai-categorize, vat, forecast, anomalies)
 
 ### Faza 3: Migracja UI (3-4 tygodnie)
 
@@ -435,7 +435,7 @@ Code App → Custom Connector → Functions (tylko KSeF, AI, GUS)
 
 ### Co zachować niezależnie od decyzji
 
-1. **Azure Functions API** — złożona logika KSeF, AI, GUS nie przenosi się na connectors
+1. **Azure Functions API** — złożona logika KSeF, AI, WL VAT nie przenosi się na connectors
 2. **Dataverse schema** — identyczne tabele niezależnie od frontendu
 3. **Testy** — vitest testy komponentów można zachować (Vite)
 
@@ -464,6 +464,6 @@ Code App → Custom Connector → Functions (tylko KSeF, AI, GUS)
 ---
 
 **Autor:** dvlp-dev team  
-**Status:** Plan — do decyzji  
-**Następny review:** Po GA Power Apps Code Apps
+**Status:** Fazy 0-4 zrealizowane — Code App wdrożony jako POC z pełnym Custom Connector  
+**Ostatnia aktualizacja:** 2026-02-14
 

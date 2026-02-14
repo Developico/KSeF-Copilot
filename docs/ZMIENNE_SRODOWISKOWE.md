@@ -94,6 +94,15 @@ Key Vault przechowuje następujące sekrety:
 
 > Endpoint i API Key pobierane z Key Vault w runtime — **NIE** ustawiaj ich jako App Settings.
 
+### WL VAT API (Biała Lista)
+
+| Zmienna | Wymagana | Przykład | Opis |
+|---------|----------|---------|------|
+| `WL_VAT_API_URL` | ❌ | `https://wl-api.mf.gov.pl` | URL API Białej Listy (domyślnie produkcja) |
+
+> API publiczne — nie wymaga klucza. Limit: 100 zapytań search/dzień, 5000 check/dzień.  
+> Do testów użyj `https://wl-test.mf.gov.pl`.
+
 ### Grupy bezpieczeństwa
 
 | Zmienna | Wymagana | Przykład | Opis |
@@ -173,6 +182,29 @@ Pliki konfiguracyjne: `web/.env.local` (dev), `web/.env.production` (produkcja)
 | `SCM_DO_BUILD_DURING_DEPLOYMENT` | `false` | Wyłączenie Oryx build |
 | `ENABLE_ORYX_BUILD` | `false` | Dodatkowe wyłączenie Oryx |
 | `WEBSITE_RUN_FROM_PACKAGE` | `1` | ⚡ **KRYTYCZNE** — montowanie ZIP jako filesystem |
+
+---
+
+## Code App — Power Platform (Vite + React SPA)
+
+Zmienne konfigurowane w `code-app/.env` (dev) lub Power Platform environment settings.
+
+### Autentykacja (MSAL — tryb standalone)
+
+| Zmienna | Wymagana | Przykład | Opis |
+|---------|----------|---------|------|
+| `VITE_AZURE_CLIENT_ID` | ✅ | `3d2a67c9-...` | Client ID app registration |
+| `VITE_AZURE_TENANT_ID` | ✅ | `d73b061d-...` | Tenant ID |
+| `VITE_AZURE_REDIRECT_URI` | ❌ | `http://localhost:5173` | Redirect URI (standalone dev) |
+
+### API
+
+| Zmienna | Wymagana | Przykład | Opis |
+|---------|----------|---------|------|
+| `VITE_API_URL` | ✅ | `http://localhost:7071/api` | URL bazowy Azure Functions API |
+| `VITE_API_SCOPE` | ❌ | `api://3d2a67c9-.../access_as_user` | Scope tokenu MSAL (standalone) |
+
+> W trybie Power Apps managed auth: zmienne `VITE_AZURE_*` nie są wymagane — autentykacja jest zarządzana przez host.
 
 ---
 
@@ -337,6 +369,6 @@ az webapp config appsettings set \
 
 ---
 
-**Ostatnia aktualizacja:** 2026-02-11  
-**Wersja:** 1.0  
+**Ostatnia aktualizacja:** 2026-02-14  
+**Wersja:** 2.0  
 **Opiekun:** dvlp-dev team

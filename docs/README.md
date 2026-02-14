@@ -2,8 +2,8 @@
 
 > Przewodnik po dokumentacji integracji z Krajowym Systemem e-Faktur (KSeF)
 
-**Ostatnia aktualizacja:** 2026-02-11  
-**Wersja dokumentacji:** 2.0
+**Ostatnia aktualizacja:** 2026-02-14  
+**Wersja dokumentacji:** 3.0
 
 ---
 
@@ -49,6 +49,8 @@ Zalecana ścieżka czytania:
 | [Tokeny KSeF](./TOKEN_SETUP_GUIDE.md) | Zarządzanie tokenami KSeF, diagnostyka, Key Vault |
 | [AI Kategoryzacja](./AI_CATEGORIZATION_SETUP.md) | Konfiguracja Azure OpenAI dla kategoryzacji faktur |
 | [Custom Connector](./POWER_PLATFORM_CUSTOM_CONNECTOR.md) | Konfiguracja Custom Connector w Power Platform |
+| [Code Apps — plan i wdrożenie](./POWER_APPS_CODE_APPS_PLAN.md) | Analiza, fazy wdrożenia, Code App (Vite + React) na Power Platform |
+| [Code Apps — wdrożenie](./CODE_APPS_WDROZENIE.md) | Instrukcja wdrożenia Code App (`pac code push`) |
 
 ### Wdrożenie
 
@@ -92,7 +94,7 @@ Zalecana ścieżka czytania:
 - **Język główny:** polski 🇵🇱
 - **Wersje EN:** dostępne w folderze `docs/en/` (nice-to-have)
 - **Format:** Markdown (`.md`)
-- **Diagramy:** ASCII art w blokach kodu
+- **Diagramy:** Mermaid (w blokach ` ```mermaid `)
 - **Metadane:** każdy dokument zawiera datę aktualizacji na końcu
 
 ---

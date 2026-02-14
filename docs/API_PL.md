@@ -12,7 +12,7 @@
   - [Załączniki](#załączniki)
   - [Kategoryzacja AI](#kategoryzacja-ai)
   - [Dashboard i analityka](#dashboard-i-analityka)
-  - [Integracja GUS](#integracja-gus)
+  - [Wyszukiwanie WL VAT (Biała Lista)](#wyszukiwanie-wl-vat-biała-lista)
   - [Przetwarzanie dokumentów](#przetwarzanie-dokumentów)
 - [Obsługa błędów](#obsługa-błędów)
 - [Limity zapytań](#limity-zapytań)
@@ -766,10 +766,13 @@ Pobranie statystyk dashboardu.
 
 ---
 
-### Integracja GUS
+### Wyszukiwanie WL VAT (Biała Lista)
 
-#### POST /api/gus/lookup
-Wyszukanie firmy po NIP w rejestrze GUS.
+Endpointy do weryfikacji podmiotów w rejestrze Białej Listy Podatników VAT (API KAS — `wl-api.mf.gov.pl`).  
+API publiczne — nie wymaga klucza. Limity: 100 wyszukiwań/dzień, 5000 weryfikacji/dzień.
+
+#### POST /api/vat/lookup
+Wyszukanie podmiotu po NIP lub REGON w Białej Liście.
 
 **Autentykacja**: User
 
@@ -780,53 +783,84 @@ Wyszukanie firmy po NIP w rejestrze GUS.
 }
 ```
 
-**Odpowiedź** (200):
+lub:
+
 ```json
 {
-  "nip": "1234567890",
-  "name": "Firma Sp. z o.o.",
-  "address": "ul. Przykładowa 1, 00-000 Warszawa",
-  "status": "active",
   "regon": "123456789"
 }
 ```
 
-#### POST /api/gus/search
-Wyszukanie firm po nazwie.
+> Dokładnie jedno z pól `nip` / `regon` jest wymagane.
+
+**Odpowiedź** (200):
+```json
+{
+  "success": true,
+  "data": {
+    "name": "Firma Sp. z o.o.",
+    "nip": "1234567890",
+    "regon": "123456789",
+    "krs": "0000123456",
+    "statusVat": "Czynny",
+    "residenceAddress": "ul. Przykładowa 1, 00-000 Warszawa",
+    "workingAddress": "ul. Biurowa 5, 00-001 Warszawa",
+    "accountNumbers": [
+      "PL12345678901234567890123456"
+    ],
+    "registrationLegalDate": "2020-01-15",
+    "hasVirtualAccounts": false
+  }
+}
+```
+
+**Błędy**:
+- `400`: Nieprawidłowy NIP/REGON (walidacja Zod + checksum)
+- `404`: Podmiot nie znaleziony w Białej Liście
+
+#### GET /api/vat/validate/{nip}
+Walidacja sumy kontrolnej NIP (offline, bez wywołania API).
+
+**Autentykacja**: Nie wymagana
+
+**Odpowiedź** (200):
+```json
+{
+  "valid": true,
+  "nip": "1234567890"
+}
+```
+
+lub:
+
+```json
+{
+  "valid": false,
+  "nip": "1234567891",
+  "error": "Invalid NIP checksum"
+}
+```
+
+#### POST /api/vat/check-account
+Weryfikacja czy rachunek bankowy jest zarejestrowany dla danego NIP w Białej Liście.
 
 **Autentykacja**: User
 
 **Treść żądania**:
 ```json
 {
-  "query": "Microsoft"
-}
-```
-
-**Odpowiedź** (200):
-```json
-{
-  "results": [
-    {
-      "nip": "1234567890",
-      "name": "Microsoft Sp. z o.o.",
-      "regon": "123456789"
-    }
-  ]
-}
-```
-
-#### GET /api/gus/validate/{nip}
-Walidacja formatu i istnienia NIP.
-
-**Autentykacja**: User
-
-**Odpowiedź** (200):
-```json
-{
   "nip": "1234567890",
-  "valid": true,
-  "exists": true
+  "account": "PL12345678901234567890123456"
+}
+```
+
+**Odpowiedź** (200):
+```json
+{
+  "accountAssigned": true,
+  "nip": "1234567890",
+  "account": "PL12345678901234567890123456",
+  "requestId": "abc-123-def"
 }
 ```
 
@@ -930,6 +964,6 @@ Wszystkie endpointy mają prefix `/api/`. Przyszłe wersje będą używać `/api
 
 ---
 
-**Ostatnia aktualizacja:** 2026-02-11  
-**Wersja:** 2.0  
+**Ostatnia aktualizacja:** 2026-02-14  
+**Wersja:** 3.0  
 **Opiekun:** dvlp-dev team

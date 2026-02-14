@@ -19,7 +19,8 @@
 
 ### Kluczowe zasady architektoniczne
 - **Serverless-First**: Azure Functions (Flex Consumption) dla compute, Azure Storage dla persystencji
-- **API-Driven**: RESTful API z 62 endpointami (21 modułów)
+- **API-Driven**: RESTful API z 65+ endpointami (22 moduły)
+- **Dual Frontend**: Web (Next.js 15) + Power Apps Code App (Vite + React SPA)
 - **Security by Design**: Zero-trust z autentykacją Entra ID, walidacją JWT, RBAC
 - **Cloud-Native**: Usługi PaaS (Functions, Dataverse, Key Vault, OpenAI)
 - **Separation of Concerns**: Jasny podział między API, frontend i integracje zewnętrzne
@@ -31,62 +32,38 @@
 
 ### Architektura wysokopoziomowa
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│                     Użytkownicy (przeglądarki)                     │
-└────────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-┌────────────────────────────────────────────────────────────────────┐
-│                Azure Entra ID (Autentykacja)                       │
-│            Wydawanie tokenów JWT + grupy RBAC                      │
-└────────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-┌────────────────────────────────────────────────────────────────────┐
-│          Azure App Service (Next.js 15 Frontend — standalone)      │
-│    • Dashboard UI                                                  │
-│    • Zarządzanie fakturami                                         │
-│    • Ustawienia i konfiguracja                                     │
-│    • Renderowanie UI oparte na rolach                              │
-└────────────────────────────────────────────────────────────────────┘
-                               │
-                          HTTPS/REST
-                               ▼
-┌────────────────────────────────────────────────────────────────────┐
-│       Azure Functions v4 — Flex Consumption (Node.js 22 API)       │
-│                                                                    │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐            │
-│  │   Auth       │  │   KSeF       │  │  Dataverse   │            │
-│  │   Middleware  │  │   Client     │  │  Services    │            │
-│  └──────────────┘  └──────────────┘  └──────────────┘            │
-│                                                                    │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐            │
-│  │   AI         │  │   GUS        │  │  Kursy walut │            │
-│  │   Service    │  │   Client     │  │  (NBP)       │            │
-│  └──────────────┘  └──────────────┘  └──────────────┘            │
-└────────────────────────────────────────────────────────────────────┘
-         │                  │                  │
-         ▼                  ▼                  ▼
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│   Azure      │  │     KSeF     │  │  Microsoft   │
-│   OpenAI     │  │   API v2     │  │  Dataverse   │
-│  (GPT-4o)    │  │ (MF.gov.pl)  │  │  (CRM/DB)    │
-└──────────────┘  └──────────────┘  └──────────────┘
-                        │
-                        ▼
-                 ┌──────────────┐
-                 │ Azure Key    │
-                 │ Vault        │
-                 │ (tokeny KSeF)│
-                 └──────────────┘
+```mermaid
+graph TB
+    Users["Użytkownicy (przeglądarki)"] --> EntraID["Azure Entra ID<br/>Wydawanie tokenów JWT + grupy RBAC"]
+    EntraID --> WebApp["Azure App Service<br/>Next.js 15 Frontend — standalone"]
+    EntraID --> CodeApp["Power Apps Code App<br/>Vite + React SPA"]
+    
+    WebApp -->|HTTPS/REST| API["Azure Functions v4<br/>Flex Consumption — Node.js 22 API"]
+    CodeApp -->|Custom Connector<br/>lub HTTPS/REST| API
+
+    subgraph API_Modules["Moduły API"]
+        Auth["Auth Middleware"]
+        KSeFClient["KSeF Client"]
+        DVServices["Dataverse Services"]
+        AIService["AI Service"]
+        VATClient["WL VAT Client<br/>(Biała Lista)"]
+        NBP["Kursy walut (NBP)"]
+    end
+
+    API --> API_Modules
+    Auth --> EntraID
+    AIService --> OpenAI["Azure OpenAI<br/>GPT-4o-mini"]
+    KSeFClient --> KSeF["KSeF API v2<br/>MF.gov.pl"]
+    DVServices --> Dataverse["Microsoft Dataverse<br/>CRM / DB"]
+    VATClient --> WLAPI["WL VAT API<br/>KAS — Biała Lista"]
+    KSeFClient --> KeyVault["Azure Key Vault<br/>Tokeny KSeF"]
 ```
 
 ---
 
 ## Projekt komponentów
 
-### 1. Warstwa frontendowa (web/)
+### 1a. Warstwa frontendowa — Web (web/)
 
 **Technologia**: Next.js 15 z App Router, React 19, TypeScript 5.7  
 **Wdrożenie**: Azure App Service (tryb standalone)
@@ -126,6 +103,64 @@ web/
 
 ---
 
+### 1b. Warstwa frontendowa — Code App (code-app/)
+
+**Technologia**: Vite + React 19, TypeScript, TanStack Query  
+**Wdrożenie**: Power Platform (`pac code push`)
+
+**Struktura**:
+```
+code-app/
+├── src/
+│   ├── pages/              # Strony SPA (React Router)
+│   │   ├── dashboard.tsx   # Dashboard z animowanymi KPI
+│   │   ├── invoices.tsx    # Lista faktur z filtrami
+│   │   ├── invoice-detail  # Szczegóły faktury
+│   │   ├── manual-invoice  # Ręczne tworzenie faktury
+│   │   ├── sync.tsx        # Synchronizacja KSeF
+│   │   ├── settings.tsx    # Ustawienia
+│   │   ├── forecast.tsx    # Prognoza wydatków
+│   │   └── reports.tsx     # Raporty
+│   ├── components/         # Komponenty React
+│   │   ├── ui/            # shadcn/ui
+│   │   ├── invoices/      # Komponenty faktur
+│   │   ├── dashboard/     # Widgety KPI
+│   │   ├── auth/          # Auth Provider (MSAL / Power Apps)
+│   │   ├── layout/        # Sidebar, header, changelog
+│   │   └── health/        # System status badge
+│   ├── lib/
+│   │   ├── api.ts         # Klient API (bezpośredni fetch + MSAL)
+│   │   ├── api-connector.ts # Adapter Power Apps Custom Connector
+│   │   ├── nip-utils.ts   # Walidacja NIP (checksum offline)
+│   │   ├── export.ts      # Eksport CSV/PDF
+│   │   └── power-apps-host.ts # Detekcja kontekstu Power Apps
+│   ├── generated/         # Auto-generowane modele i serwisy connectora
+│   └── messages/          # i18n (PL/EN)
+├── power.config.json      # Metadane Power Apps SDK
+└── vite.config.ts         # Vite + powerApps() plugin
+```
+
+**Kluczowe cechy**:
+- **Dual-mode auth**: MSAL standalone + Power Apps managed auth
+- **Custom Connector**: Routing API przez Power Platform connector (lazy loading)
+- **Parytet z webem**: Dashboard KPI, overdue badges, edycja kursu walut, AI trigger
+- Responsywny design z Tailwind CSS + shadcn/ui
+- TanStack Query do cache i mutacji
+- i18n (PL/EN) przez `react-intl`
+
+**Architektura routingu API**:
+
+```mermaid
+graph LR
+    CodeApp["Code App"] --> Detect{"Kontekst?"}
+    Detect -->|Power Apps| Connector["Custom Connector<br/>SDK generated"]
+    Detect -->|Standalone| DirectFetch["Direct fetch<br/>+ MSAL token"]
+    Connector --> API["Azure Functions API"]
+    DirectFetch --> API
+```
+
+---
+
 ### 2. Warstwa API (api/)
 
 **Technologia**: Azure Functions v4 (Flex Consumption), Node.js 22, TypeScript 5.7
@@ -144,7 +179,7 @@ api/
 │   │   ├── attachments.ts     # Załączniki plików
 │   │   ├── ai-categorize.ts   # Kategoryzacja AI
 │   │   ├── dashboard.ts       # Analityka
-│   │   ├── gus.ts             # Integracja GUS
+│   │   ├── vat.ts             # Integracja WL VAT (Biała Lista)
 │   │   ├── exchange-rates.ts  # Kursy walut NBP
 │   │   └── documents.ts       # Przetwarzanie dokumentów
 │   │
@@ -162,8 +197,10 @@ api/
 │       │   └── parser.ts      # Parsowanie XML
 │       ├── ai/                # Usługi AI
 │       │   └── categorizer.ts # Kategoryzacja OpenAI
-│       ├── gus/               # Klient API GUS
-│       │   └── client.ts      # Wyszukiwanie firm
+│       ├── vat/               # Klient API Biała Lista VAT
+│       │   ├── client.ts      # Wyszukiwanie firm (NIP/REGON)
+│       │   ├── types.ts       # Typy API WL VAT
+│       │   └── index.ts       # Eksport publiczny
 │       ├── prompts/           # Szablony promptów AI (.prompt.md)
 │       └── storage/           # Azure Storage
 │           └── blobs.ts       # Operacje na blobachach
@@ -183,21 +220,22 @@ api/
 ### 3. Autentykacja i autoryzacja
 
 **Przepływ**:
-```
-1. Użytkownik autentykuje się przez Azure Entra ID (OAuth 2.0 / OIDC)
-   ↓
-2. Entra ID wydaje JWT z claims użytkownika + grupami bezpieczeństwa
-   ↓
-3. Frontend (MSAL) przechowuje JWT w sessionStorage
-   ↓
-4. Frontend wysyła JWT w nagłówku Authorization do API
-   ↓
-5. Middleware API waliduje JWT:
-   - Weryfikuje podpis kryptograficznie (JWKS z Entra ID)
-   - Sprawdza issuer, audience, czas wygaśnięcia
-   - Mapuje grupy bezpieczeństwa na role (Admin/User)
-   ↓
-6. API przyznaje/odmawia dostępu na podstawie wymaganej roli
+
+```mermaid
+sequenceDiagram
+    actor U as Użytkownik
+    participant FE as Frontend (MSAL)
+    participant Entra as Azure Entra ID
+    participant API as API Middleware
+
+    U->>FE: Logowanie
+    FE->>Entra: OAuth 2.0 / OIDC
+    Entra-->>FE: JWT (claims + grupy)
+    FE->>FE: Przechowaj JWT (sessionStorage)
+    FE->>API: Authorization: Bearer JWT
+    API->>API: Walidacja JWKS, issuer, audience
+    API->>API: Mapowanie grup → Admin/User
+    API-->>FE: Dostęp przyznany/odmowa
 ```
 
 **Mapowanie grup bezpieczeństwa → ról**:
@@ -274,10 +312,18 @@ Kategoryzacja faktur z użyciem AI.
 
 > Szczegóły konfiguracji: [AI Kategoryzacja](./AI_CATEGORIZATION_SETUP.md)
 
-#### GUS API (REGON/NIP)
-Weryfikacja podmiotów w rejestrze GUS.
+#### WL VAT API — Biała Lista Podatników VAT (KAS)
+Weryfikacja podmiotów w rejestrze Białej Listy VAT prowadzonym przez Krajową Administrację Skarbową.
 
-**Możliwości**: Walidacja NIP, wyszukiwanie firm, pobieranie adresów i REGON.
+**API**: `https://wl-api.mf.gov.pl` (produkcja) | `https://wl-test.mf.gov.pl` (test)  
+**Autentykacja**: Brak — API publiczne, bez klucza  
+**Limity**: 100 zapytań wyszukiwania/dzień, 5000 zapytań weryfikacji/dzień
+
+**Możliwości**:
+- Wyszukiwanie po NIP lub REGON — dane firmy, status VAT, adresy
+- Walidacja NIP (algorytm checksum, offline)
+- Weryfikacja rachunku bankowego w Białej Liście
+- Pobieranie zarejestrowanych rachunków bankowych
 
 #### NBP API
 Pobieranie kursów walut z Narodowego Banku Polskiego.
@@ -288,79 +334,72 @@ Pobieranie kursów walut z Narodowego Banku Polskiego.
 
 ### Synchronizacja faktur
 
-```
-1. Użytkownik uruchamia sync (POST /api/ksef/sync)
-   ↓
-2. API pobiera ustawienie (tenant) z Dataverse
-   ↓
-3. API pobiera token KSeF z Azure Key Vault
-   ↓
-4. API inicjalizuje sesję KSeF (jeśli nieaktywna)
-   ↓
-5. API odpytuje KSeF o faktury (zakres dat)
-   ↓
-6. Dla każdej faktury:
-   a. Sprawdź czy już istnieje w Dataverse (po referenceNumber)
-   b. Jeśli nowa:
-      - Parsuj XML
-      - Utwórz rekord InvoiceEntity w Dataverse
-      - Wyzwól kategoryzację AI (jeśli włączona)
-   ↓
-7. Utwórz rekord SyncLogEntity ze statystykami
-   ↓
-8. Zwróć podsumowanie synchronizacji
+```mermaid
+sequenceDiagram
+    actor U as Użytkownik
+    participant API as Azure Functions
+    participant DV as Dataverse
+    participant KV as Key Vault
+    participant KSeF as KSeF API
+    participant AI as Azure OpenAI
+
+    U->>API: POST /api/ksef/sync
+    API->>DV: Pobierz ustawienie (tenant)
+    API->>KV: Pobierz token KSeF
+    API->>KSeF: Inicjalizuj sesję (jeśli nieaktywna)
+    API->>KSeF: Zapytanie o faktury (zakres dat)
+    loop Każda faktura
+        API->>DV: Sprawdź duplikat (referenceNumber)
+        alt Nowa faktura
+            API->>DV: Utwórz InvoiceEntity
+            opt AI włączone
+                API->>AI: Kategoryzacja
+            end
+        end
+    end
+    API->>DV: Utwórz SyncLogEntity
+    API-->>U: Podsumowanie synchronizacji
 ```
 
 ### Kategoryzacja AI
 
-```
-1. Użytkownik wyzwala kategoryzację (POST /api/ai/categorize)
-   ↓
-2. API pobiera fakturę z Dataverse
-   ↓
-3. API konstruuje prompt z danymi faktury + centrami kosztów
-   ↓
-4. API wywołuje Azure OpenAI (GPT-4o-mini)
-   ↓
-5. API parsuje odpowiedź JSON
-   ↓
-6. API waliduje wartość MPK w Dataverse
-   ↓
-7. API aktualizuje fakturę z:
-   - dvlp_aimpksuggestion
-   - dvlp_aicategorysuggestion
-   - dvlp_aiconfidence
-   ↓
-8. Zwróć sugestie użytkownikowi
-   ↓
-9. Użytkownik zatwierdza/modyfikuje/odrzuca
-   ↓
-10. API zapisuje wpis AIFeedbackEntity
+```mermaid
+sequenceDiagram
+    actor U as Użytkownik
+    participant API as Azure Functions
+    participant DV as Dataverse
+    participant AI as Azure OpenAI
+
+    U->>API: POST /api/ai/categorize
+    API->>DV: Pobierz fakturę
+    API->>API: Konstruuj prompt (dane faktury + centra kosztów)
+    API->>AI: Wywołanie GPT-4o-mini
+    AI-->>API: Odpowiedź JSON (MPK, kategoria, confidence)
+    API->>DV: Walidacja MPK + aktualizacja faktury
+    API-->>U: Sugestie AI
+    U->>API: Zatwierdź / modyfikuj / odrzuć
+    API->>DV: Zapisz AIFeedbackEntity
 ```
 
 ### Autentykacja
 
-```
-1. Użytkownik odwiedza frontend (Next.js)
-   ↓
-2. MSAL przekierowuje do Azure Entra ID
-   ↓
-3. Użytkownik autentykuje się (login/hasło lub SSO)
-   ↓
-4. Entra ID wydaje JWT z:
-   - Claims użytkownika (oid, name, email)
-   - Grupami bezpieczeństwa (Admin/User)
-   ↓
-5. MSAL przechowuje JWT w sessionStorage
-   ↓
-6. Frontend wykonuje wywołanie API z Authorization: Bearer <JWT>
-   ↓
-7. Middleware API weryfikuje JWT:
-   - Pobiera JWKS z Entra ID
-   - Waliduje podpis, issuer, audience, wygaśnięcie
-   - Mapuje grupy na role (Admin/User)
-   ↓
-8. API wykonuje żądanie z kontekstem roli
+```mermaid
+sequenceDiagram
+    actor U as Użytkownik
+    participant FE as Frontend (Web / Code App)
+    participant Entra as Azure Entra ID
+    participant API as Azure Functions
+
+    U->>FE: Odwiedzenie aplikacji
+    FE->>Entra: Przekierowanie (MSAL / Power Apps host)
+    U->>Entra: Logowanie (SSO / hasło)
+    Entra-->>FE: JWT (claims + grupy bezpieczeństwa)
+    FE->>FE: Przechowanie JWT (sessionStorage)
+    FE->>API: Authorization: Bearer <JWT>
+    API->>Entra: Pobranie JWKS
+    API->>API: Walidacja podpisu, issuer, audience, wygaśnięcie
+    API->>API: Mapowanie grup → role (Admin/User)
+    API-->>FE: Odpowiedź z kontekstem roli
 ```
 
 ---
@@ -410,30 +449,40 @@ Pobieranie kursów walut z Narodowego Banku Polskiego.
 
 ### Zasoby Azure
 
-```
-Resource Group: rg-ksef
-├── Azure App Service (Frontend)               ← Next.js 15 standalone
-│   ├── Runtime: Node.js 22 LTS (Linux)
-│   ├── Tryb: WEBSITE_RUN_FROM_PACKAGE=1
-│   └── Application Insights (monitoring)
-├── Azure Functions App — Flex Consumption (API)
-│   ├── Runtime: Node.js 22
-│   ├── Application Insights (monitoring)
-│   └── Storage Account (function runtime)
-├── Azure Key Vault
-│   ├── Tokeny KSeF (ksef-token-{nip})
-│   ├── Client Secret, OpenAI Key, Endpoint
-│   └── Managed Identity access (RBAC)
-├── Azure OpenAI Service
-│   └── Model: gpt-4o-mini
-├── Dataverse Environment
-│   └── Encje dvlp_ksef*
-└── Azure Entra ID App Registration
-    ├── Uprawnienia API (Dataverse, Graph)
-    └── Grupy bezpieczeństwa (Admin, User)
+```mermaid
+graph TB
+    subgraph RG["Resource Group: rg-ksef"]
+        AppService["Azure App Service<br/>Next.js 15 standalone<br/>Node.js 22 LTS (Linux)"]
+        Functions["Azure Functions App<br/>Flex Consumption<br/>Node.js 22"]
+        KeyVault["Azure Key Vault<br/>Tokeny KSeF, Client Secret,<br/>OpenAI Key, Endpoint"]
+        OpenAI["Azure OpenAI Service<br/>Model: gpt-4o-mini"]
+        AppInsights["Application Insights<br/>Monitoring"]
+        Storage["Storage Account<br/>Functions runtime"]
+    end
+
+    subgraph PP["Power Platform"]
+        CodeApp["Code App<br/>KSeF Copilot (SPA)"]
+        Connector["Custom Connector<br/>DVLP-KSeF-PP-Connector"]
+    end
+
+    subgraph External["Zewnętrzne"]
+        Dataverse["Dataverse Environment<br/>Encje dvlp_ksef*"]
+        EntraID["Azure Entra ID<br/>App Registration + Grupy"]
+    end
+
+    AppService --> Functions
+    CodeApp --> Connector
+    Connector --> Functions
+    Functions --> KeyVault
+    Functions --> OpenAI
+    Functions --> Dataverse
+    Functions --> AppInsights
+    Functions --> Storage
+    AppService --> EntraID
+    CodeApp --> EntraID
 ```
 
-> Szczegóły wdrożenia: [API Deployment](./API_DEPLOYMENT.md) | [Web Deployment](./WEB_DEPLOYMENT.md)
+> Szczegóły wdrożenia: [API Deployment](./API_DEPLOYMENT.md) | [Web Deployment](./WEB_DEPLOYMENT.md) | [Code Apps Wdrożenie](./CODE_APPS_WDROZENIE.md)
 
 ### CI/CD
 
@@ -563,12 +612,14 @@ Serwisy otrzymują zależności, umożliwiając testowalność.
 
 - [Dokumentacja API](./API_PL.md) — pełna dokumentacja endpointów
 - [Schemat Dataverse](./DATAVERSE_SCHEMA.md) — model danych
+- [Code Apps — Wdrożenie](./CODE_APPS_WDROZENIE.md) — deploy na Power Platform
+- [Custom Connector](./POWER_PLATFORM_CUSTOM_CONNECTOR.md) — konfiguracja connectora
 - [Wersja angielska](./en/ARCHITECTURE.md) — English version
 - [README](../README.md) — quick start
 - [SECURITY](../SECURITY.md) — polityka bezpieczeństwa
 
 ---
 
-**Ostatnia aktualizacja:** 2026-02-11  
-**Wersja:** 2.0  
+**Ostatnia aktualizacja:** 2026-02-14  
+**Wersja:** 3.0  
 **Opiekun:** dvlp-dev team

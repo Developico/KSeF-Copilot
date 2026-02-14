@@ -434,6 +434,28 @@ az webapp config appsettings list --name dvlp-ksef --resource-group rg-ksef -o t
 
 ---
 
+## Code App — Power Platform
+
+### Code App nie ładuje się w Power Apps
+
+| Symptom | Rozwiązanie |
+|---------|-------------|
+| Biały ekran po otwarciu | Sprawdź konsolę przeglądarki — brak CORS lub błąd MSAL |
+| `pac code push` — błąd auth | Wykonaj `pac auth create --environment <url>` ponownie |
+| Connector zwraca `401` | Sprawdź konfigurację OAuth w Custom Connector (audience, scope) |
+| Dane nie wyświetlają się | Zweryfikuj czy connector SDK jest poprawnie zainicjalizowany (lazy loading) |
+| `AADSTS700016` w standalone | Nieprawidłowy `VITE_AZURE_CLIENT_ID` — sprawdź App Registration |
+
+### WL VAT API — problemy
+
+| Symptom | Rozwiązanie |
+|---------|-------------|
+| `404` z `/api/vat/lookup` | NIP/REGON nie istnieje w rejestrze Białej Listy |
+| Limit 100 zapytań/dzień | API publiczne KAS ma limit — użyj cache lub ogranicz zapytania |
+| `400 Bad Request` | Sprawdź format NIP (10 cyfr) lub REGON (9/14 cyfr) |
+
+---
+
 ## Powiązane dokumenty
 
 - [Zmienne środowiskowe](./ZMIENNE_SRODOWISKOWE.md) — pełna referencja env vars
@@ -444,6 +466,6 @@ az webapp config appsettings list --name dvlp-ksef --resource-group rg-ksef -o t
 
 ---
 
-**Ostatnia aktualizacja:** 2026-02-11  
-**Wersja:** 1.0  
+**Ostatnia aktualizacja:** 2026-02-14  
+**Wersja:** 2.0  
 **Opiekun:** dvlp-dev team

@@ -31,64 +31,41 @@
 
 ### High-Level Architecture
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│                       End Users (Browsers)                         │
-└────────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-┌────────────────────────────────────────────────────────────────────┐
-│                 Azure Entra ID (Authentication)                    │
-│              JWT Token Issuance + RBAC Groups                      │
-└────────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-┌────────────────────────────────────────────────────────────────────┐
-│            Azure Static Web App (Next.js 15 Frontend)              │
-│    • Dashboard UI                                                  │
-│    • Invoice Management                                            │
-│    • Settings & Configuration                                      │
-│    • Role-based UI rendering                                       │
-└────────────────────────────────────────────────────────────────────┘
-                               │
-                          HTTPS/REST
-                               ▼
-┌────────────────────────────────────────────────────────────────────┐
-│          Azure Functions v4 (Node.js 20+ REST API)                │
-│                                                                    │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
-│  │   Auth       │  │   KSeF       │  │  Dataverse   │           │
-│  │   Middleware │  │   Client     │  │  Services    │           │
-│  └──────────────┘  └──────────────┘  └──────────────┘           │
-│                                                                    │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
-│  │   AI         │  │   GUS        │  │  Document    │           │
-│  │   Service    │  │   Client     │  │  Parser      │           │
-│  └──────────────┘  └──────────────┘  └──────────────┘           │
-└────────────────────────────────────────────────────────────────────┘
-         │                  │                  │
-         ▼                  ▼                  ▼
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│   Azure      │  │     KSeF     │  │  Microsoft   │
-│   OpenAI     │  │   API v2     │  │  Dataverse   │
-│  (GPT-4o)    │  │ (MF.gov.pl)  │  │  (CRM/DB)    │
-└──────────────┘  └──────────────┘  └──────────────┘
-                        │
-                        ▼
-                 ┌──────────────┐
-                 │ Azure Key    │
-                 │ Vault        │
-                 │ (KSeF Tokens)│
-                 └──────────────┘
+```mermaid
+graph TB
+    Users["End Users (Browsers)"] --> EntraID["Azure Entra ID<br/>JWT Token Issuance + RBAC Groups"]
+    EntraID --> WebApp["Azure App Service<br/>Next.js 15 Frontend — standalone"]
+    EntraID --> CodeApp["Power Apps Code App<br/>Vite + React SPA"]
+    
+    WebApp -->|HTTPS/REST| API["Azure Functions v4<br/>Flex Consumption — Node.js 22 API"]
+    CodeApp -->|Custom Connector<br/>or HTTPS/REST| API
+
+    subgraph API_Modules["API Modules"]
+        Auth["Auth Middleware"]
+        KSeFClient["KSeF Client"]
+        DVServices["Dataverse Services"]
+        AIService["AI Service"]
+        VATClient["WL VAT Client<br/>(White List)"]
+        NBP["Exchange Rates (NBP)"]
+    end
+
+    API --> API_Modules
+    Auth --> EntraID
+    AIService --> OpenAI["Azure OpenAI<br/>GPT-4o-mini"]
+    KSeFClient --> KSeF["KSeF API v2<br/>MF.gov.pl"]
+    DVServices --> Dataverse["Microsoft Dataverse<br/>CRM / DB"]
+    VATClient --> WLAPI["WL VAT API<br/>KAS — White List"]
+    KSeFClient --> KeyVault["Azure Key Vault<br/>KSeF Tokens"]
 ```
 
 ---
 
 ## Component Design
 
-### 1. Frontend Layer (web/)
+### 1a. Frontend Layer — Web (web/)
 
-**Technology**: Next.js 15 with App Router, React 19, TypeScript 5.7
+**Technology**: Next.js 15 with App Router, React 19, TypeScript 5.7  
+**Deployment**: Azure App Service (standalone mode)
 
 **Structure**:
 ```
@@ -124,6 +101,38 @@ web/
 
 ---
 
+### 1b. Frontend Layer — Code App (code-app/)
+
+**Technology**: Vite + React 19, TypeScript, TanStack Query  
+**Deployment**: Power Platform (`pac code push`)
+
+**Structure**:
+```
+code-app/
+├── src/
+│   ├── pages/              # SPA pages (React Router)
+│   ├── components/         # React components (auth, invoices, dashboard, layout)
+│   ├── lib/
+│   │   ├── api.ts         # Direct fetch API client (MSAL auth)
+│   │   ├── api-connector.ts # Power Apps Custom Connector adapter
+│   │   ├── nip-utils.ts   # NIP checksum validation (offline)
+│   │   └── power-apps-host.ts # Power Apps context detection
+│   ├── generated/         # Auto-generated connector models & services
+│   └── messages/          # i18n (PL/EN)
+├── power.config.json      # Power Apps SDK metadata
+└── vite.config.ts         # Vite + powerApps() plugin
+```
+
+**Key Features**:
+- **Dual-mode auth**: MSAL standalone + Power Apps managed auth
+- **Custom Connector**: API routing through Power Platform connector (lazy loading)
+- **Web parity**: Dashboard KPIs, overdue badges, exchange rate edit, AI trigger
+- Responsive design with Tailwind CSS + shadcn/ui
+- TanStack Query for cache and mutations
+- i18n (PL/EN) via `react-intl`
+
+---
+
 ### 2. API Layer (api/)
 
 **Technology**: Azure Functions v4, Node.js 20+, TypeScript 5.7
@@ -142,7 +151,8 @@ api/
 │   │   ├── attachments.ts     # File attachments
 │   │   ├── ai-categorize.ts   # AI categorization
 │   │   ├── dashboard.ts       # Analytics
-│   │   ├── gus.ts             # GUS integration
+│   │   ├── vat.ts             # WL VAT integration (White List)
+│   │   ├── exchange-rates.ts  # Exchange rates NBP
 │   │   └── documents.ts       # Document processing
 │   │
 │   └── lib/                   # Core libraries
@@ -167,8 +177,10 @@ api/
 │       ├── ai/                # AI services
 │       │   └── categorizer.ts # OpenAI categorization
 │       │
-│       ├── gus/               # GUS API client
-│       │   └── client.ts      # Company lookup
+│       ├── vat/               # WL VAT API client (White List)
+│       │   ├── client.ts      # NIP/REGON lookup, bank account check
+│       │   ├── types.ts       # WL VAT API types
+│       │   └── index.ts       # Public exports
 │       │
 │       └── storage/           # Azure Storage
 │           └── blobs.ts       # Blob operations
@@ -375,14 +387,18 @@ Return JSON: { "mpk": <value>, "category": "<string>", "confidence": <0-1> }
 - Store suggestion + confidence in invoice record
 - Track user feedback (applied/modified/rejected)
 
-#### GUS API (REGON/NIP Lookup)
-Polish business registry integration for supplier validation.
+#### WL VAT API — White List of VAT Taxpayers (KAS)
+Polish tax administration registry for VAT taxpayer verification.
+
+**API**: `https://wl-api.mf.gov.pl` (production) | `https://wl-test.mf.gov.pl` (test)  
+**Authentication**: None — public API, no key required  
+**Limits**: 100 search queries/day, 5000 check queries/day
 
 **Capabilities**:
-- NIP validation and existence check
-- Company name lookup
-- Address and REGON retrieval
-- Company status verification
+- NIP or REGON lookup — company data, VAT status, addresses
+- NIP checksum validation (offline algorithm)
+- Bank account verification against the White List
+- Registered bank accounts retrieval
 
 ---
 
@@ -442,29 +458,45 @@ Polish business registry integration for supplier validation.
 
 ### Authentication Flow
 
+#### Web App (Next.js)
+
+```mermaid
+sequenceDiagram
+    participant U as User (Browser)
+    participant W as Next.js App
+    participant E as Azure Entra ID
+    participant A as Azure Functions API
+
+    U->>W: Visit app
+    W->>E: Redirect to Entra ID (MSAL)
+    E->>U: Login prompt (SSO / password)
+    U->>E: Credentials
+    E->>W: JWT token (claims + groups)
+    W->>W: Store JWT in session
+    W->>A: API call (Authorization: Bearer JWT)
+    A->>E: Fetch JWKS, verify signature
+    A->>A: Map groups → roles (Admin/User)
+    A->>W: Response with role context
 ```
-1. User visits frontend (Next.js app)
-   ↓
-2. NextAuth redirects to Azure Entra ID
-   ↓
-3. User authenticates (username/password or SSO)
-   ↓
-4. Entra ID issues JWT with:
-   - User claims (oid, name, email)
-   - Security groups (Admin/User)
-   ↓
-5. NextAuth stores JWT in session cookie
-   ↓
-6. Frontend makes API call with Authorization: Bearer <JWT>
-   ↓
-7. API middleware verifies JWT:
-   - Fetches JWKS from Entra ID
-   - Validates signature, issuer, audience, expiration
-   - Maps groups to roles (Admin/User)
-   ↓
-8. API executes request with role context
-   ↓
-9. Response returned to frontend
+
+#### Code App (Power Platform)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant PA as Power Apps Host
+    participant CA as Code App (React SPA)
+    participant CC as Custom Connector
+    participant A as Azure Functions API
+
+    U->>PA: Open Code App
+    PA->>CA: Load SPA (managed auth)
+    CA->>CA: Detect Power Apps context
+    CA->>CC: API call via connector SDK
+    CC->>A: Authenticated request
+    A->>CC: Response
+    CC->>CA: Parsed result
+    Note over CA,A: Standalone mode: MSAL auth + direct fetch
 ```
 
 ---
@@ -527,23 +559,36 @@ Polish business registry integration for supplier validation.
 
 ### Azure Resources
 
-```
-Resource Group: dvlp-ksef-prod
-├── Azure Functions App (API)
-│   ├── App Service Plan (Consumption/Premium)
-│   ├── Application Insights (monitoring)
-│   └── Storage Account (function runtime)
-├── Azure Static Web App (Frontend)
-│   └── GitHub integration (CI/CD)
-├── Azure Key Vault
-│   └── Managed Identity access
-├── Azure OpenAI Service
-│   └── GPT-4o model deployment
-├── Dataverse Environment (existing)
-│   └── dvlp_ksef* entities
-└── Azure Entra ID App Registration
-    ├── API permissions (Dataverse, Graph)
-    └── Security groups (Admin, User)
+```mermaid
+graph LR
+    subgraph RG["Resource Group: dvlp-ksef-prod"]
+        FA["Azure Functions App<br/>Flex Consumption — Node.js 22"]
+        AI["Application Insights"]
+        SA["Storage Account"]
+        AS["Azure App Service<br/>Next.js Frontend (standalone)"]
+        KV["Azure Key Vault"]
+        OAI["Azure OpenAI<br/>GPT-4o-mini"]
+    end
+
+    subgraph PP["Power Platform"]
+        PA["Code App (React SPA)"]
+        CC["Custom Connector"]
+    end
+
+    subgraph External["External"]
+        DV["Microsoft Dataverse<br/>dvlp_ksef* entities"]
+        AD["Azure Entra ID<br/>App Registration"]
+    end
+
+    FA --- AI
+    FA --- SA
+    CC -->|HTTPS| FA
+    AS -->|HTTPS| FA
+    FA --> KV
+    FA --> OAI
+    FA --> DV
+    FA --> AD
+    PA --> CC
 ```
 
 ### CI/CD Pipeline
@@ -571,8 +616,8 @@ Resource Group: dvlp-ksef-prod
 ## Technology Stack
 
 ### Backend (API)
-- **Runtime**: Node.js 20.x LTS
-- **Framework**: Azure Functions v4 (HTTP triggers)
+- **Runtime**: Node.js 22.x LTS
+- **Framework**: Azure Functions v4 (Flex Consumption, HTTP triggers)
 - **Language**: TypeScript 5.7 (strict mode)
 - **HTTP Client**: `axios` (with retry interceptors)
 - **Validation**: `zod` schemas
@@ -580,23 +625,34 @@ Resource Group: dvlp-ksef-prod
 - **Testing**: Vitest 2.1.9
 - **Linting**: ESLint 9 with TypeScript rules
 
-### Frontend (Web)
+### Frontend — Web (web/)
 - **Framework**: Next.js 15 with App Router
 - **Runtime**: React 19
 - **Language**: TypeScript 5.7
 - **Styling**: Tailwind CSS 3
 - **UI Components**: shadcn/ui (Radix UI primitives)
-- **Auth**: NextAuth.js v5 (Azure AD provider)
+- **Auth**: MSAL (Azure Entra ID)
 - **State**: React Server Components + hooks
 - **Forms**: React Hook Form + Zod
 - **Testing**: Vitest + React Testing Library
 
+### Frontend — Code App (code-app/)
+- **Bundler**: Vite 6 + Power Apps plugin
+- **Runtime**: React 19
+- **Language**: TypeScript 5.7
+- **Styling**: Tailwind CSS 3 + shadcn/ui
+- **Auth**: MSAL (standalone) / Power Apps managed
+- **State**: TanStack Query v5 + React hooks
+- **i18n**: react-intl (PL/EN)
+- **Deployment**: `pac code push` → Power Platform
+
 ### Infrastructure
-- **Compute**: Azure Functions (Consumption/Premium)
-- **Frontend**: Azure Static Web Apps
+- **Compute**: Azure Functions (Flex Consumption)
+- **Frontend Web**: Azure App Service (standalone)
+- **Frontend Code App**: Power Platform code component
 - **Database**: Microsoft Dataverse
 - **Secrets**: Azure Key Vault
-- **AI**: Azure OpenAI (GPT-4o)
+- **AI**: Azure OpenAI (GPT-4o-mini)
 - **Monitoring**: Application Insights
 - **Storage**: Azure Blob Storage
 - **IaC**: Bicep (planned)
@@ -768,6 +824,6 @@ export class InvoiceService {
 
 ---
 
-**Last Updated**: 2024-02-01  
-**Version**: 1.0  
+**Last Updated**: 2026-02-14  
+**Version**: 3.0  
 **Maintainer**: dvlp-dev team

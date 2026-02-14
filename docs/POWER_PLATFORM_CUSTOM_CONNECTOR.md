@@ -219,15 +219,34 @@ Dodaj akcje odpowiadające endpointom API. Poniżej **kluczowe akcje** do zdefin
 | Method | `GET` |
 | URL | `/settings` |
 
-#### GUS Lookup (NIP)
+#### WL VAT Lookup (NIP/REGON)
 
 | Pole | Wartość |
 |------|---------|
-| Summary | `GUS Lookup by NIP` |
-| Operation ID | `GusLookup` |
+| Summary | `VAT Lookup by NIP/REGON` |
+| Operation ID | `VatLookup` |
 | Method | `POST` |
-| URL | `/gus/lookup` |
-| Body | `{ "nip": "string" }` |
+| URL | `/vat/lookup` |
+| Body | `{ "nip": "string" }` lub `{ "regon": "string" }` |
+
+#### VAT Validate NIP
+
+| Pole | Wartość |
+|------|---------|
+| Summary | `Validate NIP checksum` |
+| Operation ID | `VatValidate` |
+| Method | `GET` |
+| URL | `/vat/validate/{nip}` |
+
+#### VAT Check Account
+
+| Pole | Wartość |
+|------|---------|
+| Summary | `Check bank account on White List` |
+| Operation ID | `VatCheckAccount` |
+| Method | `POST` |
+| URL | `/vat/check-account` |
+| Body | `{ "nip": "string", "accountNumber": "string" }` |
 
 #### Exchange Rate
 
@@ -303,14 +322,14 @@ Action:    KSeF API → AI Categorize Invoice (invoiceId)
 Action:    KSeF API → Update Invoice (przypisz MPK z wyniku AI)
 ```
 
-### Przykład 3: Sprawdzanie kontrahenta (GUS)
+### Przykład 3: Sprawdzanie kontrahenta (WL VAT)
 
 ```
 Trigger:   When manually triggered (input: NIP)
    ↓
-Action:    KSeF API → GUS Lookup by NIP
+Action:    KSeF API → VAT Lookup by NIP/REGON
    ↓
-Action:    Compose / Respond → zwróć dane firmy
+Action:    Compose / Respond → zwróć dane firmy + status VAT
 ```
 
 ---
@@ -423,12 +442,12 @@ Poniżej kompletna lista do referencji przy definiowaniu kolejnych akcji connect
 | GET | `/exchange-rates` | Reader | Kurs NBP |
 | POST | `/exchange-rates/convert` | Reader | Przelicz na PLN |
 
-### GUS
+### WL VAT (Biała Lista)
 | Method | Route | Rola | Opis |
 |--------|-------|------|------|
-| POST | `/gus/lookup` | Any | Wyszukaj po NIP |
-| POST | `/gus/search` | Any | Wyszukaj po nazwie |
-| GET | `/gus/validate/{nip}` | Any | Waliduj NIP |
+| POST | `/vat/lookup` | Reader | Wyszukaj po NIP lub REGON |
+| GET | `/vat/validate/{nip}` | Any | Waliduj sumę kontrolną NIP (offline) |
+| POST | `/vat/check-account` | Reader | Sprawdź rachunek bankowy na Białej Liście |
 
 ### Document Processing
 | Method | Route | Rola | Opis |
@@ -479,6 +498,6 @@ Poniżej kompletna lista do referencji przy definiowaniu kolejnych akcji connect
 
 ---
 
-**Ostatnia aktualizacja:** 2026-02-11  
-**Wersja:** 1.0  
+**Ostatnia aktualizacja:** 2026-02-14  
+**Wersja:** 2.0  
 **Opiekun:** dvlp-dev team
