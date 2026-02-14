@@ -147,6 +147,9 @@ importers:
         specifier: ^5.0.0
         version: 5.0.11(@types/react@19.2.14)(immer@11.1.4)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
     devDependencies:
+      '@microsoft/power-apps-vite':
+        specifier: ^1.0.2
+        version: 1.0.2(vite@6.4.1(@types/node@20.19.33)(jiti@2.6.1)(lightningcss@1.30.2))
       '@tailwindcss/postcss':
         specifier: ^4.1.18
         version: 4.1.18
@@ -760,6 +763,12 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@microsoft/power-apps-vite@1.0.2':
+    resolution: {integrity: sha512-KlWQqa1eE4uqaVRPlL1lJW9/Qne2Rm+hKnvbYaZo4oDT2NigB5QC1lD+eaBdMDFw/2Lv9SfOn+YfgAJ82Am10A==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      vite: '>=5.0.0'
 
   '@microsoft/power-apps@1.0.3':
     resolution: {integrity: sha512-bw/ghLbom7rfmecskkMWjERVHnfdU4sTzv0tT6ti2eu3VC5PktkKS3T52e2wSBtdoJPhuX0DNDOUSjsy67LqGg==}
@@ -3903,6 +3912,11 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  '@microsoft/power-apps-vite@1.0.2(vite@6.4.1(@types/node@20.19.33)(jiti@2.6.1)(lightningcss@1.30.2))':
+    dependencies:
+      picocolors: 1.1.1
+      vite: 6.4.1(@types/node@20.19.33)(jiti@2.6.1)(lightningcss@1.30.2)
 
   '@microsoft/power-apps@1.0.3': {}
 

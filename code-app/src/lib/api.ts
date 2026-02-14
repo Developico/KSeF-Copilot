@@ -12,6 +12,7 @@
  */
 
 import { getMsalInstance, apiScopes, isAuthConfigured } from './auth-config'
+import { isPowerAppsHost } from './power-apps-host'
 import type {
   // Dashboard
   DashboardStats,
@@ -98,6 +99,10 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 // ─── Token acquisition ──────────────────────────────────────────
 
 async function getAccessToken(): Promise<string | null> {
+  // In Power Apps host, auth is managed by the platform — no MSAL token needed.
+  // API calls from Code Apps are proxied through the host session.
+  if (isPowerAppsHost()) return null
+
   if (!isAuthConfigured()) return null
   if (apiScopes.scopes.length === 0) return null
 
@@ -173,9 +178,35 @@ export async function apiFetch<T>(
   return response.json() as Promise<T>
 }
 
-// ─── Unified API object ─────────────────────────────────────────
+// ─── Dual-mode API ──────────────────────────────────────────────
+// In Power Apps host → connector-based API (SDK calls through custom connector)
+// In standalone mode → direct fetch API (MSAL tokens + HTTP)
 
-export const api = {
+// Lazy-load connector API to avoid static class initialization errors
+// at module parse time. The generated DVLP_KSeF_PP_ConnectorService has
+// `static readonly client = getClient(...)` which runs immediately on import.
+let _connectorApi: typeof _directApi | null = null
+let _connectorLoadAttempted = false
+
+async function getConnectorApi(): Promise<typeof _directApi> {
+  if (_connectorApi) return _connectorApi
+  if (_connectorLoadAttempted) {
+    throw new Error('[KSeF] Connector API failed to load previously')
+  }
+  _connectorLoadAttempted = true
+  try {
+    console.log('[KSeF] Loading connector API module...')
+    const mod = await import('./api-connector')
+    _connectorApi = mod.connectorApi as unknown as typeof _directApi
+    console.log('[KSeF] Connector API loaded successfully', _connectorApi ? 'OK' : 'UNDEFINED')
+    return _connectorApi
+  } catch (err) {
+    console.error('[KSeF] FAILED to load connector API module:', err)
+    throw err
+  }
+}
+
+const _directApi = {
   // ── Health ──
   health: () => apiFetch<{ status: string }>('/api/health'),
 
@@ -642,3 +673,64 @@ export const api = {
       }),
   },
 }
+
+/**
+ * The exported `api` object automatically routes calls:
+ * - Power Apps host  → connector-based API (Power Platform SDK)
+ * - Standalone mode  → direct fetch API (MSAL + HTTP)
+ *
+ * The connector API covers ~15 core operations (dashboard, invoices,
+ * settings, sync, exchange rates, AI, test data). Missing operations
+ * throw descriptive errors — those features need connector expansion
+ * or standalone deployment.
+ *
+ * In Power Apps mode we use a Proxy that lazily loads the connector
+ * module on first call. This avoids:
+ *  1) static class initialisation errors from the SDK service
+ *  2) race conditions where React Query fires before the module loads
+ */
+const _inPA = isPowerAppsHost()
+console.log(`[KSeF API] mode=${_inPA ? 'connector' : 'direct-fetch'}`)
+
+/**
+ * Creates a Proxy that lazily loads `api-connector.ts` on first use
+ * and forwards every call through it.
+ *
+ * `api.settings.listCompanies()` →
+ *   get('settings') → nested proxy
+ *   get('listCompanies') → nested proxy
+ *   apply → getConnectorApi().then(c => c.settings.listCompanies())
+ */
+function createConnectorProxy(): typeof _directApi {
+  function createNestedProxy(path: string[]): unknown {
+    // Wrapping a function so the Proxy is both get-able and apply-able
+    return new Proxy(function () {} as unknown as Record<string, unknown>, {
+      get(_target, prop: string | symbol) {
+        if (typeof prop === 'symbol') return undefined
+        return createNestedProxy([...path, prop])
+      },
+      apply(_target, _thisArg, args: unknown[]) {
+        const fullPath = path.join('.')
+        console.log(`[KSeF Proxy] calling ${fullPath}(...)`)
+        return getConnectorApi().then(cApi => {
+          // Navigate to the nested method
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let current: any = cApi
+          for (const key of path) {
+            current = current[key]
+          }
+          if (typeof current !== 'function') {
+            throw new Error(`[KSeF] ${fullPath} is not a function on connectorApi`)
+          }
+          return current(...args)
+        })
+      },
+    })
+  }
+
+  return createNestedProxy([]) as typeof _directApi
+}
+
+export const api: typeof _directApi = _inPA
+  ? createConnectorProxy()
+  : _directApi

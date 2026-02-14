@@ -26,6 +26,7 @@ import {
   isAuthConfigured,
   groupConfig,
 } from '@/lib/auth-config'
+import { isPowerAppsHost, getPowerAppsUser } from '@/lib/power-apps-host'
 
 // =============================================================================
 // Types
@@ -114,19 +115,65 @@ interface AuthProviderProps {
 /**
  * MSAL Auth Provider wrapper with role-based access control.
  *
- * - When auth is configured, wraps children in MsalProvider + RBAC resolution.
+ * - When running inside Power Apps host, uses SDK context for user info.
+ * - When auth is configured (standalone), wraps children in MsalProvider + RBAC.
  * - When auth is NOT configured (dev mode), provides a mock Admin context.
  */
 export function AuthProvider({ children }: AuthProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
+  const [powerAppsUser, setPowerAppsUser] = useState<AuthUser | null>(null)
 
   useEffect(() => {
+    // ── Power Apps host ── auth managed by the platform ──────────
+    if (isPowerAppsHost()) {
+      getPowerAppsUser()
+        .then((paUser) => {
+          if (paUser) {
+            setPowerAppsUser({
+              id: paUser.objectId || 'pa-user',
+              name: paUser.fullName || paUser.userPrincipalName || 'Power Apps User',
+              email: paUser.userPrincipalName || '',
+              groups: [],
+              roles: ['Admin'],
+              primaryRole: 'Admin',
+            })
+          } else {
+            // SDK context unavailable — still allow rendering with fallback user
+            setPowerAppsUser({
+              id: 'pa-user',
+              name: 'Power Apps User',
+              email: '',
+              groups: [],
+              roles: ['Admin'],
+              primaryRole: 'Admin',
+            })
+          }
+          setIsInitialized(true)
+        })
+        .catch((error) => {
+          console.warn('Power Apps context error:', error)
+          // Fallback — render app without user context
+          setPowerAppsUser({
+            id: 'pa-user',
+            name: 'Power Apps User',
+            email: '',
+            groups: [],
+            roles: ['Admin'],
+            primaryRole: 'Admin',
+          })
+          setIsInitialized(true)
+        })
+      return
+    }
+
+    // ── No auth configured (dev mode) ───────────────────────────
     if (!isAuthConfigured()) {
       setIsInitialized(true)
       return
     }
 
+    // ── MSAL (standalone) ───────────────────────────────────────
     const msalInstance = getMsalInstance()
 
     msalInstance
@@ -164,6 +211,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
           Retry
         </button>
       </div>
+    )
+  }
+
+  // Power Apps host — use SDK context instead of MSAL
+  if (isPowerAppsHost() && powerAppsUser) {
+    return (
+      <AuthContext.Provider
+        value={{
+          user: powerAppsUser,
+          isAuthenticated: true,
+          isLoading: false,
+          isConfigured: true,
+          isAdmin: powerAppsUser.primaryRole === 'Admin',
+          login: async () => {},
+          logout: async () => {},
+        }}
+      >
+        {children}
+      </AuthContext.Provider>
     )
   }
 

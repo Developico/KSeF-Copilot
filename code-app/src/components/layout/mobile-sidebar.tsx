@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 import { useIntl } from 'react-intl'
+import developicoLogo from '@/assets/developico-logo.png'
 import {
   Sheet,
   SheetContent,
@@ -97,7 +98,7 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
         <SheetHeader className="p-4 border-b flex flex-row items-center gap-3">
           <div className="h-10 w-10 flex items-center justify-center shrink-0">
             <img
-              src="/developico-logo.png"
+              src={developicoLogo}
               alt="Developico"
               width={40}
               height={40}

@@ -6,6 +6,23 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.3.0] - 2026-02-14
+
+### 🔌 Power Apps Code App — Connector Integration
+
+- **Custom Connector API** — all API calls routed through Power Platform Custom Connector (`DVLP-KSeF-PP-Connector`) via SDK `postMessage` bridge, bypassing CSP `connect-src 'none'` restriction
+- **Lazy Dynamic Import** — connector module loaded via `import()` with ES Proxy, avoiding static class initialization errors from the generated SDK service
+- **Dual-mode API** — automatic detection: connector mode inside Power Apps, direct-fetch mode standalone
+- **Power Apps Host Detection** — multi-strategy detection (powerAppsBridge, URL, referrer, cross-origin iframe)
+- **MSAL Auth Bypass** — skips MSAL initialization when running inside Power Apps (host provides auth context)
+- **HashRouter** — switched from BrowserRouter for iframe compatibility
+- **Error Boundary** — global error boundary wrapping the app to prevent white screens
+- **Logo Inlining** — Developico logo embedded as base64 data URI (no external requests)
+- **Vite modulePreload Disabled** — prevents CSP-blocked preload link injections
+- **15 Connector Operations** — HealthCheck, Dashboard Stats, Invoices (list/get/update/create), Settings, Companies, Sync, Exchange Rates, AI Categorize, Test Data
+
+---
+
 ## [2.2.0] - 2026-02-14
 
 ### ✨ P4 — Web Parity Fixes

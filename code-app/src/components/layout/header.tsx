@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTheme } from 'next-themes'
 import { useIntl } from 'react-intl'
 import { Sun, Moon, Menu, Globe, Building2, ChevronDown, LogOut, ExternalLink } from 'lucide-react'
+import developicoLogo from '@/assets/developico-logo.png'
 import { useLocaleStore, locales, localeNames, localeFlags } from '@/i18n'
 import { useCompanyContext } from '@/contexts/company-context'
 import { useAuth } from '@/components/auth/auth-provider'
@@ -77,7 +78,7 @@ export function Header() {
             <div className="flex h-8 w-8 items-center justify-center">
               {logoOk ? (
                 <img
-                  src="/developico-logo.png"
+                  src={developicoLogo}
                   alt="Developico"
                   width={32}
                   height={32}
