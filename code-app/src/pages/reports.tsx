@@ -1,9 +1,17 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useIntl } from 'react-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   BarChart,
   Bar,
@@ -25,15 +33,27 @@ import {
   Receipt,
   DollarSign,
   FileText,
+  RefreshCw,
+  Tag,
+  Calendar,
 } from 'lucide-react'
-import { useDashboardStats } from '@/hooks/use-api'
+import { useDashboardStats, useInvoices } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
-import { formatCurrency, formatCurrencyCompact, formatNumber } from '@/lib/format'
+import { formatCurrency, formatCurrencyCompact } from '@/lib/format'
 import {
   AnimatedKpiCard,
   AnimatedCardGrid,
   AnimatedCardWrapper,
 } from '@/components/dashboard/animated-kpi-card'
+
+// ─── Types ───────────────────────────────────────────────────────
+
+interface CategoryData {
+  category: string
+  count: number
+  totalGross: number
+  percentage: number
+}
 
 // ─── Constants ───────────────────────────────────────────────────
 
@@ -63,12 +83,81 @@ export function ReportsPage() {
   const intl = useIntl()
   const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
 
-  const [_year] = useState(() => new Date().getFullYear())
+  // ── Year / Month filters ───────────────────────────────────
+  const currentYear = new Date().getFullYear()
+  const [selectedYear, setSelectedYear] = useState<string>(currentYear.toString())
+  const [selectedMonth, setSelectedMonth] = useState<string>('all')
 
-  const { data: stats, isLoading, error } = useDashboardStats(
-    { settingId: selectedCompany?.id },
+  const availableYears = useMemo(() => {
+    const years: number[] = []
+    for (let y = currentYear; y >= currentYear - 4; y--) years.push(y)
+    return years
+  }, [currentYear])
+
+  const monthNames = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) =>
+      intl.formatMessage({ id: `reports.monthNames.${i + 1}` })
+    )
+  }, [intl])
+
+  // Compute date range from selections
+  const dateParams = useMemo(() => {
+    const year = parseInt(selectedYear)
+    if (selectedMonth === 'all') {
+      return {
+        fromDate: `${year}-01-01`,
+        toDate: `${year}-12-31`,
+      }
+    }
+    const month = parseInt(selectedMonth)
+    const lastDay = new Date(year, month, 0).getDate()
+    return {
+      fromDate: `${year}-${String(month).padStart(2, '0')}-01`,
+      toDate: `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
+    }
+  }, [selectedYear, selectedMonth])
+
+  const { data: stats, isLoading, error, refetch } = useDashboardStats(
+    { settingId: selectedCompany?.id, ...dateParams },
     { enabled: !companyLoading && Boolean(selectedCompany?.id) }
   )
+
+  // Fetch invoices for category aggregation (same date range)
+  const { data: invoiceData } = useInvoices(
+    { settingId: selectedCompany?.id, ...dateParams, top: 1000 },
+    { enabled: !companyLoading && Boolean(selectedCompany?.id) }
+  )
+
+  // ── Category aggregation (client-side) ─────────────────────
+  const categoryData = useMemo<CategoryData[]>(() => {
+    const invoices = invoiceData?.invoices ?? []
+    if (invoices.length === 0) return []
+
+    const uncategorizedLabel = intl.formatMessage({ id: 'reports.uncategorized' })
+    const map = new Map<string, { count: number; totalGross: number }>()
+
+    for (const inv of invoices) {
+      const cat = inv.category || uncategorizedLabel
+      const existing = map.get(cat) ?? { count: 0, totalGross: 0 }
+      existing.count += 1
+      existing.totalGross += inv.grossAmount ?? 0
+      map.set(cat, existing)
+    }
+
+    const grandTotal = Array.from(map.values()).reduce((s, v) => s + v.totalGross, 0)
+    return Array.from(map.entries())
+      .map(([category, { count, totalGross }]) => ({
+        category,
+        count,
+        totalGross,
+        percentage: grandTotal > 0 ? (totalGross / grandTotal) * 100 : 0,
+      }))
+      .sort((a, b) => b.totalGross - a.totalGross)
+  }, [invoiceData?.invoices, intl])
+
+  const handleRefresh = useCallback(() => {
+    void refetch()
+  }, [refetch])
 
   // Chart data
   const monthlyChartData = useMemo(
@@ -167,19 +256,54 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      {/* ── Header ──────────────────────────────────────────── */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          {intl.formatMessage({ id: 'reports.title' })}
-        </h1>
-        <p className="text-muted-foreground">
-          {intl.formatMessage({ id: 'reports.subtitle' })}
-          {stats.period && (
-            <span className="ml-2">
-              ({stats.period.from} — {stats.period.to})
-            </span>
-          )}
-        </p>
+      {/* ── Header with filters ──────────────────────────── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {intl.formatMessage({ id: 'reports.title' })}
+          </h1>
+          <p className="text-muted-foreground">
+            {intl.formatMessage({ id: 'reports.subtitle' })}
+            {stats.period && (
+              <span className="ml-2">
+                ({stats.period.from} — {stats.period.to})
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="w-[110px]">
+              <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {availableYears.map((y) => (
+                <SelectItem key={y} value={y.toString()}>
+                  {y}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                {intl.formatMessage({ id: 'reports.allMonths' })}
+              </SelectItem>
+              {monthNames.map((name, i) => (
+                <SelectItem key={i + 1} value={(i + 1).toString()}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="icon" onClick={handleRefresh} title={intl.formatMessage({ id: 'reports.refresh' })}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* ── KPI Cards ───────────────────────────────────────── */}
@@ -234,6 +358,10 @@ export function ReportsPage() {
           <TabsTrigger value="vendor" className="gap-1.5">
             <Building2 className="h-4 w-4" />
             {intl.formatMessage({ id: 'reports.byVendor' })}
+          </TabsTrigger>
+          <TabsTrigger value="categories" className="gap-1.5">
+            <Tag className="h-4 w-4" />
+            {intl.formatMessage({ id: 'reports.categoriesTab' })}
           </TabsTrigger>
         </TabsList>
 
@@ -344,7 +472,7 @@ export function ReportsPage() {
                           <th className="text-left p-2 font-medium">{intl.formatMessage({ id: 'reports.period' })}</th>
                           <th className="text-right p-2 font-medium">{intl.formatMessage({ id: 'reports.invoiceCount' })}</th>
                           <th className="text-right p-2 font-medium">{intl.formatMessage({ id: 'invoices.netAmount' })}</th>
-                          <th className="text-right p-2 font-medium">{intl.formatMessage({ id: 'invoices.vatAmount' })}</th>
+                          <th className="text-right p-2 font-medium hidden sm:table-cell">{intl.formatMessage({ id: 'invoices.vatAmount' })}</th>
                           <th className="text-right p-2 font-medium">{intl.formatMessage({ id: 'invoices.grossAmount' })}</th>
                         </tr>
                       </thead>
@@ -354,7 +482,7 @@ export function ReportsPage() {
                             <td className="p-2 font-medium">{formatMonth(m.month)}</td>
                             <td className="p-2 text-right">{m.invoiceCount}</td>
                             <td className="p-2 text-right">{formatCurrency(m.netAmount)}</td>
-                            <td className="p-2 text-right text-muted-foreground">{formatCurrency(m.vatAmount)}</td>
+                            <td className="p-2 text-right text-muted-foreground hidden sm:table-cell">{formatCurrency(m.vatAmount)}</td>
                             <td className="p-2 text-right font-medium">{formatCurrency(m.grossAmount)}</td>
                           </tr>
                         ))}
@@ -494,7 +622,7 @@ export function ReportsPage() {
                           <th className="text-left p-2 font-medium hidden sm:table-cell">
                             {intl.formatMessage({ id: 'invoices.nipLabel' })}
                           </th>
-                          <th className="text-right p-2 font-medium">
+                          <th className="text-right p-2 font-medium hidden md:table-cell">
                             {intl.formatMessage({ id: 'reports.invoiceCount' })}
                           </th>
                           <th className="text-right p-2 font-medium">
@@ -510,7 +638,7 @@ export function ReportsPage() {
                             <td className="p-2 text-muted-foreground hidden sm:table-cell">
                               {s.supplierNip}
                             </td>
-                            <td className="p-2 text-right">{s.invoiceCount}</td>
+                            <td className="p-2 text-right hidden md:table-cell">{s.invoiceCount}</td>
                             <td className="p-2 text-right font-medium">
                               {formatCurrencyCompact(s.grossAmount)}
                             </td>
@@ -526,6 +654,67 @@ export function ReportsPage() {
             <Card>
               <CardContent className="pt-6 text-center text-muted-foreground">
                 {intl.formatMessage({ id: 'reports.noData' })}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* ── Categories tab ───────────────────────────────── */}
+        <TabsContent value="categories">
+          {categoryData.length > 0 ? (
+            <AnimatedCardWrapper delay={0.2}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Tag className="h-4 w-4" />
+                    {intl.formatMessage({ id: 'reports.categoriesTab' })}
+                  </CardTitle>
+                  <CardDescription>
+                    {intl.formatMessage({ id: 'reports.categoriesDesc' })}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {categoryData.map((cat, i) => (
+                      <div key={cat.category} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-3 h-3 rounded-full shrink-0"
+                              style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                            />
+                            <span className="font-medium truncate">{cat.category}</span>
+                            <Badge variant="outline" className="text-xs shrink-0">
+                              {cat.count}
+                            </Badge>
+                          </div>
+                          <span className="font-medium ml-4 shrink-0">
+                            {formatCurrencyCompact(cat.totalGross)}
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${cat.percentage}%`,
+                              backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {cat.percentage.toFixed(1)}% {intl.formatMessage({ id: 'dashboard.ofTotal' })}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </AnimatedCardWrapper>
+          ) : (
+            <Card>
+              <CardContent className="pt-6 text-center text-muted-foreground">
+                <Tag className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
+                <p>{intl.formatMessage({ id: 'reports.noCategoryData' })}</p>
               </CardContent>
             </Card>
           )}

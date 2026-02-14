@@ -20,19 +20,28 @@ import {
   X,
   Loader2,
 } from 'lucide-react'
-import { useInvoice, useMarkInvoiceAsPaid, useUpdateInvoice } from '@/hooks/use-api'
+import { useInvoice, useMarkInvoiceAsPaid, useUpdateInvoice, useCategorizeWithAI } from '@/hooks/use-api'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { ClassificationEditDialog } from '@/components/invoices/classification-edit-dialog'
 import { AttachmentsSection } from '@/components/invoices/attachments-section'
 import { NotesSection } from '@/components/invoices/notes-section'
+import { InvoiceDocumentSidebar } from '@/components/invoices/invoice-document-sidebar'
 import { toast } from 'sonner'
 
-function PaymentBadge({ status }: { status: 'paid' | 'pending' }) {
+function PaymentBadge({ status, dueDate }: { status: 'paid' | 'pending'; dueDate?: string }) {
   const intl = useIntl()
   if (status === 'paid') {
     return (
       <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
         {intl.formatMessage({ id: 'invoices.paid' })}
+      </Badge>
+    )
+  }
+  const isOverdue = dueDate && new Date(dueDate) < new Date()
+  if (isOverdue) {
+    return (
+      <Badge variant="destructive" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+        {intl.formatMessage({ id: 'invoices.overdue' })}
       </Badge>
     )
   }
@@ -56,9 +65,10 @@ export function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const intl = useIntl()
 
-  const { data: invoice, isLoading, error } = useInvoice(id ?? '')
+  const { data: invoice, isLoading, error, refetch } = useInvoice(id ?? '')
   const markAsPaid = useMarkInvoiceAsPaid()
   const updateInvoice = useUpdateInvoice()
+  const categorizeAI = useCategorizeWithAI()
 
   function handleMarkAsPaid() {
     markAsPaid.mutate(
@@ -91,6 +101,8 @@ export function InvoiceDetailPage() {
     netAmount: 0,
     vatAmount: 0,
     grossAmount: 0,
+    currency: 'PLN',
+    exchangeRate: '',
   })
 
   function startEdit() {
@@ -104,6 +116,8 @@ export function InvoiceDetailPage() {
       netAmount: invoice.netAmount ?? 0,
       vatAmount: invoice.vatAmount ?? 0,
       grossAmount: invoice.grossAmount ?? 0,
+      currency: invoice.currency ?? 'PLN',
+      exchangeRate: invoice.exchangeRate?.toString() ?? '',
     })
     setEditing(true)
   }
@@ -114,6 +128,10 @@ export function InvoiceDetailPage() {
 
   function saveEdit() {
     if (!invoice) return
+    const exchangeRate = editData.exchangeRate ? parseFloat(editData.exchangeRate) : undefined
+    const grossAmountPln = editData.currency !== 'PLN' && exchangeRate
+      ? editData.grossAmount * exchangeRate
+      : undefined
     updateInvoice.mutate(
       {
         id: invoice.id,
@@ -126,6 +144,9 @@ export function InvoiceDetailPage() {
           netAmount: editData.netAmount,
           vatAmount: editData.vatAmount,
           grossAmount: editData.grossAmount,
+          currency: editData.currency,
+          exchangeRate,
+          grossAmountPln,
         },
       },
       {
@@ -207,7 +228,12 @@ export function InvoiceDetailPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <PaymentBadge status={invoice.paymentStatus} />
+          <PaymentBadge status={invoice.paymentStatus} dueDate={invoice.dueDate} />
+          {invoice.source && (
+            <Badge variant="outline" className="text-xs">
+              {invoice.source === 'KSeF' ? 'KSeF' : intl.formatMessage({ id: 'invoices.manual' })}
+            </Badge>
+          )}
           {isManual && !editing && (
             <Button size="sm" variant="outline" onClick={startEdit}>
               <Edit2 className="h-4 w-4 mr-1" />
@@ -342,6 +368,39 @@ export function InvoiceDetailPage() {
                 />
               </div>
             </div>
+            {/* Currency & exchange rate */}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  {intl.formatMessage({ id: 'invoices.currency' })}
+                </label>
+                <select
+                  value={editData.currency}
+                  onChange={(e) => setEditData((d) => ({ ...d, currency: e.target.value }))}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="PLN">PLN</option>
+                  <option value="EUR">EUR</option>
+                  <option value="USD">USD</option>
+                  <option value="GBP">GBP</option>
+                </select>
+              </div>
+              {editData.currency !== 'PLN' && (
+                <div>
+                  <label className="text-sm font-medium mb-1 block">
+                    {intl.formatMessage({ id: 'invoices.exchangeRateLabel' })}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    placeholder="4.3500"
+                    value={editData.exchangeRate}
+                    onChange={(e) => setEditData((d) => ({ ...d, exchangeRate: e.target.value }))}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+              )}
+            </div>
             <div className="flex gap-2">
               <Button
                 onClick={saveEdit}
@@ -385,7 +444,13 @@ export function InvoiceDetailPage() {
             {invoice.currency !== 'PLN' && invoice.grossAmountPln && (
               <>
                 <Separator />
-                <DetailRow label="PLN" value={formatCurrency(invoice.grossAmountPln, 'PLN')} />
+                <DetailRow label={intl.formatMessage({ id: 'invoices.plnEquivalent' })} value={formatCurrency(invoice.grossAmountPln, 'PLN')} />
+                {invoice.exchangeRate && (
+                  <div className="text-xs text-muted-foreground text-right pb-1">
+                    {intl.formatMessage({ id: 'invoices.exchangeRateLabel' })}: {invoice.exchangeRate.toFixed(4)}
+                    {invoice.exchangeDate && ` (${formatDate(invoice.exchangeDate)})`}
+                  </div>
+                )}
               </>
             )}
           </CardContent>
@@ -418,8 +483,11 @@ export function InvoiceDetailPage() {
         </Card>
       </div>
 
-      {/* Classification */}
-      <Card>
+      {/* Main content with optional document sidebar */}
+      <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+        <div className="space-y-4">
+          {/* Classification */}
+          <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -448,19 +516,44 @@ export function InvoiceDetailPage() {
       </Card>
 
       {/* AI suggestions */}
-      {(invoice.aiMpkSuggestion || invoice.aiCategorySuggestion || invoice.aiDescription) && (
-        <Card className="border-purple-200 dark:border-purple-800">
+      <Card className={`${(invoice.aiMpkSuggestion || invoice.aiCategorySuggestion || invoice.aiDescription) ? 'border-purple-200 dark:border-purple-800' : ''}`}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base text-purple-700 dark:text-purple-300">
-              <Sparkles className="h-4 w-4" />
-              {intl.formatMessage({ id: 'invoices.aiSuggestion' })}
-              {invoice.aiConfidence != null && (
-                <Badge variant="outline" className="text-xs ml-2">
-                  {Math.round(invoice.aiConfidence * 100)}%
-                </Badge>
-              )}
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base text-purple-700 dark:text-purple-300">
+                <Sparkles className="h-4 w-4" />
+                {intl.formatMessage({ id: 'invoices.aiSuggestion' })}
+                {invoice.aiConfidence != null && (
+                  <Badge variant="outline" className="text-xs ml-2">
+                    {Math.round(invoice.aiConfidence * 100)}%
+                  </Badge>
+                )}
+              </CardTitle>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={categorizeAI.isPending}
+                onClick={() => {
+                  categorizeAI.mutate(invoice.id, {
+                    onSuccess: () => {
+                      toast.success(intl.formatMessage({ id: 'invoices.aiTriggered' }))
+                      void refetch()
+                    },
+                    onError: (err) => toast.error(err.message),
+                  })
+                }}
+              >
+                {categorizeAI.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <Sparkles className="h-4 w-4 mr-1" />
+                )}
+                {(invoice.aiMpkSuggestion || invoice.aiCategorySuggestion)
+                  ? intl.formatMessage({ id: 'invoices.aiReanalyze' })
+                  : intl.formatMessage({ id: 'invoices.aiTrigger' })}
+              </Button>
+            </div>
           </CardHeader>
+          {(invoice.aiMpkSuggestion || invoice.aiCategorySuggestion || invoice.aiDescription) && (
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-3">
               {invoice.aiMpkSuggestion && (
@@ -486,8 +579,8 @@ export function InvoiceDetailPage() {
               <p className="text-sm text-muted-foreground mt-3 italic">{invoice.aiRationale}</p>
             )}
           </CardContent>
+          )}
         </Card>
-      )}
 
       {/* Invoice items */}
       {invoice.items && invoice.items.length > 0 && (
@@ -534,6 +627,16 @@ export function InvoiceDetailPage() {
 
       {/* Notes */}
       <NotesSection invoiceId={invoice.id} />
+        </div>
+
+        {/* Document sidebar */}
+        <div className="space-y-4">
+          <InvoiceDocumentSidebar
+            invoiceId={invoice.id}
+            hasDocument={invoice.hasDocument}
+          />
+        </div>
+      </div>
     </div>
   )
 }

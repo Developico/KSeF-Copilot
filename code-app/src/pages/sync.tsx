@@ -57,8 +57,12 @@ export function SyncPage() {
   const intl = useIntl()
   const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
 
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [dateFrom, setDateFrom] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 30)
+    return d.toISOString().split('T')[0]
+  })
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [log, setLog] = useState<LogEntry[]>([])
 
@@ -88,7 +92,7 @@ export function SyncPage() {
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
     },
-    { enabled: false }
+    { enabled: Boolean(sessionData?.session?.status === 'active') && Boolean(selectedCompany?.nip) }
   )
 
   const runSync = useRunSync()

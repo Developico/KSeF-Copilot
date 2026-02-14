@@ -6,6 +6,23 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.2.0] - 2026-02-14
+
+### ✨ P4 — Web Parity Fixes
+
+- **Overdue Badge** — PaymentBadge shows red "Overdue" status when invoice is past due date (invoice list + detail)
+- **Source Badge** — KSeF / Manual origin badge next to payment status on invoice detail
+- **Exchange Rate Display** — shows rate value and date below PLN equivalent on foreign currency invoices
+- **Exchange Rate Edit** — currency selector (PLN/EUR/USD/GBP) and rate input in manual invoice edit form, auto-computes PLN gross
+- **Overdue Filter** — added "Overdue" option to invoice payment status filter buttons
+- **AI Trigger Button** — always-visible AI analysis card with "Run AI analysis" / "Re-analyze" button on invoice detail
+- **Dashboard KPI Cards** — changed card 3/4 from Paid+To Pay to Pending+Overdue (matches web app)
+- **Header Role & Profile** — user menu shows Admin/User role and Microsoft profile link
+- **Sync Defaults** — date range defaults to last 30 days, preview auto-fetches when KSeF session is active
+- **i18n** — added EN/PL keys for all new UI elements
+
+---
+
 ## [2.1.0] - 2026-02-14
 
 ### ✅ Tests — Phase 5 & 6 Coverage

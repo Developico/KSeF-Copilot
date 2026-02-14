@@ -270,6 +270,9 @@ export interface InvoiceUpdateData {
   netAmount?: number
   vatAmount?: number
   grossAmount?: number
+  currency?: string
+  exchangeRate?: number
+  grossAmountPln?: number
 }
 
 export interface ManualInvoiceCreate {

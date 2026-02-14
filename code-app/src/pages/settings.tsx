@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -141,6 +142,8 @@ function CompaniesTab() {
   const [formNip, setFormNip] = useState('')
   const [formName, setFormName] = useState('')
   const [formEnv, setFormEnv] = useState<'test' | 'demo' | 'production'>('production')
+  const [formManualOnly, setFormManualOnly] = useState(false)
+  const [formPrefix, setFormPrefix] = useState('')
 
   // Edit mode
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -169,12 +172,19 @@ function CompaniesTab() {
   function handleCreate() {
     if (!formNip.trim() || !formName.trim()) return
     createCompany.mutate(
-      { nip: formNip.trim(), companyName: formName.trim(), environment: formEnv },
+      {
+        nip: formNip.trim(),
+        companyName: formName.trim(),
+        environment: formManualOnly ? 'test' : formEnv,
+        autoSync: formManualOnly ? false : undefined,
+      },
       {
         onSuccess: () => {
           setShowForm(false)
           setFormNip('')
           setFormName('')
+          setFormManualOnly(false)
+          setFormPrefix('')
         },
       }
     )
@@ -245,6 +255,7 @@ function CompaniesTab() {
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
               </div>
+              {!formManualOnly && (
               <div>
                 <label className="text-sm font-medium mb-1 block">
                   {intl.formatMessage({ id: 'settings.environment' })}
@@ -259,6 +270,39 @@ function CompaniesTab() {
                   <option value="demo">{intl.formatMessage({ id: 'settings.demo' })}</option>
                 </select>
               </div>
+              )}
+            </div>
+            {/* Manual-only checkbox */}
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="manualOnly"
+                checked={formManualOnly}
+                onCheckedChange={(checked) => setFormManualOnly(checked === true)}
+              />
+              <div className="grid gap-1 leading-none">
+                <label htmlFor="manualOnly" className="text-sm font-medium cursor-pointer">
+                  {intl.formatMessage({ id: 'settings.manualOnlyLabel' })}
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  {intl.formatMessage({ id: 'settings.manualOnlyDesc' })}
+                </p>
+              </div>
+            </div>
+            {/* Invoice prefix */}
+            <div className="max-w-xs">
+              <label className="text-sm font-medium mb-1 block">
+                {intl.formatMessage({ id: 'settings.invoicePrefix' })}
+              </label>
+              <input
+                type="text"
+                value={formPrefix}
+                onChange={(e) => setFormPrefix(e.target.value)}
+                placeholder="FV/2026/"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {intl.formatMessage({ id: 'settings.invoicePrefixHint' })}
+              </p>
             </div>
             <div className="flex gap-2">
               <Button

@@ -65,6 +65,10 @@ export const queryKeys = {
   gusLookup: (nip: string) => ['gus', 'lookup', nip] as const,
   gusSearch: (query: string) => ['gus', 'search', query] as const,
 
+  // Recent suppliers
+  recentSuppliers: (tenantNip?: string) =>
+    ['suppliers', 'recent', tenantNip] as const,
+
   // Dataverse
   dvSettings: (activeOnly?: boolean) =>
     ['dv', 'settings', { activeOnly }] as const,

@@ -264,18 +264,7 @@ export function DashboardPage() {
           delay={0.1}
         />
         <AnimatedKpiCard
-          title={intl.formatMessage({ id: 'dashboard.paid' })}
-          value={payments?.paid.grossAmount ?? 0}
-          format="currency"
-          icon={CheckCircle}
-          iconColor="#10b981"
-          valueColor="#16a34a"
-          borderColor="#10b981"
-          subtitle={`${payments?.paid.count ?? 0} ${intl.formatMessage({ id: 'dashboard.invoicesLabel' })}`}
-          delay={0.2}
-        />
-        <AnimatedKpiCard
-          title={intl.formatMessage({ id: 'dashboard.toPay' })}
+          title={intl.formatMessage({ id: 'dashboard.pending' })}
           value={payments?.pending.grossAmount ?? 0}
           format="currency"
           icon={Clock}
@@ -283,6 +272,17 @@ export function DashboardPage() {
           valueColor="#ca8a04"
           borderColor="#f59e0b"
           subtitle={`${payments?.pending.count ?? 0} ${intl.formatMessage({ id: 'dashboard.pendingPayment' })}`}
+          delay={0.2}
+        />
+        <AnimatedKpiCard
+          title={intl.formatMessage({ id: 'dashboard.overdue' })}
+          value={payments?.overdue.grossAmount ?? 0}
+          format="currency"
+          icon={AlertTriangle}
+          iconColor="#ef4444"
+          valueColor="#dc2626"
+          borderColor="#ef4444"
+          subtitle={`${payments?.overdue.count ?? 0} ${intl.formatMessage({ id: 'dashboard.overduePayment' })}`}
           delay={0.3}
         />
       </AnimatedCardGrid>

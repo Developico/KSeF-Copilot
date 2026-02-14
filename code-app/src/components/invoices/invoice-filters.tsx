@@ -20,7 +20,7 @@ export type DescriptionStatus = 'all' | 'notDescribed' | 'aiSuggestion' | 'descr
 
 export interface InvoiceFilterValues {
   search: string
-  paymentStatus: 'all' | 'paid' | 'pending'
+  paymentStatus: 'all' | 'paid' | 'pending' | 'overdue'
   descriptionStatus: DescriptionStatus
   fromDate: string
   toDate: string
@@ -39,7 +39,7 @@ export interface InvoiceFilterValues {
 
 export const DEFAULT_FILTERS: InvoiceFilterValues = {
   search: '',
-  paymentStatus: 'all',
+  paymentStatus: 'all' as 'all' | 'paid' | 'pending' | 'overdue',
   descriptionStatus: 'all',
   fromDate: '',
   toDate: '',
@@ -112,7 +112,7 @@ export function InvoiceFilters({
 
         {/* Payment status buttons */}
         <div className="flex gap-1.5">
-          {(['all', 'paid', 'pending'] as const).map((f) => (
+          {(['all', 'paid', 'pending', 'overdue'] as const).map((f) => (
             <Button
               key={f}
               size="sm"

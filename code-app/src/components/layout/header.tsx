@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTheme } from 'next-themes'
 import { useIntl } from 'react-intl'
-import { Sun, Moon, Menu, Globe, Building2, ChevronDown, LogOut } from 'lucide-react'
+import { Sun, Moon, Menu, Globe, Building2, ChevronDown, LogOut, ExternalLink } from 'lucide-react'
 import { useLocaleStore, locales, localeNames, localeFlags } from '@/i18n'
 import { useCompanyContext } from '@/contexts/company-context'
 import { useAuth } from '@/components/auth/auth-provider'
@@ -16,7 +16,7 @@ export function Header() {
   const { theme, setTheme } = useTheme()
   const { locale, setLocale } = useLocaleStore()
   const { companies, selectedCompany, setSelectedCompany, isLoading: companiesLoading } = useCompanyContext()
-  const { user, isAuthenticated, logout } = useAuth()
+  const { user, isAuthenticated, logout, isAdmin } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [logoOk, setLogoOk] = useState(true)
   const [langMenuOpen, setLangMenuOpen] = useState(false)
@@ -226,7 +226,19 @@ export function Header() {
                   <div className="px-3 py-2 border-b">
                     <p className="text-sm font-medium truncate">{user.name ?? '—'}</p>
                     <p className="text-xs text-muted-foreground truncate">{user.email ?? ''}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {intl.formatMessage({ id: 'header.role' })}: {isAdmin ? 'Admin' : 'User'}
+                    </p>
                   </div>
+                  <a
+                    href="https://myaccount.microsoft.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {intl.formatMessage({ id: 'header.profile' })}
+                  </a>
                   <button
                     className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2 text-destructive"
                     onClick={() => {

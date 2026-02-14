@@ -124,51 +124,70 @@ function calculateConfidence(data: ExtractedInvoiceData): number {
 }
 
 /**
- * Extract data from PDF using text extraction + LLM analysis
+ * Minimum number of characters for PDF text extraction to be considered
+ * meaningful (scanned PDFs typically yield 0 or a few junk chars).
+ */
+const MIN_PDF_TEXT_LENGTH = 50
+
+/**
+ * Extract data from PDF using text extraction + LLM analysis.
+ * Falls back to Vision API for scanned/image-based PDFs where text
+ * extraction returns empty or minimal content.
  */
 async function extractFromPdf(base64Content: string): Promise<{ data: ExtractedInvoiceData; confidence: number; rawText?: string }> {
   const startTime = Date.now()
   console.log('[Extractor] Starting PDF extraction...')
 
-  // Step 1: Extract text from PDF
+  // Step 1: Try to extract text from PDF
   const pdfResult = await extractTextFromPdfBase64(base64Content)
-  
-  if (!pdfResult.success || !pdfResult.text.trim()) {
-    throw new Error(pdfResult.error || 'Failed to extract text from PDF')
+  const extractedText = pdfResult.success ? pdfResult.text.trim() : ''
+
+  // Step 2: If text extraction succeeded with meaningful text, use text-based LLM
+  if (extractedText.length >= MIN_PDF_TEXT_LENGTH) {
+    console.log('[Extractor] PDF text extracted:', {
+      pageCount: pdfResult.pageCount,
+      textLength: extractedText.length,
+    })
+
+    const client = await getTextClient()
+    
+    const response = await client.chat.completions.create({
+      model: TEXT_DEPLOYMENT,
+      messages: [
+        { role: 'user', content: buildTextAnalysisPrompt(extractedText) }
+      ],
+      max_tokens: 2000,
+      temperature: 0.1,
+    })
+
+    const content = response.choices[0]?.message?.content
+    if (!content) {
+      throw new Error('Empty response from LLM')
+    }
+
+    const data = parseTextAnalysisResponse(content)
+    const confidence = calculateConfidence(data)
+
+    console.log('[Extractor] PDF text analysis complete:', {
+      processingTimeMs: Date.now() - startTime,
+      invoiceNumber: data.invoiceNumber,
+      supplier: data.supplierName,
+    })
+
+    return { data, confidence, rawText: extractedText }
   }
 
-  console.log('[Extractor] PDF text extracted:', {
-    pageCount: pdfResult.pageCount,
-    textLength: pdfResult.text.length,
-  })
+  // Step 3: Fallback — scanned PDF with no extractable text → Vision API
+  console.log('[Extractor] PDF has no extractable text (length=%d), falling back to Vision API', extractedText.length)
+  const visionResult = await extractFromImage(base64Content, 'application/pdf')
 
-  // Step 2: Analyze text with LLM
-  const client = await getTextClient()
-  
-  const response = await client.chat.completions.create({
-    model: TEXT_DEPLOYMENT,
-    messages: [
-      { role: 'user', content: buildTextAnalysisPrompt(pdfResult.text) }
-    ],
-    max_tokens: 2000,
-    temperature: 0.1,
-  })
-
-  const content = response.choices[0]?.message?.content
-  if (!content) {
-    throw new Error('Empty response from LLM')
-  }
-
-  const data = parseTextAnalysisResponse(content)
-  const confidence = calculateConfidence(data)
-
-  console.log('[Extractor] PDF analysis complete:', {
+  console.log('[Extractor] PDF Vision fallback complete:', {
     processingTimeMs: Date.now() - startTime,
-    invoiceNumber: data.invoiceNumber,
-    supplier: data.supplierName,
+    invoiceNumber: visionResult.data.invoiceNumber,
+    supplier: visionResult.data.supplierName,
   })
 
-  return { data, confidence, rawText: pdfResult.text }
+  return { data: visionResult.data, confidence: visionResult.confidence, rawText: undefined }
 }
 
 /**

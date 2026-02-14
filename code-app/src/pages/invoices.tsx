@@ -14,6 +14,7 @@ import {
   FileText, AlertCircle, ArrowUpDown, ChevronUp, ChevronDown,
   RefreshCw, Eye, Plus, ScanLine, Download,
   MoreHorizontal, CheckCircle, XCircle, Trash2,
+  Paperclip, StickyNote,
 } from 'lucide-react'
 import { useInvoices, useMarkInvoiceAsPaid, useUpdateInvoice, useDeleteInvoice } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
@@ -35,12 +36,20 @@ type SortDir = 'asc' | 'desc'
 
 const PAGE_SIZE = 25
 
-function PaymentBadge({ status }: { status: Invoice['paymentStatus'] }) {
+function PaymentBadge({ status, dueDate }: { status: Invoice['paymentStatus']; dueDate?: string }) {
   const intl = useIntl()
   if (status === 'paid') {
     return (
       <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
         {intl.formatMessage({ id: 'invoices.paid' })}
+      </Badge>
+    )
+  }
+  const isOverdue = dueDate && new Date(dueDate) < new Date()
+  if (isOverdue) {
+    return (
+      <Badge variant="destructive" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+        {intl.formatMessage({ id: 'invoices.overdue' })}
       </Badge>
     )
   }
@@ -123,6 +132,16 @@ export function InvoicesPage() {
   const [filters, setFilters] = useState<InvoiceFilterValues>(DEFAULT_FILTERS)
   const [currentPage, setCurrentPage] = useState(0)
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+
+  const toggleGroupCollapse = useCallback((key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
 
   // Build API query params from filters
   const params = useMemo<InvoiceListParams>(() => {
@@ -131,7 +150,12 @@ export function InvoicesPage() {
       orderBy: filters.sortColumn as InvoiceListParams['orderBy'],
       orderDirection: filters.sortDirection,
     }
-    if (filters.paymentStatus !== 'all') p.paymentStatus = filters.paymentStatus
+    if (filters.paymentStatus === 'overdue') {
+      p.paymentStatus = 'pending'
+      p.overdue = true
+    } else if (filters.paymentStatus !== 'all') {
+      p.paymentStatus = filters.paymentStatus
+    }
     if (filters.search.trim()) p.search = filters.search.trim()
     if (filters.fromDate) p.fromDate = filters.fromDate
     if (filters.toDate) p.toDate = filters.toDate
@@ -356,18 +380,29 @@ export function InvoicesPage() {
 
           {groups.map((group) => (
             <div key={group.key}>
-              {/* Group header */}
+              {/* Group header (collapsible) */}
               {filters.groupBy !== 'none' && (
-                <div className="flex items-center gap-2 mb-2 mt-4">
+                <button
+                  onClick={() => toggleGroupCollapse(group.key)}
+                  className="flex items-center gap-2 mb-2 mt-4 w-full text-left hover:opacity-80 transition-opacity"
+                >
+                  {collapsedGroups.has(group.key) ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                  ) : (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                  )}
                   <Badge variant="outline" className="text-sm font-medium px-3 py-1">
                     {group.label}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
                     ({group.invoices.length})
                   </span>
-                </div>
+                </button>
               )}
 
+              {/* Group content (collapsible) */}
+              {(filters.groupBy === 'none' || !collapsedGroups.has(group.key)) && (
+              <>
               {/* Desktop table */}
               <div className="hidden md:block rounded-md border mb-4">
                 <table className="w-full text-sm">
@@ -413,8 +448,20 @@ export function InvoicesPage() {
                       <tr key={inv.id} className="border-b hover:bg-muted/30 transition-colors">
                         <td className="p-3 whitespace-nowrap">{formatDate(inv.invoiceDate)}</td>
                         <td className="p-3 font-mono text-xs">{inv.invoiceNumber}</td>
-                        <td className="p-3 max-w-48 truncate" title={inv.supplierName}>
-                          {inv.supplierName}
+                        <td className="p-3 max-w-48" title={inv.supplierName}>
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate">{inv.supplierName}</span>
+                            {inv.hasAttachments && (
+                              <span title={`${inv.attachmentCount ?? 0} attachment(s)`}>
+                                <Paperclip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              </span>
+                            )}
+                            {inv.hasNotes && (
+                              <span title={`${inv.noteCount ?? 0} note(s)`}>
+                                <StickyNote className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="p-3 text-right font-medium whitespace-nowrap">
                           {formatCurrency(inv.grossAmount, inv.currency)}
@@ -422,7 +469,7 @@ export function InvoicesPage() {
                         <td className="p-3 text-muted-foreground">{inv.mpk ?? '—'}</td>
                         <td className="p-3 text-muted-foreground">{inv.category ?? '—'}</td>
                         <td className="p-3 text-center">
-                          <PaymentBadge status={inv.paymentStatus} />
+                          <PaymentBadge status={inv.paymentStatus} dueDate={inv.dueDate} />
                         </td>
                         <td className="p-3 text-right">
                           <InvoiceRowActions
@@ -446,7 +493,11 @@ export function InvoicesPage() {
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <Link to={`/invoices/${inv.id}`} className="min-w-0 flex-1">
-                          <p className="font-medium truncate">{inv.supplierName}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium truncate">{inv.supplierName}</p>
+                            {inv.hasAttachments && <Paperclip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                            {inv.hasNotes && <StickyNote className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                          </div>
                           <p className="text-xs text-muted-foreground font-mono mt-0.5">
                             {inv.invoiceNumber}
                           </p>
@@ -456,7 +507,7 @@ export function InvoicesPage() {
                           <div className="text-right">
                             <p className="font-medium">{formatCurrency(inv.grossAmount, inv.currency)}</p>
                             <div className="mt-1">
-                              <PaymentBadge status={inv.paymentStatus} />
+                              <PaymentBadge status={inv.paymentStatus} dueDate={inv.dueDate} />
                             </div>
                           </div>
                           <InvoiceRowActions
@@ -482,6 +533,8 @@ export function InvoicesPage() {
                   </Card>
                 ))}
               </div>
+              </>
+              )}
             </div>
           ))}
 

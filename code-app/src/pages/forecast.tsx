@@ -27,6 +27,7 @@ import {
   FolderOpen,
   Users,
   AlertTriangle,
+  ShieldAlert,
 } from 'lucide-react'
 import {
   useForecastMonthly,
@@ -321,7 +322,7 @@ export function ForecastPage() {
       </div>
 
       {/* ── KPI Cards ───────────────────────────────────────── */}
-      <AnimatedCardGrid className="grid gap-4 md:grid-cols-3">
+      <AnimatedCardGrid className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <AnimatedKpiCard
           title={intl.formatMessage({ id: 'forecast.nextMonth' })}
           value={forecast.summary.nextMonth}
@@ -329,42 +330,41 @@ export function ForecastPage() {
           icon={Target}
           iconColor="#3b82f6"
           borderColor="#3b82f6"
-          subtitle={`${forecast.trend === 'up' ? '+' : ''}${forecast.trendPercent.toFixed(1)}% trend`}
-          trend={{
-            value: forecast.trendPercent,
-            direction: forecast.trend === 'up' ? 'up' : forecast.trend === 'down' ? 'down' : 'neutral',
-          }}
+          subtitle={intl.formatMessage({ id: 'forecast.predictedExpenses' })}
           delay={0}
+        />
+        <AnimatedKpiCard
+          title={intl.formatMessage({ id: 'forecast.trend' })}
+          value={forecast.trendPercent}
+          format="percent"
+          icon={forecast.trend === 'up' ? TrendingUp : forecast.trend === 'down' ? TrendingDown : Minus}
+          iconColor={forecast.trend === 'up' ? '#ef4444' : forecast.trend === 'down' ? '#10b981' : '#64748b'}
+          valueColor={forecast.trend === 'up' ? '#dc2626' : forecast.trend === 'down' ? '#16a34a' : undefined}
+          borderColor={forecast.trend === 'up' ? '#ef4444' : forecast.trend === 'down' ? '#10b981' : '#64748b'}
+          subtitle={intl.formatMessage({ id: 'forecast.monthOverMonth' })}
+          delay={0.1}
         />
         <AnimatedKpiCard
           title={intl.formatMessage({ id: 'forecast.totalForecast' })}
           value={forecast.summary.totalForecast}
           format="currency"
           icon={Activity}
-          iconColor="#10b981"
-          borderColor="#10b981"
-          subtitle={`${horizon} ${horizon === 1 ? 'month' : 'months'} forecast`}
-          delay={0.1}
-        />
-        <AnimatedKpiCard
-          title={intl.formatMessage({ id: 'forecast.avgMonthly' })}
-          value={forecast.summary.avgMonthly}
-          format="currency"
-          icon={BarChart3}
-          iconColor="#f59e0b"
-          borderColor="#f59e0b"
-          subtitle={intl.formatMessage({ id: 'dashboard.perInvoice' })}
+          iconColor="#8b5cf6"
+          borderColor="#8b5cf6"
+          subtitle={intl.formatMessage({ id: 'forecast.forSelectedPeriod' })}
           delay={0.2}
         />
+        <AnimatedKpiCard
+          title={intl.formatMessage({ id: 'forecast.confidence' })}
+          value={Math.round(forecast.confidence * 100)}
+          format="percent"
+          icon={ShieldAlert}
+          iconColor="#f59e0b"
+          borderColor="#f59e0b"
+          subtitle={`${intl.formatMessage({ id: 'forecast.method' })}: ${forecast.method}`}
+          delay={0.3}
+        />
       </AnimatedCardGrid>
-
-      {/* Method + confidence */}
-      <div className="flex items-center gap-3">
-        <Badge variant="outline">{forecast.method}</Badge>
-        <span className="text-sm text-muted-foreground">
-          {intl.formatMessage({ id: 'forecast.confidence' })}: {Math.round(forecast.confidence * 100)}%
-        </span>
-      </div>
 
       {/* ── Tabs ────────────────────────────────────────────── */}
       <Tabs defaultValue="overview" className="space-y-4">

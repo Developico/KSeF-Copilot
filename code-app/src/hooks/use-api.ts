@@ -797,6 +797,84 @@ export function useGusValidate(
   })
 }
 
+// ─── Recent Suppliers ────────────────────────────────────────────
+
+export interface RecentSupplier {
+  nip: string
+  name: string
+  address?: string
+  lastInvoiceDate?: string
+  invoiceCount: number
+}
+
+export function useRecentSuppliers(options?: {
+  tenantNip?: string
+  limit?: number
+  enabled?: boolean
+}) {
+  const { tenantNip, limit = 10, enabled = true } = options ?? {}
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: queryKeys.recentSuppliers(tenantNip),
+    queryFn: async () => {
+      const response = await api.invoices.list({
+        tenantNip,
+        top: 100,
+        orderBy: 'invoiceDate',
+        orderDirection: 'desc',
+      })
+
+      const supplierMap = new Map<string, RecentSupplier>()
+
+      for (const invoice of response.invoices) {
+        if (!invoice.supplierNip) continue
+        const existing = supplierMap.get(invoice.supplierNip)
+        if (existing) {
+          existing.invoiceCount++
+          if (
+            !existing.lastInvoiceDate ||
+            invoice.invoiceDate > existing.lastInvoiceDate
+          ) {
+            existing.lastInvoiceDate = invoice.invoiceDate
+          }
+        } else {
+          supplierMap.set(invoice.supplierNip, {
+            nip: invoice.supplierNip,
+            name: invoice.supplierName,
+            address: invoice.supplierAddress,
+            lastInvoiceDate: invoice.invoiceDate,
+            invoiceCount: 1,
+          })
+        }
+      }
+
+      return Array.from(supplierMap.values())
+        .sort((a, b) => b.invoiceCount - a.invoiceCount)
+        .slice(0, limit)
+    },
+    enabled: enabled && !!tenantNip,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const filter = (query: string): RecentSupplier[] => {
+    if (!data || !query) return data || []
+    const q = query.toLowerCase()
+    return data.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.nip.includes(query.replace(/\D/g, ''))
+    )
+  }
+
+  return {
+    suppliers: data || [],
+    isLoading,
+    error: error instanceof Error ? error.message : null,
+    refetch,
+    filter,
+  }
+}
+
 // ─── Exchange Rates ──────────────────────────────────────────────
 
 export function useExchangeRate(
