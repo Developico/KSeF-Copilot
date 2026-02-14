@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useIntl } from 'react-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -13,9 +15,17 @@ import {
   CreditCard,
   Tag,
   Sparkles,
+  Edit2,
+  Save,
+  X,
+  Loader2,
 } from 'lucide-react'
-import { useInvoice, useMarkInvoiceAsPaid } from '@/hooks/use-api'
+import { useInvoice, useMarkInvoiceAsPaid, useUpdateInvoice } from '@/hooks/use-api'
 import { formatCurrency, formatDate } from '@/lib/format'
+import { ClassificationEditDialog } from '@/components/invoices/classification-edit-dialog'
+import { AttachmentsSection } from '@/components/invoices/attachments-section'
+import { NotesSection } from '@/components/invoices/notes-section'
+import { toast } from 'sonner'
 
 function PaymentBadge({ status }: { status: 'paid' | 'pending' }) {
   const intl = useIntl()
@@ -48,6 +58,87 @@ export function InvoiceDetailPage() {
 
   const { data: invoice, isLoading, error } = useInvoice(id ?? '')
   const markAsPaid = useMarkInvoiceAsPaid()
+  const updateInvoice = useUpdateInvoice()
+
+  function handleMarkAsPaid() {
+    markAsPaid.mutate(
+      { id: invoice!.id },
+      {
+        onSuccess: () => toast.success(intl.formatMessage({ id: 'invoices.markedAsPaid' })),
+        onError: (err) => toast.error(err.message),
+      },
+    )
+  }
+
+  function handleMarkAsUnpaid() {
+    updateInvoice.mutate(
+      { id: invoice!.id, data: { paymentStatus: 'pending' } },
+      {
+        onSuccess: () => toast.success(intl.formatMessage({ id: 'invoices.markedAsUnpaid' })),
+        onError: (err) => toast.error(err.message),
+      },
+    )
+  }
+
+  // ── Manual invoice edit mode ────────────────────────────────
+  const [editing, setEditing] = useState(false)
+  const [editData, setEditData] = useState({
+    supplierName: '',
+    supplierNip: '',
+    invoiceNumber: '',
+    invoiceDate: '',
+    dueDate: '',
+    netAmount: 0,
+    vatAmount: 0,
+    grossAmount: 0,
+  })
+
+  function startEdit() {
+    if (!invoice) return
+    setEditData({
+      supplierName: invoice.supplierName ?? '',
+      supplierNip: invoice.supplierNip ?? '',
+      invoiceNumber: invoice.invoiceNumber ?? '',
+      invoiceDate: invoice.invoiceDate?.split('T')[0] ?? '',
+      dueDate: invoice.dueDate?.split('T')[0] ?? '',
+      netAmount: invoice.netAmount ?? 0,
+      vatAmount: invoice.vatAmount ?? 0,
+      grossAmount: invoice.grossAmount ?? 0,
+    })
+    setEditing(true)
+  }
+
+  function cancelEdit() {
+    setEditing(false)
+  }
+
+  function saveEdit() {
+    if (!invoice) return
+    updateInvoice.mutate(
+      {
+        id: invoice.id,
+        data: {
+          supplierName: editData.supplierName,
+          supplierNip: editData.supplierNip,
+          invoiceNumber: editData.invoiceNumber,
+          invoiceDate: editData.invoiceDate,
+          dueDate: editData.dueDate || undefined,
+          netAmount: editData.netAmount,
+          vatAmount: editData.vatAmount,
+          grossAmount: editData.grossAmount,
+        },
+      },
+      {
+        onSuccess: () => {
+          setEditing(false)
+          toast.success(intl.formatMessage({ id: 'settings.saveSuccess' }))
+        },
+        onError: (err) => toast.error(err.message),
+      },
+    )
+  }
+
+  const isManual = invoice?.source === 'Manual'
 
   if (isLoading) {
     return (
@@ -117,17 +208,158 @@ export function InvoiceDetailPage() {
         </div>
         <div className="flex items-center gap-3">
           <PaymentBadge status={invoice.paymentStatus} />
-          {invoice.paymentStatus === 'pending' && (
-            <button
+          {isManual && !editing && (
+            <Button size="sm" variant="outline" onClick={startEdit}>
+              <Edit2 className="h-4 w-4 mr-1" />
+              {intl.formatMessage({ id: 'common.edit' })}
+            </Button>
+          )}
+          {invoice.paymentStatus === 'pending' ? (
+            <Button
+              size="sm"
+              variant="default"
               disabled={markAsPaid.isPending}
-              onClick={() => markAsPaid.mutate({ id: invoice.id })}
-              className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              onClick={handleMarkAsPaid}
+              className="bg-green-600 hover:bg-green-700"
             >
               {intl.formatMessage({ id: 'invoices.markAsPaid' })}
-            </button>
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={updateInvoice.isPending}
+              onClick={handleMarkAsUnpaid}
+            >
+              {intl.formatMessage({ id: 'invoices.markAsUnpaid' })}
+            </Button>
           )}
         </div>
       </div>
+
+      {/* Manual invoice edit form */}
+      {editing && isManual && (
+        <Card className="border-blue-200 dark:border-blue-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base text-blue-700 dark:text-blue-300">
+              <Edit2 className="h-4 w-4" />
+              {intl.formatMessage({ id: 'invoices.editInvoice' })}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  {intl.formatMessage({ id: 'invoices.supplier' })}
+                </label>
+                <input
+                  type="text"
+                  value={editData.supplierName}
+                  onChange={(e) => setEditData((d) => ({ ...d, supplierName: e.target.value }))}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  {intl.formatMessage({ id: 'invoices.nipLabel' })}
+                </label>
+                <input
+                  type="text"
+                  value={editData.supplierNip}
+                  onChange={(e) => setEditData((d) => ({ ...d, supplierNip: e.target.value }))}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  {intl.formatMessage({ id: 'invoices.invoiceNumber' })}
+                </label>
+                <input
+                  type="text"
+                  value={editData.invoiceNumber}
+                  onChange={(e) => setEditData((d) => ({ ...d, invoiceNumber: e.target.value }))}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  {intl.formatMessage({ id: 'invoices.invoiceDate' })}
+                </label>
+                <input
+                  type="date"
+                  value={editData.invoiceDate}
+                  onChange={(e) => setEditData((d) => ({ ...d, invoiceDate: e.target.value }))}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  {intl.formatMessage({ id: 'invoices.dueDate' })}
+                </label>
+                <input
+                  type="date"
+                  value={editData.dueDate}
+                  onChange={(e) => setEditData((d) => ({ ...d, dueDate: e.target.value }))}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  {intl.formatMessage({ id: 'invoices.netAmount' })}
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editData.netAmount}
+                  onChange={(e) => setEditData((d) => ({ ...d, netAmount: parseFloat(e.target.value) || 0 }))}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  {intl.formatMessage({ id: 'invoices.vatAmount' })}
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editData.vatAmount}
+                  onChange={(e) => setEditData((d) => ({ ...d, vatAmount: parseFloat(e.target.value) || 0 }))}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  {intl.formatMessage({ id: 'invoices.grossAmount' })}
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editData.grossAmount}
+                  onChange={(e) => setEditData((d) => ({ ...d, grossAmount: parseFloat(e.target.value) || 0 }))}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={saveEdit}
+                disabled={updateInvoice.isPending}
+              >
+                {updateInvoice.isPending
+                  ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  : <Save className="h-4 w-4 mr-2" />}
+                {intl.formatMessage({ id: 'common.save' })}
+              </Button>
+              <Button variant="outline" onClick={cancelEdit}>
+                <X className="h-4 w-4 mr-2" />
+                {intl.formatMessage({ id: 'common.cancel' })}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Invoice details */}
@@ -189,10 +421,13 @@ export function InvoiceDetailPage() {
       {/* Classification */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Tag className="h-4 w-4" />
-            {intl.formatMessage({ id: 'invoices.description' })}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Tag className="h-4 w-4" />
+              {intl.formatMessage({ id: 'invoices.description' })}
+            </CardTitle>
+            <ClassificationEditDialog invoice={invoice} />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-3">
@@ -293,6 +528,12 @@ export function InvoiceDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Attachments */}
+      <AttachmentsSection invoiceId={invoice.id} />
+
+      {/* Notes */}
+      <NotesSection invoiceId={invoice.id} />
     </div>
   )
 }

@@ -1,12 +1,12 @@
 import { ReactNode } from 'react'
 import { IntlProvider } from 'react-intl'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MsalProvider } from '@azure/msal-react'
 import { ThemeProvider } from 'next-themes'
 import { useLocaleStore, getMessages } from '@/i18n'
-import { getMsalInstance, isAuthConfigured } from '@/lib/auth-config'
-import { AuthGate } from '@/components/auth/auth-gate'
+import { AuthProvider } from '@/components/auth/auth-provider'
 import { CompanyProvider } from '@/contexts/company-context'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { Toaster } from '@/components/ui/sonner'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,16 +26,18 @@ interface ProvidersProps {
  * Application providers stack.
  *
  * Providers:
- * - MsalProvider — Azure Entra ID authentication (when configured)
+ * - AuthProvider — Azure Entra ID authentication + RBAC (handles MSAL internally)
  * - ThemeProvider (next-themes) — light/dark mode
  * - QueryClientProvider (TanStack Query) — data fetching cache
  * - IntlProvider (react-intl) — i18n translations
+ * - TooltipProvider — Radix tooltip context
+ * - Toaster (sonner) — toast notifications
  */
 export function Providers({ children }: ProvidersProps) {
   const { locale } = useLocaleStore()
   const messages = getMessages(locale)
 
-  const inner = (
+  return (
     <ThemeProvider
       attribute="class"
       defaultTheme="system"
@@ -53,24 +55,16 @@ export function Providers({ children }: ProvidersProps) {
             console.error(err)
           }}
         >
-          <AuthGate>
+          <AuthProvider>
             <CompanyProvider>
-              {children}
+              <TooltipProvider>
+                {children}
+                <Toaster />
+              </TooltipProvider>
             </CompanyProvider>
-          </AuthGate>
+          </AuthProvider>
         </IntlProvider>
       </QueryClientProvider>
     </ThemeProvider>
   )
-
-  // Wrap with MSAL only when auth is configured (env vars present)
-  if (isAuthConfigured()) {
-    return (
-      <MsalProvider instance={getMsalInstance()}>
-        {inner}
-      </MsalProvider>
-    )
-  }
-
-  return inner
 }

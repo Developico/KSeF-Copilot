@@ -2,6 +2,7 @@ import { ReactNode } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Header } from './header'
 import { Sidebar } from './sidebar'
+import { EnvironmentBanner } from './environment-banner'
 
 interface AppLayoutProps {
   children?: ReactNode
@@ -16,6 +17,7 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen flex flex-col bg-background overflow-hidden">
+      <EnvironmentBanner />
       <Header />
 
       <div className="flex-1 flex overflow-hidden min-h-0">

@@ -281,6 +281,25 @@ export function useRunSync(
   })
 }
 
+export function useImportInvoices(
+  options?: UseMutationOptions<
+    SyncResult,
+    Error,
+    { referenceNumbers: string[]; nip?: string; settingId?: string }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ referenceNumbers, nip, settingId }) =>
+      api.sync.import(referenceNumbers, nip, settingId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['invoices'] })
+      void qc.invalidateQueries({ queryKey: ['sync'] })
+    },
+    ...options,
+  })
+}
+
 // ─── Invoices ────────────────────────────────────────────────────
 
 export function useInvoices(

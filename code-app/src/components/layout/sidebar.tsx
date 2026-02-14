@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 import { useIntl } from 'react-intl'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/components/auth/auth-provider'
 import {
   FileText,
   RefreshCw,
@@ -65,10 +66,12 @@ export function Sidebar({ className }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const { pathname } = useLocation()
 
-  // In Power Apps Code Apps, roles are managed by the platform.
-  // For now, show all items. Role-based filtering can be added
-  // via Power Apps SDK user info later.
-  const visibleItems = navigationItems
+  const { isAdmin } = useAuth()
+
+  // Filter admin-only items based on user role
+  const visibleItems = navigationItems.filter(
+    (item) => !item.adminOnly || isAdmin
+  )
 
   return (
     <aside

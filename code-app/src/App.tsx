@@ -10,6 +10,7 @@ import { ReportsPage } from './pages/reports'
 import { ForecastPage } from './pages/forecast'
 import { SyncPage } from './pages/sync'
 import { SettingsPage } from './pages/settings'
+import { ManualInvoicePage } from './pages/manual-invoice'
 
 export function App() {
   return (
@@ -19,6 +20,7 @@ export function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/invoices" element={<InvoicesPage />} />
+            <Route path="/invoices/new" element={<ManualInvoicePage />} />
             <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/forecast" element={<ForecastPage />} />

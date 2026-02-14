@@ -2,30 +2,43 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTheme } from 'next-themes'
 import { useIntl } from 'react-intl'
 import { Sun, Moon, Menu, Globe, Building2, ChevronDown, LogOut } from 'lucide-react'
-import { useMsal, useIsAuthenticated } from '@azure/msal-react'
 import { useLocaleStore, locales, localeNames, localeFlags } from '@/i18n'
 import { useCompanyContext } from '@/contexts/company-context'
-import { isAuthConfigured } from '@/lib/auth-config'
+import { useAuth } from '@/components/auth/auth-provider'
+import { MobileSidebar } from './mobile-sidebar'
+import { KsefSyncButton } from './ksef-sync-button'
+import { SystemStatusBadge } from '@/components/health/system-status-badge'
+import { ChangelogModal, useTripleClick } from './changelog-modal'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 export function Header() {
   const intl = useIntl()
   const { theme, setTheme } = useTheme()
   const { locale, setLocale } = useLocaleStore()
   const { companies, selectedCompany, setSelectedCompany, isLoading: companiesLoading } = useCompanyContext()
-  const { instance: msalInstance } = useMsal()
-  const isAuthenticated = useIsAuthenticated()
+  const { user, isAuthenticated, logout } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [logoOk, setLogoOk] = useState(true)
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const [companyMenuOpen, setCompanyMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const [logoRef, changelogTriggered, resetChangelog] = useTripleClick()
+  const [changelogOpen, setChangelogOpen] = useState(false)
+
+  useEffect(() => {
+    if (changelogTriggered) {
+      setChangelogOpen(true)
+      resetChangelog()
+    }
+  }, [changelogTriggered, resetChangelog])
 
   const companyRef = useRef<HTMLDivElement>(null)
   const langRef = useRef<HTMLDivElement>(null)
   const userRef = useRef<HTMLDivElement>(null)
 
-  const account = msalInstance.getAllAccounts()[0]
-  const userName = account?.name ?? account?.username ?? ''
+  const userName = user?.name ?? ''
   const userInitials = userName
     ? userName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
     : 'U'
@@ -50,15 +63,17 @@ export function Header() {
       <div className="flex h-16 items-center px-4">
         {/* Logo & Title */}
         <div className="flex items-center gap-2 md:w-52 shrink-0">
-          {/* Mobile menu placeholder */}
+          {/* Mobile menu */}
           <button
             className="md:hidden h-9 w-9 flex items-center justify-center rounded-md hover:bg-accent"
             aria-label={intl.formatMessage({ id: 'header.openMenu' })}
+            onClick={() => setMobileMenuOpen(true)}
           >
             <Menu className="h-5 w-5" />
           </button>
+          <MobileSidebar open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} />
 
-          <div className="flex items-center gap-3 select-none">
+          <div className="flex items-center gap-3 select-none" ref={logoRef}>
             <div className="flex h-8 w-8 items-center justify-center">
               {logoOk ? (
                 <img
@@ -91,6 +106,14 @@ export function Header() {
 
         {/* Right side actions */}
         <div className="flex items-center gap-3 shrink-0">
+          <TooltipProvider>
+            {/* KSeF sync button */}
+            <KsefSyncButton />
+
+            {/* System status badge */}
+            <SystemStatusBadge />
+          </TooltipProvider>
+
           {/* Company selector */}
           {mounted && !companiesLoading && companies.length > 0 && (
             <div className="relative" ref={companyRef}>
@@ -189,7 +212,7 @@ export function Header() {
           )}
 
           {/* User avatar & menu */}
-          {mounted && isAuthenticated && isAuthConfigured() && (
+          {mounted && isAuthenticated && user && (
             <div className="relative" ref={userRef}>
               <button
                 className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs hover:bg-primary/30 transition-colors"
@@ -201,14 +224,14 @@ export function Header() {
               {userMenuOpen && (
                 <div className="absolute right-0 top-full mt-1 w-56 rounded-md border bg-popover shadow-md z-50">
                   <div className="px-3 py-2 border-b">
-                    <p className="text-sm font-medium truncate">{account?.name ?? '—'}</p>
-                    <p className="text-xs text-muted-foreground truncate">{account?.username ?? ''}</p>
+                    <p className="text-sm font-medium truncate">{user.name ?? '—'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user.email ?? ''}</p>
                   </div>
                   <button
                     className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2 text-destructive"
                     onClick={() => {
                       setUserMenuOpen(false)
-                      void msalInstance.logoutRedirect()
+                      void logout()
                     }}
                   >
                     <LogOut className="h-4 w-4" />
@@ -218,13 +241,16 @@ export function Header() {
               )}
             </div>
           )}
-          {mounted && (!isAuthenticated || !isAuthConfigured()) && (
+          {mounted && !isAuthenticated && (
             <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
               U
             </div>
           )}
         </div>
       </div>
+
+      {/* Changelog modal (Easter egg: triple-click logo) */}
+      <ChangelogModal open={changelogOpen} onOpenChange={setChangelogOpen} />
     </header>
   )
 }
