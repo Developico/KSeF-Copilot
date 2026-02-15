@@ -1,0 +1,23 @@
+{
+  "appId": "b81d21c7-a23d-49d9-885f-f885ca483382",
+  "appDisplayName": "KSeF Copilot (Code Apps)",
+  "description": "KSeF integration and invoice management",
+  "environmentId": "89a028f9-ed7c-e8f9-92d5-7d0fa7502750",
+  "buildPath": "./dist",
+  "buildEntryPoint": "index.html",
+  "logoPath": "Default",
+  "localAppUrl": "http://localhost:3000/",
+  "region": "prod",
+  "connectionReferences": {
+    "8908f6d2-fb0d-4142-a901-63d009b2195f": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_dvlp-5fdvlp-2dksef-2dpp-2dconnector-5f0ad1af9befb93b50",
+      "displayName": "DVLP-KSeF-PP-Connector",
+      "dataSources": [
+        "dvlp_5fdvlp_2dksef_2dpp_2dconnector_5f0ad1af9befb93b50"
+      ],
+      "dataSets": {}
+    }
+  },
+  "databaseReferences": {},
+  "version": "1.0"
+}

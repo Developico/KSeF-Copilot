@@ -1,0 +1,7 @@
+{
+    "files.exclude": {
+        "**/.github": true,
+        "**/.vscode": true,
+        "**/.cursor": true
+    }
+}

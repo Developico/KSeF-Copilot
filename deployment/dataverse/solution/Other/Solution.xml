@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ImportExportXml version="9.2.0.0" SolutionPackageVersion="9.2" languagecode="1045" generatedBy="dvlp-ksef" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SolutionManifest>
+    <UniqueName>KSeF</UniqueName>
+    <LocalizedNames>
+      <LocalizedName description="KSeF Integration" languagecode="1033" />
+      <LocalizedName description="Integracja KSeF" languagecode="1045" />
+    </LocalizedNames>
+    <Descriptions>
+      <Description description="Integration module for Polish National e-Invoice System (KSeF)" languagecode="1033" />
+      <Description description="Moduł integracji z Krajowym Systemem e-Faktur (KSeF)" languagecode="1045" />
+    </Descriptions>
+    <Version>1.0.0.0</Version>
+    <Managed>0</Managed>
+    <Publisher>
+      <UniqueName>developico</UniqueName>
+      <LocalizedNames>
+        <LocalizedName description="Developico" languagecode="1033" />
+        <LocalizedName description="Developico" languagecode="1045" />
+      </LocalizedNames>
+      <Descriptions>
+        <Description description="Developico sp. z o.o." languagecode="1033" />
+        <Description description="Developico sp. z o.o." languagecode="1045" />
+      </Descriptions>
+      <CustomizationPrefix>dvlp</CustomizationPrefix>
+      <CustomizationOptionValuePrefix>10000</CustomizationOptionValuePrefix>
+    </Publisher>
+    <RootComponents>
+      <RootComponent type="1" id="dvlp_ksefsession" />
+      <RootComponent type="1" id="dvlp_ksefsetting" />
+      <RootComponent type="9" id="dvlp_sessionstatus" />
+      <RootComponent type="9" id="dvlp_ksefenvironment" />
+      <RootComponent type="9" id="dvlp_ksefstatus" />
+      <RootComponent type="9" id="dvlp_ksefdirection" />
+    </RootComponents>
+    <MissingDependencies />
+  </SolutionManifest>
+</ImportExportXml>
