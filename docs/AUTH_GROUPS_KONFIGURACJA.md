@@ -1,4 +1,4 @@
-# Konfiguracja Autentykacji i Autoryzacji - KSeF Web App
+﻿# Konfiguracja Autentykacji i Autoryzacji - KSeF Web App
 
 > **⚠️ Ten dokument został zastąpiony przez [ENTRA_ID_KONFIGURACJA.md](./ENTRA_ID_KONFIGURACJA.md)**  
 > Nowy dokument zawiera scalone i zaktualizowane treści z tego pliku oraz z `ENTRA_ID_SETUP.md`.  
@@ -180,8 +180,8 @@ Jeśli wolisz używać App Roles zamiast grup bezpieczeństwa:
 # =============================================================================
 # Azure Authentication (Entra ID) - Web App
 # =============================================================================
-NEXT_PUBLIC_AZURE_CLIENT_ID=YOUR_CLIENT_ID
-NEXT_PUBLIC_AZURE_TENANT_ID=YOUR_TENANT_ID
+NEXT_PUBLIC_AZURE_CLIENT_ID=your-azure-client-id
+NEXT_PUBLIC_AZURE_TENANT_ID=your-azure-tenant-id
 
 # API Scope (dla wywołań do Azure Functions)
 NEXT_PUBLIC_API_SCOPE=api://ksef-api/.default
@@ -200,7 +200,7 @@ NEXT_PUBLIC_USER_GROUP=<object-id-grupy-users>
 2. W **Expose an API** znajdź **Application ID URI**
 3. Scope to: `{Application ID URI}/.default`
    - Przykład: `api://func-ksef-prod/.default`
-   - Lub: `api://YOUR_CLIENT_ID/.default`
+   - Lub: `api://your-azure-client-id/.default`
 
 ---
 

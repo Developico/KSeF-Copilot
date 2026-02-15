@@ -1,4 +1,4 @@
-# AI Categorization - Setup Guide
+﻿# AI Categorization - Setup Guide
 
 > Funkcja kategoryzacji faktur z użyciem Azure OpenAI
 
@@ -44,7 +44,7 @@ Funkcja AI Categorization wykorzystuje Azure OpenAI do:
 ## Wymagania
 
 - ✅ Subskrypcja Azure z dostępem do Azure OpenAI
-- ✅ Azure Key Vault (już skonfigurowany: `YOUR_KEYVAULT`)
+- ✅ Azure Key Vault (już skonfigurowany: `your-keyvault-name`)
 - ✅ Azure Functions (do wdrożenia)
 - ✅ Uprawnienia: Contributor na Resource Group
 
@@ -63,7 +63,7 @@ Funkcja AI Categorization wykorzystuje Azure OpenAI do:
 | Subscription | (Twoja subskrypcja) |
 | Resource group | `YOUR_RESOURCE_GROUP` |
 | Region | `Sweden Central` lub `East US` (dostępność modeli) |
-| Name | `YOUR_OPENAI_RESOURCE` |
+| Name | `your-openai-resource` |
 | Pricing tier | `Standard S0` |
 
 4. Kliknij **Review + create** → **Create**
@@ -73,7 +73,7 @@ Funkcja AI Categorization wykorzystuje Azure OpenAI do:
 ```bash
 # Utwórz zasób Azure OpenAI
 az cognitiveservices account create \
-  --name YOUR_OPENAI_RESOURCE \
+  --name your-openai-resource \
   --resource-group YOUR_RESOURCE_GROUP \
   --location swedencentral \
   --kind OpenAI \
@@ -82,13 +82,13 @@ az cognitiveservices account create \
 
 # Pobierz endpoint
 az cognitiveservices account show \
-  --name YOUR_OPENAI_RESOURCE \
+  --name your-openai-resource \
   --resource-group YOUR_RESOURCE_GROUP \
   --query "properties.endpoint" -o tsv
 
 # Pobierz klucz
 az cognitiveservices account keys list \
-  --name YOUR_OPENAI_RESOURCE \
+  --name your-openai-resource \
   --resource-group YOUR_RESOURCE_GROUP \
   --query "key1" -o tsv
 ```
@@ -118,7 +118,7 @@ az cognitiveservices account keys list \
 ```bash
 # Wdróż model gpt-4o-mini
 az cognitiveservices account deployment create \
-  --name YOUR_OPENAI_RESOURCE \
+  --name your-openai-resource \
   --resource-group YOUR_RESOURCE_GROUP \
   --deployment-name gpt-4o-mini \
   --model-name gpt-4o-mini \
@@ -137,15 +137,15 @@ Przechowuj klucz API w Azure Key Vault (nie w zmiennych środowiskowych!):
 ```bash
 # Zapisz klucz API do Key Vault
 az keyvault secret set \
-  --vault-name YOUR_KEYVAULT \
+  --vault-name your-keyvault-name \
   --name AZURE-OPENAI-API-KEY \
   --value "<twój-klucz-api>"
 
 # Zapisz endpoint do Key Vault
 az keyvault secret set \
-  --vault-name YOUR_KEYVAULT \
+  --vault-name your-keyvault-name \
   --name AZURE-OPENAI-ENDPOINT \
-  --value "https://YOUR_OPENAI_RESOURCE.openai.azure.com/"
+  --value "https://your-openai-resource.openai.azure.com/"
 ```
 
 ### Weryfikacja
@@ -153,12 +153,12 @@ az keyvault secret set \
 ```bash
 # Sprawdź czy sekrety są zapisane
 az keyvault secret show \
-  --vault-name YOUR_KEYVAULT \
+  --vault-name your-keyvault-name \
   --name AZURE-OPENAI-API-KEY \
   --query "name" -o tsv
 
 az keyvault secret show \
-  --vault-name YOUR_KEYVAULT \
+  --vault-name your-keyvault-name \
   --name AZURE-OPENAI-ENDPOINT \
   --query "value" -o tsv
 ```
@@ -181,7 +181,7 @@ AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
 
 # Dla lokalnego dev możesz opcjonalnie ustawić endpoint i klucz bezpośrednio
 # (w produkcji ZAWSZE pobierane z Key Vault)
-# AZURE_OPENAI_ENDPOINT=https://YOUR_OPENAI_RESOURCE.openai.azure.com/
+# AZURE_OPENAI_ENDPOINT=https://your-openai-resource.openai.azure.com/
 # AZURE_OPENAI_API_KEY=your-api-key
 ```
 
@@ -195,7 +195,7 @@ Edytuj `api/local.settings.json`:
   "Values": {
     "AzureWebJobsStorage": "",
     "FUNCTIONS_WORKER_RUNTIME": "node",
-    "KEY_VAULT_URL": "https://YOUR_KEYVAULT.vault.azure.net/",
+    "KEY_VAULT_URL": "https://your-keyvault-name.vault.azure.net/",
     "AZURE_OPENAI_DEPLOYMENT": "gpt-4o-mini",
     "AZURE_OPENAI_API_VERSION": "2024-10-21"
   }
@@ -214,7 +214,7 @@ az functionapp config appsettings set \
   --name YOUR_APP_REGISTRATION \
   --resource-group YOUR_RESOURCE_GROUP \
   --settings \
-    "KEY_VAULT_URL=https://YOUR_KEYVAULT.vault.azure.net/" \
+    "KEY_VAULT_URL=https://your-keyvault-name.vault.azure.net/" \
     "AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini" \
     "AZURE_OPENAI_API_VERSION=2024-10-21"
 ```
@@ -260,7 +260,7 @@ az staticwebapp appsettings set \
 
 ```bash
 # Sprawdź czy model odpowiada
-curl -X POST "https://YOUR_OPENAI_RESOURCE.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-10-21" \
+curl -X POST "https://your-openai-resource.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-10-21" \
   -H "Content-Type: application/json" \
   -H "api-key: YOUR_API_KEY" \
   -d '{

@@ -1,4 +1,0 @@
-﻿{
-    "AZURE_OPENAI_API_KEY":  "@Microsoft.KeyVault(SecretUri=https://YOUR_KEYVAULT.vault.azure.net/secrets/AZURE-OPENAI-API-KEY)",
-    "AZURE_OPENAI_ENDPOINT":  "@Microsoft.KeyVault(SecretUri=https://YOUR_KEYVAULT.vault.azure.net/secrets/AZURE-OPENAI-ENDPOINT)"
-}

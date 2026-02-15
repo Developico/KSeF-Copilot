@@ -1,4 +1,4 @@
-# Custom Connector — Power Platform (KSeF API)
+﻿# Custom Connector — Power Platform (KSeF API)
 
 Instrukcja konfiguracji Custom Connector w Power Platform do połączenia z KSeF API (Azure Functions).
 
@@ -42,9 +42,9 @@ Instrukcja konfiguracji Custom Connector w Power Platform do połączenia z KSeF
 
 | Parametr | Wartość |
 |----------|---------|
-| Tenant ID | `YOUR_TENANT_ID` |
-| Client ID (API) | `YOUR_CLIENT_ID` |
-| Audience | `api://YOUR_CLIENT_ID` |
+| Tenant ID | `your-azure-tenant-id` |
+| Client ID (API) | `your-azure-client-id` |
+| Audience | `api://your-azure-client-id` |
 
 ### Nowa App Registration dla Custom Connector
 
@@ -60,13 +60,13 @@ Aby Power Platform mógł się uwierzytelniać, potrzebujesz **drugiej** App Reg
    - Zapisz wygenerowany **Client Secret** (wartość)
 
 3. **API permissions → + Add a permission → My APIs**
-   - Wybierz rejestrację API: `YOUR_CLIENT_ID`
+   - Wybierz rejestrację API: `your-azure-client-id`
    - Dodaj uprawnienie delegowane lub aplikacyjne (Application) zależnie od scenariusza:
      - **Delegated** — jeśli chcesz, żeby connector działał w kontekście użytkownika
      - **Application** — jeśli chcesz, żeby działał jako serwis (bez kontekstu użytkownika)
    - Kliknij **Grant admin consent**
 
-4. **Na rejestracji API** (`YOUR_CLIENT_ID`):
+4. **Na rejestracji API** (`your-azure-client-id`):
    - **Expose an API → + Add a scope** (jeśli jeszcze nie istnieje):
      - Scope name: `access_as_user`
      - Admin consent display name: `Access KSeF API`
@@ -106,12 +106,12 @@ Aby Power Platform mógł się uwierzytelniać, potrzebujesz **drugiej** App Reg
 | Identity Provider | `Azure Active Directory` |
 | Client ID | `<Client ID nowej rejestracji KSeF-PowerPlatform-Connector>` |
 | Client Secret | `<Client Secret nowej rejestracji>` |
-| Tenant ID | `YOUR_TENANT_ID` |
-| Resource URL | `api://YOUR_CLIENT_ID` |
-| Scope | `api://YOUR_CLIENT_ID/access_as_user` |
-| Authorization URL | `https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/authorize` |
-| Token URL | `https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/token` |
-| Refresh URL | `https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/token` |
+| Tenant ID | `your-azure-tenant-id` |
+| Resource URL | `api://your-azure-client-id` |
+| Scope | `api://your-azure-client-id/access_as_user` |
+| Authorization URL | `https://login.microsoftonline.com/your-azure-tenant-id/oauth2/v2.0/authorize` |
+| Token URL | `https://login.microsoftonline.com/your-azure-tenant-id/oauth2/v2.0/token` |
+| Refresh URL | `https://login.microsoftonline.com/your-azure-tenant-id/oauth2/v2.0/token` |
 
 Po zapisaniu sekcji Security, skopiuj **Redirect URL** (wyświetlony przez Power Platform) i dodaj go w App Registration → Authentication → Redirect URIs.
 

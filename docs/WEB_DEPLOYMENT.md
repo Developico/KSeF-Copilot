@@ -1,4 +1,4 @@
-# Wdrożenie Web — Azure App Service (Next.js Standalone)
+﻿# Wdrożenie Web — Azure App Service (Next.js Standalone)
 
 Dokument opisuje proces przygotowania, przeprowadzenia i weryfikacji wdrożenia aplikacji webowej (`dvlp-ksef` web) na platformę Azure App Service w trybie Next.js standalone.
 
@@ -31,16 +31,16 @@ Dokument opisuje proces przygotowania, przeprowadzenia i weryfikacji wdrożenia 
 | Runtime | Node.js 22 LTS |
 | Region | Poland Central |
 | Resource Group | `rg-ksef` |
-| Subscription | `73d82af2-b751-4bd5-9750-70a8a5378d93` |
-| URL | `https://dvlp-ksef-bmgjdsb6gzbdhjgs.polandcentral-01.azurewebsites.net` |
-| SCM URL | `https://dvlp-ksef-bmgjdsb6gzbdhjgs.scm.polandcentral-01.azurewebsites.net` |
+| Subscription | `your-azure-subscription-id` |
+| URL | `https://your-web-app.polandcentral-01.azurewebsites.net` |
+| SCM URL | `https://your-web-app.scm.polandcentral-01.azurewebsites.net` |
 | Startup command | `node server.js` |
 | Port | `8080` (wymuszony przez Azure, standalone serwer nasłuchuje automatycznie na `PORT` env) |
 
 ### Powiązane zasoby
 
 - **Azure Functions API:** `YOUR_FUNCTION_APP` — backend (proxy przez `rewrites` w `next.config.mjs`)
-- **Entra ID App:** `dvlp-ksef` (Client ID: `YOUR_CLIENT_ID`)
+- **Entra ID App:** `dvlp-ksef` (Client ID: `your-azure-client-id`)
 - **Application Insights:** połączony przez `APPLICATIONINSIGHTS_CONNECTION_STRING`
 
 ---
@@ -459,14 +459,14 @@ az webapp show \
 ### 2. Test HTTP
 
 ```bash
-curl -I https://dvlp-ksef-bmgjdsb6gzbdhjgs.polandcentral-01.azurewebsites.net
+curl -I https://your-web-app.polandcentral-01.azurewebsites.net
 ```
 
 Oczekiwany wynik: `HTTP/2 200`
 
 ### 3. Weryfikacja plików na serwerze (SSH)
 
-Przez Kudu SSH (`https://dvlp-ksef-bmgjdsb6gzbdhjgs.scm.polandcentral-01.azurewebsites.net/webssh/host`):
+Przez Kudu SSH (`https://your-web-app.scm.polandcentral-01.azurewebsites.net/webssh/host`):
 
 ```bash
 # Sprawdzenie BUILD_ID
@@ -554,7 +554,7 @@ az monitor app-insights query \
 
 ```bash
 # Wejście przez przeglądarkę:
-# https://dvlp-ksef-bmgjdsb6gzbdhjgs.scm.polandcentral-01.azurewebsites.net/webssh/host
+# https://your-web-app.scm.polandcentral-01.azurewebsites.net/webssh/host
 
 cd /home/site/wwwroot
 node --version

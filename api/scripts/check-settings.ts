@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Check settings for a NIP
  */
 
@@ -9,7 +9,7 @@ config({ path: resolve(__dirname, '../../.env.local') })
 import { ConfidentialClientApplication } from '@azure/msal-node'
 
 const dataverseUrl = process.env.DATAVERSE_URL!.replace(/\/$/, '')
-const nip = process.argv[2] || '5272926470'
+const nip = process.argv[2] || '0000000000'
 
 async function main() {
   const cca = new ConfidentialClientApplication({

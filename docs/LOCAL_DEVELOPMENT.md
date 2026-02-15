@@ -1,4 +1,4 @@
-# Lokalne środowisko deweloperskie
+﻿# Lokalne środowisko deweloperskie
 
 Instrukcja uruchomienia projektu KSeF na lokalnym komputerze — od klonowania repozytorium po uruchomienie testów.
 
@@ -124,7 +124,7 @@ cp api/local.settings.json.example api/local.settings.json
     "AZURE_CLIENT_ID": "<client-id>",
     "AZURE_CLIENT_SECRET": "<client-secret>",
 
-    "DATAVERSE_URL": "https://developico-tt.api.crm4.dynamics.com",
+    "DATAVERSE_URL": "https://your-org.api.crm4.dynamics.com",
 
     "DV_ENTITY_INVOICE": "dvlp_ksefinvoices",
     "DV_ENTITY_SETTING": "dvlp_ksefsettings",
@@ -135,7 +135,7 @@ cp api/local.settings.json.example api/local.settings.json
     "DV_LOG_TRAFFIC": "false",
     "DV_LOG_CONSOLE": "true",
 
-    "AZURE_KEYVAULT_URL": "https://YOUR_KEYVAULT.vault.azure.net",
+    "AZURE_KEYVAULT_URL": "https://your-keyvault-name.vault.azure.net",
 
     "KSEF_ENVIRONMENT": "test",
 
@@ -187,7 +187,7 @@ FEATURE_AI_CATEGORIZATION=false
 
 ```bash
 az login
-az account set --subscription "73d82af2-b751-4bd5-9750-70a8a5378d93"
+az account set --subscription "your-azure-subscription-id"
 ```
 
 Potrzebne, gdy API próbuje pobrać sekrety z Key Vault przy użyciu `DefaultAzureCredential`.
@@ -376,7 +376,7 @@ To normalne zachowanie npm workspaces — lock file jest zarządzany na poziomie
 
 ```bash
 az login
-az account set --subscription "73d82af2-b751-4bd5-9750-70a8a5378d93"
+az account set --subscription "your-azure-subscription-id"
 ```
 
 `DefaultAzureCredential` w dev używa Azure CLI credentials.

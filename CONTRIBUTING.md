@@ -1,8 +1,8 @@
-# Contributing to dvlp-ksef
+# Contributing to KSeF Copilot
 
-First off, thank you for considering contributing to dvlp-ksef! 🎉
+First off, thank you for considering contributing to KSeF Copilot! 🎉
 
-This project is an open-source integration module for the Polish National e-Invoice System (KSeF), and we welcome contributions from the community.
+This project is an open-source integration module for the Polish National e-Invoice System (KSeF), developed by [Developico Sp. z o.o.](https://developico.com), and we welcome contributions from the community.
 
 ## Table of Contents
 
@@ -18,7 +18,7 @@ This project is an open-source integration module for the Polish National e-Invo
 
 ## Code of Conduct
 
-This project adheres to our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to conduct@dvlp.dev.
+This project adheres to our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to contact@developico.com.
 
 ## How Can I Contribute?
 
@@ -62,11 +62,11 @@ Documentation improvements are always welcome! This includes:
 # 1. Fork the repository on GitHub
 
 # 2. Clone your fork
-git clone https://github.com/YOUR_USERNAME/dvlp-ksef.git
-cd dvlp-ksef
+git clone https://github.com/YOUR_USERNAME/KSeFCopilot.git
+cd KSeFCopilot
 
 # 3. Add upstream remote
-git remote add upstream https://github.com/dvlp-dev/dvlp-ksef.git
+git remote add upstream https://github.com/Developico/KSeFCopilot.git
 
 # 4. Install dependencies
 pnpm install
@@ -275,10 +275,12 @@ Use the [feature request template](.github/ISSUE_TEMPLATE/feature_request.md) an
 
 ## Questions?
 
-- Open a [GitHub Discussion](https://github.com/dvlp-dev/dvlp-ksef/discussions)
+- Open a [GitHub Discussion](https://github.com/Developico/KSeFCopilot/discussions)
 - Check existing issues and discussions first
 - Be patient - we're a small team!
 
 ---
 
 Thank you for contributing! 🙏
+
+Maintained by **[Developico Sp. z o.o.](https://developico.com)** | 📧 contact@developico.com

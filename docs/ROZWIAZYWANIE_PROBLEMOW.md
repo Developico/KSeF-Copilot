@@ -1,4 +1,4 @@
-# Rozwiązywanie problemów
+﻿# Rozwiązywanie problemów
 
 Centralny przewodnik diagnostyczny dla projektu KSeF. Zebrane rozwiązania ze wszystkich komponentów: API, Web, autentykacja, Key Vault, KSeF, AI.
 
@@ -80,7 +80,7 @@ cache: { cacheLocation: 'localStorage' }  // zamiast 'sessionStorage'
 1. Sprawdź Permission model Key Vault — **musi być RBAC** (nie Access policies)
 2. Sprawdź rolę Azure Functions w IAM:
    ```bash
-   az role assignment list --scope "/subscriptions/.../resourceGroups/rg-ksef/providers/Microsoft.KeyVault/vaults/YOUR_KEYVAULT" --output table
+   az role assignment list --scope "/subscriptions/.../resourceGroups/rg-ksef/providers/Microsoft.KeyVault/vaults/your-keyvault-name" --output table
    ```
 3. Function App musi mieć rolę **Key Vault Secrets User**
 
@@ -91,8 +91,8 @@ cache: { cacheLocation: 'localStorage' }  // zamiast 'sessionStorage'
 1. Sprawdź Managed Identity: Function App → Identity → Status = **On**
 2. Sprawdź format SecretUri (końcowy `/`):
    ```
-   ✅ @Microsoft.KeyVault(SecretUri=https://YOUR_KEYVAULT.vault.azure.net/secrets/ENTRA-CLIENT-SECRET/)
-   ❌ @Microsoft.KeyVault(SecretUri=https://YOUR_KEYVAULT.vault.azure.net/secrets/ENTRA-CLIENT-SECRET)
+   ✅ @Microsoft.KeyVault(SecretUri=https://your-keyvault-name.vault.azure.net/secrets/ENTRA-CLIENT-SECRET/)
+   ❌ @Microsoft.KeyVault(SecretUri=https://your-keyvault-name.vault.azure.net/secrets/ENTRA-CLIENT-SECRET)
    ```
 3. Restartuj Function App po zmianie
 
@@ -228,10 +228,10 @@ az resource show \
 az functionapp function list --name YOUR_FUNCTION_APP --resource-group rg-ksef --query "[].name" -o tsv
 
 # 2. Health check
-curl https://YOUR_FUNCTION_APP.azurewebsites.net/api/health
+curl https://your-function-app.polandcentral-01.azurewebsites.net/api/health
 
 # 3. Szczegółowy health check
-curl https://YOUR_FUNCTION_APP.azurewebsites.net/api/health/detailed
+curl https://your-function-app.polandcentral-01.azurewebsites.net/api/health/detailed
 
 # 4. Logi na żywo
 az webapp log tail --name YOUR_FUNCTION_APP --resource-group rg-ksef
@@ -302,13 +302,13 @@ cd web && npm install react-is --save
 
 ```bash
 # 1. HTTP status
-curl -I https://dvlp-ksef-bmgjdsb6gzbdhjgs.polandcentral-01.azurewebsites.net
+curl -I https://your-web-app.polandcentral-01.azurewebsites.net
 
 # 2. Logi
 az webapp log tail --name dvlp-ksef --resource-group rg-ksef
 
 # 3. SSH na serwer
-# https://dvlp-ksef-bmgjdsb6gzbdhjgs.scm.polandcentral-01.azurewebsites.net/webssh/host
+# https://your-web-app.scm.polandcentral-01.azurewebsites.net/webssh/host
 cat /home/site/wwwroot/.next/BUILD_ID
 ls -la /home/site/wwwroot/server.js
 ```

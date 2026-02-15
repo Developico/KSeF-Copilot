@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Check AI Fields in Dataverse
  * 
  * Verifies that AI categorization fields exist in dvlp_ksefinvoice table.
@@ -6,7 +6,7 @@
 
 import { DefaultAzureCredential } from '@azure/identity'
 
-const DATAVERSE_URL = process.env.DATAVERSE_URL || 'https://developico-tt.api.crm4.dynamics.com'
+const DATAVERSE_URL = process.env.DATAVERSE_URL || 'https://your-org.api.crm4.dynamics.com'
 
 async function checkAIFields() {
   console.log('Checking AI fields in Dataverse...')

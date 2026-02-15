@@ -10,7 +10,7 @@
 
 **Please do NOT report security vulnerabilities through public GitHub issues.**
 
-Instead, please report them via email to: **security@dvlp.dev**
+Instead, please report them via email to: **contact@developico.com**
 
 When reporting a vulnerability, please include:
 
@@ -96,9 +96,11 @@ Security updates will be released as soon as possible after a vulnerability is c
 
 ## Contact
 
-- Security issues: security@dvlp.dev
-- General questions: Open a GitHub Discussion
+- Security issues: contact@developico.com
+- General questions: [GitHub Discussions](https://github.com/Developico/KSeFCopilot/discussions)
+
+Maintained by **[Developico Sp. z o.o.](https://developico.com)** | Łukasz Falaciński
 
 ---
 
-Thank you for helping keep dvlp-ksef and its users safe! 🔒
+Thank you for helping keep KSeF Copilot and its users safe! 🔒

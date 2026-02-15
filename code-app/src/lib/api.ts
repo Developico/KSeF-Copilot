@@ -8,7 +8,7 @@
  *   VITE_API_BASE_URL  — Azure Functions base URL (e.g. https://ksef-api.azurewebsites.net)
  *   VITE_AZURE_CLIENT_ID — Entra ID App Registration client ID
  *   VITE_AZURE_TENANT_ID — Entra ID tenant ID
- *   VITE_API_SCOPE — API scope (e.g. api://3d2a67c9-.../access_as_user)
+ *   VITE_API_SCOPE — API scope (e.g. api://your-client-id-.../access_as_user)
  */
 
 import { getMsalInstance, apiScopes, isAuthConfigured } from './auth-config'

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+﻿import { describe, it, expect } from 'vitest'
 import { parseInvoiceXml, validateParsedInvoice } from '../src/lib/ksef/parser'
 
 // Sample FA(2) invoice XML for testing
@@ -233,7 +233,7 @@ describe('Multiple line items', () => {
   </tns:Podmiot1>
   <tns:Podmiot2>
     <tns:DaneIdentyfikacyjne>
-      <tns:NIP>5272926470</tns:NIP>
+      <tns:NIP>0000000000</tns:NIP>
       <tns:Nazwa>Developico sp. z o.o.</tns:Nazwa>
     </tns:DaneIdentyfikacyjne>
   </tns:Podmiot2>
@@ -262,7 +262,7 @@ describe('Multiple line items', () => {
     expect(result.invoiceDate).toBe('2026-02-03')
     expect(result.supplier.nip).toBe('1132737324')
     expect(result.supplier.name).toBe('BeInteractive.pl Arkadiusz Zwierzyński')
-    expect(result.buyer.nip).toBe('5272926470')
+    expect(result.buyer.nip).toBe('0000000000')
     expect(result.buyer.name).toBe('Developico sp. z o.o.')
     expect(result.netAmount).toBe(649.19)
     expect(result.grossAmount).toBe(799.5)

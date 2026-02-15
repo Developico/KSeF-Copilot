@@ -1,4 +1,4 @@
-import { config } from 'dotenv'
+﻿import { config } from 'dotenv'
 import { resolve } from 'path'
 config({ path: resolve(__dirname, '../../.env.local') })
 
@@ -12,7 +12,7 @@ async function testInvoiceCreate() {
   
   // Create a test invoice with settingId binding - using correct field names from Dataverse
   const testInvoice = {
-    dvlp_buyernip: '5272926470',          // tenantNip (my company = buyer)
+    dvlp_buyernip: '0000000000',          // tenantNip (my company = buyer)
     dvlp_buyername: 'Developico Test',    // tenantName
     dvlp_sellernip: '1234567890',         // supplierNip (supplier = seller)
     dvlp_sellername: 'Test Supplier',     // supplierName

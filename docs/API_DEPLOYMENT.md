@@ -1,4 +1,4 @@
-# Wdrożenie API — Azure Functions (Flex Consumption)
+﻿# Wdrożenie API — Azure Functions (Flex Consumption)
 
 Dokument opisuje proces przygotowania, przeprowadzenia i weryfikacji wdrożenia API (`YOUR_FUNCTION_APP`) na platformę Azure Functions w planie Flex Consumption.
 
@@ -28,16 +28,16 @@ Dokument opisuje proces przygotowania, przeprowadzenia i weryfikacji wdrożenia 
 | Runtime | Node.js 22 |
 | Region | Poland Central |
 | Resource Group | `rg-ksef` |
-| Subscription | `73d82af2-b751-4bd5-9750-70a8a5378d93` |
-| URL | `https://YOUR_FUNCTION_APP.azurewebsites.net` |
+| Subscription | `your-azure-subscription-id` |
+| URL | `https://your-function-app.polandcentral-01.azurewebsites.net` |
 | Deployment Storage | `YOUR_STORAGE_ACCOUNT` (blob: `app-package-YOUR_FUNCTION_APP-*`) |
 
 ### Powiązane zasoby
 
-- **Key Vault:** `YOUR_KEYVAULT` — przechowuje secrets (ClientSecret, KSeF Token, OpenAI Key)
+- **Key Vault:** `your-keyvault-name` — przechowuje secrets (ClientSecret, KSeF Token, OpenAI Key)
 - **Application Insights:** połączony przez `APPLICATIONINSIGHTS_CONNECTION_STRING`
-- **Entra ID App:** `dvlp-ksef` (Client ID: `YOUR_CLIENT_ID`)
-- **Dataverse:** `https://developico-tt.api.crm4.dynamics.com/`
+- **Entra ID App:** `dvlp-ksef` (Client ID: `your-azure-client-id`)
+- **Dataverse:** `https://your-org.api.crm4.dynamics.com/`
 - **KSeF API (test):** Krajowy System e-Faktur — środowisko testowe
 
 ---
@@ -372,8 +372,8 @@ API komunikuje się z następującymi serwisami:
 
 | Serwis | URL | Uwierzytelnianie |
 |---|---|---|
-| Azure Key Vault | `https://YOUR_KEYVAULT.vault.azure.net/` | Managed Identity + RBAC |
-| Dataverse | `https://developico-tt.api.crm4.dynamics.com/` | Entra ID (Client Credentials) |
+| Azure Key Vault | `https://your-keyvault-name.vault.azure.net/` | Managed Identity + RBAC |
+| Dataverse | `https://your-org.api.crm4.dynamics.com/` | Entra ID (Client Credentials) |
 | KSeF (test) | `https://ksef-test.mf.gov.pl/` | Token z Key Vault |
 | Azure OpenAI | Endpoint z Key Vault | API Key z Key Vault |
 | GUS (REGON) | `https://wyszukiwarkaregon.stat.gov.pl/` | Klucz API (publiczny) |
@@ -394,7 +394,7 @@ Plan Flex Consumption różni się od klasycznego Consumption:
 Weryfikacja konfiguracji Flex Consumption:
 ```bash
 az resource show \
-  --ids "/subscriptions/73d82af2-b751-4bd5-9750-70a8a5378d93/resourceGroups/rg-ksef/providers/Microsoft.Web/sites/YOUR_FUNCTION_APP" \
+  --ids "/subscriptions/your-azure-subscription-id/resourceGroups/rg-ksef/providers/Microsoft.Web/sites/YOUR_FUNCTION_APP" \
   --query "properties.functionAppConfig" -o json
 ```
 

@@ -42,9 +42,9 @@ Plik konfiguracyjny: `api/local.settings.json`
 
 | Zmienna | Wymagana | Przykład | Opis |
 |---------|----------|---------|------|
-| `AZURE_TENANT_ID` | ✅ | `d73b061d-...` | Directory (tenant) ID z Entra ID |
-| `AZURE_CLIENT_ID` | ✅ | `3d2a67c9-...` | Application (client) ID z App Registration |
-| `AZURE_CLIENT_SECRET` | ✅ | `Wcu8Q~...` | Client Secret (dla Client Credentials flow) |
+| `AZURE_TENANT_ID` | ✅ | `your-tenant-...` | Directory (tenant) ID z Entra ID |
+| `AZURE_CLIENT_ID` | ✅ | `your-client-...` | Application (client) ID z App Registration |
+| `AZURE_CLIENT_SECRET` | ✅ | `your-client-secret` | Client Secret (dla Client Credentials flow) |
 | `SKIP_AUTH` | ❌ | `true` | Pominięcie walidacji JWT w dev (`true` = brak auth) |
 
 > ⚠️ `AZURE_CLIENT_SECRET` — w produkcji **NIGDY** nie ustawiaj bezpośrednio. Użyj Key Vault Reference.
@@ -53,7 +53,7 @@ Plik konfiguracyjny: `api/local.settings.json`
 
 | Zmienna | Wymagana | Przykład | Opis |
 |---------|----------|---------|------|
-| `DATAVERSE_URL` | ✅ | `https://developico-tt.api.crm4.dynamics.com` | URL środowiska Dataverse |
+| `DATAVERSE_URL` | ✅ | `https://your-org.api.crm4.dynamics.com` | URL środowiska Dataverse |
 | `DV_ENTITY_INVOICE` | ✅ | `dvlp_ksefinvoices` | Nazwa tabeli faktur |
 | `DV_ENTITY_SETTING` | ✅ | `dvlp_ksefsettings` | Nazwa tabeli ustawień |
 | `DV_ENTITY_SESSION` | ✅ | `dvlp_ksefsessions` | Nazwa tabeli sesji |
@@ -63,7 +63,7 @@ Plik konfiguracyjny: `api/local.settings.json`
 
 | Zmienna | Wymagana | Przykład | Opis |
 |---------|----------|---------|------|
-| `AZURE_KEYVAULT_URL` | ✅ | `https://YOUR_KEYVAULT.vault.azure.net` | URL Azure Key Vault |
+| `AZURE_KEYVAULT_URL` | ✅ | `https://your-keyvault-name.vault.azure.net` | URL Azure Key Vault |
 
 Key Vault przechowuje następujące sekrety:
 
@@ -82,7 +82,7 @@ Key Vault przechowuje następujące sekrety:
 | Zmienna | Wymagana | Przykład | Opis |
 |---------|----------|---------|------|
 | `KSEF_ENVIRONMENT` | ❌ | `test` | Środowisko KSeF: `test`, `demo`, `prod` |
-| `KSEF_NIP` | ❌ | `5272926470` | Domyślny NIP (fallback) |
+| `KSEF_NIP` | ❌ | `0000000000` | Domyślny NIP (fallback) |
 | `KSEF_TOKEN_SECRET_NAME` | ❌ | `ksef-token-primary` | Nazwa sekretu z tokenem w KV |
 
 ### Azure OpenAI (AI Categorization)
@@ -107,8 +107,8 @@ Key Vault przechowuje następujące sekrety:
 
 | Zmienna | Wymagana | Przykład | Opis |
 |---------|----------|---------|------|
-| `ADMIN_GROUP_ID` | ✅ | `0c9ae66f-...` | Object ID grupy Administratorów |
-| `USER_GROUP_ID` | ✅ | `ceae2479-...` | Object ID grupy Użytkowników |
+| `ADMIN_GROUP_ID` | ✅ | `your-admin-group-...` | Object ID grupy Administratorów |
+| `USER_GROUP_ID` | ✅ | `your-user-group-...` | Object ID grupy Użytkowników |
 
 ### Logowanie
 
@@ -143,10 +143,10 @@ Pliki konfiguracyjne: `web/.env.local` (dev), `web/.env.production` (produkcja)
 
 | Zmienna | Wymagana | Przykład | Opis |
 |---------|----------|---------|------|
-| `NEXT_PUBLIC_AZURE_CLIENT_ID` | ✅ | `3d2a67c9-...` | Client ID (publiczny — wbudowany w JS) |
-| `NEXT_PUBLIC_AZURE_TENANT_ID` | ✅ | `d73b061d-...` | Tenant ID (publiczny) |
+| `NEXT_PUBLIC_AZURE_CLIENT_ID` | ✅ | `your-client-...` | Client ID (publiczny — wbudowany w JS) |
+| `NEXT_PUBLIC_AZURE_TENANT_ID` | ✅ | `your-tenant-...` | Tenant ID (publiczny) |
 | `NEXT_PUBLIC_AZURE_REDIRECT_URI` | ❌ | `http://localhost:3000` | Redirect URI po logowaniu |
-| `NEXT_PUBLIC_API_SCOPE` | ❌ | `api://3d2a67c9-.../access_as_user` | Scope dla token acquisition |
+| `NEXT_PUBLIC_API_SCOPE` | ❌ | `api://your-client-.../access_as_user` | Scope dla token acquisition |
 
 > Zmienne z prefixem `NEXT_PUBLIC_` są **wbudowane** w build i widoczne w client-side JS.
 
@@ -162,8 +162,8 @@ Pliki konfiguracyjne: `web/.env.local` (dev), `web/.env.production` (produkcja)
 
 | Zmienna | Wymagana | Przykład | Opis |
 |---------|----------|---------|------|
-| `NEXT_PUBLIC_ADMIN_GROUP` | ✅ | `0c9ae66f-...` | Object ID grupy Admin (RBAC) |
-| `NEXT_PUBLIC_USER_GROUP` | ✅ | `ceae2479-...` | Object ID grupy User (RBAC) |
+| `NEXT_PUBLIC_ADMIN_GROUP` | ✅ | `your-admin-group-...` | Object ID grupy Admin (RBAC) |
+| `NEXT_PUBLIC_USER_GROUP` | ✅ | `your-user-group-...` | Object ID grupy User (RBAC) |
 
 ### Feature flags
 
@@ -193,8 +193,8 @@ Zmienne konfigurowane w `code-app/.env` (dev) lub Power Platform environment set
 
 | Zmienna | Wymagana | Przykład | Opis |
 |---------|----------|---------|------|
-| `VITE_AZURE_CLIENT_ID` | ✅ | `3d2a67c9-...` | Client ID app registration |
-| `VITE_AZURE_TENANT_ID` | ✅ | `d73b061d-...` | Tenant ID |
+| `VITE_AZURE_CLIENT_ID` | ✅ | `your-client-...` | Client ID app registration |
+| `VITE_AZURE_TENANT_ID` | ✅ | `your-tenant-...` | Tenant ID |
 | `VITE_AZURE_REDIRECT_URI` | ❌ | `http://localhost:5173` | Redirect URI (standalone dev) |
 
 ### API
@@ -202,7 +202,7 @@ Zmienne konfigurowane w `code-app/.env` (dev) lub Power Platform environment set
 | Zmienna | Wymagana | Przykład | Opis |
 |---------|----------|---------|------|
 | `VITE_API_URL` | ✅ | `http://localhost:7071/api` | URL bazowy Azure Functions API |
-| `VITE_API_SCOPE` | ❌ | `api://3d2a67c9-.../access_as_user` | Scope tokenu MSAL (standalone) |
+| `VITE_API_SCOPE` | ❌ | `api://your-client-.../access_as_user` | Scope tokenu MSAL (standalone) |
 
 > W trybie Power Apps managed auth: zmienne `VITE_AZURE_*` nie są wymagane — autentykacja jest zarządzana przez host.
 
@@ -243,7 +243,7 @@ Zmienne konfigurowane w `code-app/.env` (dev) lub Power Platform environment set
     "AZURE_CLIENT_ID": "<client-id>",
     "AZURE_CLIENT_SECRET": "<client-secret>",
     
-    "DATAVERSE_URL": "https://developico-tt.api.crm4.dynamics.com",
+    "DATAVERSE_URL": "https://your-org.api.crm4.dynamics.com",
     
     "DV_ENTITY_INVOICE": "dvlp_ksefinvoices",
     "DV_ENTITY_SETTING": "dvlp_ksefsettings",
@@ -254,7 +254,7 @@ Zmienne konfigurowane w `code-app/.env` (dev) lub Power Platform environment set
     "DV_LOG_TRAFFIC": "false",
     "DV_LOG_CONSOLE": "true",
     
-    "AZURE_KEYVAULT_URL": "https://YOUR_KEYVAULT.vault.azure.net",
+    "AZURE_KEYVAULT_URL": "https://your-keyvault-name.vault.azure.net",
     
     "KSEF_ENVIRONMENT": "test",
     
@@ -299,8 +299,8 @@ FEATURE_EXPORT=false
 
 ```bash
 # API URL (rewrites + client-side)
-API_URL=https://YOUR_FUNCTION_APP.azurewebsites.net
-NEXT_PUBLIC_API_URL=https://YOUR_FUNCTION_APP.azurewebsites.net
+API_URL=https://your-function-app.polandcentral-01.azurewebsites.net
+NEXT_PUBLIC_API_URL=https://your-function-app.polandcentral-01.azurewebsites.net
 
 # Autentykacja
 NEXT_PUBLIC_AZURE_CLIENT_ID=<client-id>
@@ -325,11 +325,11 @@ az functionapp config appsettings set \
   --name YOUR_FUNCTION_APP \
   --resource-group rg-ksef \
   --settings \
-    "AZURE_CLIENT_ID=@Microsoft.KeyVault(SecretUri=https://YOUR_KEYVAULT.vault.azure.net/secrets/ENTRA-CLIENT-ID/)" \
-    "AZURE_TENANT_ID=@Microsoft.KeyVault(SecretUri=https://YOUR_KEYVAULT.vault.azure.net/secrets/ENTRA-TENANT-ID/)" \
-    "AZURE_CLIENT_SECRET=@Microsoft.KeyVault(SecretUri=https://YOUR_KEYVAULT.vault.azure.net/secrets/ENTRA-CLIENT-SECRET/)" \
-    "DATAVERSE_URL=@Microsoft.KeyVault(SecretUri=https://YOUR_KEYVAULT.vault.azure.net/secrets/DATAVERSE-URL/)" \
-    "AZURE_KEYVAULT_URL=https://YOUR_KEYVAULT.vault.azure.net" \
+    "AZURE_CLIENT_ID=@Microsoft.KeyVault(SecretUri=https://your-keyvault-name.vault.azure.net/secrets/ENTRA-CLIENT-ID/)" \
+    "AZURE_TENANT_ID=@Microsoft.KeyVault(SecretUri=https://your-keyvault-name.vault.azure.net/secrets/ENTRA-TENANT-ID/)" \
+    "AZURE_CLIENT_SECRET=@Microsoft.KeyVault(SecretUri=https://your-keyvault-name.vault.azure.net/secrets/ENTRA-CLIENT-SECRET/)" \
+    "DATAVERSE_URL=@Microsoft.KeyVault(SecretUri=https://your-keyvault-name.vault.azure.net/secrets/DATAVERSE-URL/)" \
+    "AZURE_KEYVAULT_URL=https://your-keyvault-name.vault.azure.net" \
     "DV_ENTITY_INVOICE=dvlp_ksefinvoices" \
     "DV_ENTITY_SETTING=dvlp_ksefsettings" \
     "DV_ENTITY_SESSION=dvlp_ksefsessions" \
@@ -352,7 +352,7 @@ az webapp config appsettings set \
     "SCM_DO_BUILD_DURING_DEPLOYMENT=false" \
     "ENABLE_ORYX_BUILD=false" \
     "WEBSITE_RUN_FROM_PACKAGE=1" \
-    "API_URL=https://YOUR_FUNCTION_APP.azurewebsites.net"
+    "API_URL=https://your-function-app.polandcentral-01.azurewebsites.net"
 ```
 
 > Zmienne `NEXT_PUBLIC_*` **nie mogą** być ustawiane jako App Settings — muszą być w `.env.production` **przed** buildem, bo Next.js je inline'uje do JS w czasie kompilacji.

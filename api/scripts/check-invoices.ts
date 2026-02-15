@@ -1,11 +1,11 @@
-import { config } from 'dotenv'
+﻿import { config } from 'dotenv'
 import { resolve } from 'path'
 config({ path: resolve(__dirname, '../../.env.local') })
 
 async function check() {
   const { dataverseRequest } = await import('../src/lib/dataverse/client')
   
-  const nip = '5272926470'
+  const nip = '0000000000'
   
   console.log('Checking invoices for NIP:', nip)
   

@@ -1,4 +1,4 @@
-# Przewodnik konfiguracji tokenów KSeF
+﻿# Przewodnik konfiguracji tokenów KSeF
 
 ## Problem
 
@@ -81,7 +81,7 @@ Przykłady:
 #### Metoda 1: Azure Portal
 
 1. Zaloguj się do [Azure Portal](https://portal.azure.com)
-2. Znajdź Key Vault (np. `YOUR_KEYVAULT`)
+2. Znajdź Key Vault (np. `your-keyvault-name`)
 3. Przejdź do **Secrets**
 4. Kliknij **+ Generate/Import**
 5. Wypełnij:
@@ -95,7 +95,7 @@ Przykłady:
 
 ```bash
 az keyvault secret set \
-  --vault-name YOUR_KEYVAULT \
+  --vault-name your-keyvault-name \
   --name ksef-token-5272976789 \
   --value "TUTAJ_WKLEJ_TOKEN_Z_KSEF"
 ```

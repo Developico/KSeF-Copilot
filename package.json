@@ -4,10 +4,14 @@
   "description": "Open-source KSeF (Polish National e-Invoice System) integration module with Dataverse backend and AI categorization",
   "private": true,
   "license": "MIT",
-  "author": "dvlp.dev",
+  "author": "Developico Sp. z o.o. <contact@developico.com> (https://developico.com)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dvlp-dev/dvlp-ksef.git"
+    "url": "https://github.com/Developico/KSeFCopilot.git"
+  },
+  "homepage": "https://github.com/Developico/KSeFCopilot#readme",
+  "bugs": {
+    "url": "https://github.com/Developico/KSeFCopilot/issues"
   },
   "keywords": [
     "ksef",

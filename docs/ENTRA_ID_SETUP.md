@@ -1,4 +1,4 @@
-# Konfiguracja Entra ID (Azure AD) dla integracji KSeF
+﻿# Konfiguracja Entra ID (Azure AD) dla integracji KSeF
 
 > **⚠️ Ten dokument został zastąpiony przez [ENTRA_ID_KONFIGURACJA.md](./ENTRA_ID_KONFIGURACJA.md)**  
 > Nowy dokument zawiera scalone i zaktualizowane treści z tego pliku oraz z `AUTH_GROUPS_SETUP.md`.  
@@ -454,9 +454,9 @@ az functionapp config appsettings set \
   --name YOUR_APP_REGISTRATION \
   --resource-group YOUR_RESOURCE_GROUP \
   --settings \
-    AZURE_TENANT_ID="@Microsoft.KeyVault(VaultName=YOUR_KEYVAULT;SecretName=azure-tenant-id)" \
-    AZURE_CLIENT_ID="@Microsoft.KeyVault(VaultName=YOUR_KEYVAULT;SecretName=azure-client-id)" \
-    AZURE_CLIENT_SECRET="@Microsoft.KeyVault(VaultName=YOUR_KEYVAULT;SecretName=azure-client-secret)"
+    AZURE_TENANT_ID="@Microsoft.KeyVault(VaultName=your-keyvault-name;SecretName=azure-tenant-id)" \
+    AZURE_CLIENT_ID="@Microsoft.KeyVault(VaultName=your-keyvault-name;SecretName=azure-client-id)" \
+    AZURE_CLIENT_SECRET="@Microsoft.KeyVault(VaultName=your-keyvault-name;SecretName=azure-client-secret)"
 ```
 
 ---
