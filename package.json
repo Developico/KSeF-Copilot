@@ -1,0 +1,47 @@
+{
+  "name": "dvlp-ksef",
+  "version": "0.1.0",
+  "description": "Open-source KSeF (Polish National e-Invoice System) integration module with Dataverse backend and AI categorization",
+  "private": true,
+  "license": "MIT",
+  "author": "Developico Sp. z o.o. <contact@developico.com> (https://developico.com)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Developico/KSeFCopilot.git"
+  },
+  "homepage": "https://github.com/Developico/KSeFCopilot#readme",
+  "bugs": {
+    "url": "https://github.com/Developico/KSeFCopilot/issues"
+  },
+  "keywords": [
+    "ksef",
+    "e-invoice",
+    "poland",
+    "dataverse",
+    "azure-functions",
+    "ai-categorization"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "workspaces": [
+    "api",
+    "web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "lint:fix": "npm run lint:fix --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "husky": "^9.1.0",
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0"
+  }
+}

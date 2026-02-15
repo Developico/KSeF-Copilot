@@ -1,0 +1,37 @@
+{
+    // Azure Functions (api)
+    "azureFunctions.deploySubpath": "api",
+    "azureFunctions.postDeployTask": "npm install (functions)",
+    "azureFunctions.projectLanguage": "TypeScript",
+    "azureFunctions.projectRuntime": "~4",
+    "azureFunctions.projectLanguageModel": 4,
+    "azureFunctions.preDeployTask": "npm prune (functions)",
+
+    // Azure App Service (web) — send source, Azure builds (like planner)
+    "appService.defaultWebAppToDeploy": "/subscriptions/your-azure-subscription-id/resourceGroups/your-resource-group/providers/Microsoft.Web/sites/your-web-app",
+    "appService.deploySubpath": "web",
+    "appService.zipIgnorePattern": [
+        "node_modules{,/**}",
+        ".next{,/**}",
+        ".deploy{,/**}",
+        ".git{,/**}",
+        ".github{,/**}",
+        ".vscode{,/**}",
+        "*.md",
+        "*.test.ts",
+        "*.test.tsx",
+        "*.spec.ts",
+        "*.spec.tsx",
+        "__tests__{,/**}",
+        "scripts{,/**}",
+        "*.log",
+        ".env.local",
+        ".env.example",
+        "vitest.config.mts",
+        "deploy.zip",
+        "staticwebapp.config.json",
+        "_create_zip.ps1",
+        "coverage{,/**}",
+        "tsconfig.tsbuildinfo"
+    ]
+}

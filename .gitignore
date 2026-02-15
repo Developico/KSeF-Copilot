@@ -1,0 +1,89 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+.next/
+out/
+.vercel/
+.azure/
+
+# Azure Functions
+bin/
+obj/
+*.js.map
+local.settings.json
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+
+# Temporary
+tmp/
+temp/
+.cache/
+
+# Certificates (never commit!)
+*.pem
+*.p12
+*.pfx
+*.key
+*.crt
+
+# Secrets
+secrets/
+
+# Security reports (may contain secrets!)
+gitleaks-report.json
+
+# Deployment artifacts
+*.zip
+publish-log.txt
+publish-out.txt
+
+# Temporary files
+temp-*.json
+api/temp-*.json
+*_backup.*
+**/*_backup.*
+
+# Downloaded files
+ksef-homepage.html
+ksef-api-spec.json
+
+# Package deploy locks
+api/package-deploy-lock.json
+
+# Production env (should be set via CI/CD)
+web/.env.production
