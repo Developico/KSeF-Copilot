@@ -35,7 +35,7 @@ If applicable, add screenshots to help explain your problem.
 
 - **OS**: [e.g., Windows 11, Ubuntu 22.04]
 - **Node.js version**: [e.g., 20.10.0]
-- **pnpm version**: [e.g., 9.15.0]
+- **npm version**: [e.g., 10.8.0]
 - **Browser** (if web issue): [e.g., Chrome 120, Firefox 121]
 - **Project version**: [e.g., 0.1.0]
 
