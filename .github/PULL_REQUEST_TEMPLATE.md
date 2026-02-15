@@ -39,7 +39,7 @@ Fixes #(issue number)
 
 **Test Configuration**:
 - Node.js version:
-- pnpm version:
+- npm version:
 - OS:
 
 ## Checklist

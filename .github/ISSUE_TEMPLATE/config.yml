@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "\U0001F4AC Discussions"
+    url: https://github.com/Developico/KSeFCopilot/discussions
+    about: "Ask questions, share ideas, or discuss the project with the community"
+  - name: "\U0001F4E7 Commercial Support"
+    url: mailto:contact@developico.com
+    about: "Need professional help with deployment or customization? Contact us"
