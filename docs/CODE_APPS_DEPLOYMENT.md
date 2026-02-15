@@ -38,7 +38,7 @@ pac --version
 
 ```powershell
 cd code-app
-pnpm install
+npm install
 ```
 
 ---
@@ -81,13 +81,13 @@ This creates a `power.config.json` file in the project root. **Do not modify thi
 ### Build and push (single command)
 
 ```powershell
-pnpm run build | pac code push
+npm run build | pac code push
 ```
 
 To deploy into a **specific solution**:
 
 ```powershell
-pnpm run build | pac code push --solutionName "KSeF Copilot by Developico"
+npm run build | pac code push --solutionName "KSeF Copilot by Developico"
 ```
 
 If successful, the CLI returns a Power Apps URL where you can run the app.
@@ -107,7 +107,7 @@ Or open [Power Apps](https://make.powerapps.com/) → **Apps** — the app appea
 Every time you want to publish a new version:
 
 ```powershell
-pnpm run build | pac code push
+npm run build | pac code push
 ```
 
 The same command handles both initial publish and updates.
@@ -153,7 +153,7 @@ To test Power Platform connections locally:
 pac code run
 
 # Terminal 2: Start the dev server
-pnpm run dev
+npm run dev
 ```
 
 Open the **Local Play** URL shown by `pac code run` (in the same browser profile as your Power Platform tenant).
