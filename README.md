@@ -6,7 +6,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![Azure Functions](https://img.shields.io/badge/Azure%20Functions-v4-blue.svg)](https://azure.microsoft.com/en-us/products/functions)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
-[![pnpm](https://img.shields.io/badge/pnpm-9+-orange.svg)](https://pnpm.io/)
+[![npm](https://img.shields.io/badge/npm-10+-orange.svg)](https://www.npmjs.com/)
 
 > Otwarte rozwiązanie do integracji z Krajowym Systemem e-Faktur (KSeF). Umożliwia automatyczną synchronizację faktur zakupowych, ich kategoryzację z wykorzystaniem sztucznej inteligencji (Azure OpenAI) oraz zarządzanie przez intuicyjny dashboard webowy. Backend oparty o Azure Functions i Microsoft Dataverse, frontend w Next.js. Gotowe do wdrożenia w chmurze Azure.
 
@@ -78,7 +78,7 @@ KSeFCopilot/
 ### Wymagania wstępne
 
 - Node.js 20+
-- pnpm 9+
+- npm 10+
 - Subskrypcja Azure
 - Środowisko Dataverse
 - Konto KSeF (test/demo/prod)
@@ -92,7 +92,7 @@ git clone https://github.com/Developico/KSeFCopilot.git
 cd KSeFCopilot
 
 # Instalacja zależności
-pnpm install
+npm install
 ```
 
 ### Konfiguracja API
@@ -141,24 +141,24 @@ cp .env.example .env.local
 
 ```bash
 # Uruchom API i aplikację webową w trybie deweloperskim
-pnpm dev
+npm run dev
 
 # Lub osobno:
-pnpm --filter api dev      # API: http://localhost:7071
-pnpm --filter web dev      # Web: http://localhost:3000
+npm run dev --workspace=api      # API: http://localhost:7071
+npm run dev --workspace=web      # Web: http://localhost:3000
 ```
 
 ### Testy
 
 ```bash
 # Uruchom wszystkie testy
-pnpm test
+npm test
 
 # Sprawdzenie typów
-pnpm typecheck
+npm run typecheck
 
 # Linting
-pnpm lint
+npm run lint
 ```
 
 ## ⚙️ Konfiguracja

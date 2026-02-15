@@ -6,7 +6,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![Azure Functions](https://img.shields.io/badge/Azure%20Functions-v4-blue.svg)](https://azure.microsoft.com/en-us/products/functions)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
-[![pnpm](https://img.shields.io/badge/pnpm-9+-orange.svg)](https://pnpm.io/)
+[![npm](https://img.shields.io/badge/npm-10+-orange.svg)](https://www.npmjs.com/)
 
 > Open-source solution for integrating with Poland's National e-Invoice System (KSeF). Provides automatic purchase invoice synchronization, AI-powered categorization (Azure OpenAI), and an intuitive web dashboard for invoice management. Powered by Azure Functions and Microsoft Dataverse on the backend, with a Next.js frontend. Cloud-ready for Azure deployment.
 
@@ -78,7 +78,7 @@ KSeFCopilot/
 ### Prerequisites
 
 - Node.js 20+
-- pnpm 9+
+- npm 10+
 - Azure subscription
 - Dataverse environment
 - KSeF account (test/demo/prod)
@@ -92,7 +92,7 @@ git clone https://github.com/Developico/KSeFCopilot.git
 cd KSeFCopilot
 
 # Install dependencies
-pnpm install
+npm install
 ```
 
 ### API Configuration
@@ -141,24 +141,24 @@ cp .env.example .env.local
 
 ```bash
 # Start both API and Web in development mode
-pnpm dev
+npm run dev
 
 # Or run separately:
-pnpm --filter api dev      # API on http://localhost:7071
-pnpm --filter web dev      # Web on http://localhost:3000
+npm run dev --workspace=api      # API on http://localhost:7071
+npm run dev --workspace=web      # Web on http://localhost:3000
 ```
 
 ### Testing
 
 ```bash
 # Run all tests
-pnpm test
+npm test
 
 # Type checking
-pnpm typecheck
+npm run typecheck
 
 # Linting
-pnpm lint
+npm run lint
 ```
 
 ## ⚙️ Configuration
