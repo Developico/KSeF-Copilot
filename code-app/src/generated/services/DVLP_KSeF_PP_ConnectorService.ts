@@ -13,6 +13,12 @@ import type { ForecastResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { GroupedForecastResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { IOperationResult } from '@microsoft/power-apps/data';
 import type { Invoice } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { KsefEndSessionResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { KsefSessionGetResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { KsefSessionResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { KsefStatus } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SyncImportResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SyncPreviewResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { SyncResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { TestDataGenerateResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { VatCheckAccountResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
@@ -45,9 +51,9 @@ export class DVLP_KSeF_PP_ConnectorService {
   /**
    * List Invoices
    */
-  public static async ListInvoices(page?: number, pageSize?: number, search?: string, direction?: string, status?: string, dateFrom?: string, dateTo?: string): Promise<IOperationResult<void>> {
-    const params: { page?: number, pageSize?: number, search?: string, direction?: string, status?: string, dateFrom?: string, dateTo?: string } = { page, pageSize, search, direction, status, dateFrom, dateTo };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ page?: number, pageSize?: number, search?: string, direction?: string, status?: string, dateFrom?: string, dateTo?: string }, void>(
+  public static async ListInvoices(settingId?: string, tenantNip?: string, page?: number, pageSize?: number, search?: string, direction?: string, status?: string, dateFrom?: string, dateTo?: string): Promise<IOperationResult<void>> {
+    const params: { settingId?: string, tenantNip?: string, page?: number, pageSize?: number, search?: string, direction?: string, status?: string, dateFrom?: string, dateTo?: string } = { settingId, tenantNip, page, pageSize, search, direction, status, dateFrom, dateTo };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId?: string, tenantNip?: string, page?: number, pageSize?: number, search?: string, direction?: string, status?: string, dateFrom?: string, dateTo?: string }, void>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -387,6 +393,112 @@ export class DVLP_KSeF_PP_ConnectorService {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
           operationName: 'GetForecastBySupplier',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  // ── KSeF Session ──
+
+  /**
+   * Get KSeF Status
+   * Returns the current KSeF connection status and token information.
+   */
+  public static async GetKsefStatus(companyId?: string, nip?: string, environment?: string): Promise<IOperationResult<KsefStatus>> {
+    const params: { companyId?: string, nip?: string, environment?: string } = { companyId, nip, environment };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ companyId?: string, nip?: string, environment?: string }, KsefStatus>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetKsefStatus',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Start KSeF Session
+   * Starts a new interactive session with KSeF.
+   */
+  public static async StartKsefSession(body: Record<string, unknown>): Promise<IOperationResult<KsefSessionResponse>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, KsefSessionResponse>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'StartKsefSession',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get KSeF Session
+   * Returns the current active KSeF session, if any.
+   */
+  public static async GetKsefSession(): Promise<IOperationResult<KsefSessionGetResponse>> {
+    const params = {};
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<Record<string, never>, KsefSessionGetResponse>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetKsefSession',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * End KSeF Session
+   * Terminates the current active KSeF session.
+   */
+  public static async EndKsefSession(): Promise<IOperationResult<KsefEndSessionResponse>> {
+    const params = {};
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<Record<string, never>, KsefEndSessionResponse>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'EndKsefSession',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  // ── Sync Preview / Import ──
+
+  /**
+   * Get Sync Preview
+   * Returns a preview of invoices available for import from KSeF.
+   */
+  public static async GetSyncPreview(nip?: string, dateFrom?: string, dateTo?: string): Promise<IOperationResult<SyncPreviewResponse>> {
+    const params: { nip?: string, dateFrom?: string, dateTo?: string } = { nip, dateFrom, dateTo };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ nip?: string, dateFrom?: string, dateTo?: string }, SyncPreviewResponse>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetSyncPreview',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Import Invoices from KSeF
+   * Imports selected invoices from KSeF based on reference numbers.
+   */
+  public static async ImportSync(body: Record<string, unknown>): Promise<IOperationResult<SyncImportResult>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, SyncImportResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ImportSync',
           parameters: params
         },
       });

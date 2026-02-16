@@ -355,6 +355,87 @@ export interface GroupedForecastResponse {
   groups?: GroupedForecastResult[];
 }
 
+// ── KSeF Session ──
+
+export type KsefSessionStatus = 'active'|'expired'|'terminated'|'error';
+
+export interface KsefStatus {
+  isConnected?: boolean;
+  environment?: string;
+  nip?: string;
+  tokenExpiry?: string;
+  tokenExpiringSoon?: boolean;
+  daysUntilExpiry?: number;
+  hasActiveSession?: boolean;
+  lastSync?: string;
+  error?: string;
+}
+
+export interface KsefSession {
+  sessionId?: string;
+  referenceNumber?: string;
+  nip?: string;
+  createdAt?: string;
+  expiresAt?: string;
+  status?: KsefSessionStatus;
+  invoicesProcessed?: number;
+}
+
+export interface KsefSessionResponse {
+  success?: boolean;
+  session?: KsefSession;
+}
+
+export interface KsefSessionGetResponse {
+  isActive?: boolean;
+  session?: KsefSession;
+}
+
+export interface KsefEndSessionResponse {
+  success?: boolean;
+  referenceNumber?: string;
+  timestamp?: string;
+}
+
+// ── Sync Preview / Import ──
+
+export interface SyncPreviewInvoice {
+  ksefReferenceNumber?: string;
+  invoiceNumber?: string;
+  invoiceDate?: string;
+  supplierNip?: string;
+  supplierName?: string;
+  grossAmount?: number;
+  alreadyImported?: boolean;
+}
+
+export interface SyncPreviewResponse {
+  total?: number;
+  new?: number;
+  existing?: number;
+  invoices?: SyncPreviewInvoice[];
+  dateRange?: { from?: string; to?: string };
+}
+
+export interface SyncImportResult {
+  success?: boolean;
+  total?: number;
+  imported?: number;
+  skipped?: number;
+  failed?: number;
+  invoices?: {
+    ksefReferenceNumber?: string;
+    invoiceNumber?: string;
+    supplierName?: string;
+    grossAmount?: number;
+    status?: string;
+  }[];
+  errors?: {
+    ksefReferenceNumber?: string;
+    error?: string;
+  }[];
+}
+
 // ── VAT White List (Biała Lista) ──
 
 export interface VatLookupResult {

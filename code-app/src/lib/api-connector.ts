@@ -181,17 +181,42 @@ export const connectorApi = {
     summary: (_params?: unknown) => notAvailable('anomalies.summary'),
   },
 
-  // ── KSeF (not in connector) ──
+  // ── KSeF ──
   ksef: {
-    status: (_params?: unknown) => notAvailable('ksef.status'),
-    startSession: (_nip?: string) => notAvailable('ksef.startSession'),
-    getSession: () => notAvailable('ksef.getSession'),
-    endSession: () => notAvailable('ksef.endSession'),
+    status: (params?: { companyId?: string; nip?: string; environment?: string }) =>
+      safeCall('GetKsefStatus', () =>
+        DVLP_KSeF_PP_ConnectorService.GetKsefStatus(
+          params?.companyId,
+          params?.nip,
+          params?.environment
+        )
+      ),
+    startSession: (nip?: string) =>
+      safeCall('StartKsefSession', () =>
+        DVLP_KSeF_PP_ConnectorService.StartKsefSession(
+          { nip } as Record<string, unknown>
+        )
+      ),
+    getSession: () =>
+      safeCall('GetKsefSession', () =>
+        DVLP_KSeF_PP_ConnectorService.GetKsefSession()
+      ),
+    endSession: () =>
+      safeCall('EndKsefSession', () =>
+        DVLP_KSeF_PP_ConnectorService.EndKsefSession()
+      ),
   },
 
   // ── Sync ──
   sync: {
-    preview: (_params?: unknown) => notAvailable('sync.preview'),
+    preview: (params?: { nip?: string; dateFrom?: string; dateTo?: string }) =>
+      safeCall('GetSyncPreview', () =>
+        DVLP_KSeF_PP_ConnectorService.GetSyncPreview(
+          params?.nip,
+          params?.dateFrom,
+          params?.dateTo
+        )
+      ),
 
     run: (params?: {
       nip?: string
@@ -205,13 +230,19 @@ export const connectorApi = {
         )
       ),
 
-    import: (_refNums: string[], _nip?: string, _settingId?: string) =>
-      notAvailable('sync.import'),
+    import: (refNums: string[], nip?: string, settingId?: string) =>
+      safeCall('ImportSync', () =>
+        DVLP_KSeF_PP_ConnectorService.ImportSync(
+          { referenceNumbers: refNums, nip, settingId } as Record<string, unknown>
+        )
+      ),
   },
 
   // ── Invoices ──
   invoices: {
     list: async (params?: {
+      settingId?: string
+      tenantNip?: string
       page?: number
       pageSize?: number
       search?: string
@@ -222,6 +253,8 @@ export const connectorApi = {
     }) => {
       const data = await safeCall('ListInvoices', () =>
         DVLP_KSeF_PP_ConnectorService.ListInvoices(
+          params?.settingId,
+          params?.tenantNip,
           params?.page,
           params?.pageSize,
           params?.search,

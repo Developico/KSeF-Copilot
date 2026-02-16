@@ -51,6 +51,16 @@ paths:
       operationId: ListInvoices
       x-ms-visibility: important
       parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: false
+          description: ID ustawienia firmy (UUID) — filtruje faktury po firmie
+        - name: tenantNip
+          in: query
+          type: string
+          required: false
+          description: NIP firmy (fallback jeśli brak settingId)
         - name: page
           in: query
           type: integer
@@ -1006,6 +1016,150 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden — requires Reader role
+  /ksef/status:
+    get:
+      operationId: GetKsefStatus
+      summary: Get KSeF Status
+      description: Returns the current KSeF connection status and token information.
+      parameters:
+        - name: companyId
+          in: query
+          type: string
+          required: false
+          description: Company setting ID (UUID)
+        - name: nip
+          in: query
+          type: string
+          required: false
+          description: NIP firmy
+        - name: environment
+          in: query
+          type: string
+          required: false
+          description: KSeF environment
+          enum:
+            - test
+            - demo
+            - production
+      responses:
+        '200':
+          description: KSeF status
+          schema:
+            $ref: '#/definitions/KsefStatus'
+        '401':
+          description: Unauthorized
+  /ksef/session:
+    post:
+      operationId: StartKsefSession
+      summary: Start KSeF Session
+      description: Starts a new interactive session with KSeF.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              nip:
+                type: string
+                description: NIP firmy
+      responses:
+        '200':
+          description: Session started
+          schema:
+            $ref: '#/definitions/KsefSessionResponse'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+    get:
+      operationId: GetKsefSession
+      summary: Get KSeF Session
+      description: Returns the current active KSeF session, if any.
+      parameters: []
+      responses:
+        '200':
+          description: Current session
+          schema:
+            $ref: '#/definitions/KsefSessionGetResponse'
+        '401':
+          description: Unauthorized
+    delete:
+      operationId: EndKsefSession
+      summary: End KSeF Session
+      description: Terminates the current active KSeF session.
+      parameters: []
+      responses:
+        '200':
+          description: Session ended
+          schema:
+            $ref: '#/definitions/KsefEndSessionResponse'
+        '401':
+          description: Unauthorized
+  /ksef/sync/preview:
+    get:
+      operationId: GetSyncPreview
+      summary: Get Sync Preview
+      description: Returns a preview of invoices available for import from KSeF.
+      parameters:
+        - name: nip
+          in: query
+          type: string
+          required: false
+          description: NIP firmy
+        - name: dateFrom
+          in: query
+          type: string
+          format: date-time
+          required: false
+          description: Start date (ISO 8601)
+        - name: dateTo
+          in: query
+          type: string
+          format: date-time
+          required: false
+          description: End date (ISO 8601)
+      responses:
+        '200':
+          description: Sync preview
+          schema:
+            $ref: '#/definitions/SyncPreviewResponse'
+        '401':
+          description: Unauthorized
+  /ksef/sync/import:
+    post:
+      operationId: ImportSync
+      summary: Import Invoices from KSeF
+      description: Imports selected invoices from KSeF based on reference numbers.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - referenceNumbers
+            properties:
+              referenceNumbers:
+                type: array
+                items:
+                  type: string
+                description: KSeF reference numbers to import
+              nip:
+                type: string
+                description: NIP firmy
+              settingId:
+                type: string
+                description: Company setting ID (UUID)
+      responses:
+        '200':
+          description: Import result
+          schema:
+            $ref: '#/definitions/SyncImportResult'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
 definitions:
   VatLookupResult:
     type: object
@@ -1692,6 +1846,150 @@ definitions:
         items:
           $ref: '#/definitions/GroupedForecastResult'
         description: Sorted by totalForecast descending
+  KsefStatus:
+    type: object
+    properties:
+      isConnected:
+        type: boolean
+      environment:
+        type: string
+      nip:
+        type: string
+      tokenExpiry:
+        type: string
+      tokenExpiringSoon:
+        type: boolean
+      daysUntilExpiry:
+        type: integer
+      hasActiveSession:
+        type: boolean
+      lastSync:
+        type: string
+      error:
+        type: string
+  KsefSession:
+    type: object
+    properties:
+      sessionId:
+        type: string
+      referenceNumber:
+        type: string
+      nip:
+        type: string
+      createdAt:
+        type: string
+      expiresAt:
+        type: string
+      status:
+        type: string
+        enum:
+          - active
+          - expired
+          - terminated
+          - error
+      invoicesProcessed:
+        type: integer
+  KsefSessionResponse:
+    type: object
+    properties:
+      success:
+        type: boolean
+      session:
+        $ref: '#/definitions/KsefSession'
+  KsefSessionGetResponse:
+    type: object
+    properties:
+      isActive:
+        type: boolean
+      session:
+        $ref: '#/definitions/KsefSession'
+  KsefEndSessionResponse:
+    type: object
+    properties:
+      success:
+        type: boolean
+      referenceNumber:
+        type: string
+      timestamp:
+        type: string
+  SyncPreviewInvoice:
+    type: object
+    properties:
+      ksefReferenceNumber:
+        type: string
+      invoiceNumber:
+        type: string
+      invoiceDate:
+        type: string
+      supplierNip:
+        type: string
+      supplierName:
+        type: string
+      grossAmount:
+        type: number
+      alreadyImported:
+        type: boolean
+  SyncPreviewResponse:
+    type: object
+    properties:
+      total:
+        type: integer
+      new:
+        type: integer
+      existing:
+        type: integer
+      invoices:
+        type: array
+        items:
+          $ref: '#/definitions/SyncPreviewInvoice'
+      dateRange:
+        type: object
+        properties:
+          from:
+            type: string
+          to:
+            type: string
+  SyncImportResult:
+    type: object
+    properties:
+      success:
+        type: boolean
+      total:
+        type: integer
+      imported:
+        type: integer
+      skipped:
+        type: integer
+      failed:
+        type: integer
+      invoices:
+        type: array
+        items:
+          type: object
+          properties:
+            ksefReferenceNumber:
+              type: string
+            invoiceNumber:
+              type: string
+            supplierName:
+              type: string
+            grossAmount:
+              type: number
+            status:
+              type: string
+              enum:
+                - imported
+                - skipped
+                - failed
+      errors:
+        type: array
+        items:
+          type: object
+          properties:
+            ksefReferenceNumber:
+              type: string
+            error:
+              type: string
 parameters: {}
 responses: {}
 security:
