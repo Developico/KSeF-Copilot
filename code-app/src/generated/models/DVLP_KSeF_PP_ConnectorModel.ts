@@ -301,6 +301,60 @@ export interface TestDataGenerateResult {
   };
 }
 
+// ── Forecast ──
+
+export interface MonthlyDataPoint {
+  // Format: YYYY-MM
+  month?: string;
+  grossAmount?: number;
+  netAmount?: number;
+  invoiceCount?: number;
+}
+
+export interface ForecastPoint {
+  // Format: YYYY-MM
+  month?: string;
+  // Predicted gross amount
+  predicted?: number;
+  // 80% confidence interval — lower bound
+  lower?: number;
+  // 80% confidence interval — upper bound
+  upper?: number;
+}
+
+export type ForecastResulttrend = 'up'|'down'|'stable';
+export type ForecastResultmethod = 'moving-average'|'linear-regression'|'seasonal';
+
+export interface ForecastResult {
+  historical?: MonthlyDataPoint[];
+  forecast?: ForecastPoint[];
+  trend?: ForecastResulttrend;
+  // Month-over-month trend percentage
+  trendPercent?: number;
+  // Overall confidence (0–1)
+  confidence?: number;
+  method?: ForecastResultmethod;
+  summary?: {
+    // Predicted amount for next month
+    nextMonth?: number;
+    // Sum of all forecast months
+    totalForecast?: number;
+    // Average historical monthly amount
+    avgMonthly?: number;
+  };
+}
+
+export interface GroupedForecastResult {
+  // Group name (MPK, category, or supplier name)
+  group?: string;
+  forecast?: ForecastResult;
+}
+
+export interface GroupedForecastResponse {
+  // Sorted by totalForecast descending
+  groups?: GroupedForecastResult[];
+}
+
 // ── VAT White List (Biała Lista) ──
 
 export interface VatLookupResult {

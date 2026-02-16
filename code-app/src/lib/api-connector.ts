@@ -110,12 +110,69 @@ export const connectorApi = {
       ),
   },
 
-  // ── Forecast (not in connector) ──
+  // ── Forecast ──
   forecast: {
-    monthly: (_params?: unknown) => notAvailable('forecast.monthly'),
-    byMpk: (_params?: unknown) => notAvailable('forecast.byMpk'),
-    byCategory: (_params?: unknown) => notAvailable('forecast.byCategory'),
-    bySupplier: (_params?: unknown) => notAvailable('forecast.bySupplier'),
+    monthly: (params?: {
+      horizon?: number
+      historyMonths?: number
+      settingId?: string
+      tenantNip?: string
+    }) =>
+      safeCall('GetForecastMonthly', () =>
+        DVLP_KSeF_PP_ConnectorService.GetForecastMonthly(
+          params?.horizon,
+          params?.historyMonths,
+          params?.settingId,
+          params?.tenantNip
+        )
+      ),
+
+    byMpk: (params?: {
+      horizon?: number
+      historyMonths?: number
+      settingId?: string
+      tenantNip?: string
+    }) =>
+      safeCall('GetForecastByMpk', () =>
+        DVLP_KSeF_PP_ConnectorService.GetForecastByMpk(
+          params?.horizon,
+          params?.historyMonths,
+          params?.settingId,
+          params?.tenantNip
+        )
+      ),
+
+    byCategory: (params?: {
+      horizon?: number
+      historyMonths?: number
+      settingId?: string
+      tenantNip?: string
+    }) =>
+      safeCall('GetForecastByCategory', () =>
+        DVLP_KSeF_PP_ConnectorService.GetForecastByCategory(
+          params?.horizon,
+          params?.historyMonths,
+          params?.settingId,
+          params?.tenantNip
+        )
+      ),
+
+    bySupplier: (params?: {
+      horizon?: number
+      historyMonths?: number
+      settingId?: string
+      tenantNip?: string
+      top?: number
+    }) =>
+      safeCall('GetForecastBySupplier', () =>
+        DVLP_KSeF_PP_ConnectorService.GetForecastBySupplier(
+          params?.horizon,
+          params?.historyMonths,
+          params?.settingId,
+          params?.tenantNip,
+          params?.top
+        )
+      ),
   },
 
   // ── Anomalies (not in connector) ──

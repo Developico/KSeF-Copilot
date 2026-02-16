@@ -8,7 +8,7 @@ info:
     /EN/: Developico Connector for the KSeF API — invoice management,
     synchronization with KSeF, dashboard, VAT White List (Biała Lista) lookup.
   version: '1.0'
-host: your-function-app.polandcentral-01.azurewebsites.net
+host: YOUR_FUNCTION_APP.azurewebsites.net
 basePath: /api
 schemes:
   - https
@@ -835,6 +835,177 @@ paths:
           description: Forbidden — requires Admin role
         '404':
           description: Company not found in settings
+  /forecast/monthly:
+    get:
+      operationId: GetForecastMonthly
+      summary: Get Monthly Expense Forecast
+      description: >-
+        Returns historical monthly expense data and AI-generated forecast
+        for future months using statistical methods (moving average,
+        linear regression, seasonal adjustment).
+      x-ms-visibility: important
+      parameters:
+        - name: horizon
+          in: query
+          type: integer
+          required: false
+          description: Number of months to forecast (1, 6, or 12; default 6)
+          enum:
+            - 1
+            - 6
+            - 12
+        - name: historyMonths
+          in: query
+          type: integer
+          required: false
+          description: Months of historical data to use (3–60, default 24)
+        - name: settingId
+          in: query
+          type: string
+          required: false
+          description: ID ustawienia firmy (UUID)
+        - name: tenantNip
+          in: query
+          type: string
+          required: false
+          description: NIP firmy (fallback jeśli brak settingId)
+      responses:
+        '200':
+          description: Monthly forecast result
+          schema:
+            $ref: '#/definitions/ForecastResult'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+  /forecast/by-mpk:
+    get:
+      operationId: GetForecastByMpk
+      summary: Get Forecast by Cost Center (MPK)
+      description: >-
+        Returns expense forecast grouped by cost center (MPK).
+        Groups are sorted by total forecast amount descending.
+      parameters:
+        - name: horizon
+          in: query
+          type: integer
+          required: false
+          description: Number of months to forecast (1, 6, or 12; default 6)
+          enum:
+            - 1
+            - 6
+            - 12
+        - name: historyMonths
+          in: query
+          type: integer
+          required: false
+          description: Months of historical data to use (3–60, default 24)
+        - name: settingId
+          in: query
+          type: string
+          required: false
+          description: ID ustawienia firmy (UUID)
+        - name: tenantNip
+          in: query
+          type: string
+          required: false
+          description: NIP firmy (fallback jeśli brak settingId)
+      responses:
+        '200':
+          description: Grouped forecast by MPK
+          schema:
+            $ref: '#/definitions/GroupedForecastResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+  /forecast/by-category:
+    get:
+      operationId: GetForecastByCategory
+      summary: Get Forecast by Category
+      description: >-
+        Returns expense forecast grouped by expense category.
+        Groups are sorted by total forecast amount descending.
+      parameters:
+        - name: horizon
+          in: query
+          type: integer
+          required: false
+          description: Number of months to forecast (1, 6, or 12; default 6)
+          enum:
+            - 1
+            - 6
+            - 12
+        - name: historyMonths
+          in: query
+          type: integer
+          required: false
+          description: Months of historical data to use (3–60, default 24)
+        - name: settingId
+          in: query
+          type: string
+          required: false
+          description: ID ustawienia firmy (UUID)
+        - name: tenantNip
+          in: query
+          type: string
+          required: false
+          description: NIP firmy (fallback jeśli brak settingId)
+      responses:
+        '200':
+          description: Grouped forecast by category
+          schema:
+            $ref: '#/definitions/GroupedForecastResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+  /forecast/by-supplier:
+    get:
+      operationId: GetForecastBySupplier
+      summary: Get Forecast by Supplier
+      description: >-
+        Returns expense forecast for top-N suppliers by gross amount.
+        Groups are sorted by total forecast amount descending.
+      parameters:
+        - name: horizon
+          in: query
+          type: integer
+          required: false
+          description: Number of months to forecast (1, 6, or 12; default 6)
+          enum:
+            - 1
+            - 6
+            - 12
+        - name: historyMonths
+          in: query
+          type: integer
+          required: false
+          description: Months of historical data to use (3–60, default 24)
+        - name: settingId
+          in: query
+          type: string
+          required: false
+          description: ID ustawienia firmy (UUID)
+        - name: tenantNip
+          in: query
+          type: string
+          required: false
+          description: NIP firmy (fallback jeśli brak settingId)
+        - name: top
+          in: query
+          type: integer
+          required: false
+          description: Number of top suppliers to include (max 20, default 10)
+      responses:
+        '200':
+          description: Grouped forecast by supplier
+          schema:
+            $ref: '#/definitions/GroupedForecastResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
 definitions:
   VatLookupResult:
     type: object
@@ -1435,6 +1606,92 @@ definitions:
             type: array
             items:
               type: string
+  MonthlyDataPoint:
+    type: object
+    properties:
+      month:
+        type: string
+        description: 'Format: YYYY-MM'
+      grossAmount:
+        type: number
+      netAmount:
+        type: number
+      invoiceCount:
+        type: integer
+  ForecastPoint:
+    type: object
+    properties:
+      month:
+        type: string
+        description: 'Format: YYYY-MM'
+      predicted:
+        type: number
+        description: Predicted gross amount
+      lower:
+        type: number
+        description: 80% confidence interval — lower bound
+      upper:
+        type: number
+        description: 80% confidence interval — upper bound
+  ForecastResult:
+    type: object
+    properties:
+      historical:
+        type: array
+        items:
+          $ref: '#/definitions/MonthlyDataPoint'
+      forecast:
+        type: array
+        items:
+          $ref: '#/definitions/ForecastPoint'
+      trend:
+        type: string
+        description: Overall trend direction
+        enum:
+          - up
+          - down
+          - stable
+      trendPercent:
+        type: number
+        description: Month-over-month trend percentage
+      confidence:
+        type: number
+        description: Overall confidence (0–1)
+      method:
+        type: string
+        description: Statistical method used
+        enum:
+          - moving-average
+          - linear-regression
+          - seasonal
+      summary:
+        type: object
+        properties:
+          nextMonth:
+            type: number
+            description: Predicted amount for next month
+          totalForecast:
+            type: number
+            description: Sum of all forecast months
+          avgMonthly:
+            type: number
+            description: Average historical monthly amount
+  GroupedForecastResult:
+    type: object
+    properties:
+      group:
+        type: string
+        description: Group name (MPK, category, or supplier name)
+      forecast:
+        $ref: '#/definitions/ForecastResult'
+  GroupedForecastResponse:
+    type: object
+    properties:
+      groups:
+        type: array
+        items:
+          $ref: '#/definitions/GroupedForecastResult'
+        description: Sorted by totalForecast descending
 parameters: {}
 responses: {}
 security:

@@ -9,6 +9,8 @@ import type { DetailedHealth } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { EnvironmentsResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { ExchangeRate } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { ExtractionResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { ForecastResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { GroupedForecastResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { IOperationResult } from '@microsoft/power-apps/data';
 import type { Invoice } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { SyncResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
@@ -317,6 +319,74 @@ export class DVLP_KSeF_PP_ConnectorService {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
           operationName: 'VatCheckAccount',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Monthly Expense Forecast
+   * Returns historical monthly expense data and AI-generated forecast.
+   */
+  public static async GetForecastMonthly(horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string): Promise<IOperationResult<ForecastResult>> {
+    const params: { horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string } = { horizon, historyMonths, settingId, tenantNip };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string }, ForecastResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetForecastMonthly',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Forecast by Cost Center (MPK)
+   * Returns expense forecast grouped by cost center (MPK).
+   */
+  public static async GetForecastByMpk(horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string): Promise<IOperationResult<GroupedForecastResponse>> {
+    const params: { horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string } = { horizon, historyMonths, settingId, tenantNip };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string }, GroupedForecastResponse>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetForecastByMpk',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Forecast by Category
+   * Returns expense forecast grouped by expense category.
+   */
+  public static async GetForecastByCategory(horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string): Promise<IOperationResult<GroupedForecastResponse>> {
+    const params: { horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string } = { horizon, historyMonths, settingId, tenantNip };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string }, GroupedForecastResponse>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetForecastByCategory',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Forecast by Supplier
+   * Returns expense forecast for top-N suppliers by gross amount.
+   */
+  public static async GetForecastBySupplier(horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string, top?: number): Promise<IOperationResult<GroupedForecastResponse>> {
+    const params: { horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string, top?: number } = { horizon, historyMonths, settingId, tenantNip, top };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string, top?: number }, GroupedForecastResponse>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetForecastBySupplier',
           parameters: params
         },
       });
