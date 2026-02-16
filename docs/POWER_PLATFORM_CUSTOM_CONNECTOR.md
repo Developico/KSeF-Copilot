@@ -40,11 +40,15 @@ Instrukcja konfiguracji Custom Connector w Power Platform do połączenia z KSeF
 
 ### Istniejące API App Registration
 
+> **⚠️ Wartości specyficzne dla środowiska** — poniższe identyfikatory dotyczą bieżącego wdrożenia Developico.
+> Przy wdrożeniu w innym środowisku należy je zastąpić własnymi wartościami z Azure Entra ID.
+> Zobacz sekcję [8. Wartości specyficzne dla środowiska](#8-wartości-specyficzne-dla-środowiska) poniżej.
+
 | Parametr | Wartość |
 |----------|---------|
-| Tenant ID | `your-azure-tenant-id` |
-| Client ID (API) | `your-azure-client-id` |
-| Audience | `api://your-azure-client-id` |
+| Tenant ID | `YOUR_TENANT_ID` |
+| Client ID (API) | `YOUR_CLIENT_ID` |
+| Audience | `api://YOUR_CLIENT_ID` |
 
 ### Nowa App Registration dla Custom Connector
 
@@ -60,13 +64,13 @@ Aby Power Platform mógł się uwierzytelniać, potrzebujesz **drugiej** App Reg
    - Zapisz wygenerowany **Client Secret** (wartość)
 
 3. **API permissions → + Add a permission → My APIs**
-   - Wybierz rejestrację API: `your-azure-client-id`
+   - Wybierz rejestrację API: `YOUR_CLIENT_ID` (lub po nazwie)
    - Dodaj uprawnienie delegowane lub aplikacyjne (Application) zależnie od scenariusza:
      - **Delegated** — jeśli chcesz, żeby connector działał w kontekście użytkownika
      - **Application** — jeśli chcesz, żeby działał jako serwis (bez kontekstu użytkownika)
    - Kliknij **Grant admin consent**
 
-4. **Na rejestracji API** (`your-azure-client-id`):
+4. **Na rejestracji API** (`YOUR_CLIENT_ID`):
    - **Expose an API → + Add a scope** (jeśli jeszcze nie istnieje):
      - Scope name: `access_as_user`
      - Admin consent display name: `Access KSeF API`
@@ -92,7 +96,7 @@ Aby Power Platform mógł się uwierzytelniać, potrzebujesz **drugiej** App Reg
 | Pole | Wartość |
 |------|---------|
 | Scheme | `HTTPS` |
-| Host | `<nazwa-azure-function-app>.azurewebsites.net` |
+| Host | `YOUR_FUNCTION_APP.azurewebsites.net` |
 | Base URL | `/api` |
 | Description | `Connector do KSeF API — zarządzanie fakturami, synchronizacja z KSeF, dashboard` |
 
@@ -106,12 +110,12 @@ Aby Power Platform mógł się uwierzytelniać, potrzebujesz **drugiej** App Reg
 | Identity Provider | `Azure Active Directory` |
 | Client ID | `<Client ID nowej rejestracji KSeF-PowerPlatform-Connector>` |
 | Client Secret | `<Client Secret nowej rejestracji>` |
-| Tenant ID | `your-azure-tenant-id` |
-| Resource URL | `api://your-azure-client-id` |
-| Scope | `api://your-azure-client-id/access_as_user` |
-| Authorization URL | `https://login.microsoftonline.com/your-azure-tenant-id/oauth2/v2.0/authorize` |
-| Token URL | `https://login.microsoftonline.com/your-azure-tenant-id/oauth2/v2.0/token` |
-| Refresh URL | `https://login.microsoftonline.com/your-azure-tenant-id/oauth2/v2.0/token` |
+| Tenant ID | `YOUR_TENANT_ID` |
+| Resource URL | `api://YOUR_CLIENT_ID` |
+| Scope | `api://YOUR_CLIENT_ID/access_as_user` |
+| Authorization URL | `https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/authorize` |
+| Token URL | `https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/token` |
+| Refresh URL | `https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/token` |
 
 Po zapisaniu sekcji Security, skopiuj **Redirect URL** (wyświetlony przez Power Platform) i dodaj go w App Registration → Authentication → Redirect URIs.
 
@@ -487,6 +491,57 @@ Poniżej kompletna lista do referencji przy definiowaniu kolejnych akcji connect
 - **Zasada najmniejszych uprawnień** — jeśli flow potrzebuje tylko odczytu, użyj konta z rolą Reader
 - **Client Secret rotation** — ustaw reminder na wygaśnięcie secretu w App Registration
 - **Audit** — Power Automate loguje każde wywołanie connectora, sprawdzaj w DLP i audit logs
+
+---
+
+## 8. Wartości specyficzne dla środowiska
+
+Poniżej lista wszystkich wartości, które **muszą zostać zmienione** przy wdrożeniu w nowym środowisku (inny tenant, inna subskrypcja Azure, inna instancja API).
+
+### 8.1. Identyfikatory Azure Entra ID
+
+| Wartość | Opis | Gdzie zmienić | Aktualna wartość (Developico) |
+|---------|------|---------------|-------------------------------|
+| **Tenant ID** | Identyfikator tenanta Azure AD | swagger.yaml (`tokenUrl`, `authorizationUrl`), konfiguracja connectora w PP | `YOUR_TENANT_ID` |
+| **Client ID (API)** | Identyfikator App Registration API | swagger.yaml (`scopes`), konfiguracja connectora w PP (`Resource URL`, `Scope`) | `YOUR_CLIENT_ID` |
+| **Client ID (Connector)** | Identyfikator App Registration connectora PP | Konfiguracja connectora w PP (`Client ID`) | *(tworzony osobno per środowisko)* |
+| **Client Secret** | Secret App Registration connectora PP | Konfiguracja connectora w PP (`Client Secret`) | *(generowany w Azure Portal)* |
+
+### 8.2. URL-e API
+
+| Wartość | Opis | Gdzie zmienić | Aktualna wartość (Developico) |
+|---------|------|---------------|-------------------------------|
+| **Host (Azure Functions)** | Adres Azure Functions App | swagger.yaml (`host`), konfiguracja connectora w PP (tab General → Host) | `YOUR_FUNCTION_APP.azurewebsites.net` |
+
+### 8.3. Pliki do modyfikacji
+
+Przy migracji na nowe środowisko zmień wartości w następujących plikach:
+
+1. **`docs/swagger.yaml`** — szukaj komentarzy `⚠️ ENVIRONMENT-SPECIFIC`:
+   - Linia `host:` — adres Azure Functions
+   - Sekcja `security:` — scope z Client ID API
+   - Sekcja `securityDefinitions:` — Tenant ID w URL-ach, Client ID w scopes
+
+2. **Konfiguracja Custom Connector w Power Platform** (tab Security):
+   - Client ID — z nowej App Registration connectora
+   - Client Secret — secret nowej App Registration
+   - Tenant ID, Resource URL, Scope, Authorization URL, Token URL, Refresh URL — jak w tabeli powyżej
+
+3. **`api/local.settings.json`** (zmienne środowiskowe API):
+   - `CLIENT_ID` — Client ID API
+   - `TENANT_ID` — Tenant ID
+   - Pozostałe zmienne — zobacz [Zmienne środowiskowe](./ZMIENNE_SRODOWISKOWE.md)
+
+### 8.4. Procedura migracji
+
+1. Utwórz App Registration API w nowym tenancie (lub użyj istniejącej)
+2. Utwórz App Registration connectora Power Platform
+3. Wdroź Azure Functions z odpowiednimi zmiennymi środowiskowymi
+4. Zaktualizuj `swagger.yaml` z nowymi wartościami (szukaj `⚠️ ENVIRONMENT-SPECIFIC`)
+5. Zaimportuj swagger.yaml jako Custom Connector w Power Platform
+6. Uzupełnij konfigurację Security w connectorze (Client ID/Secret connectora)
+7. Skopiuj Redirect URL z connectora i dodaj do App Registration connectora
+8. Utwórz connection i przetestuj akcję Health Check
 
 ---
 

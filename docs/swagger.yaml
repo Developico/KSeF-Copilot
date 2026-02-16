@@ -1994,13 +1994,13 @@ parameters: {}
 responses: {}
 security:
   - oauth2-auth:
-      - api://your-azure-client-id/access_as_user
+      - api://YOUR_CLIENT_ID/access_as_user
 tags: []
 securityDefinitions:
   oauth2-auth:
     type: oauth2
     flow: accessCode
-    tokenUrl: https://login.windows.net/common/oauth2/authorize
+    tokenUrl: https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/token
     scopes:
-      api://your-azure-client-id/access_as_user: api://your-azure-client-id/access_as_user
-    authorizationUrl: https://login.microsoftonline.com/common/oauth2/authorize
+      api://YOUR_CLIENT_ID/access_as_user: api://YOUR_CLIENT_ID/access_as_user
+    authorizationUrl: https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/authorize
