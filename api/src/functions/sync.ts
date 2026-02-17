@@ -24,12 +24,30 @@ import { queryInvoices, getInvoice } from '../lib/ksef/invoices'
 import { parseInvoiceXml } from '../lib/ksef/parser'
 import { z } from 'zod'
 
+// Flexible datetime: accepts multiple formats and normalizes to ISO 8601 datetime.
+// Handles: empty strings, date-only (YYYY-MM-DD), datetime without timezone, full ISO 8601.
+const flexibleDatetime = z
+  .string()
+  .transform((val) => {
+    const trimmed = val.trim()
+    if (trimmed === '') return undefined
+    // Date-only format (YYYY-MM-DD) — append time and timezone
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return `${trimmed}T00:00:00Z`
+    // Datetime without timezone — append Z
+    if (!/Z|[+-]\d{2}:\d{2}$/.test(trimmed)) return `${trimmed}Z`
+    return trimmed
+  })
+  .pipe(
+    z.string().datetime({ offset: true }).optional(),
+  )
+
 // Validation schemas
 const StartSyncSchema = z.object({
   settingId: z.string().uuid('Valid setting ID required'),
+  nip: z.string().optional(),
   direction: z.enum(['incoming', 'outgoing', 'both']).default('incoming'),
-  dateFrom: z.string().datetime().optional(),
-  dateTo: z.string().datetime().optional(),
+  dateFrom: flexibleDatetime.optional(),
+  dateTo: flexibleDatetime.optional(),
 })
 
 interface SyncProgress {
@@ -217,10 +235,15 @@ app.http('sync-start', {
         throw syncError
       }
     } catch (error) {
-      context.error('Failed to start sync:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      const errorStack = error instanceof Error ? error.stack : undefined
+      context.error('Failed to start sync:', errorMessage, errorStack)
       return {
         status: 500,
-        jsonBody: { error: 'Failed to start sync' },
+        jsonBody: { 
+          error: 'Failed to start sync',
+          message: errorMessage,
+        },
       }
     }
   },
@@ -308,6 +331,47 @@ app.http('sync-logs-get', {
       return {
         status: 500,
         jsonBody: { error: 'Failed to get sync log' },
+      }
+    }
+  },
+})
+
+/**
+ * POST /api/sync/cleanup - Cleanup orphaned in-progress sync logs
+ */
+app.http('sync-cleanup', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  route: 'sync/cleanup',
+  handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    try {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      const roleCheck = requireRole(auth.user, 'Admin')
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Admin role required' } }
+      }
+
+      const body = await request.json().catch(() => null) as Record<string, unknown> | null
+      const maxAgeMinutes = (body && typeof body.maxAgeMinutes === 'number') ? body.maxAgeMinutes : 60
+
+      const result = await syncLogService.cleanupStale(maxAgeMinutes)
+
+      return {
+        status: 200,
+        jsonBody: {
+          message: `Cleaned up ${result.updated} stale sync logs`,
+          ...result,
+        },
+      }
+    } catch (error) {
+      context.error('Failed to cleanup sync logs:', error)
+      return {
+        status: 500,
+        jsonBody: { error: 'Failed to cleanup sync logs' },
       }
     }
   },

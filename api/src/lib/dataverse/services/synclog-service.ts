@@ -176,18 +176,10 @@ export class SyncLogService {
     try {
       const s = DV.syncLog
       
-      // Map direction to option set value
-      let directionValue: number
-      switch (data.direction) {
-        case 'incoming':
-          directionValue = SYNC_DIRECTION.INCOMING
-          break
-        case 'outgoing':
-          directionValue = SYNC_DIRECTION.OUTGOING
-          break
-        default:
-          directionValue = SYNC_DIRECTION.BOTH
-      }
+      // Map direction to option set value (Dataverse only has incoming/outgoing)
+      const directionValue = data.direction === 'outgoing'
+        ? SYNC_DIRECTION.OUTGOING
+        : SYNC_DIRECTION.INCOMING
 
       const payload: Record<string, unknown> = {
         // Convert lookup field name from read format (_dvlp_ksefsettingid_value) to binding format (dvlp_ksefsettingid)
@@ -210,14 +202,26 @@ export class SyncLogService {
 
       const result = await dataverseClient.create<DvSyncLog>(this.entitySet, payload)
       
-      // Fetch the created record
-      if (result && 'id' in result) {
+      if (!result) {
+        logDataverseInfo('SyncLogService.create', 'Create returned no result (204 without OData-EntityId)')
+        return null
+      }
+
+      // Case 1: 204 response — client extracted ID from OData-EntityId header → { id: '...' }
+      if ('id' in result) {
         const created = await this.getById((result as { id: string }).id)
         if (created) return created
       }
 
-      // If create returns the ID in OData-EntityId header, parse it
-      throw new Error('Failed to retrieve created sync log - implement ID extraction from response')
+      // Case 2: return=representation honoured — full DvSyncLog record returned (201)
+      const primaryKey = s.id as keyof DvSyncLog          // e.g. dvlp_ksefsynclogid
+      const recordId = (result as unknown as Record<string, unknown>)[primaryKey] as string | undefined
+      if (recordId) {
+        return mapDvSyncLogToApp(result)
+      }
+
+      logDataverseInfo('SyncLogService.create', 'Could not extract sync log ID from Dataverse response', { resultKeys: Object.keys(result) })
+      return null
     } catch (error) {
       // Detect schema mismatch (missing entity/column) and disable gracefully
       if (this.isSchemaError(error)) {
@@ -389,6 +393,48 @@ export class SyncLogService {
       return stats
     } catch (error) {
       logDataverseError('SyncLogService.getStats', error)
+      throw error
+    }
+  }
+
+  /**
+   * Cleanup orphaned in-progress sync logs.
+   * Marks all IN_PROGRESS logs older than `maxAgeMinutes` as FAILED.
+   * Returns the number of updated records.
+   */
+  async cleanupStale(maxAgeMinutes = 60): Promise<{ updated: number; ids: string[] }> {
+    if (this._disabled) return { updated: 0, ids: [] }
+
+    const s = DV.syncLog
+    const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000).toISOString()
+    const filter = `${s.status} eq ${SYNC_STATUS.IN_PROGRESS} and ${s.startedAt} lt ${cutoff}`
+    const query = `$filter=${filter}&$orderby=${s.startedAt} asc`
+
+    logDataverseInfo('SyncLogService.cleanupStale', 'Cleaning up stale in-progress sync logs', { maxAgeMinutes, cutoff })
+
+    try {
+      const response = await dataverseClient.list<DvSyncLog>(this.entitySet, query)
+      const stale = response.value
+      const updatedIds: string[] = []
+
+      for (const record of stale) {
+        const id = record[s.id as keyof DvSyncLog] as string
+        try {
+          await dataverseClient.update(this.entitySet, id, {
+            [s.status]: SYNC_STATUS.FAILED,
+            [s.completedAt]: new Date().toISOString(),
+            [s.errorMessage]: `Automatically marked as failed — sync log was stuck in-progress for more than ${maxAgeMinutes} minutes`,
+          })
+          updatedIds.push(id)
+        } catch (err) {
+          logDataverseError('SyncLogService.cleanupStale', err)
+        }
+      }
+
+      logDataverseInfo('SyncLogService.cleanupStale', `Cleaned up ${updatedIds.length} stale sync logs`)
+      return { updated: updatedIds.length, ids: updatedIds }
+    } catch (error) {
+      logDataverseError('SyncLogService.cleanupStale', error)
       throw error
     }
   }

@@ -1230,7 +1230,6 @@ definitions:
           - unhealthy
       timestamp:
         type: string
-        format: date-time
       services:
         type: array
         items:
@@ -1240,12 +1239,16 @@ definitions:
         properties:
           total:
             type: integer
+            format: int32
           healthy:
             type: integer
+            format: int32
           degraded:
             type: integer
+            format: int32
           unhealthy:
             type: integer
+            format: int32
   ServiceStatus:
     type: object
     properties:

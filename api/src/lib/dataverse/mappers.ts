@@ -5,7 +5,7 @@
  * Uses DV config for field name resolution.
  */
 
-import { DV, KSEF_STATUS, KSEF_DIRECTION, PAYMENT_STATUS, INVOICE_TYPE, CURRENCY, SESSION_STATUS, SESSION_TYPE, SYNC_STATUS, SYNC_DIRECTION, SYNC_OPERATION_TYPE, KSEF_ENVIRONMENT, INVOICE_SOURCE } from './config'
+import { DV, KSEF_STATUS, KSEF_DIRECTION, PAYMENT_STATUS, INVOICE_TYPE, CURRENCY, SESSION_STATUS, SESSION_TYPE, SYNC_STATUS, SYNC_DIRECTION, SYNC_OPERATION_TYPE, KSEF_ENVIRONMENT, INVOICE_SOURCE, LAST_SYNC_STATUS } from './config'
 import { logDataverseMapping } from './logger'
 import type { DvInvoice, DvSetting, DvSession, DvSyncLog } from '../../types/dataverse'
 import type { Invoice, PaymentStatus as AppPaymentStatus, MPK, InvoiceSource, Currency } from '../../types/invoice'
@@ -315,8 +315,7 @@ function mapDvSyncDirectionToApp(direction: number): 'incoming' | 'outgoing' | '
   switch (direction) {
     case SYNC_DIRECTION.INCOMING: return 'incoming'
     case SYNC_DIRECTION.OUTGOING: return 'outgoing'
-    case SYNC_DIRECTION.BOTH:
-    default: return 'both'
+    default: return 'incoming'
   }
 }
 
@@ -372,9 +371,8 @@ function mapAppEnvironmentToDv(env: 'test' | 'demo' | 'production'): number {
 function mapDvSyncStatusToApp(status: number | undefined): 'success' | 'error' | undefined {
   if (status === undefined) return undefined
   switch (status) {
-    case SYNC_STATUS.COMPLETED: return 'success'
-    case SYNC_STATUS.FAILED:
-    case SYNC_STATUS.PARTIAL: return 'error'
+    case LAST_SYNC_STATUS.SUCCESS: return 'success'
+    case LAST_SYNC_STATUS.ERROR: return 'error'
     default: return undefined
   }
 }

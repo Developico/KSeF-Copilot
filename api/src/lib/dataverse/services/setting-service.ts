@@ -5,7 +5,7 @@
  */
 
 import { dataverseClient } from '../client'
-import { DV, KSEF_ENVIRONMENT, SYNC_STATUS } from '../config'
+import { DV, KSEF_ENVIRONMENT, LAST_SYNC_STATUS } from '../config'
 import { mapDvSettingToApp, mapAppSettingToDv, type AppSetting } from '../mappers'
 import { logDataverseInfo, logDataverseError } from '../logger'
 import { escapeOData } from '../odata-utils'
@@ -231,7 +231,7 @@ export class SettingService {
     const s = DV.setting
     const payload: Record<string, unknown> = {
       [s.lastSyncAt]: new Date().toISOString(),
-      [s.lastSyncStatus]: status === 'success' ? SYNC_STATUS.COMPLETED : SYNC_STATUS.FAILED,
+      [s.lastSyncStatus]: status === 'success' ? LAST_SYNC_STATUS.SUCCESS : LAST_SYNC_STATUS.ERROR,
     }
 
     logDataverseInfo('SettingService.updateLastSync', 'Updating last sync status', { id, status })

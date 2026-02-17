@@ -256,9 +256,14 @@ export const SYNC_STATUS = {
 } as const
 
 export const SYNC_DIRECTION = {
-  INCOMING: 100000001,
-  OUTGOING: 100000002,
-  BOTH: 100000003,
+  INCOMING: 100000000,
+  OUTGOING: 100000001,
+} as const
+
+// Option set for dvlp_lastsyncstatus on dvlp_ksefsetting (separate from SYNC_STATUS on dvlp_ksefsynclog)
+export const LAST_SYNC_STATUS = {
+  SUCCESS: 100000000,
+  ERROR: 100000001,
 } as const
 
 export const PAYMENT_STATUS = {
