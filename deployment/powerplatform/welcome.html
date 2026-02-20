@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome — KSeF Copilot</title>
+  <style>
+    /* ─── Reset & Base ─── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --brand-cyan:  #23edd1;
+      --brand-navy:  #174372;
+      --brand-pink:  #de4473;
+      --brand-bg:    #f8fafc;
+      --brand-card:  #ffffff;
+      --brand-text:  #1e293b;
+      --brand-muted: #64748b;
+      --brand-border:#e2e8f0;
+      --radius:      12px;
+      --shadow:      0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+      --shadow-lg:   0 4px 24px rgba(0,0,0,.08);
+    }
+
+    @font-face {
+      font-family: 'Inter';
+      src: local('Inter'), local('Inter-Regular');
+    }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--brand-bg);
+      color: var(--brand-text);
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    a { color: var(--brand-navy); text-decoration: none; transition: color .2s; }
+    a:hover { color: var(--brand-cyan); }
+
+    /* ─── Hero Section ─── */
+    .hero {
+      position: relative;
+      background: linear-gradient(135deg, var(--brand-navy) 0%, #1e3a5f 50%, #0f2847 100%);
+      color: #fff;
+      padding: 56px 32px 48px;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -60%;
+      right: -20%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(35,237,209,.15) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -40%;
+      left: -10%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(222,68,115,.1) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .hero-content { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; }
+
+    .logo-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--brand-navy), #0ea5e9);
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(35,237,209,.3);
+    }
+
+    .logo-mark span {
+      font-size: 26px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: .5px;
+    }
+
+    .hero h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      margin-bottom: 8px;
+    }
+
+    .hero h1 .accent { color: var(--brand-cyan); }
+
+    .hero .subtitle {
+      font-size: 1.05rem;
+      color: rgba(255,255,255,.75);
+      max-width: 540px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    .version-badge {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 4px 14px;
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--brand-cyan);
+      border: 1px solid rgba(35,237,209,.3);
+      border-radius: 100px;
+      background: rgba(35,237,209,.08);
+    }
+
+    /* ─── Main Content ─── */
+    .main { max-width: 960px; margin: 0 auto; padding: 40px 24px 48px; }
+
+    /* ─── Section Titles ─── */
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: .8rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--brand-muted);
+      margin-bottom: 20px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--brand-border);
+    }
+
+    /* ─── Feature Grid ─── */
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 40px; }
+
+    .feature-card {
+      background: var(--brand-card);
+      border: 1px solid var(--brand-border);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: box-shadow .2s, transform .15s;
+    }
+
+    .feature-card:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
+    }
+
+    .feature-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      margin-bottom: 14px;
+      font-size: 1.2rem;
+    }
+
+    .fi-sync     { background: rgba(35,237,209,.12); color: #0d9488; }
+    .fi-ai       { background: rgba(99,102,241,.1);    color: #6366f1; }
+    .fi-dash     { background: rgba(23,67,114,.1);     color: var(--brand-navy); }
+    .fi-secure   { background: rgba(222,68,115,.1);    color: var(--brand-pink); }
+    .fi-multi    { background: rgba(245,158,11,.1);    color: #d97706;  }
+    .fi-export   { background: rgba(16,185,129,.1);    color: #059669; }
+
+    .feature-card h3 { font-size: .95rem; font-weight: 600; margin-bottom: 6px; }
+    .feature-card p  { font-size: .85rem; color: var(--brand-muted); line-height: 1.55; }
+
+    /* ─── Info Grid ─── */
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 40px; }
+
+    @media (max-width: 640px) { .info-grid { grid-template-columns: 1fr; } }
+
+    .info-card {
+      background: var(--brand-card);
+      border: 1px solid var(--brand-border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+
+    .info-card h3 {
+      font-size: .85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--brand-navy);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-card p, .info-card li {
+      font-size: .85rem;
+      color: var(--brand-muted);
+      line-height: 1.6;
+    }
+
+    .info-card ul { list-style: none; }
+    .info-card ul li { padding: 3px 0; }
+    .info-card ul li::before { content: '›'; color: var(--brand-cyan); font-weight: 700; margin-right: 8px; }
+
+    /* ─── Quick Links ─── */
+    .quick-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 40px;
+    }
+
+    .quick-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      font-size: .85rem;
+      font-weight: 600;
+      border-radius: 100px;
+      border: 1px solid var(--brand-border);
+      background: var(--brand-card);
+      color: var(--brand-text);
+      transition: all .2s;
+    }
+
+    .quick-link:hover {
+      border-color: var(--brand-cyan);
+      color: var(--brand-navy);
+      box-shadow: 0 2px 12px rgba(35,237,209,.15);
+    }
+
+    .quick-link.primary {
+      background: var(--brand-navy);
+      border-color: var(--brand-navy);
+      color: #fff;
+    }
+
+    .quick-link.primary:hover {
+      background: #1e4d8a;
+      border-color: #1e4d8a;
+      color: #fff;
+      box-shadow: 0 2px 16px rgba(23,67,114,.25);
+    }
+
+    .quick-link svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    /* ─── Tech Stack ─── */
+    .tech-stack { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 40px; }
+
+    .tech-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      font-size: .78rem;
+      font-weight: 500;
+      border-radius: 100px;
+      background: var(--brand-card);
+      border: 1px solid var(--brand-border);
+      color: var(--brand-muted);
+    }
+
+    .tech-badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* ─── Footer ─── */
+    .footer {
+      border-top: 1px solid var(--brand-border);
+      padding: 32px 24px;
+      text-align: center;
+    }
+
+    .footer-brand {
+      font-size: .9rem;
+      font-weight: 700;
+      color: var(--brand-navy);
+      margin-bottom: 4px;
+    }
+
+    .footer-address {
+      font-size: .8rem;
+      color: var(--brand-muted);
+      margin-bottom: 12px;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: .8rem;
+      color: var(--brand-muted);
+      transition: color .2s;
+    }
+
+    .footer-links a:hover { color: var(--brand-navy); }
+    .footer-links svg { width: 14px; height: 14px; }
+
+    .copyright {
+      margin-top: 20px;
+      font-size: .75rem;
+      color: #94a3b8;
+    }
+
+    /* ─── Animations ─── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-in {
+      animation: fadeUp .5s ease-out both;
+    }
+
+    .delay-1 { animation-delay: .1s; }
+    .delay-2 { animation-delay: .2s; }
+    .delay-3 { animation-delay: .3s; }
+    .delay-4 { animation-delay: .35s; }
+  </style>
+</head>
+<body>
+  <!-- ─── Hero ─── -->
+  <header class="hero">
+    <div class="hero-content animate-in">
+      <div class="logo-mark"><span>KSeF</span></div>
+      <h1>Welcome to <span class="accent">KSeF Copilot</span></h1>
+      <p class="subtitle">
+        Open-source integration with the Polish National e-Invoice System (KSeF).
+        Automated invoice synchronization, AI-powered categorization and a management dashboard
+        — all backed by Microsoft Dataverse and Azure.
+      </p>
+      <span class="version-badge">v 0.1 · Model-Driven App</span>
+    </div>
+  </header>
+
+  <!-- ─── Main ─── -->
+  <div class="main">
+
+    <!-- Features -->
+    <div class="section-title animate-in delay-1">Key Capabilities</div>
+    <div class="features">
+      <div class="feature-card animate-in delay-1">
+        <div class="feature-icon fi-sync">🔄</div>
+        <h3>Invoice Synchronization</h3>
+        <p>Automatically sync purchase invoices from KSeF (Krajowy System e-Faktur) with configurable schedules and on-demand import.</p>
+      </div>
+      <div class="feature-card animate-in delay-1">
+        <div class="feature-icon fi-ai">🤖</div>
+        <h3>AI Categorization</h3>
+        <p>Intelligent invoice categorization powered by Azure OpenAI (GPT-4o) — automatic cost center, category and project assignment.</p>
+      </div>
+      <div class="feature-card animate-in delay-2">
+        <div class="feature-icon fi-dash">📊</div>
+        <h3>Management Dashboard</h3>
+        <p>Web-based dashboard for browsing, filtering and managing invoices. Track payment status, amounts and due dates at a glance.</p>
+      </div>
+      <div class="feature-card animate-in delay-2">
+        <div class="feature-icon fi-secure">🔒</div>
+        <h3>Secure Token Storage</h3>
+        <p>KSeF authorization tokens stored in Azure Key Vault. RBAC with Administrator and Reader roles via Azure Entra ID.</p>
+      </div>
+      <div class="feature-card animate-in delay-3">
+        <div class="feature-icon fi-multi">🏢</div>
+        <h3>Multi-Tenant Ready</h3>
+        <p>Support for multiple companies within a single deployment. Each tenant with its own NIP, KSeF token and categorization rules.</p>
+      </div>
+      <div class="feature-card animate-in delay-3">
+        <div class="feature-icon fi-export">📥</div>
+        <h3>Export &amp; Integrations</h3>
+        <p>Export invoices to CSV/Excel. Webhook API for downstream integrations. E-mail notifications for new invoices and payment reminders.</p>
+      </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="section-title animate-in delay-2">Quick Links</div>
+    <div class="quick-links animate-in delay-2">
+      <a href="https://github.com/Developico/KSeFCopilot" target="_blank" rel="noopener" class="quick-link primary">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub Repository
+      </a>
+      <a href="https://www.podatki.gov.pl/ksef/" target="_blank" rel="noopener" class="quick-link">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1.5" width="12" height="13" rx="1.5"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>
+        KSeF Portal (MF)
+      </a>
+      <a href="https://developico.com" target="_blank" rel="noopener" class="quick-link">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.25"/><path d="M1.75 8h12.5M8 1.75c-2 2-2.5 4-2.5 6.25S6 14.25 8 14.25m0-12.5c2 2 2.5 4 2.5 6.25s-.5 6.25-2.5 6.25"/></svg>
+        developico.com
+      </a>
+      <a href="mailto:contact@developico.com" class="quick-link">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.75" y="3.25" width="12.5" height="9.5" rx="1.5"/><path d="M2 3.5l6 5 6-5"/></svg>
+        contact@developico.com
+      </a>
+    </div>
+
+    <!-- Info Grid -->
+    <div class="info-grid">
+      <div class="info-card animate-in delay-3">
+        <h3>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.25"/><path d="M8 5v3.5l2.5 1.5"/></svg>
+          About This Solution
+        </h3>
+        <p>
+          KSeF Copilot is an open-source solution for integrating with the 
+          <strong>Krajowy System e-Faktur</strong> (Polish National e-Invoice System). 
+          It automates purchase invoice synchronization, provides AI-powered 
+          categorization via <strong>Azure OpenAI</strong>, and stores all data in 
+          <strong>Microsoft Dataverse</strong>. The backend runs on 
+          <strong>Azure Functions</strong>, while the dashboard is built with 
+          <strong>Next.js</strong>.
+        </p>
+      </div>
+      <div class="info-card animate-in delay-3">
+        <h3>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h8"/></svg>
+          Architecture
+        </h3>
+        <ul>
+          <li><strong>Azure Functions</strong> — REST API (sync, import, categorize)</li>
+          <li><strong>Next.js Dashboard</strong> — Invoice management UI</li>
+          <li><strong>Microsoft Dataverse</strong> — Centralized data backend</li>
+          <li><strong>Azure OpenAI (GPT-4o)</strong> — Intelligent categorization</li>
+          <li><strong>Azure Key Vault</strong> — Secure token storage</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Tech Stack -->
+    <div class="section-title animate-in delay-3">Technology Stack</div>
+    <div class="tech-stack animate-in delay-4">
+      <span class="tech-badge"><span class="dot" style="background:#3178c6"></span>TypeScript 5.7</span>
+      <span class="tech-badge"><span class="dot" style="background:#000"></span>Next.js</span>
+      <span class="tech-badge"><span class="dot" style="background:#0062ad"></span>Azure Functions v4</span>
+      <span class="tech-badge"><span class="dot" style="background:#742fda"></span>Microsoft Dataverse</span>
+      <span class="tech-badge"><span class="dot" style="background:#0078d4"></span>Azure OpenAI</span>
+      <span class="tech-badge"><span class="dot" style="background:#0080ff"></span>Azure Entra ID</span>
+      <span class="tech-badge"><span class="dot" style="background:#007fff"></span>Azure Key Vault</span>
+      <span class="tech-badge"><span class="dot" style="background:#68a063"></span>Node.js 20+</span>
+      <span class="tech-badge"><span class="dot" style="background:#cc0000"></span>KSeF API (MF.gov.pl)</span>
+    </div>
+
+    <!-- Getting Started -->
+    <div class="section-title animate-in delay-4">Getting Started</div>
+    <div class="info-card animate-in delay-4" style="margin-bottom: 40px;">
+      <h3>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12l4-4 4 4M4 8l4-4 4 4"/></svg>
+        How to Get Started
+      </h3>
+      <ul>
+        <li>Use the <strong>left navigation</strong> to access Invoices, Companies, Categories and Settings</li>
+        <li>Start by running a <strong>KSeF Sync</strong> to import your latest purchase invoices</li>
+        <li>Review imported invoices and apply <strong>AI Categorization</strong> for automatic cost center assignment</li>
+        <li>Track <strong>payment status</strong> (pending / paid) and set due date reminders</li>
+        <li>Export data to <strong>CSV or Excel</strong> for downstream accounting workflows</li>
+        <li>For support, contact our team at <a href="mailto:contact@developico.com">contact@developico.com</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ─── Footer ─── -->
+  <footer class="footer">
+    <div class="footer-brand">Developico Sp. z o.o.</div>
+   
+    <div class="footer-links">
+      <a href="https://developico.com" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.25"/><path d="M1.75 8h12.5M8 1.75c-2 2-2.5 4-2.5 6.25S6 14.25 8 14.25m0-12.5c2 2 2.5 4 2.5 6.25s-.5 6.25-2.5 6.25"/></svg>
+        Website
+      </a>
+      <a href="https://github.com/Developico/KSeFCopilot" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+      <a href="mailto:contact@developico.com">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.75" y="3.25" width="12.5" height="9.5" rx="1.5"/><path d="M2 3.5l6 5 6-5"/></svg>
+        contact@developico.com
+      </a>
+    </div>    <div class="copyright">&copy; 2024–2026 Developico Sp. z o.o..</div>
+  </footer>
+</body>
+</html>

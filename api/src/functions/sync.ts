@@ -105,10 +105,20 @@ app.http('sync-start', {
 
       logDataverseInfo('sync-start', `Starting sync for NIP: ${setting.nip}`, { settingId, direction })
 
+      // Resolve active Dataverse session for linking
+      let dvSessionId: string | undefined
+      try {
+        const activeSession = await sessionService.getActiveByNip(setting.nip)
+        dvSessionId = activeSession?.id
+      } catch {
+        logDataverseInfo('sync-start', 'Could not resolve active session for sync log linking')
+      }
+
       // Create sync log entry (may return null if entity schema is incomplete)
       const syncLog = await syncLogService.create({
         settingId,
         direction,
+        sessionId: dvSessionId,
       })
       const syncLogId = syncLog?.id
 

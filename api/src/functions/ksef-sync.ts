@@ -3,7 +3,7 @@ import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { queryInvoices, getInvoice } from '../lib/ksef/invoices'
 import { parseInvoiceXml } from '../lib/ksef/parser'
 import { createInvoice, invoiceExistsByReference } from '../lib/dataverse/invoices'
-import { settingService, syncLogService, logDataverseInfo, logDataverseError } from '../lib/dataverse'
+import { settingService, sessionService, syncLogService, logDataverseInfo, logDataverseError } from '../lib/dataverse'
 import { getKsefConfig } from '../lib/ksef/config'
 import { InvoiceCreate } from '../types/invoice'
 
@@ -99,13 +99,23 @@ app.http('ksef-sync', {
       // Create sync log entry in Dataverse
       if (settingId) {
         try {
+          // Resolve active Dataverse session for this NIP
+          let dvSessionId: string | undefined
+          try {
+            const activeSession = await sessionService.getActiveByNip(nip)
+            dvSessionId = activeSession?.id
+          } catch {
+            context.warn('Could not resolve active session for sync log linking')
+          }
+
           const syncLog = await syncLogService.create({
             settingId,
             direction: 'incoming',
+            sessionId: dvSessionId,
           })
           syncLogId = syncLog?.id
           if (syncLogId) {
-            logDataverseInfo('ksef-sync', 'Sync log created', { syncLogId })
+            logDataverseInfo('ksef-sync', 'Sync log created', { syncLogId, dvSessionId })
           }
         } catch (logError) {
           // Non-blocking: sync log creation failure should not prevent sync
@@ -413,9 +423,19 @@ app.http('ksef-sync-import', {
       // Create sync log entry for import operation
       if (settingId) {
         try {
+          // Resolve active Dataverse session for this NIP
+          let dvSessionId: string | undefined
+          try {
+            const activeSession = await sessionService.getActiveByNip(nip)
+            dvSessionId = activeSession?.id
+          } catch {
+            context.warn('Could not resolve active session for import sync log linking')
+          }
+
           const syncLog = await syncLogService.create({
             settingId,
             direction: 'incoming',
+            sessionId: dvSessionId,
           })
           syncLogId = syncLog?.id
         } catch (logError) {

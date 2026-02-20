@@ -334,10 +334,11 @@ export function SyncPage() {
           {/* Date range */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
-              <label className="text-sm font-medium mb-1.5 block">
+              <label htmlFor="sync-date-from" className="text-sm font-medium mb-1.5 block">
                 {intl.formatMessage({ id: 'sync.dateFrom' })}
               </label>
               <input
+                id="sync-date-from"
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
@@ -345,10 +346,11 @@ export function SyncPage() {
               />
             </div>
             <div className="flex-1">
-              <label className="text-sm font-medium mb-1.5 block">
+              <label htmlFor="sync-date-to" className="text-sm font-medium mb-1.5 block">
                 {intl.formatMessage({ id: 'sync.dateTo' })}
               </label>
               <input
+                id="sync-date-to"
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
@@ -629,6 +631,7 @@ function MobilePreviewCard({
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground"
+              title="KSeF portal"
             >
               <ExternalLink className="h-3.5 w-3.5" />
             </a>

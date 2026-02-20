@@ -17,6 +17,7 @@ import type { DvSyncLog } from '../../../types/dataverse'
 export interface SyncLogCreate {
   settingId: string
   direction: 'incoming' | 'outgoing' | 'both'
+  sessionId?: string
   pageFrom?: number
   pageTo?: number
 }
@@ -187,9 +188,15 @@ export class SyncLogService {
         [s.direction]: directionValue,
         [s.startedAt]: new Date().toISOString(),
         [s.status]: SYNC_STATUS.IN_PROGRESS,
+        [s.invoicesProcessed]: 0,
         [s.invoicesCreated]: 0,
         [s.invoicesUpdated]: 0,
         [s.invoicesFailed]: 0,
+      }
+
+      // Bind session lookup if sessionId is provided
+      if (data.sessionId) {
+        payload[`${s.sessionLookup.replace(/^_/, '').replace(/_value$/, '')}@odata.bind`] = `/${DV.session.entitySet}(${data.sessionId})`
       }
 
       if (data.pageFrom !== undefined) {
@@ -246,6 +253,7 @@ export class SyncLogService {
     const payload: Record<string, unknown> = {
       [s.status]: SYNC_STATUS.COMPLETED,
       [s.completedAt]: new Date().toISOString(),
+      [s.invoicesProcessed]: stats.created + stats.updated + stats.failed,
       [s.invoicesCreated]: stats.created,
       [s.invoicesUpdated]: stats.updated,
       [s.invoicesFailed]: stats.failed,
@@ -275,6 +283,7 @@ export class SyncLogService {
     }
 
     if (stats) {
+      payload[s.invoicesProcessed] = stats.created + stats.updated + stats.failed
       payload[s.invoicesCreated] = stats.created
       payload[s.invoicesUpdated] = stats.updated
       payload[s.invoicesFailed] = stats.failed
@@ -302,6 +311,7 @@ export class SyncLogService {
 
     const s = DV.syncLog
     const payload: Record<string, unknown> = {
+      [s.invoicesProcessed]: stats.created + stats.updated + stats.failed,
       [s.invoicesCreated]: stats.created,
       [s.invoicesUpdated]: stats.updated,
       [s.invoicesFailed]: stats.failed,
