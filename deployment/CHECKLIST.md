@@ -278,7 +278,7 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 ### 9a. Zasób Azure OpenAI
 
 - [ ] Zasób utworzony: nazwa: __________
-- [ ] Region: __________ (np. Sweden Central)
+- [ ] Region: __________ (zalecany: Poland Central)
 - [ ] `AZURE_OPENAI_ENDPOINT`: __________
 
 ### 9b. Model

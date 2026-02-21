@@ -1,8 +1,8 @@
 # Analiza kosztów — KSeF PP Connector
 
 > Dokument przygotowany: luty 2026  
-> Wersja: 1.1  
-> Ceny na podstawie cenników Microsoft/OpenAI (region: Poland Central / West Europe)
+> Wersja: 1.2
+> Ceny na podstawie cenników Microsoft/OpenAI (region: Poland Central)
 
 ---
 
@@ -25,10 +25,12 @@ Rozwiązanie KSeF PP Connector składa się z trzech warstw kosztowych:
 | Warstwa | Zakres | Szacunek miesięczny |
 |---------|--------|---------------------|
 | **Azure Infrastructure** | Functions, Storage, Key Vault, App Insights, Static Web App | ~30–120 PLN |
-| **Power Platform** | Licencje premium (Custom Connector) | ~85–420 PLN/użytkownik |
+| **Power Platform** | Licencje premium (Custom Connector) | ~42–85 PLN/użytkownik (0 PLN jeśli istniejące licencje) |
 | **Azure OpenAI** | Kategoryzacja faktur, ekstrakcja dokumentów | ~2–50 PLN |
-| **Łącznie (5 użytkowników, mała firma)** | | **~500–900 PLN/mies.** |
-| **Łącznie (20 użytkowników, średnia firma)** | | **~2 000–4 500 PLN/mies.** |
+| **Łącznie (5 użytkowników, mała firma)** | nowe licencje PP | **~430 PLN/mies.** |
+| | istniejące licencje PP | **~4 PLN/mies.** |
+| **Łącznie (20 użytkowników, średnia firma)** | nowe licencje PP | **~910–3 720 PLN/mies.** |
+| | istniejące licencje PP | **~62–330 PLN/mies.** |
 
 ---
 
@@ -91,25 +93,31 @@ Przy średnim czasie ~500ms i 256MB RAM: 250 000 × 0,5s × 0,25 GB = ~31 250 GB
 
 KSeF Connector jest **Custom Connectorem** w Power Platform. Użycie Custom Connectorów wymaga licencji premium Power Platform.
 
+> **💡 Kluczowe założenie:** Rozwiązanie KSeF Copilot jest przeznaczone **przede wszystkim dla organizacji, które już posiadają licencje Power Platform** (np. w ramach Microsoft 365 E3/E5, Dynamics 365 lub zakupionych wcześniej planów Power Apps / Power Automate). W takim przypadku dodatkowy koszt licencyjny wynosi **0 PLN** — korzystamy z istniejącej infrastruktury.
+>
+> Dla organizacji, które **nie korzystają jeszcze z Power Platform**, koszt licencji premium stanowi dominującą pozycję budżetową (70–90% łącznych kosztów). W takiej sytuacji rekomendujemy **rozszerzenie adopcji Power Platform** o dodatkowe procesy biznesowe (np. obieg dokumentów, zgłoszenia serwisowe, workflow HR, formularze), aby koszt licencji per user rozkładał się na wiele rozwiązań i był łatwiejszy do uzasadnienia biznesowego.
+
 ### 3.2 Opcje licencjonowania
 
 | Licencja | Cena / mies. (netto) | Zakres | Kiedy wybrać |
 |----------|---------------------|--------|--------------|
-| **Power Apps per user** | ~85 PLN (~$20) | Nieograniczone aplikacje Power Apps dla 1 użytkownika | Użytkownicy korzystający codziennie |
+| **Power Apps per user** | ~85 PLN (~$20) | Nieograniczone aplikacje Power Apps dla 1 użytkownika | Użytkownicy korzystający regularnie |
 | **Power Automate per user** | ~65 PLN (~$15) | Nieograniczone flows dla 1 użytkownika | Tylko automatyzacje |
-| **Power Apps per app** | ~22 PLN (~$5) / app / user | 1 konkretna aplikacja dla 1 użytkownika | Sporadyczni użytkownicy |
-| **Power Automate per flow** | ~420 PLN (~$100) | 1 flow bez limitu użytkowników | Współdzielony flow (np. cykliczna sync) |
+| **Pay-as-you-go (PAYG)** | ~42 PLN (~$10) / aktywny użytkownik / app / mies. | Rozliczenie za faktyczne użycie | Sporadyczni użytkownicy, testy, POC |
+
+> ⚠️ **Zmiana licencjonowania (2025):** Microsoft wycofał licencje **Power Apps per app** (~$5/app/user) oraz **Power Automate per flow** (~$100/flow) dla nowych klientów. Jedyne dostępne modele licencyjne to **per user** oraz **pay-as-you-go (PAYG)**. Klienci posiadający istniejące subskrypcje per app / per flow mogą je odnowić, ale nowe zakupy nie są możliwe.
 
 ### 3.3 Rekomendacje
 
-| Scenariusz | Rekomendacja | Koszt / mies. |
-|------------|-------------|---------------|
-| **1–3 użytkowników (mała firma)** | Power Apps per user | 85–255 PLN |
-| **5–10 użytkowników (średnia)** | Power Apps per user | 425–850 PLN |
-| **20+ użytkowników** | Power Apps per user + per app dla okazjonalnych | ~1 000–2 500 PLN |
-| **Tylko automatyzacje** | Power Automate per flow (2–3 flows) | ~840–1 260 PLN |
+| Scenariusz | Rekomendacja | Koszt dodatkowy / mies. |
+|------------|-------------|-------------------------|
+| **Organizacja z istniejącymi licencjami PP** | Wykorzystanie posiadanych licencji per user | **0 PLN** |
+| **1–5 użytkowników (start)** | Power Apps per user | 85–425 PLN |
+| **5–20 użytkowników (średnia)** | Power Apps per user (regularni) + PAYG (okazjonalni) | 425–1 700 PLN |
+| **20+ użytkowników** | Power Apps per user (aktywni) + PAYG (sporadyczni) | ~1 700–3 500 PLN |
+| **Tylko automatyzacje** | Power Automate per user | ~65–650 PLN |
 
-> **Uwaga:** Licencje Power Platform mogą być już dostępne w ramach istniejących planów Microsoft 365 E3/E5 lub Dynamics 365. Warto sprawdzić posiadane licencje przed zakupem.
+> **Uwaga:** Licencje Power Platform są często już dostępne w ramach istniejących planów **Microsoft 365 E3/E5** lub **Dynamics 365**. Przed zakupem nowych licencji należy bezwzględnie sprawdzić posiadane uprawnienia w [Power Platform Admin Center](https://admin.powerplatform.microsoft.com).
 
 ### 3.4 Dodatkowe koszty Power Platform
 
@@ -138,7 +146,7 @@ KSeF Connector jest **Custom Connectorem** w Power Platform. Użycie Custom Conn
 
 *Tokeny obrazu zależą od rozdzielczości (512×512 → ~765 tokens, 1024×1024 → ~2 900 tokens).
 
-### 4.2 Cennik Azure OpenAI (region: Sweden Central / East US)
+### 4.2 Cennik Azure OpenAI (region: Poland Central)
 
 | Model | Input (1M tokenów) | Output (1M tokenów) | Uwagi |
 |-------|---------------------|----------------------|-------|
@@ -184,6 +192,10 @@ KSeF Connector jest **Custom Connectorem** w Power Platform. Użycie Custom Conn
 
 ## 5. Scenariusze kosztowe
 
+> **ℹ️ Dwie perspektywy kosztowe:** Poniższe scenariusze podają koszt w dwóch wariantach:
+> - **Nowe licencje** — organizacja kupuje licencje Power Platform specjalnie pod KSeF Copilot
+> - **Istniejące licencje PP** — organizacja już posiada wymagane licencje (M365 E3/E5, Dynamics 365, Power Apps per user) — wtedy dodatkowy koszt to **wyłącznie infrastruktura Azure + OpenAI**
+
 ### 5.1 Mała firma (5 użytkowników, 200 faktur/mies.)
 
 | Składnik | Koszt / mies. |
@@ -195,9 +207,10 @@ KSeF Connector jest **Custom Connectorem** w Power Platform. Użycie Custom Conn
 | Static Web App (Free) | 0 PLN |
 | **Azure Infra łącznie** | **~3 PLN** |
 | Azure OpenAI (gpt-4o-mini, kategoryzacja + ekstrakcja) | ~1 PLN |
-| Power Apps per user × 5 | 425 PLN |
+| Power Apps per user × 5 | 425 PLN (0 PLN jeśli istniejące licencje) |
 | Dataverse Storage | 0 PLN (w darmowym 1 GB) |
-| **RAZEM** | **~430 PLN / mies.** |
+| **RAZEM (nowe licencje)** | **~430 PLN / mies.** |
+| **RAZEM (istniejące licencje PP)** | **~4 PLN / mies.** |
 
 ### 5.2 Średnia firma (10 użytkowników, 2 000 faktur/mies.)
 
@@ -210,9 +223,10 @@ KSeF Connector jest **Custom Connectorem** w Power Platform. Użycie Custom Conn
 | Static Web App (Standard) | 36 PLN |
 | **Azure Infra łącznie** | **~54 PLN** |
 | Azure OpenAI (gpt-4o-mini) | ~8 PLN |
-| Power Apps per user × 10 | 850 PLN |
+| Power Apps per user × 10 | 850 PLN (0 PLN jeśli istniejące licencje) |
 | Dataverse Storage | 0 PLN |
-| **RAZEM** | **~910 PLN / mies.** |
+| **RAZEM (nowe licencje)** | **~910 PLN / mies.** |
+| **RAZEM (istniejące licencje PP)** | **~62 PLN / mies.** |
 
 ### 5.3 Duża firma (50 użytkowników, 20 000 faktur/mies.)
 
@@ -226,10 +240,11 @@ KSeF Connector jest **Custom Connectorem** w Power Platform. Użycie Custom Conn
 | **Azure Infra łącznie** | **~96 PLN** |
 | Azure OpenAI (gpt-4o-mini) | ~76 PLN |
 | Azure OpenAI (gpt-4o, wariant) | ~1 260 PLN |
-| Power Apps per user × 20 + per app × 30 | 2 360 PLN |
+| Power Apps per user × 30 + PAYG × 20 okazjonalnych | ~3 390 PLN (0 PLN jeśli istniejące licencje) |
 | Dataverse Storage (+1 GB) | ~160 PLN |
-| **RAZEM (gpt-4o-mini)** | **~2 690 PLN / mies.** |
-| **RAZEM (gpt-4o)** | **~3 880 PLN / mies.** |
+| **RAZEM — nowe licencje (gpt-4o-mini)** | **~3 720 PLN / mies.** |
+| **RAZEM — nowe licencje (gpt-4o)** | **~4 910 PLN / mies.** |
+| **RAZEM — istniejące licencje PP (gpt-4o-mini)** | **~330 PLN / mies.** |
 
 ### 5.4 Scenariusz enterprise (100+ użytkowników, 100 000 faktur/mies.)
 
@@ -242,9 +257,10 @@ KSeF Connector jest **Custom Connectorem** w Power Platform. Użycie Custom Conn
 | Static Web App (Standard) | 36 PLN |
 | **Azure Infra łącznie** | **~171 PLN** |
 | Azure OpenAI (gpt-4o-mini) | ~380 PLN |
-| Power Platform (licencje mieszane) | ~5 000–8 000 PLN |
+| Power Platform (per user + PAYG) | ~5 100–8 500 PLN (0 PLN jeśli istniejące licencje) |
 | Dataverse Storage (+5 GB) | ~800 PLN |
-| **RAZEM** | **~6 350–9 350 PLN / mies.** |
+| **RAZEM (nowe licencje)** | **~6 450–9 850 PLN / mies.** |
+| **RAZEM (istniejące licencje PP)** | **~1 350 PLN / mies.** |
 
 ---
 
@@ -270,9 +286,10 @@ KSeF Connector jest **Custom Connectorem** w Power Platform. Użycie Custom Conn
 - 🔄 **Provisioned Throughput** — dla stałego, dużego wolumenu
 
 ### 6.4 Power Platform
-- ✅ Sprawdzenie istniejących licencji M365 E3/E5 / Dynamics 365
-- ✅ Mix licencji — per user (aktywni) + per app (okazjonalni)
-- ✅ Power Automate per flow dla współdzielonych procesów
+- ✅ **Wykorzystanie istniejących licencji** — M365 E3/E5 / Dynamics 365 często zawierają wymagane uprawnienia
+- ✅ Mix licencji — per user (aktywni) + pay-as-you-go (okazjonalni)
+- ✅ **Rozszerzenie adopcji PP** — więcej procesów na platformie = lepsze uzasadnienie kosztów licencji
+- ⚠️ Licencje per app i per flow **wycofane** dla nowych klientów (od 2025)
 - 🔄 Negocjacja wolumenowa z Microsoft (EA/CSP)
 
 ### 6.5 Storage
@@ -284,20 +301,33 @@ KSeF Connector jest **Custom Connectorem** w Power Platform. Użycie Custom Conn
 
 ## 7. Podsumowanie miesięczne
 
+### Z zakupem nowych licencji Power Platform
+
 | Scenariusz | Azure Infra | OpenAI (4o-mini) | Power Platform | Dataverse | **RAZEM** |
 |------------|-------------|------------------|----------------|-----------|-----------|
 | **Mała (5 os., 200 fv)** | ~3 PLN | ~1 PLN | ~425 PLN | 0 PLN | **~430 PLN** |
 | **Średnia (10 os., 2k fv)** | ~54 PLN | ~8 PLN | ~850 PLN | 0 PLN | **~910 PLN** |
-| **Duża (50 os., 20k fv)** | ~96 PLN | ~76 PLN | ~2 360 PLN | ~160 PLN | **~2 690 PLN** |
-| **Enterprise (100 os., 100k fv)** | ~171 PLN | ~380 PLN | ~5 000–8 000 PLN | ~800 PLN | **~6 350–9 350 PLN** |
+| **Duża (50 os., 20k fv)** | ~96 PLN | ~76 PLN | ~3 390 PLN | ~160 PLN | **~3 720 PLN** |
+| **Enterprise (100 os., 100k fv)** | ~171 PLN | ~380 PLN | ~5 100–8 500 PLN | ~800 PLN | **~6 450–9 850 PLN** |
+
+### Z istniejącymi licencjami Power Platform (dodatkowy koszt KSeF Copilot)
+
+| Scenariusz | Azure Infra | OpenAI (4o-mini) | Power Platform | Dataverse | **RAZEM** |
+|------------|-------------|------------------|----------------|-----------|-----------|
+| **Mała (5 os., 200 fv)** | ~3 PLN | ~1 PLN | 0 PLN | 0 PLN | **~4 PLN** |
+| **Średnia (10 os., 2k fv)** | ~54 PLN | ~8 PLN | 0 PLN | 0 PLN | **~62 PLN** |
+| **Duża (50 os., 20k fv)** | ~96 PLN | ~76 PLN | 0 PLN | ~160 PLN | **~330 PLN** |
+| **Enterprise (100 os., 100k fv)** | ~171 PLN | ~380 PLN | 0 PLN | ~800 PLN | **~1 350 PLN** |
 
 ### Kluczowe wnioski
 
-1. **Power Platform stanowi 70–90% kosztów** — największa pozycja to licencje premium
-2. **Azure infrastructure jest bardzo tania** — Consumption model + darmowe tiery pokrywają większość kosztów małej/średniej firmy
-3. **Azure OpenAI z gpt-4o-mini jest praktycznie darmowy** — nawet 20 000 faktur/mies. to ~76 PLN
-4. **Przesiadka na gpt-4o zwiększa koszty AI ~15×** — ale nadal <1 300 PLN/mies. dla 20k faktur
-5. **Najważniejsza optymalizacja** — weryfikacja istniejących licencji Power Platform
+1. **Dla organizacji z istniejącymi licencjami PP koszt jest minimalny** — infrastruktura Azure + OpenAI to zaledwie ~4–330 PLN/mies. w zależności od wolumenu
+2. **Power Platform stanowi 70–90% kosztów** — ale tylko w przypadku zakupu nowych licencji. Warto szukać dodatkowych zastosowań PP w organizacji, aby amortyzować koszt licencji
+3. **Azure infrastructure jest bardzo tania** — Consumption model + darmowe tiery pokrywają większość kosztów małej/średniej firmy
+4. **Azure OpenAI z gpt-4o-mini jest praktycznie darmowy** — nawet 20 000 faktur/mies. to ~76 PLN
+5. **Przesiadka na gpt-4o zwiększa koszty AI ~15×** — ale nadal <1 300 PLN/mies. dla 20k faktur
+6. **Licencje per app i per flow wycofane** — od 2025 r. jedyne opcje to per user i pay-as-you-go
+7. **Najważniejsza optymalizacja** — weryfikacja istniejących licencji Power Platform w [Power Platform Admin Center](https://admin.powerplatform.microsoft.com)
 
 ---
 

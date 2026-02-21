@@ -26,6 +26,58 @@ Specyfikacja modelu danych dla integracji z Krajowym Systemem e-Faktur (KSeF).
 
 ### Architektura danych
 
+```mermaid
+erDiagram
+    dvlp_ksefsetting ||--o{ dvlp_ksefsession : "1:N (per NIP)"
+    dvlp_ksefsetting ||--o{ dvlp_ksefsynclog : "1:N"
+    dvlp_ksefsetting ||--o{ dvlp_ksefinvoice : "1:N (via settingid)"
+    dvlp_ksefsession ||--o{ dvlp_ksefinvoice : "1:N (via sessionid)"
+    dvlp_ksefinvoice ||--o{ dvlp_aifeedback : "1:N"
+    dvlp_ksefinvoice ||--o| dvlp_ksefinvoice : "self-ref (parent)"
+
+    dvlp_ksefsetting {
+        guid dvlp_ksefsettingid PK
+        string dvlp_nip
+        string dvlp_name
+        string dvlp_tokensecretname
+        boolean dvlp_isactive
+    }
+    dvlp_ksefsession {
+        guid dvlp_ksefsessionid PK
+        string dvlp_nip
+        string dvlp_sessiontoken
+        datetime dvlp_expiresat
+        boolean dvlp_isactive
+    }
+    dvlp_ksefinvoice {
+        guid dvlp_ksefinvoiceid PK
+        string dvlp_ksefreferencenumber
+        string dvlp_name
+        string dvlp_sellernip
+        string dvlp_buyernip
+        money dvlp_grossamount
+        choice dvlp_aimpksuggestion "AI MPK"
+        string dvlp_aicategorysuggestion "AI Category"
+        decimal dvlp_aiconfidence "AI Confidence"
+    }
+    dvlp_ksefsynclog {
+        guid dvlp_ksefsynclogid PK
+        datetime dvlp_starttime
+        datetime dvlp_endtime
+        choice dvlp_status
+        int dvlp_totalcount
+    }
+    dvlp_aifeedback {
+        guid dvlp_ksefaifeedbackid PK
+        choice dvlp_feedbacktype
+        string dvlp_originalsuggestion
+        string dvlp_finalvalue
+    }
+```
+
+<details>
+<summary>ASCII fallback (kliknij aby rozwinąć)</summary>
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Dataverse                                 │
@@ -71,6 +123,8 @@ Specyfikacja modelu danych dla integracji z Krajowym Systemem e-Faktur (KSeF).
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+</details>
 
 ### Konwencje nazewnictwa
 
@@ -847,6 +901,18 @@ Te dane są wykorzystywane do budowania kontekstu w promptach AI (few-shot learn
 
 ### Diagram relacji
 
+```mermaid
+graph TD
+    Setting["dvlp_ksefsetting (1)"] -->|1:N| Session["dvlp_ksefsession"]
+    Setting -->|1:N| SyncLog["dvlp_ksefsynclog"]
+    Setting -->|1:N| Invoice1["dvlp_ksefinvoice<br/>(via dvlp_ksefsettingid)"]
+    Session -->|1:N| Invoice2["dvlp_ksefinvoice<br/>(via dvlp_ksefsessionid)"]
+    Invoice1 -->|1:N| Feedback["dvlp_aifeedback<br/>(via dvlp_invoiceid)"]
+```
+
+<details>
+<summary>ASCII fallback (kliknij aby rozwinąć)</summary>
+
 ```
 dvlp_ksefsetting (1)
     │
@@ -860,6 +926,8 @@ dvlp_ksefsetting (1)
                     │
                     └──── (N) dvlp_aifeedback (via dvlp_invoiceid)
 ```
+
+</details>
 
 ### Definicje relacji
 

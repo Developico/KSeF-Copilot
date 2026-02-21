@@ -44,6 +44,18 @@ Power Apps Code Apps to nowa usługa (preview) pozwalająca deweloperom budować
 
 ### Architektura runtime
 
+```mermaid
+graph TB
+    subgraph Host["Power Apps Host"]
+        Code["Twój kod<br/>(React)"] --> SDK["Power Apps SDK<br/>@ms/power-apps"]
+        SDK --> Auth["Entra ID Auth<br/>(managed)"]
+        SDK --> Connectors["Connectors<br/>(Dataverse, SQL,<br/>HTTP, Custom)"]
+    end
+```
+
+<details>
+<summary>ASCII fallback</summary>
+
 ```
 ┌─────────────────────────────────────────────┐
 │              Power Apps Host                │
@@ -63,6 +75,8 @@ Power Apps Code Apps to nowa usługa (preview) pozwalająca deweloperom budować
 └─────────────────────────────────────────────┘
 ```
 
+</details>
+
 ### Komendy PAC CLI
 
 | Komenda | Funkcja |
@@ -79,6 +93,24 @@ Power Apps Code Apps to nowa usługa (preview) pozwalająca deweloperom budować
 ## Analiza obecnego rozwiązania
 
 ### Obecna architektura (WEB + API)
+
+```mermaid
+graph LR
+    subgraph Web["Azure App Service"]
+        NextJS["Next.js 15 Standalone<br/>React 19, Tailwind CSS<br/>MSAL Browser, TanStack Query<br/>next-intl, recharts, react-pdf<br/>Port 8080, Node.js 22, Linux"]
+    end
+    subgraph API["Azure Functions"]
+        Functions["24 funkcje:<br/>invoices, ksef-session,<br/>ksef-sync, dashboard,<br/>forecast, ai-categorize,<br/>settings, attachments,<br/>health, exchange-rates,<br/>vat, anomalies, ..."]
+    end
+    Web -->|"rewrites<br/>/api/* → API_URL"| API
+    API --> Dataverse["Dataverse<br/>(backend DB)"]
+    API --> KSeF["KSeF API (gov.pl)"]
+    API --> OpenAI["Azure OpenAI"]
+    API --> KeyVault["Key Vault"]
+```
+
+<details>
+<summary>ASCII fallback</summary>
 
 ```
 ┌──────────────────────┐     ┌──────────────────────┐
@@ -114,6 +146,8 @@ Power Apps Code Apps to nowa usługa (preview) pozwalająca deweloperom budować
                              │   (backend DB)  │
                              └─────────────────┘
 ```
+
+</details>
 
 ### Kluczowe elementy WEB do zmapowania
 
@@ -307,19 +341,23 @@ Power Apps Code Apps to nowa usługa (preview) pozwalająca deweloperom budować
 
 **Decyzja architektoniczna:**
 
+```mermaid
+graph LR
+    subgraph A["Opcja A — Thin Custom Connector &#10004;"]
+        CodeA["Code App"] --> CC["Custom Connector"] --> Fn["Azure Functions"] --> Backends["Dataverse | KSeF | AI | WL VAT"]
+    end
+    subgraph B["Opcja B — Native + Functions hybrid"]
+        CodeB["Code App"] --> DV["Dataverse connector<br/>(bezpośrednio)"]
+        CodeB --> CC2["Custom Connector"] --> Fn2["Functions<br/>(KSeF, AI, WL VAT)"]
+    end
+```
+
 Opcja A — **Thin Custom Connector** (rekomendowana):
-```
-Code App → Custom Connector → Azure Functions → [Dataverse | KSeF | AI | WL VAT]
-```
 - Minimalna zmiana backendu
 - Functions endpoint jako Custom Connector z OpenAPI spec
 - Auth flow: Power Platform connector auth → Entra ID → Functions
 
 Opcja B — **Native Connectors + Functions hybrid:**
-```
-Code App → Dataverse connector (bezpośrednio)
-Code App → Custom Connector → Functions (tylko KSeF, AI, WL VAT)
-```
 - Dataverse CRUD bezpośrednio z SDK (eliminacja ~8 Functions: invoices, settings, sessions, dashboard, attachments, notes)
 - Functions tylko dla złożonej logiki (ksef-sync, ai-categorize, vat, forecast, anomalies)
 

@@ -32,6 +32,18 @@
 
 ![Architektura KSeF Copilot](docs/KSeFCopilotArchitektura.jpg)
 
+```mermaid
+graph TB
+    AppService["Azure App Service<br/>Next.js — Dashboard"] -->|HTTPS/REST| Functions["Azure Functions<br/>Node.js REST API"]
+    Functions --> KSeF["KSeF API<br/>MF.gov.pl"]
+    Functions --> OpenAI["Azure OpenAI<br/>GPT-4o-mini"]
+    Functions --> Dataverse["Microsoft Dataverse<br/>Backend"]
+    KSeF --> KeyVault["Azure Key Vault<br/>Tokeny"]
+```
+
+<details>
+<summary>ASCII fallback</summary>
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │           Azure App Service (Next.js)                   │
@@ -57,7 +69,7 @@
 └─────────────┘
 ```
 
-## 📦 Struktura projektu
+</details>
 
 ```
 KSeFCopilot/
@@ -234,13 +246,6 @@ Potrzebujesz pomocy we wdrożeniu KSeF w swojej organizacji? Oferujemy:
 
 Projekt udostępniony na licencji MIT — szczegóły w pliku [LICENSE](LICENSE).
 
-## 🙏 Podziękowania
-
-- [Ministerstwo Finansów](https://www.podatki.gov.pl/ksef/) — dokumentacja API KSeF
-- [Microsoft Dataverse](https://docs.microsoft.com/en-us/power-apps/developer/data-platform/) — platforma backendowa
-- [Azure Functions](https://docs.microsoft.com/en-us/azure/azure-functions/) — obliczenia serverless
-
----
 
 Stworzone przez **[Developico Sp. z o.o.](https://developico.com)** | Łukasz Falaciński
 

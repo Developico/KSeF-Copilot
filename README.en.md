@@ -30,6 +30,20 @@
 
 ## 🏗️ Architecture
 
+![KSeF Copilot Architecture](docs/KSeFCopilotArchitektura.jpg)
+
+```mermaid
+graph TB
+    AppService["Azure App Service<br/>Next.js — Dashboard"] -->|HTTPS/REST| Functions["Azure Functions<br/>Node.js REST API"]
+    Functions --> KSeF["KSeF API<br/>MF.gov.pl"]
+    Functions --> OpenAI["Azure OpenAI<br/>GPT-4o-mini"]
+    Functions --> Dataverse["Microsoft Dataverse<br/>Backend"]
+    KSeF --> KeyVault["Azure Key Vault<br/>Tokens"]
+```
+
+<details>
+<summary>ASCII fallback</summary>
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │           Azure App Service (Next.js)                   │
@@ -54,6 +68,8 @@
 │ (Tokens)    │
 └─────────────┘
 ```
+
+</details>
 
 ## 📦 Project Structure
 

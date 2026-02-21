@@ -62,7 +62,7 @@ Funkcja AI Categorization wykorzystuje Azure OpenAI do:
 |------|---------|
 | Subscription | (Twoja subskrypcja) |
 | Resource group | `your-resource-group` |
-| Region | `Sweden Central` lub `East US` (dostępność modeli) |
+| Region | `Poland Central` (zalecany; sprawdź [dostępność modeli](https://learn.microsoft.com/azure/ai-services/openai/concepts/models)) |
 | Name | `your-openai-resource` |
 | Pricing tier | `Standard S0` |
 
@@ -75,7 +75,7 @@ Funkcja AI Categorization wykorzystuje Azure OpenAI do:
 az cognitiveservices account create \
   --name your-openai-resource \
   --resource-group your-resource-group \
-  --location swedencentral \
+  --location polandcentral \
   --kind OpenAI \
   --sku S0 \
   --yes

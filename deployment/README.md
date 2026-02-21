@@ -34,6 +34,35 @@ Jeśli natkniesz się na nieznany termin, sprawdź tutaj:
 
 Poniższy diagram pokazuje kolejność kroków i zależności między nimi:
 
+```mermaid
+graph TD
+    subgraph A["Faza A: Przygotowanie"]
+        K0["Krok 0: Instalacja"] --> K1["Krok 1: Logowanie"]
+    end
+    subgraph B["Faza B: Power Platform"]
+        K2["Krok 2: Import solucji"]
+    end
+    subgraph C["Faza C: Tożsamość"]
+        K3["Krok 3: Entra ID"] --> K4["Krok 4: App User"]
+    end
+    subgraph D["Faza D: Infrastruktura"]
+        K5["Krok 5: Zasoby Azure"] --> K6["Krok 6: Zmienne"]
+    end
+    subgraph E["Faza E: Wdrożenie"]
+        K7["Krok 7: Deploy API"] --> K8["Krok 8: Deploy Web"] --> K8a["Krok 8a: Redirect URI"]
+    end
+    subgraph F["Faza F: Integracje"]
+        K9["Krok 9: AI ⚡opcja"] --> K10["Krok 10: Connector"] --> K11["Krok 11: Flows"] --> K12["Krok 12: Tokeny KSeF"]
+    end
+    subgraph G["Faza G: Odbiór"]
+        K13["Krok 13: Role"] --> K14["Krok 14: Weryfikacja E2E"] --> K15["Krok 15: Po wdrożeniu"]
+    end
+    A --> B --> C --> D --> E --> F --> G
+```
+
+<details>
+<summary>ASCII fallback</summary>
+
 ```
 Faza A: Przygotowanie
   [Krok 0: Instalacja] → [Krok 1: Logowanie i weryfikacja]
@@ -62,6 +91,8 @@ Faza F: Integracje
 Faza G: Odbiór i uruchomienie
   [Krok 13: Role] → [Krok 14: Weryfikacja E2E] → [Krok 15: Po wdrożeniu]
 ```
+
+</details>
 
 > **Zasada:** Każdy krok zależy od poprzedniego. Nie przeskakuj kroków — wartości z wcześniejszych kroków są potrzebne w kolejnych.
 
@@ -116,6 +147,18 @@ Faza G: Odbiór i uruchomienie
 
 ## Architektura docelowa
 
+```mermaid
+graph TB
+    AppService["Azure App Service<br/>Next.js standalone<br/>Dashboard"] -->|HTTPS/REST| Functions["Azure Functions<br/>Flex Consumption, Node.js<br/>REST API"]
+    Functions --> KSeF["KSeF API<br/>MF.gov.pl"]
+    Functions --> OpenAI["Azure OpenAI<br/>GPT-4o-mini"]
+    Functions --> Dataverse["Microsoft Dataverse<br/>Backend"]
+    KSeF --> KeyVault["Azure Key Vault<br/>Tokeny"]
+```
+
+<details>
+<summary>ASCII fallback</summary>
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │           Azure App Service (Next.js standalone)        │
@@ -140,6 +183,8 @@ Faza G: Odbiór i uruchomienie
 │ (Tokeny)    │
 └─────────────┘
 ```
+
+</details>
 
 **Kluczowe technologie:**
 
@@ -631,7 +676,7 @@ pac admin list-app-users --environment "<DATAVERSE_URL>"
 > **🇵🇱 Rekomendowany region:** **Poland Central** (`polandcentral`) — najniższe latencje dla polskich klientów,
 > pełne wsparcie dla wymaganych usług (Functions Flex Consumption, App Service, Key Vault, Application Insights).
 >
-> **Uwaga:** Zasób Azure OpenAI (krok 9) może wymagać innego regionu (np. Sweden Central) — to jest normalne i nie wpływa na działanie pozostałych zasobów.
+> **Uwaga:** Jeśli Azure OpenAI nie jest dostępny w Poland Central, sprawdź [dostępność modeli](https://learn.microsoft.com/azure/ai-services/openai/concepts/models) i wybierz najbliższy region.
 
 ### Pliki IaC
 
@@ -1110,7 +1155,7 @@ az ad app update `
 |------|---------|
 | Subscription | (Twoja subskrypcja) |
 | Resource group | `<RESOURCE_GROUP_NAME>` |
-| Region | `Sweden Central` (lub inny z dostępnością gpt-4o-mini) |
+| Region | `Poland Central` (zalecany; sprawdź [dostępność modeli](https://learn.microsoft.com/azure/ai-services/openai/concepts/models)) |
 | Name | np. `oai-ksef-prod` |
 | Pricing tier | `Standard S0` |
 
@@ -1122,7 +1167,7 @@ az ad app update `
 az cognitiveservices account create `
     --name "oai-ksef-prod" `
     --resource-group "<RESOURCE_GROUP_NAME>" `
-    --location "swedencentral" `
+    --location "polandcentral" `
     --kind OpenAI `
     --sku S0 `
     --yes
@@ -1140,7 +1185,7 @@ $apiKey = az cognitiveservices account keys list `
     --query "key1" -o tsv
 ```
 
-> **Region:** Azure OpenAI może nie być dostępny w Poland Central. Sprawdź [dostępność modeli](https://learn.microsoft.com/azure/ai-services/openai/concepts/models) — `Sweden Central` i `East US` zwykle mają pełne wsparcie.
+> **Region:** Jeśli `Poland Central` nie obsługuje wybranego modelu, sprawdź [dostępność modeli](https://learn.microsoft.com/azure/ai-services/openai/concepts/models) i wybierz najbliższy region z pełnym wsparciem.
 
 ### 9b. Wdrożenie modelu
 

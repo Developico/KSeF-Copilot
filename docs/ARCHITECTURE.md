@@ -33,6 +33,38 @@
 
 ### High-Level Architecture
 
+![KSeF Copilot Architecture](KSeFCopilotArchitektura.jpg)
+
+```mermaid
+graph TB
+    Users["End Users (Browsers)"] --> EntraID["Azure Entra ID<br/>JWT Token Issuance + RBAC Groups"]
+    EntraID --> WebApp["Azure App Service<br/>Next.js 15 Frontend — standalone"]
+    EntraID --> CodeApp["Power Apps Code App<br/>Vite + React SPA"]
+    
+    WebApp -->|HTTPS/REST| API["Azure Functions v4<br/>Flex Consumption — Node.js 22 API"]
+    CodeApp -->|Custom Connector<br/>or HTTPS/REST| API
+
+    subgraph API_Modules["API Modules"]
+        Auth["Auth Middleware"]
+        KSeFClient["KSeF Client"]
+        DVServices["Dataverse Services"]
+        AIService["AI Service"]
+        VATClient["WL VAT Client<br/>(White List)"]
+        NBP["Exchange Rates (NBP)"]
+    end
+
+    API --> API_Modules
+    Auth --> EntraID
+    AIService --> OpenAI["Azure OpenAI<br/>GPT-4o-mini"]
+    KSeFClient --> KSeF["KSeF API v2<br/>MF.gov.pl"]
+    DVServices --> Dataverse["Microsoft Dataverse<br/>CRM / DB"]
+    VATClient --> WLAPI["WL VAT API<br/>KAS — White List"]
+    KSeFClient --> KeyVault["Azure Key Vault<br/>KSeF Tokens"]
+```
+
+<details>
+<summary>ASCII fallback (click to expand)</summary>
+
 ```
 ┌────────────────────────────────────────────────────────────────────┐
 │                       End Users (Browsers)                         │
@@ -83,6 +115,8 @@
                  │ (KSeF Tokens)│
                  └──────────────┘
 ```
+
+</details>
 
 ---
 
@@ -193,6 +227,27 @@ api/
 ### 3. Authentication & Authorization
 
 **Flow**:
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant FE as Frontend (MSAL)
+    participant Entra as Azure Entra ID
+    participant API as API Middleware
+
+    U->>FE: Login
+    FE->>Entra: OAuth 2.0 / OIDC
+    Entra-->>FE: JWT (claims + groups)
+    FE->>FE: Store JWT (sessionStorage)
+    FE->>API: Authorization: Bearer JWT
+    API->>API: Validate JWKS, issuer, audience
+    API->>API: Map groups → Admin/User
+    API-->>FE: Access granted/denied
+```
+
+<details>
+<summary>Text fallback (click to expand)</summary>
+
 ```
 1. User authenticates via Azure Entra ID (OAuth 2.0 / OIDC)
    ↓
@@ -209,6 +264,8 @@ api/
    ↓
 6. API grants/denies access based on role requirements
 ```
+
+</details>
 
 **Security Groups → Role Mapping**:
 ```typescript
@@ -392,6 +449,36 @@ Polish business registry integration for supplier validation.
 
 ### Invoice Synchronization Flow
 
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant API as Azure Functions
+    participant DV as Dataverse
+    participant KV as Key Vault
+    participant KSeF as KSeF API
+    participant AI as Azure OpenAI
+
+    U->>API: POST /api/ksef/sync
+    API->>DV: Retrieve setting (tenant)
+    API->>KV: Fetch KSeF token
+    API->>KSeF: Initialize session (if inactive)
+    API->>KSeF: Query invoices (date range)
+    loop Each invoice
+        API->>DV: Check duplicate (referenceNumber)
+        alt New invoice
+            API->>DV: Create InvoiceEntity
+            opt AI enabled
+                API->>AI: Categorize
+            end
+        end
+    end
+    API->>DV: Create SyncLogEntity
+    API-->>U: Sync summary
+```
+
+<details>
+<summary>Text fallback (click to expand)</summary>
+
 ```
 1. User initiates sync (POST /api/ksef/sync)
    ↓
@@ -415,7 +502,30 @@ Polish business registry integration for supplier validation.
 8. Return sync summary to user
 ```
 
+</details>
+
 ### AI Categorization Flow
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant API as Azure Functions
+    participant DV as Dataverse
+    participant AI as Azure OpenAI
+
+    U->>API: POST /api/ai/categorize
+    API->>DV: Retrieve invoice
+    API->>API: Construct prompt (invoice data + cost centers)
+    API->>AI: Call GPT-4o-mini
+    AI-->>API: JSON response (MPK, category, confidence)
+    API->>DV: Validate MPK + update invoice
+    API-->>U: AI suggestions
+    U->>API: Apply / modify / reject
+    API->>DV: Save AIFeedbackEntity
+```
+
+<details>
+<summary>Text fallback (click to expand)</summary>
 
 ```
 1. User triggers categorization (POST /api/ai/categorize)
@@ -442,7 +552,31 @@ Polish business registry integration for supplier validation.
 10. API creates AIFeedbackEntity record for model training
 ```
 
+</details>
+
 ### Authentication Flow
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant FE as Frontend (Web / Code App)
+    participant Entra as Azure Entra ID
+    participant API as Azure Functions
+
+    U->>FE: Visit application
+    FE->>Entra: Redirect (MSAL / Power Apps host)
+    U->>Entra: Login (SSO / password)
+    Entra-->>FE: JWT (claims + security groups)
+    FE->>FE: Store JWT (sessionStorage)
+    FE->>API: Authorization: Bearer <JWT>
+    API->>Entra: Fetch JWKS
+    API->>API: Validate signature, issuer, audience, expiration
+    API->>API: Map groups → roles (Admin/User)
+    API-->>FE: Response with role context
+```
+
+<details>
+<summary>Text fallback (click to expand)</summary>
 
 ```
 1. User visits frontend (Next.js app)
@@ -468,6 +602,8 @@ Polish business registry integration for supplier validation.
    ↓
 9. Response returned to frontend
 ```
+
+</details>
 
 ---
 
@@ -529,24 +665,62 @@ Polish business registry integration for supplier validation.
 
 ### Azure Resources
 
+```mermaid
+graph TB
+    subgraph RG["Resource Group: rg-ksef"]
+        AppService["Azure App Service<br/>Next.js 15 standalone<br/>Node.js 22 LTS (Linux)"]
+        Functions["Azure Functions App<br/>Flex Consumption<br/>Node.js 22"]
+        KeyVault["Azure Key Vault<br/>KSeF Tokens, Client Secret,<br/>OpenAI Key, Endpoint"]
+        OpenAI["Azure OpenAI Service<br/>Model: gpt-4o-mini"]
+        AppInsights["Application Insights<br/>Monitoring"]
+        Storage["Storage Account<br/>Functions runtime"]
+    end
+
+    subgraph PP["Power Platform"]
+        CodeApp["Code App<br/>KSeF Copilot (SPA)"]
+        Connector["Custom Connector<br/>DVLP-KSeF-PP-Connector"]
+    end
+
+    subgraph External["External"]
+        Dataverse["Dataverse Environment<br/>dvlp_ksef* entities"]
+        EntraID["Azure Entra ID<br/>App Registration + Groups"]
+    end
+
+    AppService --> Functions
+    CodeApp --> Connector
+    Connector --> Functions
+    Functions --> KeyVault
+    Functions --> OpenAI
+    Functions --> Dataverse
+    Functions --> AppInsights
+    Functions --> Storage
+    AppService --> EntraID
+    CodeApp --> EntraID
+```
+
+<details>
+<summary>Text fallback (click to expand)</summary>
+
 ```
 Resource Group: dvlp-ksef-prod
 ├── Azure Functions App (API)
-│   ├── App Service Plan (Consumption/Premium)
+│   ├── App Service Plan (Flex Consumption)
 │   ├── Application Insights (monitoring)
 │   └── Storage Account (function runtime)
-├── Azure Static Web App (Frontend)
-│   └── GitHub integration (CI/CD)
+├── Azure App Service (Frontend)
+│   └── Next.js 15 standalone
 ├── Azure Key Vault
 │   └── Managed Identity access
 ├── Azure OpenAI Service
-│   └── GPT-4o model deployment
+│   └── GPT-4o-mini model deployment
 ├── Dataverse Environment (existing)
 │   └── dvlp_ksef* entities
 └── Azure Entra ID App Registration
     ├── API permissions (Dataverse, Graph)
     └── Security groups (Admin, User)
 ```
+
+</details>
 
 ## Technology Stack
 
