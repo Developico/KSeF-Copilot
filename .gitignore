@@ -87,3 +87,6 @@ api/package-deploy-lock.json
 
 # Production env (should be set via CI/CD)
 web/.env.production
+
+# Local swagger with real values
+**/swagger.local.yaml
