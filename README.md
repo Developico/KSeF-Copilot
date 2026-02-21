@@ -186,10 +186,26 @@ Pełna lista w pliku [.env.example](.env.example).
 
 ## 📚 Dokumentacja
 
+### Dokumentacja techniczna (`docs/`)
+
 - [Architektura](docs/ARCHITEKTURA.md) — Szczegóły architektury systemu
-- [API Reference](docs/API.md) — Dokumentacja REST API
+- [API Reference (PL)](docs/API_PL.md) — Dokumentacja REST API
+- [Schemat Dataverse](docs/DATAVERSE_SCHEMA.md) — Model danych
 - [Zmienne środowiskowe](docs/ZMIENNE_SRODOWISKOWE.md) — Opis konfiguracji
-- [Wdrożenie API](docs/API_DEPLOYMENT.md) — Przewodnik wdrażania w Azure
+- [Rozwiązywanie problemów](docs/ROZWIAZYWANIE_PROBLEMOW.md) — Troubleshooting
+- [Nawigacja po dokumentacji](docs/README.md) — Pełny spis dokumentów
+
+### Wdrożenie produkcyjne (`deployment/`)
+
+- [**Przewodnik wdrożenia**](deployment/README.md) — Kompletny przewodnik 13 kroków
+- [Lista kontrolna](deployment/CHECKLIST.md) — Interaktywna checklist z polami danych
+- [Wdrożenie API](deployment/azure/API_DEPLOYMENT.md) — Deploy Azure Functions (Flex Consumption)
+- [Wdrożenie Web](deployment/azure/WEB_DEPLOYMENT.md) — Deploy Azure App Service (Next.js standalone)
+- [Entra ID](deployment/azure/ENTRA_ID_KONFIGURACJA.md) — Konfiguracja App Registration
+- [Tokeny KSeF](deployment/azure/TOKEN_SETUP_GUIDE.md) — Tokeny w Key Vault
+- [Solucja Power Platform](deployment/powerplatform/README.md) — Import solucji, schemat Dataverse
+- [Custom Connector](deployment/powerplatform/connector/README.md) — Konfiguracja konektora
+- [Analiza kosztów](docs/ANALIZA_KOSZTÓW.md) — Koszty rozwiązania w Azure
 
 ## 🤝 Współpraca
 

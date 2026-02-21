@@ -32,7 +32,7 @@ Before creating the connector, ensure your Azure AD app registration has:
 2. Navigate to **Data** → **Custom connectors**
 3. Click **+ New custom connector** → **Import an OpenAPI file**
 4. Name: `KSeF Integration`
-5. Upload `apiDefinition.swagger.json`
+5. Upload `swagger.yaml`
 
 ### Step 3: Configure General Settings
 
@@ -286,8 +286,9 @@ To include this connector in your solution:
 
 ```
 connector/
-├── apiDefinition.swagger.json   # OpenAPI 2.0 specification (import this)
-└── README.md                    # This documentation
+├── swagger.yaml            # OpenAPI specification — production (import this)
+├── swagger.local.yaml      # OpenAPI specification — local dev
+└── README.md               # This documentation
 ```
 
 ## Support

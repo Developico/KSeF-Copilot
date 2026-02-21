@@ -189,7 +189,9 @@ See [.env.example](.env.example) for full list.
 - [Architecture](docs/ARCHITECTURE.md) — System design details
 - [API Reference](docs/API.md) — REST API documentation
 - [Environment Variables](docs/ZMIENNE_SRODOWISKOWE.md) — Configuration reference
-- [API Deployment](docs/API_DEPLOYMENT.md) — Azure deployment guide
+- [Deployment Guide](deployment/README.md) — Full deployment walkthrough (13 steps)
+- [API Deployment](deployment/azure/API_DEPLOYMENT.md) — Azure Functions deployment
+- [Web Deployment](deployment/azure/WEB_DEPLOYMENT.md) — App Service deployment
 
 ## 🤝 Contributing
 
