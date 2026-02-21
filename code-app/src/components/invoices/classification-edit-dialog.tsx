@@ -62,9 +62,8 @@ export function ClassificationEditDialog({ invoice }: ClassificationEditDialogPr
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Pencil className="h-4 w-4 mr-1" />
-          {intl.formatMessage({ id: 'common.edit' })}
+        <Button variant="ghost" size="sm" className="h-6 px-2">
+          <Pencil className="h-3 w-3" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -80,10 +79,6 @@ export function ClassificationEditDialog({ invoice }: ClassificationEditDialogPr
           <div className="space-y-2">
             <Label htmlFor="category">{intl.formatMessage({ id: 'invoices.category' })}</Label>
             <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="project">{intl.formatMessage({ id: 'invoices.project' })}</Label>
-            <Input id="project" value={project} onChange={(e) => setProject(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">{intl.formatMessage({ id: 'invoices.description' })}</Label>

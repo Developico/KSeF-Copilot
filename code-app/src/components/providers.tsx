@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { useLocaleStore, getMessages } from '@/i18n'
 import { AuthProvider } from '@/components/auth/auth-provider'
+import { AuthGate } from '@/components/auth/auth-gate'
 import { CompanyProvider } from '@/contexts/company-context'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Toaster } from '@/components/ui/sonner'
@@ -56,12 +57,14 @@ export function Providers({ children }: ProvidersProps) {
           }}
         >
           <AuthProvider>
-            <CompanyProvider>
-              <TooltipProvider>
-                {children}
-                <Toaster />
-              </TooltipProvider>
-            </CompanyProvider>
+            <AuthGate>
+              <CompanyProvider>
+                <TooltipProvider>
+                  {children}
+                  <Toaster />
+                </TooltipProvider>
+              </CompanyProvider>
+            </AuthGate>
           </AuthProvider>
         </IntlProvider>
       </QueryClientProvider>

@@ -25,7 +25,7 @@
     "comingSoon": "coming soon",
     "select": "Select",
     "name": "Name",
-    "street": "Street",
+    "street": "Address",
     "accessDenied": "Access Denied",
     "adminRequired": "You need Administrator permissions to access this page."
   },
@@ -190,7 +190,6 @@
     "uploadedAt": "Uploaded",
     "dragOrClick": "Drag & drop a file here, or click to browse",
     "maxFileSize": "Max file size: {size} MB",
-    "notes": "Notes",
     "addNote": "Add note",
     "editNote": "Edit note",
     "deleteNoteConfirm": "Are you sure you want to delete this note?",
@@ -228,6 +227,7 @@
     "page": "Page",
     "perPage": "per page",
     "source": "Source",
+    "manual": "Manual",
     "editInvoice": "Edit invoice",
     "vatRate": "VAT rate",
     "vatRateExempt": "Exempt (zw)",
@@ -263,6 +263,7 @@
       "searchPrompt": "Enter NIP or REGON to search VAT registry"
     },
     "notes": {
+      "title": "Notes",
       "justNow": "just now",
       "minutesAgo": "{count, plural, one {# min ago} other {# min ago}}",
       "hoursAgo": "{count, plural, one {# hour ago} other {# hours ago}}",

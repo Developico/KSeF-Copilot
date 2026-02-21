@@ -126,7 +126,7 @@ export function NotesSection({
         >
           <div className="flex items-center gap-2">
             <StickyNote className="h-4 w-4" />
-            {t('invoices.notes')}
+            {t('invoices.notes.title')}
             {noteCount > 0 && (
               <Badge variant="secondary" className="h-5 text-xs">
                 {noteCount}

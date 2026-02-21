@@ -25,7 +25,7 @@
     "comingSoon": "wkrótce",
     "select": "Wybierz",
     "name": "Nazwa",
-    "street": "Ulica",
+    "street": "Adres",
     "accessDenied": "Brak dostępu",
     "adminRequired": "Potrzebujesz uprawnień Administratora, aby uzyskać dostęp do tej strony."
   },
@@ -190,7 +190,6 @@
     "uploadedAt": "Przesłano",
     "dragOrClick": "Przeciągnij i upuść plik tutaj lub kliknij, aby przeglądać",
     "maxFileSize": "Maksymalny rozmiar pliku: {size} MB",
-    "notes": "Notatki",
     "addNote": "Dodaj notatkę",
     "editNote": "Edytuj notatkę",
     "deleteNoteConfirm": "Czy na pewno chcesz usunąć tę notatkę?",
@@ -228,6 +227,7 @@
     "page": "Strona",
     "perPage": "na stronę",
     "source": "Źródło",
+    "manual": "Ręczna",
     "editInvoice": "Edytuj fakturę",
     "vatRate": "Stawka VAT",
     "vatRateExempt": "Zwolniony (zw)",
@@ -263,6 +263,7 @@
       "searchPrompt": "Wpisz NIP lub REGON, aby wyszukać w rejestrze VAT"
     },
     "notes": {
+      "title": "Notatki",
       "justNow": "przed chwilą",
       "minutesAgo": "{count, plural, one {# min temu} few {# min temu} other {# min temu}}",
       "hoursAgo": "{count, plural, one {# godz. temu} few {# godz. temu} other {# godz. temu}}",

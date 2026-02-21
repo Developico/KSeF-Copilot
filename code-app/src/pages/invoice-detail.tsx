@@ -325,12 +325,6 @@ export function InvoiceDetailPage() {
               {invoice.source === 'KSeF' ? 'KSeF' : intl.formatMessage({ id: 'invoices.manual' })}
             </Badge>
           )}
-          {!editing && (
-            <Button size="sm" variant="outline" onClick={startEdit}>
-              <Edit2 className="h-4 w-4 mr-1" />
-              {intl.formatMessage({ id: 'common.edit' })}
-            </Button>
-          )}
           {invoice.paymentStatus === 'pending' ? (
             <Button
               size="sm"

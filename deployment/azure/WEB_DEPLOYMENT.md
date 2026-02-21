@@ -3,8 +3,8 @@
 Dokument opisuje proces przygotowania, przeprowadzenia i weryfikacji wdrożenia aplikacji webowej (`your-webapp-name` web) na platformę Azure App Service w trybie Next.js standalone.
 
 **Data wdrożenia:** 2026-02-09  
-**Wersja:** 0.1.0  
-**Ostatnia aktualizacja dokumentu:** 2026-02-09  
+**Wersja:** 1.1  
+**Ostatnia aktualizacja dokumentu:** 2026-02-21  
 
 > **Uwaga — placeholdery:** W całym dokumencie występują nazwy zaczynające się od `your-` (np. `your-webapp-name`, `your-resource-group`). Zamień je na rzeczywiste nazwy swoich zasobów Azure. Przykład: `your-webapp-name` → `app-ksef-prod`.
 
@@ -92,6 +92,35 @@ Skrypt `build-deploy.mjs` automatycznie wykrywa tę strukturę i prawidłowo kop
 ---
 
 ## Przygotowanie do wdrożenia
+
+### 0. Weryfikacja menedżera pakietów (KRYTYCZNE!)
+
+Projekt używa **npm workspaces** (nie pnpm). Przed budowaniem upewnij się, że katalog `web/` nie zawiera artefaktów pnpm:
+
+```bash
+# Sprawdź, czy nie ma pnpm-lock.yaml w web/
+ls web/pnpm-lock.yaml 2>$null   # Powinno zwrócić błąd (plik nie istnieje)
+
+# Sprawdź, czy node_modules nie jest zarządzany przez pnpm
+ls web/node_modules/.pnpm 2>$null   # Powinno zwrócić błąd (folder nie istnieje)
+```
+
+Jeśli istnieje `web/pnpm-lock.yaml` lub `web/node_modules/.pnpm/`:
+
+```bash
+# Usuń artefakty pnpm
+Remove-Item web/pnpm-lock.yaml -ErrorAction SilentlyContinue
+Remove-Item web/node_modules -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item web/.next -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item web/.deploy -Recurse -Force -ErrorAction SilentlyContinue
+
+# Przeinstaluj zależności przez npm z poziomu roota
+npm install --ignore-scripts
+```
+
+> **DLACZEGO?** pnpm instaluje zależności w `node_modules/.pnpm/` i tworzy symlinki.
+> Next.js standalone kopiuje te symlinki do outputu, ale po wdrożeniu na Azure Linux
+> stają się one martwymi dowiązaniami → `Cannot find module 'next'`. Zobacz [Problem 10](#problem-10).
 
 ### 1. Build projektu
 
@@ -445,6 +474,51 @@ cd web
 npm install react-is --save
 ```
 
+### Problem 10: Artefakty pnpm w katalogu `web/` — martwe symlinki w standalone output
+
+**Objaw:** Po wdrożeniu na Azure serwer nie startował z błędem:
+```
+Error: Cannot find module 'next'
+```
+Pomimo że build był poprawny i lokalnie wszystko działało.
+
+**Przyczyna:** W katalogu `web/` znajdował się plik `pnpm-lock.yaml` oraz `node_modules/.pnpm/` — pozostałości po wcześniejszym użyciu pnpm. Mimo że projekt na poziomie roota korzystał z npm workspaces, pnpm zarządzał zależnościami w `web/` tworząc symlinki:
+
+```
+web/node_modules/next → web/node_modules/.pnpm/next@15.5.12_.../node_modules/next
+```
+
+Gdy `next build --standalone` kopiował `node_modules` do outputu standalone, kopiował **symlinki** (nie ich cele). Po spakowaniu do ZIP i wdrożeniu na Azure Linux, symlinki wskazywały na nieistniejące ścieżki `.pnpm/...` i stawały się martwe.
+
+Dodatkowy objaw: build wymagał uprawnień administratora na Windows (EPERM: operation not permitted, symlink) — npm nie mógł tworzyć symlinków pnpm bez podwyższonych uprawnień.
+
+**Rozwiązanie:**
+```bash
+# 1. Usuń pnpm-lock.yaml z web/
+Remove-Item web/pnpm-lock.yaml
+
+# 2. Usuń pnpm-managed node_modules
+Remove-Item web/node_modules -Recurse -Force
+
+# 3. Wyczyść poprzedni build
+Remove-Item web/.next -Recurse -Force
+Remove-Item web/.deploy -Recurse -Force
+
+# 4. Przeinstaluj przez npm z roota projektu
+npm install --ignore-scripts
+
+# 5. Zweryfikuj, że node_modules jest płaski (bez .pnpm)
+Test-Path web/node_modules/.pnpm   # Powinno zwrócić False
+(Get-Item (Resolve-Path node_modules/next)).Attributes   # Powinno zwrócić "Directory" (nie ReparsePoint)
+```
+
+Po tej zmianie:
+- Build działa **bez uprawnień administratora**
+- `.deploy/node_modules/` zawiera prawdziwe katalogi (nie symlinki)
+- Moduł `next` jest dostępny na Azure po wdrożeniu
+
+> **UWAGA:** Ta sytuacja może wystąpić po migracji z pnpm na npm. Zawsze sprawdzaj krok [0. Weryfikacja menedżera pakietów](#0-weryfikacja-menedżera-pakietów-krytyczne) przed pierwszym buildem.
+
 ---
 
 ## Weryfikacja
@@ -496,17 +570,18 @@ az webapp log tail --name your-webapp-name --resource-group rg-ksef
 # ✓ Ready in Xms
 ```
 
-### 5. Wynik weryfikacji z 2026-02-09
+### 5. Wynik weryfikacji z 2026-02-21
 
 ```
 ✅ HTTP Status:       200 OK
-✅ Startup:           node server.js — Ready on 0.0.0.0:8080
-✅ BUILD_ID:          6gKdwfXbEoVGE-FIUloY-
-✅ Rozmiar .deploy/:  ~176 MB (ZIP: ~119 MB)
+✅ Startup:           node server.js — Ready in 2.5s on 0.0.0.0:8080
+✅ BUILD_ID:          ODJIx10U2sLF2VsNRqmk2
+✅ Rozmiar .deploy/:  ~178 MB (ZIP: ~58 MB)
 ✅ Runtime:           Node.js 22 LTS (Linux)
 ✅ Oryx build:        Wyłączony
 ✅ Run-from-package:  Włączony (WEBSITE_RUN_FROM_PACKAGE=1)
-✅ node_modules:      14 pakietów (w tym next, react, sharp)
+✅ node_modules:      14 pakietów (w tym next, react, sharp) — płaski (bez symlinków pnpm)
+✅ Menedżer pakietów: npm workspaces (bez pnpm w web/)
 ```
 
 ---
@@ -604,6 +679,7 @@ Jeśli istnieje w `web/`, jest kopiowany do `.deploy/` przez `build-deploy.mjs`.
 8. **`WEBSITE_RUN_FROM_PACKAGE=1`** — **KRYTYCZNE!** Bez tego Kudu tworzy `node_modules.tar.gz` z paczki ZIP i niszczy standalone modules. Z `=1` ZIP jest montowany bezpośrednio jako read-only filesystem, omijając cały problem.
 9. **Kolejność w build-deploy.mjs** — Linux binaries (`npm install`) muszą być instalowane PRZED kopiowaniem shared workspace `node_modules`. Inaczej `npm` prune'uje standalone moduły.
 10. **Debugowanie Docker logów** — Najszybsza metoda diagnozy 503: `az rest --method get --url "<SCM_URL>/api/vfs/LogFiles/" ...` → znaleźć najnowszy `*_default_docker.log` → przeczytać ostatnie linie.
+11. **pnpm → npm migracja** — Jeśli projekt korzystał wcześniej z pnpm, upewnij się, że w `web/` nie pozostały `pnpm-lock.yaml` ani `node_modules/.pnpm/`. pnpm tworzy symlinki w `node_modules`, które Next.js standalone kopiuje do outputu. Na Azure te symlinki to martwe dowiązania → `Cannot find module 'next'`. Zawsze weryfikuj krok 0 przed buildem.
 
 ---
 
@@ -616,6 +692,6 @@ Jeśli istnieje w `web/`, jest kopiowany do `.deploy/` przez `build-deploy.mjs`.
 
 ---
 
-**Ostatnia aktualizacja:** 2026-02-11  
-**Wersja:** 1.0  
+**Ostatnia aktualizacja:** 2026-02-21  
+**Wersja:** 1.1  
 **Opiekun:** dvlp-dev team
