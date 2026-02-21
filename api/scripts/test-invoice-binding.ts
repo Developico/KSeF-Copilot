@@ -5,7 +5,7 @@ config({ path: resolve(__dirname, '../../.env.local') })
 async function testInvoiceCreate() {
   const { dataverseRequest } = await import('../src/lib/dataverse/client')
   
-  const settingId = 'YOUR_SETTING_ID' // Developico Demo
+  const settingId = process.env.TEST_SETTING_ID || '<your-setting-id>' // UUID of your KSeF settings record
   
   console.log('Testing invoice creation with settingId binding...')
   console.log('SettingId:', settingId)
