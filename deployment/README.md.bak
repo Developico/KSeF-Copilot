@@ -2,115 +2,35 @@
 
 > Kompletny, krok po kroku przewodnik wdrożenia rozwiązania KSeF Copilot w chmurze Azure i Power Platform.
 
-**Ostatnia aktualizacja:** 2026-02-21
-**Wersja:** 4.0
-**Szacowany czas wdrożenia:** ~7–8 godzin (bez kroków opcjonalnych)
-
----
-
-## Słownik pojęć
-
-Jeśli natkniesz się na nieznany termin, sprawdź tutaj:
-
-| Pojęcie | Wyjaśnienie |
-|---------|-------------|
-| **Azure Entra ID** (dawniej Azure AD) | Usługa tożsamości Microsoft — zarządza kontami użytkowników, logowaniem i uprawnieniami aplikacji. |
-| **App Registration** | „Dowód osobisty" aplikacji w Entra ID — nadaje jej unikalny identyfikator (Client ID) i pozwala uwierzytelniać się w usługach Azure. |
-| **Service Principal** | Konto usługowe powiązane z App Registration — używane przez API do automatycznego logowania (bez interakcji użytkownika). |
-| **Flex Consumption** | Plan hostingowy Azure Functions z automatycznym skalowaniem i rozliczaniem za faktyczne zużycie (pay-per-execution). |
-| **MDA App** (Model-Driven App) | Aplikacja Power Platform generowana automatycznie na podstawie struktury tabel Dataverse. |
-| **Solucja (Solution)** | Paczka Power Platform (.zip) zawierająca tabele, aplikacje, procesy i role — umożliwia przenoszenie konfiguracji między środowiskami. |
-| **Managed / Unmanaged** | Managed = zablokowana do edycji (produkcja). Unmanaged = edytowalna (dev). |
-| **RBAC** (Role-Based Access Control) | Model uprawnień oparty na rolach — użytkownik otrzymuje rolę (np. Admin, Reader), a rola definiuje co wolno robić. |
-| **Custom Connector** | Komponent Power Platform pozwalający Power Automate i Power Apps komunikować się z zewnętrznym API (tu: Azure Functions). |
-| **Key Vault** | Magazyn sekretów Azure — bezpieczne przechowywanie haseł, kluczy API i tokenów (np. tokeny KSeF). |
-| **Dataverse** | Baza danych Power Platform — przechowuje tabele z danymi (faktury, ustawienia, logi). |
-| **Bicep** | Język Infrastructure as Code (IaC) Microsoftu — pozwala definiować zasoby Azure w plikach tekstowych zamiast klikać w portalu. |
-| **Placeholder `<...>`** | Wartość szablonowa do zastąpienia (np. `<AZURE_CLIENT_ID>`) — wstaw swoją własną wartość z tabeli danych zebranych w trakcie wdrożenia. |
-
----
-
-## Diagram zależności kroków
-
-Poniższy diagram pokazuje kolejność kroków i zależności między nimi:
-
-```
-Faza A: Przygotowanie
-  [Krok 0: Instalacja] → [Krok 1: Logowanie i weryfikacja]
-          │
-          ▼
-Faza B: Power Platform
-  [Krok 2: Import solucji]
-          │
-          ▼
-Faza C: Tożsamość i bezpieczeństwo
-  [Krok 3: Entra ID] → [Krok 4: App User w Dataverse]
-          │
-          ▼
-Faza D: Infrastruktura Azure
-  [Krok 5: Zasoby Azure] → [Krok 6: Zmienne środowiskowe]
-          │
-          ▼
-Faza E: Wdrożenie aplikacji
-  [Krok 7: Deploy API] → [Krok 8: Deploy Web] → [Krok 8a: Redirect URI]
-          │
-          ▼
-Faza F: Integracje
-  [Krok 9: AI ⚡opcja] → [Krok 10: Connector] → [Krok 11: Flows] → [Krok 12: Tokeny KSeF]
-          │
-          ▼
-Faza G: Odbiór i uruchomienie
-  [Krok 13: Role] → [Krok 14: Weryfikacja E2E] → [Krok 15: Po wdrożeniu]
-```
-
-> **Zasada:** Każdy krok zależy od poprzedniego. Nie przeskakuj kroków — wartości z wcześniejszych kroków są potrzebne w kolejnych.
+**Ostatnia aktualizacja:** 2025-06-14
+**Wersja:** 3.0
 
 ---
 
 ## Spis treści
 
-- [Słownik pojęć](#słownik-pojęć)
-- [Diagram zależności kroków](#diagram-zależności-kroków)
-- [Architektura docelowa](#architektura-docelowa)
-- [Struktura katalogu deployment/](#struktura-katalogu-deployment)
-- [Dane do zebrania przed startem](#dane-do-zebrania-przed-startem)
-- [Uruchomienie lokalne (opcjonalne)](#uruchomienie-lokalne-opcjonalne)
-
-**Faza A — Przygotowanie** (⏱ ~50 min)
-1. [Krok 0 — Instalacja narzędzi i rozszerzeń](#krok-0--instalacja-narzędzi-i-rozszerzeń) ⏱ ~30 min
-2. [Krok 1 — Logowanie i weryfikacja dostępów](#krok-1--logowanie-i-weryfikacja-dostępów) ⏱ ~20 min
-
-**Faza B — Power Platform** (⏱ ~20 min)
-3. [Krok 2 — Import solucji Power Platform](#krok-2--import-solucji-power-platform) ⏱ ~15 min
-
-**Faza C — Tożsamość i bezpieczeństwo** (⏱ ~40 min)
-4. [Krok 3 — Entra ID: App Registration](#krok-3--entra-id-app-registration) ⏱ ~25 min
-5. [Krok 4 — Application User w Dataverse](#krok-4--application-user-w-dataverse) ⏱ ~10 min
-
-**Faza D — Infrastruktura Azure** (⏱ ~45 min)
-6. [Krok 5 — Infrastruktura Azure](#krok-5--infrastruktura-azure) ⏱ ~30 min
-7. [Krok 6 — Zmienne środowiskowe (Function App)](#krok-6--zmienne-środowiskowe-function-app) ⏱ ~15 min
-
-**Faza E — Wdrożenie aplikacji** (⏱ ~1h 10 min)
-8. [Krok 7 — Deploy API (Azure Functions)](#krok-7--deploy-api-azure-functions) ⏱ ~30 min
-9. [Krok 8 — Deploy Web (App Service)](#krok-8--deploy-web-app-service) ⏱ ~30 min
-10. [Krok 8a — Redirect URI w Entra ID](#krok-8a--redirect-uri-w-entra-id) ⏱ ~10 min
-
-**Faza F — Integracje** (⏱ ~1h 30 min)
-11. [Krok 9 — AI Categorization (Azure OpenAI)](#krok-9--ai-categorization-azure-openai) ⏱ ~45 min *(opcjonalne)*
-12. [Krok 10 — Custom Connector](#krok-10--custom-connector) ⏱ ~20 min
-13. [Krok 11 — Connection References i Power Automate](#krok-11--connection-references-i-power-automate) ⏱ ~15 min
-14. [Krok 12 — Tokeny KSeF](#krok-12--tokeny-ksef) ⏱ ~15 min
-
-**Faza G — Odbiór i uruchomienie** (⏱ ~1h 20 min)
-15. [Krok 13 — Role i uprawnienia](#krok-13--role-i-uprawnienia) ⏱ ~20 min
-16. [Krok 14 — Weryfikacja końcowa](#krok-14--weryfikacja-końcowa) ⏱ ~30 min
-17. [Krok 15 — Po wdrożeniu](#krok-15--po-wdrożeniu) ⏱ ~30 min
-
-**Dodatki**
-- [Rozwiązywanie problemów](#rozwiązywanie-problemów)
-- [Cheat sheet — ściągawka po wdrożeniu](#cheat-sheet--ściągawka-po-wdrożeniu)
-- [Powiązane dokumenty](#powiązane-dokumenty)
+1. [Architektura docelowa](#architektura-docelowa)
+2. [Struktura katalogu deployment/](#struktura-katalogu-deployment)
+3. [Dane do zebrania przed startem](#dane-do-zebrania-przed-startem)
+4. [Uruchomienie lokalne (opcjonalne)](#uruchomienie-lokalne-opcjonalne)
+5. [Krok 0 — Przygotowanie środowiska](#krok-0--przygotowanie-środowiska)
+6. [Krok 1 — Weryfikacja narzędzi i dostępów](#krok-1--weryfikacja-narzędzi-i-dostępów)
+7. [Krok 2 — Import solucji Power Platform](#krok-2--import-solucji-power-platform)
+8. [Krok 3 — Entra ID: App Registration](#krok-3--entra-id-app-registration)
+9. [Krok 4 — Application User w Dataverse](#krok-4--application-user-w-dataverse)
+10. [Krok 5 — Infrastruktura Azure](#krok-5--infrastruktura-azure)
+11. [Krok 6 — Zmienne środowiskowe (Function App)](#krok-6--zmienne-środowiskowe-function-app)
+12. [Krok 7 — Deploy API (Azure Functions)](#krok-7--deploy-api-azure-functions)
+13. [Krok 8 — Deploy Web (App Service)](#krok-8--deploy-web-app-service)
+14. [Krok 8a — Redirect URI w Entra ID](#krok-8a--redirect-uri-w-entra-id)
+15. [Krok 9 — AI Categorization (Azure OpenAI)](#krok-9--ai-categorization-azure-openai)
+16. [Krok 10 — Custom Connector](#krok-10--custom-connector)
+17. [Krok 11 — Connection References i Power Automate](#krok-11--connection-references-i-power-automate)
+18. [Krok 12 — Tokeny KSeF](#krok-12--tokeny-ksef)
+19. [Krok 13 — Role i uprawnienia](#krok-13--role-i-uprawnienia)
+20. [Krok 14 — Weryfikacja końcowa](#krok-14--weryfikacja-końcowa)
+21. [Krok 15 — Po wdrożeniu](#krok-15--po-wdrożeniu)
+22. [Rozwiązywanie problemów](#rozwiązywanie-problemów)
 
 ---
 
@@ -288,15 +208,9 @@ npm run dev --workspace=web      # http://localhost:3000
 
 ---
 
----
+## Krok 0 — Przygotowanie środowiska
 
-# Faza A — Przygotowanie (⏱ ~50 min)
-
----
-
-## Krok 0 — Instalacja narzędzi i rozszerzeń (⏱ ~30 min)
-
-**Cel:** Zainstalować wszystkie wymagane narzędzia i rozszerzenia VS Code. Zaplanować konfiguracje specyficzne dla klienta (np. centra kosztów).
+**Cel:** Upewnić się, że masz wszystkie narzędzia, rozszerzenia VS Code, uprawnienia i wiedzę o konfiguracjach specyficznych dla klienta.
 
 ### Wymagane narzędzia
 
@@ -311,9 +225,6 @@ npm run dev --workspace=web      # http://localhost:3000
 | Git | najnowsze | [Instalacja](https://git-scm.com/) |
 
 > **Ważne:** Używamy **npm** (nie pnpm). Projekt korzysta z npm workspaces (api/ i web/).
-
-> **Nie masz zainstalowanego narzędzia?** Kliknij link w kolumnie „Instalacja" powyżej i postępuj według instrukcji na stronie.
-> Nie masz Node.js? → [Pobierz ze strony nodejs.org](https://nodejs.org/) — npm zainstaluje się automatycznie razem z Node.js.
 
 ### Rekomendowane rozszerzenia VS Code
 
@@ -331,6 +242,20 @@ Otwórz projekt w VS Code — rozszerzenia z `.vscode/extensions.json` zostaną 
 | Prettier | `esbenp.prettier-vscode` | Formatowanie kodu |
 | Tailwind CSS | `bradlc.vscode-tailwindcss` | IntelliSense dla Tailwind (web/) |
 | Azure Tools | `ms-vscode.vscode-node-azure-pack` | Pakiet narzędzi Azure |
+
+### Wymagane uprawnienia i role
+
+| Zasób | Wymagana rola | Weryfikacja |
+|-------|---------------|-------------|
+| Subskrypcja Azure | **Contributor** lub **Owner** | `az account show` |
+| Azure Entra ID | **Application Administrator** | Azure Portal → Entra ID → Roles |
+| Power Platform | **System Administrator** | Power Platform Admin Center |
+| Dataverse | **System Administrator** lub **System Customizer** | PP Admin Center → Environments → Users |
+| Repozytorium Git | Read | `git clone` |
+
+> **⚠️ Role Dataverse:** Rola **System Administrator** jest wymagana do importu solucji i tworzenia Application User.
+> Rola **System Customizer** jest wystarczająca do dalszej konfiguracji, ale nie pozwoli na tworzenie Application Users.
+> Upewnij się, że osoba wdrażająca ma odpowiednią rolę PRZED rozpoczęciem kroku 2 (import solucji).
 
 ### Centra kosztów (MPK) — konfiguracja per klient
 
@@ -375,23 +300,9 @@ Jeżeli klient potrzebuje innych wartości MPK, zmień je we **wszystkich** poni
 
 ---
 
-## Krok 1 — Logowanie i weryfikacja dostępów (⏱ ~20 min)
+## Krok 1 — Weryfikacja narzędzi i dostępów
 
-**Cel:** Zalogować się do Azure i Power Platform, zweryfikować uprawnienia i potwierdzić że narzędzia z kroku 0 działają poprawnie.
-
-### Wymagane uprawnienia i role
-
-| Zasób | Wymagana rola | Weryfikacja |
-|-------|---------------|-------------|
-| Subskrypcja Azure | **Contributor** lub **Owner** | `az account show` |
-| Azure Entra ID | **Application Administrator** | Azure Portal → Entra ID → Roles |
-| Power Platform | **System Administrator** | Power Platform Admin Center |
-| Dataverse | **System Administrator** lub **System Customizer** | PP Admin Center → Environments → Users |
-| Repozytorium Git | Read | `git clone` |
-
-> **Nie masz subskrypcji Azure?** → [Utwórz darmową](https://azure.microsoft.com/free/) (obejmuje $200 na 30 dni).
-> **Nie masz uprawnień?** → Poproś administratora IT o nadanie odpowiedniej roli.
-> **Nie masz dostępu do Power Platform?** → Poproś admina o rolę System Administrator w Power Platform Admin Center.
+**Cel:** Zweryfikować, że wszystkie narzędzia z kroku 0 są zainstalowane i masz wymagane uprawnienia.
 
 ### Instrukcja
 
@@ -435,17 +346,9 @@ az role assignment list `
 - [ ] `node --version` — Node 20+
 - [ ] Rola Dataverse: System Administrator ✓
 
-> **🛑 STOP — Nie przechodź dalej** dopóki wszystkie powyższe checkboxy nie są zaznaczone. Bez pozytywnej weryfikacji kolejne kroki nie zadziałają.
-
 ---
 
----
-
-# Faza B — Power Platform (⏱ ~20 min)
-
----
-
-## Krok 2 — Import solucji Power Platform (⏱ ~15 min)
+## Krok 2 — Import solucji Power Platform
 
 **Cel:** Zaimportować solucję Power Platform do środowiska Dataverse, co utworzy tabele, aplikację MDA, role, Custom Connector i procesy.
 
@@ -501,19 +404,9 @@ pac solution list
 - [ ] Custom Connector widoczny w Data → Custom connectors
 - [ ] Cloud Flows widoczne w Cloud flows
 
-> **🛑 STOP — Nie przechodź dalej** dopóki wszystkie powyższe checkboxy nie są zaznaczone.
-
-> **❌ Najczęstszy błąd:** Import solucji kończy się błędem uprawnień → Upewnij się, że masz rolę **System Administrator** w Dataverse (nie System Customizer). Sprawdź w Power Platform Admin Center → Environments → Users → Manage roles.
-
 ---
 
----
-
-# Faza C — Tożsamość i bezpieczeństwo (⏱ ~40 min)
-
----
-
-## Krok 3 — Entra ID: App Registration (⏱ ~25 min)
+## Krok 3 — Entra ID: App Registration
 
 **Cel:** Utworzyć rejestrację aplikacji w Azure Entra ID, która będzie tożsamością aplikacji (API + Custom Connector + Frontend).
 
@@ -572,13 +465,9 @@ AZURE_CLIENT_SECRET: __________
 - [ ] **Expose an API** → Application ID URI = `api://{CLIENT_ID}`
 - [ ] Scope `access_as_user` dodany
 
-> **🛑 STOP — Nie przechodź dalej** dopóki wszystkie powyższe checkboxy nie są zaznaczone.
-
-> **❌ Najczęstszy błąd:** `AADSTS90009` w Custom Connector (krok 10) → Sprawdź, czy w sekcji **Expose an API** ustawiłeś Application ID URI na `api://{CLIENT_ID}` i dodałeś scope `access_as_user`.
-
 ---
 
-## Krok 4 — Application User w Dataverse (⏱ ~10 min)
+## Krok 4 — Application User w Dataverse
 
 **Cel:** Utworzyć Application User w Dataverse, aby API (Azure Functions) mogło komunikować się z Dataverse za pomocą Service Principal (bez konta użytkownika).
 
@@ -608,19 +497,9 @@ pac admin list-app-users --environment "<DATAVERSE_URL>"
 - [ ] Rola bezpieczeństwa przypisana
 - [ ] API potrafi odczytać dane z Dataverse (weryfikacja w kroku 14)
 
-> **🛑 STOP — Nie przechodź dalej** dopóki Application User nie jest aktywny z przypisaną rolą.
-
-> **❌ Najczęstszy błąd:** API zwraca 403 z Dataverse → Application User nie istnieje lub nie ma przypisanej roli bezpieczeństwa. Wróć do tego kroku i utwórz go.
-
 ---
 
----
-
-# Faza D — Infrastruktura Azure (⏱ ~45 min)
-
----
-
-## Krok 5 — Infrastruktura Azure (⏱ ~30 min)
+## Krok 5 — Infrastruktura Azure
 
 **Cel:** Utworzyć zasoby Azure za pomocą szablonu Bicep lub ręcznie w Azure Portal.
 
@@ -630,8 +509,7 @@ pac admin list-app-users --environment "<DATAVERSE_URL>"
 
 > **🇵🇱 Rekomendowany region:** **Poland Central** (`polandcentral`) — najniższe latencje dla polskich klientów,
 > pełne wsparcie dla wymaganych usług (Functions Flex Consumption, App Service, Key Vault, Application Insights).
->
-> **Uwaga:** Zasób Azure OpenAI (krok 9) może wymagać innego regionu (np. Sweden Central) — to jest normalne i nie wpływa na działanie pozostałych zasobów.
+> Alternatywnie: `westeurope` lub `northeurope`.
 
 ### Pliki IaC
 
@@ -806,13 +684,9 @@ az resource list --resource-group "<RESOURCE_GROUP_NAME>" --output table
 - [ ] Storage Account istnieje
 - [ ] Application Insights istnieje
 
-> **🛑 STOP — Nie przechodź dalej** dopóki wszystkie zasoby nie są widoczne w Azure Portal.
-
-> **❌ Najczęstszy błąd:** Deployment Bicep nie przechodzi → Sprawdź, czy masz rolę Contributor na subskrypcji i czy wybrany region obsługuje Flex Consumption (`az functionapp list-flexconsumption-locations`).
-
 ---
 
-## Krok 6 — Zmienne środowiskowe (Function App) (⏱ ~15 min)
+## Krok 6 — Zmienne środowiskowe (Function App)
 
 **Cel:** Ustawić App Settings na Function App, tak aby API mogło łączyć się z Dataverse, KSeF, Key Vault i OpenAI.
 
@@ -866,19 +740,9 @@ az functionapp config appsettings list `
 - [ ] `AzureWebJobsFeatureFlags` = `EnableWorkerIndexing`
 - [ ] `FUNCTIONS_NODE_BLOCK_ON_ENTRY_POINT_ERROR` = `true`
 
-> **🛑 STOP — Nie przechodź dalej** dopóki wszystkie zmienne nie są poprawnie ustawione.
-
-> **❌ Najczęstszy błąd:** Żadne funkcje HTTP nie są widoczne po deployu → Brak zmiennej `AzureWebJobsFeatureFlags=EnableWorkerIndexing`. Dodaj ją i zrestartuj Function App.
-
 ---
 
----
-
-# Faza E — Wdrożenie aplikacji (⏱ ~1h 10 min)
-
----
-
-## Krok 7 — Deploy API (Azure Functions) (⏱ ~30 min)
+## Krok 7 — Deploy API (Azure Functions)
 
 **Cel:** Zbudować i wdrożyć Azure Functions (REST API) na Function App.
 
@@ -937,13 +801,9 @@ Invoke-RestMethod "https://<FUNCTION_APP_NAME>.azurewebsites.net/api/health"
 - [ ] `func azure functionapp list-functions` — lista funkcji widoczna
 - [ ] `GET /api/health` → `{ "status": "healthy", ... }`
 
-> **🛑 STOP — Nie przechodź dalej** dopóki health endpoint nie zwraca `healthy`.
-
-> **❌ Najczęstszy błąd:** ZIP za duży (>500 MB) lub brak funkcji po deployu → Użyj flag `--no-workspaces --ignore-scripts` przy `npm install`. Jeśli health endpoint nie odpowiada, poczekaj 30-60 sekund (cold start Flex Consumption).
-
 ---
 
-## Krok 8 — Deploy Web (App Service) (⏱ ~30 min)
+## Krok 8 — Deploy Web (App Service)
 
 **Cel:** Zbudować i wdrożyć aplikację webową (Next.js standalone) na Azure App Service.
 
@@ -1021,13 +881,9 @@ az webapp config set `
 - [ ] `https://<WEB_APP_NAME>.azurewebsites.net` — strona ładuje się
 - [ ] Zalogowanie do dashboardu działa (redirect do Entra ID)
 
-> **🛑 STOP — Nie przechodź dalej** dopóki strona nie ładuje się poprawnie.
-
-> **❌ Najczęstszy błąd:** Frontend nie uzyskuje tokenu i nie może komunikować się z API → Sprawdź zmienną `NEXT_PUBLIC_API_SCOPE` na App Service (musi być: `api://{CLIENT_ID}/.default`).
-
 ---
 
-## Krok 8a — Redirect URI w Entra ID (⏱ ~10 min)
+## Krok 8a — Redirect URI w Entra ID
 
 **Cel:** Dodać URL wdrożonej aplikacji webowej jako dozwolony Redirect URI w rejestracji aplikacji Entra ID.
 
@@ -1074,19 +930,9 @@ az ad app update `
 - [ ] Web App → logowanie → redirect → powrót do dashboardu działa
 - [ ] Brak błędu AADSTS50011
 
-> **🛑 STOP — Nie przechodź dalej** dopóki logowanie nie działa poprawnie (redirect → powrót do dashboardu).
-
-> **❌ Najczęstszy błąd:** `AADSTS50011` przy logowaniu → Brak Redirect URI. Dodaj URL Web App w App Registration → Authentication. Komenda `az ad app update --web-redirect-uris` **nadpisuje** wszystkie URI — podaj pełną listę.
-
 ---
 
----
-
-# Faza F — Integracje (⏱ ~1h 30 min)
-
----
-
-## Krok 9 — AI Categorization (Azure OpenAI) (⏱ ~45 min)
+## Krok 9 — AI Categorization (Azure OpenAI)
 
 **Cel:** Skonfigurować Azure OpenAI do automatycznej kategoryzacji faktur (centrum kosztów, kategoria, opis).
 
@@ -1230,11 +1076,9 @@ Invoke-RestMethod -Method POST `
 - [ ] `FEATURE_AI_CATEGORIZATION=true` w App Settings
 - [ ] Test połączenia → odpowiedź od modelu
 
-> **🛑 STOP — Nie przechodź dalej** dopóki test połączenia z modelem nie zwraca odpowiedzi (jeśli realizujesz ten krok).
-
 ---
 
-## Krok 10 — Custom Connector (⏱ ~20 min)
+## Krok 10 — Custom Connector
 
 **Cel:** Skonfigurować Custom Connector w Power Platform, aby Power Automate i Power Apps mogły komunikować się z API.
 
@@ -1285,13 +1129,9 @@ Jeśli Custom Connector nie został zaimportowany z solucją:
 - [ ] Test `ListCompanies` → zwraca listę firm
 - [ ] Connection utworzone i aktywne
 
-> **🛑 STOP — Nie przechodź dalej** dopóki test `HealthCheck` w Custom Connector nie zwraca `healthy`.
-
-> **❌ Najczęstszy błąd:** `AADSTS90009` → Wróć do kroku 3 i upewnij się, że w sekcji **Expose an API** ustawiono Application ID URI = `api://{CLIENT_ID}` oraz dodano scope `access_as_user`.
-
 ---
 
-## Krok 11 — Connection References i Power Automate (⏱ ~15 min)
+## Krok 11 — Connection References i Power Automate
 
 **Cel:** Skonfigurować Connection References w solucji i włączyć procesy Power Automate.
 
@@ -1320,11 +1160,9 @@ Jeśli Custom Connector nie został zaimportowany z solucją:
 - [ ] Wszystkie Cloud Flows włączone (Turn on)
 - [ ] Ręczny test flow przechodzi
 
-> **🛑 STOP — Nie przechodź dalej** dopóki wszystkie Cloud Flows nie są włączone i ręczny test nie przechodzi.
-
 ---
 
-## Krok 12 — Tokeny KSeF (⏱ ~15 min)
+## Krok 12 — Tokeny KSeF
 
 **Cel:** Dodać tokeny autoryzacyjne KSeF do Azure Key Vault, aby API mogło komunikować się z systemem MF.
 
@@ -1367,19 +1205,9 @@ az keyvault secret show --vault-name "<KEY_VAULT_NAME>" --name "ksef-token-<NIP>
 - [ ] Function App ma uprawnienia do odczytu (Key Vault access policy / RBAC)
 - [ ] `GET /api/settings/companies` → firmy widoczne
 
-> **🛑 STOP — Nie przechodź dalej** dopóki tokeny nie są widoczne w Key Vault i endpoint `/api/settings/companies` nie zwraca listy firm.
-
-> **❌ Najczęstszy błąd:** Token wyświetla status „missing" → Sprawdź format nazwy secretu w Key Vault: `ksef-token-{NIP}` (bez spacji, bez myślników w NIP, np. `ksef-token-5272976789`).
-
 ---
 
----
-
-# Faza G — Odbiór i uruchomienie (⏱ ~1h 20 min)
-
----
-
-## Krok 13 — Role i uprawnienia (⏱ ~20 min)
+## Krok 13 — Role i uprawnienia
 
 **Cel:** Skonfigurować role bezpieczeństwa (RBAC) w Entra ID i Dataverse.
 
@@ -1420,11 +1248,9 @@ Security Roles zaimportowane z solucją (krok 2):
 - [ ] Test: Nieautoryzowany request → 401
 - [ ] Test: Brak roli → 403
 
-> **🛑 STOP — Nie przechodź dalej** dopóki testy RBAC nie potwierdzą poprawnego działania ról (Admin = CRUD, Reader = odczyt, brak roli = 403).
-
 ---
 
-## Krok 14 — Weryfikacja końcowa (⏱ ~30 min)
+## Krok 14 — Weryfikacja końcowa
 
 **Cel:** End-to-end weryfikacja, że wszystkie komponenty współpracują poprawnie.
 
@@ -1504,7 +1330,7 @@ Invoke-RestMethod "$apiUrl/settings/companies"
 
 ---
 
-## Krok 15 — Po wdrożeniu (⏱ ~30 min)
+## Krok 15 — Po wdrożeniu
 
 **Cel:** Skonfigurować monitoring, backup, dokumentację i plan utrzymania po zakończeniu wdrożenia.
 
@@ -1605,89 +1431,6 @@ func azure functionapp logstream "<FUNCTION_APP_NAME>"
 
 ---
 
-## Cheat sheet — ściągawka po wdrożeniu
-
-Jednostronicowe podsumowanie najważniejszych informacji po zakończeniu wdrożenia. Wydrukuj lub zapisz pod ręką.
-
-### URL-e środowiska
-
-| Serwis | URL |
-|--------|-----|
-| API (Azure Functions) | `https://<FUNCTION_APP_NAME>.azurewebsites.net/api` |
-| Web Dashboard | `https://<WEB_APP_NAME>.azurewebsites.net` |
-| Key Vault | `https://<KEY_VAULT_NAME>.vault.azure.net` |
-| Dataverse | `https://<org>.crm4.dynamics.com` |
-| Azure Portal | `https://portal.azure.com` |
-| Power Platform | `https://make.powerapps.com` |
-| KSeF (test) | `https://ksef-test.mf.gov.pl` |
-| KSeF (prod) | `https://ksef.mf.gov.pl` |
-
-### Szybki health check
-
-```powershell
-# Sprawdź czy API działa
-Invoke-RestMethod "https://<FUNCTION_APP_NAME>.azurewebsites.net/api/health"
-
-# Sprawdź listę firm
-Invoke-RestMethod "https://<FUNCTION_APP_NAME>.azurewebsites.net/api/settings/companies"
-```
-
-### Redeploy API (po zmianach w kodzie)
-
-```powershell
-cd api
-npm install --omit=dev --no-workspaces --ignore-scripts
-npm run build
-Compress-Archive -Path .\* -DestinationPath ..\api-deploy.zip -Force
-az functionapp deployment source config-zip `
-    --resource-group "<RESOURCE_GROUP_NAME>" `
-    --name "<FUNCTION_APP_NAME>" `
-    --src "..\api-deploy.zip"
-```
-
-### Redeploy Web (po zmianach w kodzie)
-
-```powershell
-npm install --workspace=web
-npm run build --workspace=web
-cd web\.next\standalone
-Compress-Archive -Path .\* -DestinationPath ..\..\..\web-deploy.zip -Force
-cd ..\..\..
-az webapp deploy `
-    --resource-group "<RESOURCE_GROUP_NAME>" `
-    --name "<WEB_APP_NAME>" `
-    --src-path "web-deploy.zip" --type zip
-```
-
-### Kluczowe zmienne środowiskowe
-
-| Gdzie | Zmienna | Wartość / Opis |
-|-------|---------|----------------|
-| Function App | `AzureWebJobsFeatureFlags` | **MUSI** = `EnableWorkerIndexing` |
-| Function App | `FEATURE_AI_CATEGORIZATION` | `true` / `false` |
-| Function App | `KSEF_ENVIRONMENT` | `test` / `demo` / `prod` |
-| App Service | `NEXT_PUBLIC_API_SCOPE` | `api://{CLIENT_ID}/.default` |
-| App Service | `NEXT_PUBLIC_API_BASE_URL` | URL do Function App |
-
-### Rotacja sekretów — przypomnienie
-
-| Co | Kiedy | Jak |
-|----|-------|-----|
-| `AZURE_CLIENT_SECRET` | Co 24 mies. | Entra ID → Certificates & secrets → nowy secret → zaktualizuj w Function App |
-| Tokeny KSeF | Wg polityki firmy | Portal KSeF → nowy token → zaktualizuj w Key Vault |
-| `AZURE-OPENAI-API-KEY` | Wg polityki | Azure Portal → OpenAI → Regenerate key → zaktualizuj w Key Vault |
-
-### Kontakt i eskalacja
-
-| Problem | Gdzie szukać pomocy |
-|---------|---------------------|
-| Problemy z Azure | Azure Portal → **Support + Troubleshooting** |
-| Problemy z Power Platform | Power Platform Admin Center → **Help + Support** |
-| Problemy z KSeF API | [podatki.gov.pl/ksef](https://www.podatki.gov.pl/ksef/) |
-| Dokumentacja projektu | Ten plik (`deployment/README.md`) + katalog `docs/` |
-
----
-
 ## Powiązane dokumenty
 
 | Dokument | Opis |
@@ -1707,5 +1450,4 @@ az webapp deploy `
 
 ---
 
-*Wersja 4.0 — 2025-06-21 — 16 kroków (0-15 + 8a) w 7 fazach (A-G).*
-*Zmiany vs 3.0: grupowanie w fazy, szacowane czasy, słowniczek, diagram zależności, bramki STOP, inline troubleshooting, cheat sheet, region Poland Central jako domyślny.*
+*Wersja 3.0 — 2025-06-14 — 16 kroków (0-15 + 8a), dodano: Step 0, AI Categorization, Redirect URI, Post-deployment, manual Portal guide, MPK documentation.*

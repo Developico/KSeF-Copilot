@@ -5,6 +5,8 @@ Dokument opisuje proces przygotowania, przeprowadzenia i weryfikacji wdrożenia 
 **Data wdrożenia:** 2026-02-09  
 **Wersja:** 0.6.1  
 
+> **Uwaga — placeholdery:** W całym dokumencie występują nazwy zaczynające się od `your-` (np. `your-functionapp-name`, `your-resource-group`). Zamień je na rzeczywiste nazwy swoich zasobów Azure. Przykład: `your-functionapp-name` → `func-ksef-prod`.
+
 ---
 
 ## Spis treści

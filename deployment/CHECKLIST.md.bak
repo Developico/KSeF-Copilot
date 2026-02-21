@@ -4,14 +4,10 @@ Interaktywna lista kontrolna z polami do zapisywania danych w trakcie wdrożenia
 
 > **Instrukcja:** Skopiuj ten plik do issue trackera lub zaznaczaj checkboxy bezpośrednio w edytorze Markdown.
 > Uzupełniaj wartości w miarę postępu — będą potrzebne w kolejnych krokach.
->
-> **Fazy:** Kroki są pogrupowane w 7 faz (A–G). Każda faza kończy się bramką STOP —
-> nie przechodź dalej, dopóki wszystkie checkboxy w fazie nie są zaznaczone.
 
-**Wersja:** 4.0  
-**Data rozpoczęcia wdrożenia:** _______________  
-**Środowisko docelowe (test/prod):** _______________  
-**Szacowany czas całości:** ~6–8 h (nie licząc oczekiwania na admin consent)
+**Wersja:** 3.0
+**Data rozpoczęcia wdrożenia:** _______________
+**Środowisko docelowe (test/prod):** _______________
 
 ---
 
@@ -42,9 +38,7 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 
 ---
 
-## 🅰️ Faza A — Przygotowanie (⏱ ~50 min)
-
-## Krok 0 — Instalacja narzędzi i rozszerzeń (⏱ ~30 min)
+## Krok 0 — Przygotowanie środowiska
 
 ### Narzędzia
 
@@ -90,7 +84,7 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 
 ---
 
-## Krok 1 — Logowanie i weryfikacja dostępów (⏱ ~20 min)
+## Krok 1 — Weryfikacja narzędzi i dostępów
 
 - [ ] Zalogowano do Azure CLI (`az login`)
 - [ ] Ustawiono subskrypcję: `AZURE_SUBSCRIPTION_ID`: __________
@@ -99,13 +93,9 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 - [ ] Zweryfikowano uprawnienia Power Platform (System Admin)
 - [ ] Zweryfikowano rolę Dataverse (System Administrator)
 
-> 🚨 **STOP — Bramka Fazy A:** Wszystkie narzędzia zainstalowane, zalogowano do Azure i Power Platform, uprawnienia potwierdzone? → Przejdź do Fazy B.
-
 ---
 
-## 🅱️ Faza B — Power Platform (⏱ ~30 min)
-
-## Krok 2 — Import solucji Power Platform (⏱ ~30 min)
+## Krok 2 — Import solucji Power Platform
 
 - [ ] Plik solucji wybrany:
   - [ ] Managed: `DevelopicoKSeF_*_managed.zip` (produkcja)
@@ -122,13 +112,9 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 - [ ] Custom Connector widoczny w Data → Custom connectors
 - [ ] Cloud Flows widoczne
 
-> 🚨 **STOP — Bramka Fazy B:** Import zakończony, tabele widoczne, MDA App i Custom Connector dostępne? → Przejdź do Fazy C.
-
 ---
 
-## 🅲️ Faza C — Tożsamość i dostępy (⏱ ~40 min)
-
-## Krok 3 — Entra ID: App Registration (⏱ ~25 min)
+## Krok 3 — Entra ID: App Registration
 
 - [ ] Uruchomiono `deployment\azure\Setup-EntraId.ps1` lub ręcznie w Portal
 - [ ] App Registration utworzona: nazwa: __________
@@ -146,7 +132,7 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 
 ---
 
-## Krok 4 — Application User w Dataverse (⏱ ~15 min)
+## Krok 4 — Application User w Dataverse
 
 - [ ] Power Platform Admin Center → Application users → **+ New app user**
 - [ ] App Registration wybrana (po `AZURE_CLIENT_ID`)
@@ -154,13 +140,9 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 - [ ] Security role przypisana: __________
 - [ ] Application User aktywny
 
-> 🚨 **STOP — Bramka Fazy C:** App Registration gotowa, secret zapisany, Application User aktywny? → Przejdź do Fazy D.
-
 ---
 
-## 🅳️ Faza D — Infrastruktura Azure (⏱ ~40 min)
-
-## Krok 5 — Infrastruktura Azure (⏱ ~25 min)
+## Krok 5 — Infrastruktura Azure
 
 ### Metoda
 
@@ -195,7 +177,7 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 
 ---
 
-## Krok 6 — Zmienne środowiskowe Function App (⏱ ~15 min)
+## Krok 6 — Zmienne środowiskowe (Function App)
 
 - [ ] `AZURE_TENANT_ID` — ustawione
 - [ ] `AZURE_CLIENT_ID` — ustawione
@@ -211,13 +193,9 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 - [ ] **`AzureWebJobsFeatureFlags`** = `EnableWorkerIndexing` ← WYMAGANE!
 - [ ] `FUNCTIONS_NODE_BLOCK_ON_ENTRY_POINT_ERROR` = `true`
 
-> 🚨 **STOP — Bramka Fazy D:** Zasoby Azure utworzone, zmienne ustawione, `AzureWebJobsFeatureFlags` = `EnableWorkerIndexing`? → Przejdź do Fazy E.
-
 ---
 
-## 🅴️ Faza E — Wdrożenie aplikacji (⏱ ~60 min)
-
-## Krok 7 — Deploy API (⏱ ~20 min)
+## Krok 7 — Deploy API (Azure Functions)
 
 - [ ] `cd api`
 - [ ] `npm install --omit=dev --no-workspaces --ignore-scripts` — zakończone
@@ -234,7 +212,7 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 
 ---
 
-## Krok 8 — Deploy Web (⏱ ~25 min)
+## Krok 8 — Deploy Web (App Service)
 
 ### Zmienne App Service
 
@@ -255,7 +233,7 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 
 ---
 
-## Krok 8a — Redirect URI w Entra ID (⏱ ~15 min)
+## Krok 8a — Redirect URI w Entra ID
 
 - [ ] Redirect URI dodane w App Registration → Authentication:
   - [ ] `https://global.consent.azure-apim.net/redirect` (Custom Connector)
@@ -265,13 +243,9 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 - [ ] Web App → logowanie → redirect → powrót do dashboardu
 - [ ] Brak błędu AADSTS50011
 
-> 🚨 **STOP — Bramka Fazy E:** API zwraca health, Web się ładuje, logowanie działa, redirect OK? → Przejdź do Fazy F.
-
 ---
 
-## 🅵️ Faza F — Integracje i konfiguracja (⏱ ~90 min)
-
-## Krok 9 — AI Categorization (⏱ ~30 min)
+## Krok 9 — AI Categorization (Azure OpenAI)
 
 > Pomiń jeśli klient nie potrzebuje AI. Pozostaw `FEATURE_AI_CATEGORIZATION=false`.
 
@@ -306,7 +280,7 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 
 ---
 
-## Krok 10 — Custom Connector (⏱ ~20 min)
+## Krok 10 — Custom Connector
 
 - [ ] Custom Connector edytowany:
   - [ ] Host: `FUNCTION_APP_NAME`.azurewebsites.net
@@ -325,7 +299,7 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 
 ---
 
-## Krok 11 — Connection References i Power Automate (⏱ ~20 min)
+## Krok 11 — Connection References i Power Automate
 
 - [ ] Connection Reference **KSeF API** → skonfigurowany
 - [ ] Connection Reference **Dataverse** → skonfigurowany
@@ -337,7 +311,7 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 
 ---
 
-## Krok 12 — Tokeny KSeF (⏱ ~20 min)
+## Krok 12 — Tokeny KSeF
 
 - [ ] Tokeny dodane do Key Vault:
   - [ ] Firma 1: NIP __________ → `ksef-token-__________`
@@ -347,13 +321,9 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 - [ ] Function App ma uprawnienia do Key Vault (RBAC/Access Policy)
 - [ ] `GET /api/settings/companies` → firmy widoczne
 
-> 🚨 **STOP — Bramka Fazy F:** AI skonfigurowane (lub pominięte), Custom Connector działa, Flows włączone, tokeny dodane? → Przejdź do Fazy G.
-
 ---
 
-## 🅶️ Faza G — Bezpieczeństwo i utrzymanie (⏱ ~60 min)
-
-## Krok 13 — Role i uprawnienia (⏱ ~20 min)
+## Krok 13 — Role i uprawnienia
 
 ### Entra ID (Role aplikacyjne)
 
@@ -377,7 +347,7 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 
 ---
 
-## Krok 14 — Weryfikacja końcowa (⏱ ~30 min)
+## Krok 14 — Weryfikacja końcowa
 
 ### API
 
@@ -415,7 +385,7 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 
 ---
 
-## Krok 15 — Po wdrożeniu (⏱ ~30 min)
+## Krok 15 — Po wdrożeniu
 
 ### 15a. Monitoring
 
@@ -462,4 +432,4 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 
 ---
 
-*Wersja 4.0 — 2025-06-21 — 16 kroków (0-15 + 8a) w 7 fazach (A–G) z bramkami STOP i szacowanymi czasami, zgodna z deployment/README.md v4.0*
+*Wersja 3.0 — 2025-06-14 — 16 kroków (0-15 + 8a) z polami do zapisywania danych, zgodna z deployment/README.md*

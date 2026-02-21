@@ -10,7 +10,7 @@ metadata:
 # Infrastructure configuration
 infra:
   provider: bicep
-  path: ./deployment/templates
+  path: ./deployment/azure
 
 # Service definitions
 services:

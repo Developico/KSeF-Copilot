@@ -6,6 +6,8 @@ Dokument opisuje proces przygotowania, przeprowadzenia i weryfikacji wdrożenia 
 **Wersja:** 0.1.0  
 **Ostatnia aktualizacja dokumentu:** 2026-02-09  
 
+> **Uwaga — placeholdery:** W całym dokumencie występują nazwy zaczynające się od `your-` (np. `your-webapp-name`, `your-resource-group`). Zamień je na rzeczywiste nazwy swoich zasobów Azure. Przykład: `your-webapp-name` → `app-ksef-prod`.
+
 ---
 
 ## Spis treści

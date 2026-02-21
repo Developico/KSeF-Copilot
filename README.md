@@ -30,6 +30,8 @@
 
 ## 🏗️ Architektura
 
+![Architektura KSeF Copilot](docs/KSeFCopilotArchitektura.jpg)
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │           Azure App Service (Next.js)                   │

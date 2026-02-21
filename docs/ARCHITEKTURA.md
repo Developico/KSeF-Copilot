@@ -32,6 +32,8 @@
 
 ### Architektura wysokopoziomowa
 
+![Architektura KSeF Copilot](KSeFCopilotArchitektura.jpg)
+
 ```mermaid
 graph TB
     Users["Użytkownicy (przeglądarki)"] --> EntraID["Azure Entra ID<br/>Wydawanie tokenów JWT + grupy RBAC"]
@@ -484,12 +486,7 @@ graph TB
 
 > Szczegóły wdrożenia: [API Deployment](./API_DEPLOYMENT.md) | [Web Deployment](./WEB_DEPLOYMENT.md) | [Code Apps Wdrożenie](./CODE_APPS_WDROZENIE.md)
 
-### CI/CD
 
-**GitHub Actions** (`.github/workflows/`):
-- `ci.yml`: Type check, lint, test, build, security scan (Trivy)
-- `deploy-api.yml`: Deploy Azure Functions
-- `deploy-web.yml`: Deploy Azure App Service
 
 ---
 
@@ -618,8 +615,3 @@ Serwisy otrzymują zależności, umożliwiając testowalność.
 - [README](../README.md) — quick start
 - [SECURITY](../SECURITY.md) — polityka bezpieczeństwa
 
----
-
-**Ostatnia aktualizacja:** 2026-02-14  
-**Wersja:** 3.0  
-**Opiekun:** dvlp-dev team

@@ -50,15 +50,15 @@ Instrukcja tworzenia i konfiguracji zasobów Azure potrzebnych do wdrożenia int
 4. Wypełnij:
    - **Subscription:** Twoja subskrypcja
    - **Resource group:** `rg-ksef-prod` (lub `rg-ksef-dev` dla dev)
-   - **Region:** `West Europe` (lub najbliższy)
+   - **Region:** `Poland Central` (zalecany — najbliższy region z pełnym wsparciem)
 5. Kliknij **"Review + create"** → **"Create"**
 
 ### Konwencja nazewnictwa
 
 | Środowisko | Resource Group | Region |
 |------------|----------------|--------|
-| Development | `rg-ksef-dev` | West Europe |
-| Production | `rg-ksef-prod` | West Europe |
+| Development | `rg-ksef-dev` | Poland Central |
+| Production | `rg-ksef-prod` | Poland Central |
 
 ---
 
@@ -77,7 +77,7 @@ Instrukcja tworzenia i konfiguracji zasobów Azure potrzebnych do wdrożenia int
 | Subscription | (twoja subskrypcja) | - |
 | Resource group | `rg-ksef-prod` | - |
 | Key vault name | `kv-ksef-prod` | Musi być unikalny globalnie |
-| Region | `West Europe` | Ten sam co RG |
+| Region | `Poland Central` | Ten sam co RG |
 | Pricing tier | **Standard** | Wystarczy dla secrets |
 
 #### Zakładka Access configuration
@@ -194,7 +194,7 @@ Dla każdego sekretu:
 | Function App name | `func-ksef-prod` | Musi być unikalny globalnie |
 | Runtime stack | **Node.js** | - |
 | Version | **20 LTS** | Wymagane przez projekt |
-| Region | `Poland Central` lub `West Europe` | - |
+| Region | `Poland Central` | Zalecany region |
 | Operating System | **Linux** | Wymagane dla Flex Consumption |
 | Hosting plan | **Flex Consumption** | ✅ Rekomendowane - automatyczne skalowanie, pay-per-use |
 
@@ -317,7 +317,7 @@ Jeśli wdrażasz Next.js frontend jako Static Web App:
 | Resource Group | `rg-ksef-prod` | - |
 | Name | `swa-ksef-prod` | - |
 | Plan type | **Free** lub **Standard** | Standard dla custom domains |
-| Region | `West Europe` | - |
+| Region | `Poland Central` | - |
 | Source | **GitHub** | Lub Other dla manual deploy |
 
 #### Konfiguracja GitHub (jeśli wybrano)

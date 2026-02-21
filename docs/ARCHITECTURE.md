@@ -548,28 +548,6 @@ Resource Group: dvlp-ksef-prod
     └── Security groups (Admin, User)
 ```
 
-### CI/CD Pipeline
-
-**GitHub Actions** (`.github/workflows/`):
-- `ci.yml`: Type check, lint, test, build, security scan (Trivy)
-- `deploy-api.yml`: Deploy Azure Functions
-- `deploy-web.yml`: Deploy Static Web App
-
-**Deployment Strategy**:
-- **Staging**: Auto-deploy from `develop` branch
-- **Production**: Manual approval required from `main` branch
-- **Rollback**: Previous deployment slot swap
-
-### Environment Configuration
-
-| Environment | Branch    | URL                                    |
-|-------------|-----------|----------------------------------------|
-| Development | `develop` | `https://dev-ksef.azurewebsites.net`  |
-| Staging     | `staging` | `https://staging-ksef.azurewebsites.net` |
-| Production  | `main`    | `https://ksef.azurewebsites.net`      |
-
----
-
 ## Technology Stack
 
 ### Backend (API)
@@ -605,8 +583,8 @@ Resource Group: dvlp-ksef-prod
 
 ### DevOps
 - **Version Control**: Git + GitHub
-- **CI/CD**: GitHub Actions
-- **Package Manager**: pnpm 9+
+
+- **Package Manager**: npm
 - **Security Scanning**: Trivy, Dependabot
 - **Pre-commit**: Husky (typecheck + lint)
 
@@ -768,8 +746,4 @@ export class InvoiceService {
 - [SECURITY](../SECURITY.md) - Security policy and best practices
 - [CONTRIBUTING](../CONTRIBUTING.md) - Development guidelines
 
----
 
-**Last Updated**: 2024-02-01  
-**Version**: 1.0  
-**Maintainer**: dvlp-dev team

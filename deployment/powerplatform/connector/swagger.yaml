@@ -8,8 +8,7 @@ info:
     /EN/: Developico Connector for the KSeF API — invoice management,
     synchronization with KSeF, dashboard, VAT White List (Biała Lista) lookup.
   version: '1.0'
-# ⚠️ ENVIRONMENT-SPECIFIC: Replace with your Azure Functions host
-host: <YOUR_FUNCTION_APP>.azurewebsites.net
+host: YOUR_FUNCTION_APP.azurewebsites.net
 basePath: /api
 schemes:
   - https
@@ -1997,16 +1996,14 @@ definitions:
 parameters: {}
 responses: {}
 security:
-  # ⚠️ ENVIRONMENT-SPECIFIC: Replace <YOUR_API_CLIENT_ID> with your App Registration Client ID
   - oauth2-auth:
-      - api://<YOUR_API_CLIENT_ID>/access_as_user
+      - api://YOUR_CLIENT_ID/access_as_user
 tags: []
 securityDefinitions:
   oauth2-auth:
     type: oauth2
     flow: accessCode
-    # ⚠️ ENVIRONMENT-SPECIFIC: Replace <YOUR_TENANT_ID> with your Azure AD Tenant ID
-    tokenUrl: https://login.microsoftonline.com/<YOUR_TENANT_ID>/oauth2/v2.0/token
+    tokenUrl: https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/token
     scopes:
-      api://<YOUR_API_CLIENT_ID>/access_as_user: api://<YOUR_API_CLIENT_ID>/access_as_user
-    authorizationUrl: https://login.microsoftonline.com/<YOUR_TENANT_ID>/oauth2/v2.0/authorize
+      api://YOUR_CLIENT_ID/access_as_user: api://YOUR_CLIENT_ID/access_as_user
+    authorizationUrl: https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/authorize
