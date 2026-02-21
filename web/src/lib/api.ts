@@ -768,15 +768,25 @@ export const api = {
       tags?: string[]
       paymentStatus?: 'pending' | 'paid'
       paymentDate?: string
-      // Fields for manual invoices
+      // Invoice data fields
       supplierName?: string
       supplierNip?: string
+      supplierAddress?: string
+      supplierCity?: string
+      supplierPostalCode?: string
+      supplierCountry?: string
       invoiceNumber?: string
       invoiceDate?: string
       dueDate?: string
       netAmount?: number
       vatAmount?: number
       grossAmount?: number
+      // Currency fields
+      currency?: 'PLN' | 'EUR' | 'USD'
+      exchangeRate?: number
+      exchangeDate?: string
+      exchangeSource?: string
+      grossAmountPln?: number
     }) =>
       apiFetch<Invoice>(`/api/invoices/${id}`, {
         method: 'PATCH',

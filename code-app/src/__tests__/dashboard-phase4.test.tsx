@@ -217,44 +217,48 @@ const mockAnomalyData = {
 
 const mockRefetch = vi.fn()
 
-vi.mock('@/hooks/use-api', () => ({
-  useDashboardStats: vi.fn(() => ({
-    data: mockDashboardStats,
-    isLoading: false,
-    error: null,
-    refetch: mockRefetch,
-  })),
-  useForecastMonthly: vi.fn(() => ({
-    data: mockForecastData,
-    isLoading: false,
-    error: null,
-  })),
-  useForecastByMpk: vi.fn(() => ({
-    data: mockGroupedForecast,
-    isLoading: false,
-    error: null,
-  })),
-  useForecastByCategory: vi.fn(() => ({
-    data: mockGroupedForecast,
-    isLoading: false,
-    error: null,
-  })),
-  useForecastBySupplier: vi.fn(() => ({
-    data: mockGroupedForecast,
-    isLoading: false,
-    error: null,
-  })),
-  useAnomalies: vi.fn(() => ({
-    data: mockAnomalyData,
-    isLoading: false,
-    error: null,
-  })),
-  useAnomaliesSummary: vi.fn(() => ({
-    data: mockAnomalyData.summary,
-    isLoading: false,
-    error: null,
-  })),
-}))
+vi.mock('@/hooks/use-api', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>()
+  return {
+    ...actual,
+    useDashboardStats: vi.fn(() => ({
+      data: mockDashboardStats,
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    })),
+    useForecastMonthly: vi.fn(() => ({
+      data: mockForecastData,
+      isLoading: false,
+      error: null,
+    })),
+    useForecastByMpk: vi.fn(() => ({
+      data: mockGroupedForecast,
+      isLoading: false,
+      error: null,
+    })),
+    useForecastByCategory: vi.fn(() => ({
+      data: mockGroupedForecast,
+      isLoading: false,
+      error: null,
+    })),
+    useForecastBySupplier: vi.fn(() => ({
+      data: mockGroupedForecast,
+      isLoading: false,
+      error: null,
+    })),
+    useAnomalies: vi.fn(() => ({
+      data: mockAnomalyData,
+      isLoading: false,
+      error: null,
+    })),
+    useAnomaliesSummary: vi.fn(() => ({
+      data: mockAnomalyData.summary,
+      isLoading: false,
+      error: null,
+    })),
+  }
+})
 
 // ── Wrapper ─────────────────────────────────────────────────────
 

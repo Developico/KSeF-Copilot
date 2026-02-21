@@ -95,8 +95,6 @@ interface FormData {
   supplierNip: string
   supplierName: string
   supplierAddress: string
-  supplierCity: string
-  supplierPostalCode: string
   invoiceDate: string
   dueDate: string
   netAmount: string
@@ -118,8 +116,6 @@ const initialFormData: FormData = {
   supplierNip: '',
   supplierName: '',
   supplierAddress: '',
-  supplierCity: '',
-  supplierPostalCode: '',
   invoiceDate: new Date().toISOString().split('T')[0],
   dueDate: '',
   netAmount: '',
@@ -196,9 +192,7 @@ export function ManualInvoiceForm() {
       ...prev,
       supplierNip: supplier.nip.replace(/\D/g, ''),
       supplierName: supplier.name,
-      supplierAddress: supplier.address || '',
-      supplierCity: supplier.city || '',
-      supplierPostalCode: supplier.postalCode || '',
+      supplierAddress: [supplier.address, supplier.postalCode, supplier.city].filter(Boolean).join(', '),
     }))
     setVatDataLoaded(true)
     setErrors(prev => ({ 
@@ -604,8 +598,6 @@ export function ManualInvoiceForm() {
       supplierNip: formData.supplierNip,
       supplierName: formData.supplierName,
       supplierAddress: formData.supplierAddress || undefined,
-      supplierCity: formData.supplierCity || undefined,
-      supplierPostalCode: formData.supplierPostalCode || undefined,
       invoiceDate: formData.invoiceDate,
       dueDate: formData.dueDate || undefined,
       netAmount: parseFloat(formData.netAmount),
@@ -748,26 +740,6 @@ export function ManualInvoiceForm() {
                   onChange={(e) => handleChange('supplierAddress', e.target.value)}
                   className="h-8 text-sm"
                 />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">{t('manualForm.postalCodeLabel')}</label>
-                  <Input
-                    placeholder="00-000"
-                    value={formData.supplierPostalCode}
-                    onChange={(e) => handleChange('supplierPostalCode', e.target.value)}
-                    className="h-8 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">{t('manualForm.cityLabel')}</label>
-                  <Input
-                    placeholder={t('manualForm.cityPlaceholder')}
-                    value={formData.supplierCity}
-                    onChange={(e) => handleChange('supplierCity', e.target.value)}
-                    className="h-8 text-sm"
-                  />
-                </div>
               </div>
             </div>
           </Card>

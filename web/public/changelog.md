@@ -399,27 +399,4 @@ Pierwsza wersja dvlp-ksef - moduł integracji KSeF z Microsoft Dataverse.
 
 ---
 
-## Planowane
-
-### [0.3.0] - Integracja KSeF
-
-- [ ] Autoryzacja tokenem KSeF
-- [ ] Pobieranie faktur przychodzących
-- [ ] Wysyłanie faktur do KSeF
-- [ ] Automatyczna synchronizacja
-
-### [0.4.0] - AI Categorization
-
-- [ ] Endpoint kategoryzacji AI (`POST /api/invoices/categorize`)
-- [ ] Cache kategorii dostawców
-- [ ] UI przycisk "Kategoryzuj AI"
-
-### [0.5.0] - Dataverse
-
-- [ ] Zapis faktur do Dataverse
-- [ ] Mapowanie pól faktury
-- [ ] Obsługa wielu firm (multi-tenant)
-
----
-
 *Projekt rozwijany przez [Developico](https://developico.com) na licencji MIT.*

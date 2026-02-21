@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { pl } from 'date-fns/locale'
@@ -18,6 +18,7 @@ import {
   Building2,
   Calendar,
   CreditCard,
+  Search,
   Tag,
   FileUp,
   Pencil,
@@ -26,6 +27,7 @@ import {
   ChevronDown,
   ChevronUp,
   Eye,
+  Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -64,6 +66,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { SupplierLookupDialog, type SupplierData } from './supplier-lookup-dialog'
 
 // MPK options (values from Dataverse option set)
 const MPK_OPTIONS = [
@@ -78,6 +81,15 @@ const MPK_OPTIONS = [
   'Finance',
   'Other',
 ]
+
+/** Standard Polish VAT rates + special codes */
+const VAT_RATES = [
+  { value: '23', label: '23%' },
+  { value: '8', label: '8%' },
+  { value: '5', label: '5%' },
+  { value: '0', label: '0%' },
+  { value: 'zw', label: 'zw (zwolnione)' },
+] as const
 
 // ============================================================================
 // Helpers
@@ -146,10 +158,12 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   const [editCategory, setEditCategory] = useState('')
   const [editDescription, setEditDescription] = useState('')
   
-  // Full invoice editing state (for manual invoices)
+  // Full invoice editing state
   const [isEditingInvoice, setIsEditingInvoice] = useState(false)
   const [editSupplierName, setEditSupplierName] = useState('')
   const [editSupplierNip, setEditSupplierNip] = useState('')
+  const [editSupplierAddress, setEditSupplierAddress] = useState('')
+  const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false)
   const [editInvoiceNumber, setEditInvoiceNumber] = useState('')
   const [editInvoiceDate, setEditInvoiceDate] = useState('')
   const [editDueDate, setEditDueDate] = useState('')
@@ -158,6 +172,28 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   const [editGrossAmount, setEditGrossAmount] = useState('')
   const [editCurrency, setEditCurrency] = useState<'PLN' | 'EUR' | 'USD'>('PLN')
   const [editExchangeRate, setEditExchangeRate] = useState('')
+  const [editExchangeRateDate, setEditExchangeRateDate] = useState('')
+  const [isRateFetching, setIsRateFetching] = useState(false)
+  const [editVatRate, setEditVatRate] = useState('23')
+  
+  // Auto-fetch exchange rate from NBP when currency or date changes
+  useEffect(() => {
+    if (!isEditingInvoice || editCurrency === 'PLN') return
+    let cancelled = false
+    setIsRateFetching(true)
+    api.exchangeRates.get(editCurrency, editExchangeRateDate || undefined)
+      .then((data) => {
+        if (!cancelled) {
+          setEditExchangeRate(data.rate.toString())
+          if (data.effectiveDate) setEditExchangeRateDate(data.effectiveDate)
+          setIsRateFetching(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setIsRateFetching(false)
+      })
+    return () => { cancelled = true }
+  }, [isEditingInvoice, editCurrency, editExchangeRateDate])
   
   // State for collapsible attachments
   const [attachmentsExpanded, setAttachmentsExpanded] = useState(false)
@@ -257,8 +293,8 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   // Mark as paid mutation
   const markPaidMutation = useMutation({
     mutationFn: () => api.invoices.markAsPaid(invoiceId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
+    onSuccess: (updatedInvoice) => {
+      queryClient.setQueryData(['invoice', invoiceId], updatedInvoice)
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
     },
   })
@@ -274,8 +310,8 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
         category: invoice.aiCategorySuggestion,
       })
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
+    onSuccess: (updatedInvoice) => {
+      queryClient.setQueryData(['invoice', invoiceId], updatedInvoice)
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
       toast({
         title: 'Sukces',
@@ -308,8 +344,8 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   const updateClassificationMutation = useMutation({
     mutationFn: (data: { mpk?: string; category?: string; description?: string }) => 
       api.invoices.update(invoiceId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
+    onSuccess: (updatedInvoice) => {
+      queryClient.setQueryData(['invoice', invoiceId], updatedInvoice)
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
       setIsEditingClassification(false)
       toast({
@@ -363,11 +399,15 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
     }
   }
 
-  // Update invoice mutation (for manual invoices)
+  // Update invoice mutation
   const updateInvoiceMutation = useMutation({
     mutationFn: (data: {
       supplierName?: string
       supplierNip?: string
+      supplierAddress?: string
+      supplierCity?: string
+      supplierPostalCode?: string
+      supplierCountry?: string
       invoiceNumber?: string
       invoiceDate?: string
       dueDate?: string
@@ -376,10 +416,16 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
       grossAmount?: number
       currency?: 'PLN' | 'EUR' | 'USD'
       exchangeRate?: number
+      exchangeDate?: string
+      exchangeSource?: string
       grossAmountPln?: number
     }) => api.invoices.update(invoiceId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
+    onSuccess: (updatedInvoice) => {
+      console.log('[updateInvoice] onSuccess response:', JSON.stringify(updatedInvoice, null, 2))
+      // Immediately update the detail cache with the server response
+      // so view mode renders with fresh data before any refetch
+      queryClient.setQueryData(['invoice', invoiceId], updatedInvoice)
+      // Only invalidate the list cache (detail is already fresh)
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
       setIsEditingInvoice(false)
       toast({
@@ -388,19 +434,54 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
       })
     },
     onError: (error: Error) => {
+      console.error('[updateInvoice] onError:', error.message)
       toast({
-        title: 'Błąd',
+        title: 'Błąd zapisu faktury',
         description: error.message || 'Nie udało się zaktualizować faktury',
         variant: 'destructive',
       })
     },
   })
 
-  // Start editing invoice (manual only)
+  // Auto-calculation handlers for amounts
+  function handleNetAmountChange(value: string) {
+    setEditNetAmount(value)
+    const net = parseFloat(value) || 0
+    const rate = parseFloat(editVatRate)
+    if (!isNaN(rate)) {
+      const vat = net * rate / 100
+      setEditVatAmount(vat.toFixed(2))
+      setEditGrossAmount((net + vat).toFixed(2))
+    } else {
+      const vat = parseFloat(editVatAmount) || 0
+      setEditGrossAmount((net + vat).toFixed(2))
+    }
+  }
+
+  function handleVatRateChange(value: string) {
+    setEditVatRate(value)
+    const net = parseFloat(editNetAmount) || 0
+    const rate = parseFloat(value)
+    if (!isNaN(rate)) {
+      const vat = net * rate / 100
+      setEditVatAmount(vat.toFixed(2))
+      setEditGrossAmount((net + vat).toFixed(2))
+    }
+  }
+
+  function handleVatAmountChange(value: string) {
+    setEditVatAmount(value)
+    const net = parseFloat(editNetAmount) || 0
+    const vat = parseFloat(value) || 0
+    setEditGrossAmount((net + vat).toFixed(2))
+  }
+
+  // Start editing invoice
   function startEditingInvoice() {
-    if (invoice?.source !== 'Manual') return
+    if (!invoice) return
     setEditSupplierName(invoice?.supplierName || '')
     setEditSupplierNip(invoice?.supplierNip || '')
+    setEditSupplierAddress(invoice?.supplierAddress || '')
     setEditInvoiceNumber(invoice?.invoiceNumber || '')
     setEditInvoiceDate(invoice?.invoiceDate?.split('T')[0] || '')
     setEditDueDate(invoice?.dueDate?.split('T')[0] || '')
@@ -409,6 +490,17 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
     setEditGrossAmount(invoice?.grossAmount?.toString() || '')
     setEditCurrency((invoice?.currency as 'PLN' | 'EUR' | 'USD') || 'PLN')
     setEditExchangeRate(invoice?.exchangeRate?.toString() || '')
+    setEditExchangeRateDate(invoice?.exchangeDate?.split('T')[0] || '')
+    // Try to determine VAT rate from existing amounts
+    const net = invoice?.netAmount || 0
+    const vat = invoice?.vatAmount || 0
+    if (net > 0) {
+      const rate = (vat / net) * 100
+      const match = VAT_RATES.find(r => Math.abs(parseFloat(r.value) - rate) < 0.5)
+      setEditVatRate(match?.value || '23')
+    } else {
+      setEditVatRate('23')
+    }
     setIsEditingInvoice(true)
   }
 
@@ -420,9 +512,10 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
       ? grossAmount * exchangeRate
       : undefined
 
-    updateInvoiceMutation.mutate({
+    const payload = {
       supplierName: editSupplierName || undefined,
       supplierNip: editSupplierNip || undefined,
+      supplierAddress: editSupplierAddress || undefined,
       invoiceNumber: editInvoiceNumber || undefined,
       invoiceDate: editInvoiceDate || undefined,
       dueDate: editDueDate || undefined,
@@ -431,8 +524,12 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
       grossAmount: grossAmount,
       currency: editCurrency,
       exchangeRate: exchangeRate,
+      exchangeDate: editExchangeRateDate || undefined,
+      exchangeSource: exchangeRate ? 'NBP' : undefined,
       grossAmountPln: grossAmountPln,
-    })
+    }
+    console.log('[saveInvoice] Payload:', JSON.stringify(payload, null, 2))
+    updateInvoiceMutation.mutate(payload)
   }
 
   // Cancel editing invoice
@@ -612,6 +709,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
               {isOverdue ? 'Zaległe' : 'Oczekuje'}
             </Badge>
           )}
+
         </div>
       </div>
 
@@ -619,7 +717,265 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
       <div className="flex flex-col lg:flex-row gap-4">
         {/* Left Side - Invoice Data */}
         <div className="flex-1 space-y-4 min-w-0">
-          {/* Top Row: Invoice Info + Supplier + Amounts in 3 columns */}
+          {/* Edit form - compact 3-column layout (matches manual invoice form) */}
+          {isEditingInvoice && (
+            <div className="space-y-4">
+              {/* Top Row: Invoice Info + Supplier + Amounts in 3 columns */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Invoice Info - Compact */}
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 text-sm font-medium mb-3">
+                    <FileText className="h-4 w-4" />
+                    {t('manualForm.invoiceSection')}
+                  </div>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">{t('manualForm.invoiceNumberLabel')}</label>
+                      <Input
+                        placeholder={t('manualForm.invoiceNumberPlaceholder')}
+                        value={editInvoiceNumber}
+                        onChange={(e) => setEditInvoiceNumber(e.target.value)}
+                        className="h-8 text-sm font-mono"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {t('manualForm.issueDateLabel')}
+                        </label>
+                        <Input
+                          type="date"
+                          value={editInvoiceDate}
+                          onChange={(e) => setEditInvoiceDate(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {t('manualForm.dueDateLabel')}
+                        </label>
+                        <Input
+                          type="date"
+                          value={editDueDate}
+                          onChange={(e) => setEditDueDate(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Supplier - Compact */}
+                <Card className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Building2 className="h-4 w-4" />
+                      {t('manualForm.supplierSection')}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2"
+                      onClick={() => setIsSupplierDialogOpen(true)}
+                    >
+                      <Search className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">NIP *</label>
+                      <Input
+                        placeholder="0000000000"
+                        value={editSupplierNip}
+                        onChange={(e) => setEditSupplierNip(e.target.value)}
+                        className="h-8 text-sm font-mono"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">{t('manualForm.companyName')}</label>
+                      <Input
+                        placeholder={t('supplier')}
+                        value={editSupplierName}
+                        onChange={(e) => setEditSupplierName(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">{t('manualForm.addressLabel')}</label>
+                      <Input
+                        placeholder={t('manualForm.addressPlaceholder')}
+                        value={editSupplierAddress}
+                        onChange={(e) => setEditSupplierAddress(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Supplier Lookup Dialog */}
+                <SupplierLookupDialog
+                  open={isSupplierDialogOpen}
+                  onOpenChange={setIsSupplierDialogOpen}
+                  onSelect={(supplier: SupplierData) => {
+                    setEditSupplierNip(supplier.nip.replace(/\D/g, ''))
+                    setEditSupplierName(supplier.name)
+                    setEditSupplierAddress(
+                      [supplier.address, supplier.postalCode, supplier.city].filter(Boolean).join(', ')
+                    )
+                  }}
+                  tenantNip={invoice?.tenantNip}
+                  currentNip={editSupplierNip}
+                />
+
+                {/* Amounts - Compact */}
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 text-sm font-medium mb-3">
+                    <CreditCard className="h-4 w-4" />
+                    {t('manualForm.amountsSection')}
+                  </div>
+                  <div className="space-y-2">
+                    {/* Currency and VAT rate row */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">{t('manualForm.currencyLabel')}</label>
+                        <Select value={editCurrency} onValueChange={(v: 'PLN' | 'EUR' | 'USD') => setEditCurrency(v)}>
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue placeholder={t('manualForm.currencyLabel')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PLN">PLN</SelectItem>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                            <SelectItem value="USD">USD</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">{t('manualForm.vatRateLabel')}</label>
+                        <Select value={editVatRate} onValueChange={handleVatRateChange}>
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {VAT_RATES.map((r) => (
+                              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Net and VAT */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">{t('manualForm.netAmountLabel', { currency: editCurrency })}</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          value={editNetAmount}
+                          onChange={(e) => handleNetAmountChange(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">{t('manualForm.vatAmountLabel', { currency: editCurrency })}</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          value={editVatAmount}
+                          onChange={(e) => handleVatAmountChange(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Gross amount */}
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">{t('manualForm.grossAmountLabel', { currency: editCurrency })}</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={editGrossAmount}
+                        readOnly
+                        className="h-8 text-sm bg-muted cursor-not-allowed font-semibold"
+                      />
+                    </div>
+
+                    {/* Exchange rate for foreign currencies */}
+                    {editCurrency !== 'PLN' && (
+                      <>
+                        <Separator className="my-1" />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground">{t('manualForm.exchangeRateDateLabel')}</label>
+                            <Input
+                              type="date"
+                              value={editExchangeRateDate}
+                              onChange={(e) => setEditExchangeRateDate(e.target.value)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground flex items-center gap-1">
+                              {t('manualForm.exchangeRateLabel', { currency: editCurrency })}
+                              {isRateFetching && <Loader2 className="h-3 w-3 animate-spin" />}
+                            </label>
+                            <Input
+                              type="number"
+                              step="0.0001"
+                              placeholder="4.3500"
+                              value={editExchangeRate}
+                              onChange={(e) => setEditExchangeRate(e.target.value)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+                        {editExchangeRate && parseFloat(editExchangeRate) > 0 && (
+                          <div className="rounded-md bg-muted/50 p-2 text-xs space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">{t('manualForm.netPln')}</span>
+                              <span>{formatCurrency((parseFloat(editNetAmount) || 0) * parseFloat(editExchangeRate), 'PLN')}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">{t('manualForm.vatPln')}</span>
+                              <span>{formatCurrency((parseFloat(editVatAmount) || 0) * parseFloat(editExchangeRate), 'PLN')}</span>
+                            </div>
+                            <div className="flex justify-between font-medium">
+                              <span>{t('manualForm.grossPln')}</span>
+                              <span>{formatCurrency((parseFloat(editGrossAmount) || 0) * parseFloat(editExchangeRate), 'PLN')}</span>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </Card>
+              </div>
+
+              {/* Save / Cancel */}
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" size="sm" onClick={cancelEditingInvoice}>
+                  <X className="h-4 w-4 mr-1" />
+                  {t('manualForm.cancel')}
+                </Button>
+                <Button size="sm" onClick={saveInvoice} disabled={updateInvoiceMutation.isPending}>
+                  {updateInvoiceMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                  <Save className="h-4 w-4 mr-1" />
+                  {t('manualForm.saveInvoice')}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* View mode: Invoice Info + Supplier + Amounts in 3 columns */}
+          {!isEditingInvoice && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Invoice Info - Compact */}
             <Card className="p-4">
@@ -628,212 +984,117 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                   <FileText className="h-4 w-4" />
                   Dane faktury
                 </div>
-                {invoice.source === 'Manual' && !isEditingInvoice && (
-                  <Button variant="ghost" size="sm" className="h-6 px-2" onClick={startEditingInvoice}>
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                )}
+                <Button variant="ghost" size="sm" className="h-6 px-2" onClick={startEditingInvoice}>
+                  <Pencil className="h-3 w-3" />
+                </Button>
               </div>
-              {isEditingInvoice ? (
-                <div className="space-y-3">
-                  <Input
-                    placeholder="Numer faktury"
-                    value={editInvoiceNumber}
-                    onChange={(e) => setEditInvoiceNumber(e.target.value)}
-                    className="h-8 text-sm"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      type="date"
-                      value={editInvoiceDate}
-                      onChange={(e) => setEditInvoiceDate(e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                    <Input
-                      type="date"
-                      value={editDueDate}
-                      onChange={(e) => setEditDueDate(e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" className="h-7 flex-1" onClick={cancelEditingInvoice}>
-                      <X className="h-3 w-3 mr-1" />Anuluj
-                    </Button>
-                    <Button variant="default" size="sm" className="h-7 flex-1" onClick={saveInvoice} disabled={updateInvoiceMutation.isPending}>
-                      <Save className="h-3 w-3 mr-1" />Zapisz
-                    </Button>
-                  </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Nr:</span>
+                  <span className="font-medium">{invoice.invoiceNumber}</span>
                 </div>
-              ) : (
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Nr:</span>
-                    <span className="font-medium">{invoice.invoiceNumber}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Data:</span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {formatDate(invoice.invoiceDate)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Termin:</span>
-                    <span className={cn('flex items-center gap-1', isOverdue && 'text-red-600')}>
-                      <Clock className="h-3 w-3" />
-                      {formatDate(invoice.dueDate)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Źródło:</span>
-                    <Badge variant="outline" className="h-5 text-xs">
-                      {invoice.source === 'KSeF' ? 'KSeF' : 'Ręczna'}
-                    </Badge>
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Data:</span>
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {formatDate(invoice.invoiceDate)}
+                  </span>
                 </div>
-              )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Termin:</span>
+                  <span className={cn('flex items-center gap-1', isOverdue && 'text-red-600')}>
+                    <Clock className="h-3 w-3" />
+                    {formatDate(invoice.dueDate)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Źródło:</span>
+                  <Badge variant="outline" className="h-5 text-xs">
+                    {invoice.source === 'KSeF' ? 'KSeF' : 'Ręczna'}
+                  </Badge>
+                </div>
+              </div>
             </Card>
 
             {/* Supplier - Compact */}
             <Card className="p-4">
-              <div className="flex items-center gap-2 text-sm font-medium mb-3">
-                <Building2 className="h-4 w-4" />
-                Dostawca
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Building2 className="h-4 w-4" />
+                  Dostawca
+                </div>
+                <Button variant="ghost" size="sm" className="h-6 px-2" onClick={startEditingInvoice}>
+                  <Pencil className="h-3 w-3" />
+                </Button>
               </div>
-              {isEditingInvoice ? (
-                <div className="space-y-2">
-                  <Input
-                    placeholder="Nazwa dostawcy"
-                    value={editSupplierName}
-                    onChange={(e) => setEditSupplierName(e.target.value)}
-                    className="h-8 text-sm"
-                  />
-                  <Input
-                    placeholder="NIP"
-                    value={editSupplierNip}
-                    onChange={(e) => setEditSupplierNip(e.target.value)}
-                    className="h-8 text-sm"
-                  />
-                </div>
-              ) : (
-                <div className="space-y-2 text-sm">
-                  <p className="font-medium break-words" title={invoice.supplierName}>
-                    {invoice.supplierName}
+              <div className="space-y-2 text-sm">
+                <p className="font-medium break-words" title={invoice.supplierName}>
+                  {invoice.supplierName}
+                </p>
+                <p className="text-muted-foreground font-mono text-xs">
+                  NIP: {invoice.supplierNip}
+                </p>
+                {invoice.supplierAddress && (
+                  <p className="text-muted-foreground text-xs break-words">
+                    {invoice.supplierAddress}
                   </p>
-                  <p className="text-muted-foreground font-mono text-xs">
-                    NIP: {invoice.supplierNip}
-                  </p>
-                  {invoice.supplierAddress && (
-                    <p className="text-muted-foreground text-xs break-words">
-                      {invoice.supplierAddress}
-                    </p>
-                  )}
-                  {(invoice.supplierCity || invoice.supplierPostalCode) && (
-                    <p className="text-muted-foreground text-xs">
-                      {[invoice.supplierPostalCode, invoice.supplierCity].filter(Boolean).join(' ')}
-                    </p>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
             </Card>
 
             {/* Amounts - Compact */}
             <Card className="p-4">
-              <div className="flex items-center gap-2 text-sm font-medium mb-3">
-                <CreditCard className="h-4 w-4" />
-                Kwoty
-              </div>
-              {isEditingInvoice ? (
-                <div className="space-y-2">
-                  <Select value={editCurrency} onValueChange={(v: 'PLN' | 'EUR' | 'USD') => setEditCurrency(v)}>
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder="Waluta" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PLN">PLN</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="USD">USD</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {editCurrency !== 'PLN' && (
-                    <Input
-                      type="number"
-                      step="0.0001"
-                      placeholder="Kurs wymiany"
-                      value={editExchangeRate}
-                      onChange={(e) => setEditExchangeRate(e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                  )}
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder={`Netto (${editCurrency})`}
-                    value={editNetAmount}
-                    onChange={(e) => setEditNetAmount(e.target.value)}
-                    className="h-8 text-sm"
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder={`VAT (${editCurrency})`}
-                    value={editVatAmount}
-                    onChange={(e) => setEditVatAmount(e.target.value)}
-                    className="h-8 text-sm"
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder={`Brutto (${editCurrency})`}
-                    value={editGrossAmount}
-                    onChange={(e) => setEditGrossAmount(e.target.value)}
-                    className="h-8 text-sm font-medium"
-                  />
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <CreditCard className="h-4 w-4" />
+                  Kwoty
                 </div>
-              ) : (
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Netto</span>
-                    <span>{formatCurrency(invoice.netAmount, invoice.currency)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">VAT</span>
-                    <span>{formatCurrency(invoice.vatAmount, invoice.currency)}</span>
-                  </div>
-                  <Separator className="my-1" />
-                  <div className="flex justify-between font-semibold">
-                    <span>Brutto</span>
-                    <span>{formatCurrency(invoice.grossAmount, invoice.currency)}</span>
-                  </div>
-                  {/* PLN conversion for foreign currencies */}
-                  {invoice.currency !== 'PLN' && (
-                    <>
-                      <Separator className="my-2" />
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-muted-foreground">
-                          <span>Równowartość PLN</span>
-                          {invoice.grossAmountPln ? (
-                            <span className="font-medium text-foreground">
-                              {formatCurrency(invoice.grossAmountPln, 'PLN')}
-                            </span>
-                          ) : (
-                            <span className="text-yellow-600">Brak kursu</span>
-                          )}
-                        </div>
-                        {invoice.exchangeRate && (
-                          <div className="text-xs text-muted-foreground">
-                            Kurs: {invoice.exchangeRate.toFixed(4)}
-                            {invoice.exchangeDate && ` (${formatDate(invoice.exchangeDate)})`}
-                          </div>
+                <Button variant="ghost" size="sm" className="h-6 px-2" onClick={startEditingInvoice}>
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Netto</span>
+                  <span>{formatCurrency(invoice.netAmount, invoice.currency)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">VAT</span>
+                  <span>{formatCurrency(invoice.vatAmount, invoice.currency)}</span>
+                </div>
+                <Separator className="my-1" />
+                <div className="flex justify-between font-semibold">
+                  <span>Brutto</span>
+                  <span>{formatCurrency(invoice.grossAmount, invoice.currency)}</span>
+                </div>
+                {/* PLN conversion for foreign currencies */}
+                {invoice.currency !== 'PLN' && (
+                  <>
+                    <Separator className="my-2" />
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Równowartość PLN</span>
+                        {invoice.grossAmountPln ? (
+                          <span className="font-medium text-foreground">
+                            {formatCurrency(invoice.grossAmountPln, 'PLN')}
+                          </span>
+                        ) : (
+                          <span className="text-yellow-600">Brak kursu</span>
                         )}
                       </div>
-                    </>
-                  )}
-                </div>
-              )}
+                      {invoice.exchangeRate && (
+                        <div className="text-xs text-muted-foreground">
+                          Kurs: {invoice.exchangeRate.toFixed(4)}
+                          {invoice.exchangeDate && ` (${formatDate(invoice.exchangeDate)})`}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             </Card>
           </div>
+          )}
 
           {/* Classification Section */}
           <Card className="p-4">
@@ -1066,6 +1327,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
               />
             </div>
 
+            {!isEditingInvoice && (
             <Card className="order-last lg:order-first border-purple-200 dark:border-purple-900 bg-gradient-to-b from-purple-50/50 to-white dark:from-purple-950/20 dark:to-background">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -1257,6 +1519,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                 )}
               </CardContent>
             </Card>
+            )}
           </div>
         </div>
       </div>

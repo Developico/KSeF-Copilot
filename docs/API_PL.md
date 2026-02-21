@@ -520,17 +520,31 @@ Pobranie pojedynczej faktury po ID.
 ```
 
 #### PATCH /api/invoices/{id}
-Aktualizacja metadanych faktury.
+Aktualizacja danych faktury. Obsługuje edycję wszystkich sekcji (dane faktury, dostawca, kwoty, waluta, klasyfikacja, status płatności) dla faktur dowolnego źródła (KSeF i ręczne).
 
-**Autentykacja**: Admin lub User (ograniczone pola)
+**Autentykacja**: Admin
 
-**Treść żądania**:
+**Treść żądania** (wszystkie pola opcjonalne):
 ```json
 {
   "mpk": 100000001,
   "category": "Marketing",
+  "description": "Opis faktury",
   "paymentStatus": "paid",
-  "notes": "Zapłacono przelewem bankowym"
+  "supplierName": "Dostawca Sp. z o.o.",
+  "supplierNip": "9876543210",
+  "supplierAddress": "ul. Przykładowa 10, 00-001 Warszawa",
+  "invoiceNumber": "FV/2025/001",
+  "invoiceDate": "2025-01-15",
+  "dueDate": "2025-02-15",
+  "netAmount": 1000.00,
+  "vatAmount": 230.00,
+  "grossAmount": 1230.00,
+  "currency": "EUR",
+  "exchangeRate": 4.3215,
+  "exchangeDate": "2025-01-14",
+  "exchangeSource": "NBP",
+  "grossAmountPln": 5315.45
 }
 ```
 
@@ -538,8 +552,10 @@ Aktualizacja metadanych faktury.
 ```json
 {
   "id": "uuid",
-  "mpk": 100000001,
-  "category": "Marketing",
+  "supplierName": "Dostawca Sp. z o.o.",
+  "invoiceNumber": "FV/2025/001",
+  "grossAmount": 1230.00,
+  "currency": "EUR",
   "paymentStatus": "paid"
 }
 ```

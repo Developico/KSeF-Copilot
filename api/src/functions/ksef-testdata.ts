@@ -734,6 +734,7 @@ app.http('ksef-testdata-cleanup-preview', {
  *   paidPercentage?: number,  // Optional: Percentage of invoices to mark as paid (0-100, default: 30)
  *   ksefPercentage?: number,  // Optional: Percentage of invoices from KSeF vs Manual (0-100, overrides source)
  *   source?: 'KSeF' | 'Manual' // Optional: Invoice source (default: Manual, ignored if ksefPercentage is provided)
+ *   amountMultiplier?: number // Optional: Multiplier applied to net amounts for trend simulation (default: 1.0)
  * }
  * 
  * Returns:
@@ -766,6 +767,7 @@ app.http('ksef-testdata-generate', {
         paidPercentage?: number
         ksefPercentage?: number
         source?: 'KSeF' | 'Manual'
+        amountMultiplier?: number
       }
 
       if (!body.nip) {
@@ -774,6 +776,7 @@ app.http('ksef-testdata-generate', {
 
       // Validate count
       const count = Math.min(Math.max(body.count || 10, 1), 100)
+      const amountMultiplier = body.amountMultiplier ?? 1.0
 
       // Get company setting to check environment
       const settings = await settingService.getAll()
@@ -839,6 +842,7 @@ app.http('ksef-testdata-generate', {
             toDate,
             paidPercentage: body.paidPercentage,
             source: InvoiceSource.KSeF,
+            amountMultiplier,
           }
           invoices.push(...generateInvoices(ksefOptions))
         }
@@ -853,6 +857,7 @@ app.http('ksef-testdata-generate', {
             toDate,
             paidPercentage: body.paidPercentage,
             source: InvoiceSource.Manual,
+            amountMultiplier,
           }
           invoices.push(...generateInvoices(manualOptions))
         }
@@ -873,6 +878,7 @@ app.http('ksef-testdata-generate', {
           toDate,
           paidPercentage: body.paidPercentage,
           source: body.source === 'KSeF' ? InvoiceSource.KSeF : InvoiceSource.Manual,
+          amountMultiplier,
         }
         generatedInvoices = generateInvoices(generatorOptions)
       }

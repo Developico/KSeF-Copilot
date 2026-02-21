@@ -1,7 +1,7 @@
 import { dataverseRequest, dataverseClient } from './client'
 import { InvoiceEntity, PaymentStatusValues, MpkValues, InvoiceSourceValues, getPaymentStatusKey, getMpkKey, getInvoiceSourceKey } from './entities'
 import { escapeOData } from './odata-utils'
-import { mapDvCurrencyToApp } from './mappers'
+import { mapDvCurrencyToApp, mapAppCurrencyToDv } from './mappers'
 import { Invoice, InvoiceCreate, InvoiceUpdate, InvoiceListParams, ManualInvoiceCreate, InvoiceSource } from '../../types/invoice'
 import { logDataverseInfo } from './logger'
 
@@ -298,6 +298,61 @@ export async function updateInvoice(id: string, data: InvoiceUpdate): Promise<In
     body[InvoiceEntity.fields.paymentDate] = sanitizeDateForDataverse(data.paymentDate)
   }
 
+  // Invoice data fields (supplier, amounts, dates, currency)
+  if (data.supplierName !== undefined) {
+    body[InvoiceEntity.fields.supplierName] = data.supplierName
+  }
+  if (data.supplierNip !== undefined) {
+    body[InvoiceEntity.fields.supplierNip] = data.supplierNip
+  }
+  if (data.supplierAddress !== undefined) {
+    body[InvoiceEntity.fields.supplierAddress] = data.supplierAddress
+  }
+  // NOTE: supplierCity, supplierPostalCode, supplierCountry columns do not exist
+  // in the current Dataverse schema. Address parts are combined into supplierAddress.
+  // if (data.supplierCity !== undefined) {
+  //   body[InvoiceEntity.fields.supplierCity] = data.supplierCity
+  // }
+  // if (data.supplierPostalCode !== undefined) {
+  //   body[InvoiceEntity.fields.supplierPostalCode] = data.supplierPostalCode
+  // }
+  // if (data.supplierCountry !== undefined) {
+  //   body[InvoiceEntity.fields.supplierCountry] = data.supplierCountry
+  // }
+  if (data.invoiceNumber !== undefined) {
+    body[InvoiceEntity.fields.invoiceNumber] = data.invoiceNumber
+    body[InvoiceEntity.fields.invoiceNumberField] = data.invoiceNumber
+  }
+  if (data.invoiceDate !== undefined) {
+    body[InvoiceEntity.fields.invoiceDate] = sanitizeDateForDataverse(data.invoiceDate)
+  }
+  if (data.dueDate !== undefined) {
+    body[InvoiceEntity.fields.dueDate] = sanitizeDateForDataverse(data.dueDate)
+  }
+  if (data.netAmount !== undefined) {
+    body[InvoiceEntity.fields.netAmount] = data.netAmount
+  }
+  if (data.vatAmount !== undefined) {
+    body[InvoiceEntity.fields.vatAmount] = data.vatAmount
+  }
+  if (data.grossAmount !== undefined) {
+    body[InvoiceEntity.fields.grossAmount] = data.grossAmount
+  }
+  if (data.currency !== undefined) {
+    body[InvoiceEntity.fields.currency] = mapAppCurrencyToDv(data.currency)
+  }
+  if (data.exchangeRate !== undefined) {
+    body[InvoiceEntity.fields.exchangeRate] = data.exchangeRate
+  }
+  if (data.grossAmountPln !== undefined) {
+    body[InvoiceEntity.fields.grossAmountPln] = data.grossAmountPln
+  }
+
+  logDataverseInfo('updateInvoice', `PATCH body for invoice ${id}`, {
+    bodyKeys: Object.keys(body),
+    body: JSON.stringify(body),
+  })
+
   await dataverseRequest(`${InvoiceEntity.entitySet}(${id})`, {
     method: 'PATCH',
     body,
@@ -474,6 +529,7 @@ function mapToDataverse(data: InvoiceCreate): Record<string, unknown> {
     [f.invoiceNumberField]: data.invoiceNumber, // Also save to dedicated field
     [f.supplierNip]: data.supplierNip,
     [f.supplierName]: data.supplierName,
+    [f.supplierAddress]: data.supplierAddress,
     [f.invoiceDate]: sanitizeDateForDataverse(data.invoiceDate),
     [f.dueDate]: sanitizeDateForDataverse(data.dueDate),
     [f.netAmount]: data.netAmount,

@@ -132,9 +132,13 @@ export const InvoiceUpdateSchema = z.object({
   tags: z.array(z.string()).optional(),
   paymentStatus: z.enum(['pending', 'paid']).optional(),
   paymentDate: z.string().date().optional(),
-  // Fields editable only for manual invoices
+  // Invoice data fields (editable for all sources)
   supplierName: z.string().max(200).optional(),
   supplierNip: z.string().max(20).optional(),
+  supplierAddress: z.string().max(255).optional(),
+  supplierCity: z.string().max(100).optional(),
+  supplierPostalCode: z.string().max(20).optional(),
+  supplierCountry: z.string().max(100).optional(),
   invoiceNumber: z.string().max(100).optional(),
   invoiceDate: z.string().date().optional(),
   dueDate: z.string().date().optional(),

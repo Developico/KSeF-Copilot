@@ -166,6 +166,7 @@ export function AttachmentsSection({ invoiceId }: AttachmentsSectionProps) {
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
+                  aria-label={intl.formatMessage({ id: 'invoices.uploadAttachment' })}
                   onChange={handleFileSelect}
                 />
               </div>
@@ -221,6 +222,7 @@ export function AttachmentsSection({ invoiceId }: AttachmentsSectionProps) {
                       href={`${import.meta.env.VITE_API_URL || ''}/api/attachments/${att.id}/download`}
                       target="_blank"
                       rel="noreferrer"
+                      title={intl.formatMessage({ id: 'invoices.download' })}
                     >
                       <Download className="h-3.5 w-3.5" />
                     </a>

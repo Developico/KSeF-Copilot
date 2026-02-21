@@ -286,6 +286,7 @@
       "currencyEur": "EUR (euro)",
       "currencyUsd": "USD (US dollar)",
       "exchangeRateLabel": "{currency}/PLN exchange rate",
+      "exchangeRateDateLabel": "Rate date",
       "exchangeRatePlaceholder": "4.3500",
       "fetchNbpRate": "Fetch NBP",
       "nbpRateHint": "Average NBP rate from sale date",

@@ -32,6 +32,8 @@ export interface GenerateInvoicesOptions {
   paidPercentage?: number
   /** Source to use for generated invoices (default: Manual) */
   source?: InvoiceSource
+  /** Multiplier applied to generated net amounts (e.g. 0.7 = 70% of base, 1.3 = 130%). Default: 1.0 */
+  amountMultiplier?: number
 }
 
 export interface GeneratedInvoice extends InvoiceCreate {
@@ -49,9 +51,9 @@ export function generateSingleInvoice(
   tenantName: string,
   invoiceDate: Date,
   index: number,
-  options: { paidPercentage?: number; source?: InvoiceSource } = {}
+  options: { paidPercentage?: number; source?: InvoiceSource; amountMultiplier?: number } = {}
 ): GeneratedInvoice {
-  const { paidPercentage = 30, source = InvoiceSource.Manual } = options
+  const { paidPercentage = 30, source = InvoiceSource.Manual, amountMultiplier = 1.0 } = options
   
   // Pick random supplier
   const supplier = randomElement(SAMPLE_SUPPLIERS)
@@ -59,8 +61,9 @@ export function generateSingleInvoice(
   // Get amount range for category
   const amountRange = AMOUNT_RANGES[supplier.category] || AMOUNT_RANGES['default']
   
-  // Generate amounts
-  const netAmount = randomAmount(amountRange.min, amountRange.max)
+  // Generate amounts (apply multiplier for trend simulation)
+  const baseNetAmount = randomAmount(amountRange.min, amountRange.max)
+  const netAmount = Math.round(baseNetAmount * amountMultiplier * 100) / 100
   const vatRate = randomVatRate()
   const vatAmount = Math.round(netAmount * vatRate * 100) / 100
   const grossAmount = Math.round((netAmount + vatAmount) * 100) / 100
@@ -133,6 +136,7 @@ export function generateInvoices(options: GenerateInvoicesOptions): GeneratedInv
     toDate = new Date(),
     paidPercentage = 30,
     source = InvoiceSource.Manual,
+    amountMultiplier = 1.0,
   } = options
   
   const invoices: GeneratedInvoice[] = []
@@ -144,7 +148,7 @@ export function generateInvoices(options: GenerateInvoicesOptions): GeneratedInv
       tenantName,
       invoiceDate,
       i + 1,
-      { paidPercentage, source }
+      { paidPercentage, source, amountMultiplier }
     )
     invoices.push(invoice)
   }

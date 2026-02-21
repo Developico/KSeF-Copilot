@@ -50,16 +50,17 @@ vi.mock('@/contexts/company-context', () => ({
 const mockMutate = vi.fn()
 const mockResetMutation = { mutate: mockMutate, isPending: false, isSuccess: false, isError: false, error: null, data: undefined, reset: vi.fn() }
 
-vi.mock('@/hooks/use-api', () => ({
-  useInvoice: vi.fn(() => ({
+vi.mock('@/hooks/use-api', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>()
+  return {
+    ...actual,
+    useInvoice: vi.fn(() => ({
     data: {
       id: 'inv-1',
       invoiceNumber: 'FV/2024/001',
       supplierNip: '1234567890',
       supplierName: 'Test Supplier SP ZOO',
-      supplierAddress: 'Testowa 1',
-      supplierCity: 'Warszawa',
-      supplierPostalCode: '00-001',
+      supplierAddress: 'Testowa 1, 00-001, Warszawa',
       invoiceDate: '2024-01-15',
       dueDate: '2024-02-15',
       netAmount: 1000,
@@ -128,7 +129,15 @@ vi.mock('@/hooks/use-api', () => ({
     data: { rate: 4.32, currency: 'EUR', effectiveDate: '2024-01-15', requestedDate: '2024-01-15', source: 'NBP' },
     isLoading: false,
   })),
-}))
+  useCategorizeWithAI: vi.fn(() => mockResetMutation),
+  useUploadDocument: vi.fn(() => mockResetMutation),
+  useDeleteDocument: vi.fn(() => mockResetMutation),
+  useInvoiceDocument: vi.fn(() => ({
+    data: null,
+    isLoading: false,
+  })),
+  }
+})
 
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -208,8 +217,11 @@ describe('InvoiceDetailPage', () => {
 
     expect(screen.getByText('MPK-100')).toBeDefined()
     expect(screen.getByText('Office')).toBeDefined()
-    // Edit button is rendered with "Edit" text
-    expect(screen.getByText('Edit')).toBeDefined()
+    // Both invoice edit and classification dialog edit buttons are rendered
+    const editButtons = screen.getAllByText('Edit')
+    expect(editButtons.length).toBeGreaterThanOrEqual(1)
+    const dialogTrigger = editButtons.find((el) => el.hasAttribute('data-slot'))
+    expect(dialogTrigger).toBeDefined()
   })
 
   it('renders AI suggestion section', async () => {

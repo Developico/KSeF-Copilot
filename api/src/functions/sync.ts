@@ -180,6 +180,7 @@ app.http('sync-start', {
               invoiceNumber: parsed.invoiceNumber,
               supplierNip: parsed.supplier.nip,
               supplierName: parsed.supplier.name,
+              supplierAddress: parsed.supplier.address,
               invoiceDate: parsed.invoiceDate,
               dueDate: parsed.dueDate,
               netAmount: parsed.netAmount,

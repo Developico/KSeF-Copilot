@@ -1,178 +1,208 @@
-# Changelog
+# Historia zmian
 
-All notable changes to the **KSeF Copilot — Code App** (Vite + React SPA) are documented in this file.
+Wszystkie istotne zmiany w **KSeF Copilot — Code App** (Vite + React SPA) są dokumentowane w tym pliku.
 
-Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+Format oparty na [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+---
+
+## [2.5.0] - 2026-02-21
+
+### ✏️ Pełna edycja faktury
+
+- **Edycja wszystkich sekcji** — formularz edycji dostępny dla wszystkich typów faktur (KSeF i ręczne), nie tylko dla faktur ręcznych
+- **Edycja danych dostawcy** — rozszerzenie formularza o pola adresowe: ulica, kod pocztowy, miasto, kraj (oprócz nazwy i NIP)
+- **Zmiana waluty w kwotach** — selektor waluty (PLN/EUR/USD) w boksie z kwotami z automatycznym przeliczeniem brutto PLN
+- **Date picker dla kursu walut** — możliwość wyboru daty, dla której pobierany jest kurs NBP; automatyczne pobranie kursu z API po zmianie waluty lub daty
+- **Spinner ładowania kursu** — wizualna informacja o pobieraniu kursu z NBP API
+- **Zapis źródła kursu** — przekazywanie `exchangeDate` i `exchangeSource: 'NBP'` przy zapisie faktury
+
+### 🏗️ Uproszczenie adresu dostawcy
+
+- **Jedno pole adresowe** — konsolidacja pól `supplierCity`, `supplierPostalCode`, `supplierCountry` w jedno pole `supplierAddress` we wszystkich formularzach (edycja, dodawanie ręczne, skanowanie AI) — zarówno w web jak i code-app
+- **Wyszukiwanie dostawcy w edycji** — dodanie kontrolki wyszukiwania dostawcy w rejestrze VAT (Biała Lista) w formularzu edycji faktury
+- **Poprawka mapowania walut** — korekta wartości OptionSet walut w Dataverse: PLN=100000000, USD=100000001, EUR=100000002
+- **Adres dostawcy z KSeF** — synchronizacja faktur z KSeF zapisuje teraz adres dostawcy (`supplierAddress`) do Dataverse
+
+### 🐛 Poprawki
+
+- **Usunięcie GBP** — usunięcie opcji GBP z selektora walut (nieobsługiwana przez API, powodowała błąd walidacji Zod)
+- **Zapis adresu przy tworzeniu faktury** — naprawienie brakującego mapowania `supplierAddress` w funkcji `mapToDataverse`
+
+### 🔧 Backend
+
+- **Rozszerzenie InvoiceUpdateSchema** — dodanie pól adresu dostawcy (`supplierAddress`, `supplierCity`, `supplierPostalCode`, `supplierCountry`)
+- **Mapowanie pól w updateInvoice** — dodanie mapowania pól danych faktury (dostawca, kwoty, daty, waluta) do Dataverse w funkcji aktualizacji
 
 ---
 
 ## [2.4.0] - 2026-02-14
 
-### 🔄 GUS → VAT (Biała Lista) Migration
+### 🔄 Migracja GUS → VAT (Biała Lista)
 
-- **WL VAT API Integration** — replaced GUS SOAP API with free White List VAT REST API (`wl-api.mf.gov.pl`) for supplier verification by NIP
-- **Connector-routed VAT calls** — VAT lookup/validate/check-account routed through Power Platform Custom Connector → Azure Functions (server-side proxy), bypassing CORS restrictions in Power Apps iframe
-- **Generated SDK updated** — added `VatLookup()`, `VatValidate()`, `VatCheckAccount()` methods to `DVLP_KSeF_PP_ConnectorService` and 4 model interfaces (`VatLookupResult`, `VatSubjectData`, `VatValidateResult`, `VatCheckAccountResult`)
-- **Custom Connector swagger** — added 3 VAT paths (`/vat/lookup`, `/vat/validate/{nip}`, `/vat/check-account`) to `apiDefinition.swagger.json` and `swagger.yaml`, removed GUS operations
-- **Address parsing** — `parsePolishAddress()` helper splits WL VAT API address string (e.g. `"ul. Kochanowskiego 42, 01-864 WARSZAWA"`) into street, postal code, and city for form fields
-- **Removed direct WL API fetch** — eliminated 130+ lines of direct `fetch` code that was blocked by CORS; all calls now go through connector SDK `safeCall()`
+- **Integracja z WL VAT API** — zastąpienie GUS SOAP API darmowym REST API Białej Listy VAT (`wl-api.mf.gov.pl`) do weryfikacji dostawców po NIP
+- **Wywołania VAT przez Connector** — operacje lookup/validate/check-account kierowane przez Power Platform Custom Connector → Azure Functions (proxy po stronie serwera), omijając ograniczenia CORS w iframe Power Apps
+- **Aktualizacja wygenerowanego SDK** — dodanie metod `VatLookup()`, `VatValidate()`, `VatCheckAccount()` do `DVLP_KSeF_PP_ConnectorService` oraz 4 interfejsów modeli (`VatLookupResult`, `VatSubjectData`, `VatValidateResult`, `VatCheckAccountResult`)
+- **Swagger Custom Connector** — dodanie 3 ścieżek VAT (`/vat/lookup`, `/vat/validate/{nip}`, `/vat/check-account`) do `apiDefinition.swagger.json` i `swagger.yaml`, usunięcie operacji GUS
+- **Parsowanie adresów** — helper `parsePolishAddress()` dzieli ciąg adresowy z WL VAT API (np. `"ul. Kochanowskiego 42, 01-864 WARSZAWA"`) na ulicę, kod pocztowy i miasto
+- **Usunięcie bezpośrednich wywołań WL API** — wyeliminowanie 130+ linii kodu `fetch` blokowanego przez CORS; wszystkie wywołania przechodzą teraz przez SDK connectora `safeCall()`
 
 ---
 
 ## [2.3.0] - 2026-02-14
 
-### 🔌 Power Apps Code App — Connector Integration
+### 🔌 Power Apps Code App — Integracja z Connectorem
 
-- **Custom Connector API** — all API calls routed through Power Platform Custom Connector (`DVLP-KSeF-PP-Connector`) via SDK `postMessage` bridge, bypassing CSP `connect-src 'none'` restriction
-- **Lazy Dynamic Import** — connector module loaded via `import()` with ES Proxy, avoiding static class initialization errors from the generated SDK service
-- **Dual-mode API** — automatic detection: connector mode inside Power Apps, direct-fetch mode standalone
-- **Power Apps Host Detection** — multi-strategy detection (powerAppsBridge, URL, referrer, cross-origin iframe)
-- **MSAL Auth Bypass** — skips MSAL initialization when running inside Power Apps (host provides auth context)
-- **HashRouter** — switched from BrowserRouter for iframe compatibility
-- **Error Boundary** — global error boundary wrapping the app to prevent white screens
-- **Logo Inlining** — Developico logo embedded as base64 data URI (no external requests)
-- **Vite modulePreload Disabled** — prevents CSP-blocked preload link injections
-- **15 Connector Operations** — HealthCheck, Dashboard Stats, Invoices (list/get/update/create), Settings, Companies, Sync, Exchange Rates, AI Categorize, Test Data
+- **Custom Connector API** — wszystkie wywołania API kierowane przez Power Platform Custom Connector (`DVLP-KSeF-PP-Connector`) za pomocą mostu SDK `postMessage`, omijając ograniczenie CSP `connect-src 'none'`
+- **Leniwy import dynamiczny** — moduł connectora ładowany przez `import()` z ES Proxy, unikając błędów inicjalizacji klas z wygenerowanego SDK
+- **Dwutrybowe API** — automatyczna detekcja: tryb connectora wewnątrz Power Apps, tryb direct-fetch w standalone
+- **Wykrywanie hosta Power Apps** — wielostrategiowa detekcja (powerAppsBridge, URL, referrer, cross-origin iframe)
+- **Pominięcie MSAL Auth** — pomijanie inicjalizacji MSAL wewnątrz Power Apps (host dostarcza kontekst autoryzacji)
+- **HashRouter** — przełączenie z BrowserRouter dla kompatybilności z iframe
+- **Error Boundary** — globalny error boundary opakowujący aplikację w celu zapobiegania białym ekranom
+- **Osadzenie logo** — logo Developico osadzone jako base64 data URI (bez zewnętrznych żądań)
+- **Wyłączenie modulePreload Vite** — zapobiega wstrzykiwaniu linków preload blokowanych przez CSP
+- **15 operacji connectora** — HealthCheck, statystyki dashboardu, faktury (lista/szczegóły/aktualizacja/tworzenie), ustawienia, firmy, synchronizacja, kursy walut, kategoryzacja AI, dane testowe
 
 ---
 
 ## [2.2.0] - 2026-02-14
 
-### ✨ P4 — Web Parity Fixes
+### ✨ P4 — Poprawki zgodności z wersją webową
 
-- **Overdue Badge** — PaymentBadge shows red "Overdue" status when invoice is past due date (invoice list + detail)
-- **Source Badge** — KSeF / Manual origin badge next to payment status on invoice detail
-- **Exchange Rate Display** — shows rate value and date below PLN equivalent on foreign currency invoices
-- **Exchange Rate Edit** — currency selector (PLN/EUR/USD/GBP) and rate input in manual invoice edit form, auto-computes PLN gross
-- **Overdue Filter** — added "Overdue" option to invoice payment status filter buttons
-- **AI Trigger Button** — always-visible AI analysis card with "Run AI analysis" / "Re-analyze" button on invoice detail
-- **Dashboard KPI Cards** — changed card 3/4 from Paid+To Pay to Pending+Overdue (matches web app)
-- **Header Role & Profile** — user menu shows Admin/User role and Microsoft profile link
-- **Sync Defaults** — date range defaults to last 30 days, preview auto-fetches when KSeF session is active
-- **i18n** — added EN/PL keys for all new UI elements
+- **Badge przeterminowane** — PaymentBadge pokazuje czerwony status „Przeterminowane" gdy faktura jest po terminie płatności (lista + szczegóły)
+- **Badge źródła** — badge pochodzenia KSeF / Ręczna obok statusu płatności w szczegółach faktury
+- **Wyświetlanie kursu walut** — wartość kursu i data pod odpowiednikiem w PLN dla faktur walutowych
+- **Edycja kursu walut** — selektor waluty (PLN/EUR/USD/GBP) i pole kursu w formularzu edycji faktury ręcznej, automatyczne przeliczenie brutto PLN
+- **Filtr przeterminowanych** — dodanie opcji „Przeterminowane" do filtrów statusu płatności
+- **Przycisk AI** — zawsze widoczna karta analizy AI z przyciskiem „Uruchom analizę AI" / „Analizuj ponownie" w szczegółach faktury
+- **Karty KPI dashboardu** — zmiana kart 3/4 z Opłacone+Do zapłaty na Oczekujące+Przeterminowane (zgodność z web app)
+- **Rola i profil w nagłówku** — menu użytkownika pokazuje rolę Admin/User i link do profilu Microsoft
+- **Domyślne ustawienia synchronizacji** — zakres dat domyślnie ostatnie 30 dni, podgląd auto-pobiera gdy sesja KSeF jest aktywna
+- **i18n** — dodanie kluczy EN/PL dla wszystkich nowych elementów UI
 
 ---
 
 ## [2.1.0] - 2026-02-14
 
-### ✅ Tests — Phase 5 & 6 Coverage
+### ✅ Testy — Pokrycie fazy 5 i 6
 
-- **sync-phase5.test.tsx** (26 tests) — page rendering, preview table, KSeF portal links, checkbox selection, sync/import actions, session control, scenarios for no active session and no preview data
-- **settings-phase5.test.tsx** (37 tests) — 4-tab navigation, Companies CRUD (NIP, badges, token status, add/edit/delete/test), Cost Centers CRUD, Test Data Generator (sliders, generate, cleanup), System Status (health, services, response times, refresh)
-- **phase6-components.test.tsx** (23 tests) — EnvironmentBanner (color per env, null without company), KsefSyncButton (renders, calls mutate, styling), SystemStatusBadge (healthy/degraded/unhealthy colors), ChangelogModal (open/close, fetch, markdown, fallback), useTripleClick hook
-- **invoice-edit-phase6.test.tsx** (6 tests) — edit button visibility for manual vs KSeF invoices, edit form pre-fill, cancel, save calls updateInvoice
-- **Test infrastructure fixes**: ResizeObserver polyfill for Radix Slider, TooltipProvider wrapping, `getAllByText` for desktop+mobile dual rendering
-- **Total: 200 tests passing across 11 test files**
+- **sync-phase5.test.tsx** (26 testów) — renderowanie strony, tabela podglądu, linki do portalu KSeF, zaznaczanie checkboxów, akcje sync/import, kontrola sesji, scenariusze bez aktywnej sesji i bez danych podglądu
+- **settings-phase5.test.tsx** (37 testów) — nawigacja 4 zakładek, CRUD firm (NIP, badge'e, status tokena, dodawanie/edycja/usuwanie/test), CRUD MPK, generator danych testowych (suwaki, generowanie, czyszczenie), status systemu (health, serwisy, czasy odpowiedzi, odświeżanie)
+- **phase6-components.test.tsx** (23 testy) — EnvironmentBanner (kolor per środowisko, null bez firmy), KsefSyncButton (renderowanie, wywołanie mutate, stylowanie), SystemStatusBadge (kolory healthy/degraded/unhealthy), ChangelogModal (otwórz/zamknij, fetch, markdown, fallback), hook useTripleClick
+- **invoice-edit-phase6.test.tsx** (6 testów) — widoczność przycisku edycji dla faktur ręcznych vs KSeF, wypełnienie formularza, anulowanie, zapis wywołuje updateInvoice
+- **Poprawki infrastruktury testowej**: polyfill ResizeObserver dla Radix Slider, wrapping TooltipProvider, `getAllByText` dla podwójnego renderowania desktop+mobile
+- **Łącznie: 200 testów przechodzących w 11 plikach testowych**
 
 ---
 
 ## [2.0.0] - 2026-02-13
 
-### ✨ Phase 5 — Sync & Settings
+### ✨ Faza 5 — Synchronizacja i ustawienia
 
-- **Selective Import** — checkbox selection of invoices to import from KSeF preview
-- **Select All / Deselect All** — bulk selection toggle for new invoices
-- **Import Selected** — import only selected invoices with reference number tracking
-- **KSeF Portal Links** — direct links to verify invoices on ksef-test.mf.gov.pl / ksef.mf.gov.pl
-- **Operation Log** — terminal-style sync operation log with timestamped entries
-- **Tabbed Settings** — 4-tab layout: Companies, Cost Centers, Test Data, System Status
-- **Company Inline Edit** — edit company name and invoice prefix without leaving the page
-- **Cost Center CRUD** — full create/edit/delete for cost centers with active/inactive badge
-- **Test Data Generator** — generate invoices with sliders (count, paid%, KSeF%), date range, cleanup preview
-- **Health Dashboard** — service-level health with response times, summary counts, auto-refresh (60s)
+- **Selektywny import** — zaznaczanie checkboxami faktur do importu z podglądu KSeF
+- **Zaznacz wszystko / Odznacz wszystko** — masowe przełączanie zaznaczenia nowych faktur
+- **Importuj zaznaczone** — import wyłącznie wybranych faktur ze śledzeniem numeru referencyjnego
+- **Linki do portalu KSeF** — bezpośrednie linki do weryfikacji faktur na ksef-test.mf.gov.pl / ksef.mf.gov.pl
+- **Log operacji** — log operacji synchronizacji w stylu terminala z wpisami ze znacznikami czasu
+- **Ustawienia w zakładkach** — układ 4 zakładek: Firmy, MPK, Dane testowe, Status systemu
+- **Edycja firmy inline** — edycja nazwy firmy i prefiksu faktur bez opuszczania strony
+- **CRUD MPK** — pełne tworzenie/edycja/usuwanie centrów kosztowych z badge'm aktywny/nieaktywny
+- **Generator danych testowych** — generowanie faktur z suwakami (liczba, % opłaconych, % KSeF), zakres dat, podgląd czyszczenia
+- **Dashboard zdrowia systemu** — status zdrowia na poziomie serwisów z czasami odpowiedzi, podsumowaniami, auto-odświeżaniem (60s)
 
-### ✨ Phase 6 — Polish & UX
+### ✨ Faza 6 — Szlify i UX
 
-- **Environment Banner** — 1px colored strip (orange=test, teal=production, navy=demo)
-- **Quick Sync Button** — one-click KSeF sync (last 30 days) from the header
-- **System Status Badge** — CircleDot health indicator with color-coded tooltip in header
-- **Changelog Modal** — fetches `/changelog.md`, renders with react-markdown, hidden behind triple-click easter egg
-- **useTripleClick Hook** — custom hook for triple-click detection with 500ms timeout
-- **Edit Manual Invoices** — inline edit form for supplier, amounts, dates (manual invoices only)
-- **Mobile Preview Cards** — responsive mobile layout for sync preview table
-- **Consistent Button Component** — replaced all anchor/div-based buttons with shadcn/ui Button
+- **Banner środowiska** — 1px kolorowy pasek (pomarańczowy=test, turkusowy=produkcja, granatowy=demo)
+- **Szybka synchronizacja** — synchronizacja KSeF jednym kliknięciem (ostatnie 30 dni) z nagłówka
+- **Badge statusu systemu** — wskaźnik zdrowia CircleDot z kolorowym tooltipem w nagłówku
+- **Modal z historią zmian** — pobiera `/changelog.md`, renderuje z react-markdown, ukryty za easter eggiem potrójnego kliknięcia
+- **Hook useTripleClick** — własny hook do detekcji potrójnego kliknięcia z timeoutem 500ms
+- **Edycja faktur ręcznych** — formularz edycji inline dla dostawcy, kwot, dat (tylko faktury ręczne)
+- **Karty podglądu mobilnego** — responsywny układ mobilny dla tabeli podglądu synchronizacji
+- **Spójny komponent Button** — zastąpienie wszystkich przycisków opartych na anchor/div komponentem shadcn/ui Button
 
 ---
 
 ## [1.3.0] - 2026-02-12
 
-### ✨ Phase 4 — Dashboard & Analytics
+### ✨ Faza 4 — Dashboard i analityka
 
-- **Dashboard KPI Cards** — 4 animated cards (total invoices, gross sum, paid, pending) with AnimatedKpiCard
-- **framer-motion Animations** — staggered card entry animations
-- **react-countup** — animated number counters in KPI tiles
-- **Revenue Trend Chart** — area chart with monthly revenue data (Recharts)
-- **Recent Activity Feed** — latest invoice import events
-- **KSeF Status Widget** — connection status and last sync time
-- **Quick Actions Panel** — shortcuts to sync, scan, add invoice
+- **Karty KPI dashboardu** — 4 animowane karty (łączna liczba faktur, suma brutto, opłacone, oczekujące) z AnimatedKpiCard
+- **Animacje framer-motion** — kaskadowe animacje wejścia kart
+- **react-countup** — animowane liczniki w kafelkach KPI
+- **Wykres trendu przychodów** — wykres powierzchniowy z miesięcznymi danymi przychodów (Recharts)
+- **Feed ostatniej aktywności** — ostatnie zdarzenia importu faktur
+- **Widget statusu KSeF** — status połączenia i czas ostatniej synchronizacji
+- **Panel szybkich akcji** — skróty do synchronizacji, skanowania, dodawania faktury
 
-### 🧪 Tests
+### 🧪 Testy
 
-- **dashboard-phase4.test.tsx** (39 tests) — KPI tiles rendering, chart labels, recent activity, KSeF widget, quick actions, edge cases
+- **dashboard-phase4.test.tsx** (39 testów) — renderowanie kafelków KPI, etykiety wykresu, ostatnia aktywność, widget KSeF, szybkie akcje, przypadki brzegowe
 
 ---
 
 ## [1.2.0] - 2026-02-11
 
-### ✨ Phase 3 — Invoice List Enhancements
+### ✨ Faza 3 — Rozbudowa listy faktur
 
-- **Export to CSV** — download filtered invoice list as CSV
-- **Date Range Filter** — filter invoices by date range picker
-- **Payment Status Filters** — quick filter buttons (All, Paid, Pending, Overdue)
-- **Description Status Filters** — filter by AI classification state (No description, AI Suggestion, Described)
-- **Sorting** — clickable column headers with ascending/descending toggle
-- **Search** — real-time search across invoice number, supplier name, NIP
-- **Responsive Layout** — mobile card view for invoice list
+- **Eksport do CSV** — pobieranie przefiltrowanej listy faktur jako CSV
+- **Filtr zakresu dat** — filtrowanie faktur za pomocą selektora zakresu dat
+- **Filtry statusu płatności** — przyciski szybkiego filtrowania (Wszystkie, Opłacone, Oczekujące, Przeterminowane)
+- **Filtry statusu opisu** — filtrowanie po stanie klasyfikacji AI (Brak opisu, Sugestia AI, Opisana)
+- **Sortowanie** — klikalne nagłówki kolumn z przełączaniem rosnąco/malejąco
+- **Wyszukiwanie** — wyszukiwanie w czasie rzeczywistym po numerze faktury, nazwie dostawcy, NIP
+- **Responsywny układ** — mobilny widok kart dla listy faktur
 
-### 🧪 Tests
+### 🧪 Testy
 
-- **invoice-phase3.test.tsx** (20 tests) — filters, search, sorting, export, responsive view
+- **invoice-phase3.test.tsx** (20 testów) — filtry, wyszukiwanie, sortowanie, eksport, widok responsywny
 
 ---
 
 ## [1.1.0] - 2026-02-10
 
-### ✨ Phase 2 — Invoice Detail
+### ✨ Faza 2 — Szczegóły faktury
 
-- **Invoice Detail Page** — full view with supplier info, amounts, dates, VAT breakdown
-- **Payment Status** — mark as paid/unpaid with optimistic updates
-- **Classification Edit** — edit MPK, category, description via dialog
-- **AI Suggestions Panel** — display and accept AI-generated MPK/category suggestions
-- **Attachments Section** — upload/download/delete invoice attachments
-- **Notes Section** — add/edit/delete notes on invoices
-- **GUS Lookup** — verify supplier via GUS (REGON) API
-- **Exchange Rate** — display NBP exchange rate for foreign currency invoices
+- **Strona szczegółów faktury** — pełny widok z danymi dostawcy, kwotami, datami, rozbiciem VAT
+- **Status płatności** — oznaczanie jako opłacona/nieopłacona z optymistycznymi aktualizacjami
+- **Edycja klasyfikacji** — edycja MPK, kategorii, opisu przez dialog
+- **Panel sugestii AI** — wyświetlanie i akceptowanie sugestii MPK/kategorii wygenerowanych przez AI
+- **Sekcja załączników** — wysyłanie/pobieranie/usuwanie załączników faktur
+- **Sekcja notatek** — dodawanie/edycja/usuwanie notatek do faktur
+- **Weryfikacja GUS** — weryfikacja dostawcy przez API GUS (REGON)
+- **Kurs walut** — wyświetlanie kursu NBP dla faktur w walutach obcych
 
-### 🧪 Tests
+### 🧪 Testy
 
-- **invoice-phase2.test.tsx** (18 tests) — rendering, payment actions, classification, attachments, notes
+- **invoice-phase2.test.tsx** (18 testów) — renderowanie, akcje płatności, klasyfikacja, załączniki, notatki
 
 ---
 
 ## [1.0.0] - 2026-02-09
 
-### 🎉 Phase 0 & 1 — Initial Release
+### 🎉 Faza 0 i 1 — Pierwsze wydanie
 
-- **Vite + React 19 SPA** — standalone frontend (no Next.js dependency)
-- **React Router DOM 7** — client-side routing with sidebar navigation
-- **react-intl (i18n)** — full Polish/English translations
-- **Azure Entra ID Auth** — MSAL authentication with group-based roles (Admin/User)
-- **Company Context** — multi-company support with company selector
-- **shadcn/ui Components** — consistent UI with Tailwind CSS 4
-- **Dark/Light Theme** — theme toggle with system preference detection
-- **API Layer** — shared hooks connecting to Azure Functions API (`/api/*`)
-- **Dashboard** — placeholder with navigation
-- **Invoice List** — basic data table with pagination
-- **Settings** — company management (add/delete)
-- **Sync** — basic KSeF sync with date range
+- **Vite + React 19 SPA** — samodzielny frontend (bez zależności od Next.js)
+- **React Router DOM 7** — routing po stronie klienta z nawigacją sidebar
+- **react-intl (i18n)** — pełne tłumaczenia polskie/angielskie
+- **Azure Entra ID Auth** — uwierzytelnianie MSAL z rolami opartymi na grupach (Admin/User)
+- **Kontekst firmy** — obsługa wielu firm z selektorem firmy
+- **Komponenty shadcn/ui** — spójne UI z Tailwind CSS 4
+- **Ciemny/jasny motyw** — przełącznik motywu z detekcją preferencji systemowych
+- **Warstwa API** — współdzielone hooki łączące się z Azure Functions API (`/api/*`)
+- **Dashboard** — placeholder z nawigacją
+- **Lista faktur** — podstawowa tabela danych z paginacją
+- **Ustawienia** — zarządzanie firmami (dodawanie/usuwanie)
+- **Synchronizacja** — podstawowa synchronizacja KSeF z zakresem dat
 
-### 🧪 Tests
+### 🧪 Testy
 
-- **setup.test.ts** (3 tests) — utility functions, i18n config
-- **api.test.ts** (12 tests) — API client, error handling
-- **hooks.test.tsx** (12 tests) — React Query hooks
-- **auth-provider.test.tsx** (4 tests) — authentication provider
+- **setup.test.ts** (3 testy) — funkcje narzędziowe, konfiguracja i18n
+- **api.test.ts** (12 testów) — klient API, obsługa błędów
+- **hooks.test.tsx** (12 testów) — hooki React Query
+- **auth-provider.test.tsx** (4 testy) — dostawca uwierzytelniania
 
 ---
 
-*Part of the [Developico KSeF](https://github.com/developico) platform. Companion to the [web](../web/) Next.js frontend.*
+*Część platformy [Developico KSeF](https://github.com/developico). Aplikacja towarzysząca do frontendu [web](../web/) (Next.js).*

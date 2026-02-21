@@ -264,6 +264,10 @@ export interface InvoiceUpdateData {
   paymentDate?: string
   supplierName?: string
   supplierNip?: string
+  supplierAddress?: string
+  supplierCity?: string
+  supplierPostalCode?: string
+  supplierCountry?: string
   invoiceNumber?: string
   invoiceDate?: string
   dueDate?: string
@@ -272,6 +276,8 @@ export interface InvoiceUpdateData {
   grossAmount?: number
   currency?: string
   exchangeRate?: number
+  exchangeDate?: string
+  exchangeSource?: string
   grossAmountPln?: number
 }
 

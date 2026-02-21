@@ -134,13 +134,20 @@ export async function updateInvoiceHandler(
     }
 
     const body = await request.json()
+    context.log(`[updateInvoice] Raw body keys: ${Object.keys(body as Record<string, unknown>).join(', ')}`)
+    context.log(`[updateInvoice] Body: ${JSON.stringify(body)}`)
+
     const parseResult = InvoiceUpdateSchema.safeParse(body)
     if (!parseResult.success) {
+      context.log(`[updateInvoice] Validation failed: ${JSON.stringify(parseResult.error.flatten())}`)
       return {
         status: 400,
         jsonBody: { error: 'Invalid request body', details: parseResult.error.flatten() },
       }
     }
+
+    context.log(`[updateInvoice] Parsed data keys: ${Object.keys(parseResult.data).join(', ')}`)
+    context.log(`[updateInvoice] currency=${parseResult.data.currency}, exchangeRate=${parseResult.data.exchangeRate}, grossAmountPln=${parseResult.data.grossAmountPln}`)
 
     const updated = await updateInvoice(id, parseResult.data)
 
@@ -173,10 +180,11 @@ export async function updateInvoiceHandler(
       jsonBody: updated,
     }
   } catch (error) {
-    context.error('Failed to update invoice:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    context.error('Failed to update invoice:', errorMessage, error)
     return {
       status: 500,
-      jsonBody: { error: 'Failed to update invoice' },
+      jsonBody: { error: `Failed to update invoice: ${errorMessage}` },
     }
   }
 }

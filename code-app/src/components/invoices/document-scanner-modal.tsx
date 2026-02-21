@@ -15,6 +15,7 @@ import {
 import { Button, Input, Label, Separator, ScrollArea, Badge } from '@/components/ui'
 import { useExtractDocument, useCreateManualInvoice } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
+import { api } from '@/lib/api'
 import { toast } from 'sonner'
 import {
   Upload, FileText, Loader2, CheckCircle, AlertTriangle, X,
@@ -40,16 +41,25 @@ export function DocumentScannerModal({ open, onOpenChange }: DocumentScannerModa
 
   const [step, setStep] = useState<Step>('upload')
   const [file, setFile] = useState<File | null>(null)
+  const [fileBase64, setFileBase64] = useState<string | null>(null)
   const [result, setResult] = useState<ExtractionResult | null>(null)
   const [editedData, setEditedData] = useState<ExtractedInvoiceData | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
 
   const extractMutation = useExtractDocument({
     onSuccess: (res) => {
       if (res.success && res.data) {
         setResult(res)
-        setEditedData({ ...res.data })
+        // Flatten address into a single string for the editable form
+        const addr = res.data.supplierAddress
+        const flatAddress = addr
+          ? [addr.street, addr.buildingNumber, addr.postalCode, addr.city].filter(Boolean).join(', ')
+          : ''
+        const edited = { ...res.data } as ExtractedInvoiceData & { _supplierAddressFlat?: string }
+        edited._supplierAddressFlat = flatAddress
+        setEditedData(edited)
         setStep('preview')
       } else {
         setErrorMessage(res.error ?? intl.formatMessage({ id: 'scanner.extractionFailed' }))
@@ -63,7 +73,20 @@ export function DocumentScannerModal({ open, onOpenChange }: DocumentScannerModa
   })
 
   const createInvoiceMutation = useCreateManualInvoice({
-    onSuccess: (invoice) => {
+    onSuccess: async (invoice) => {
+      // Upload the source document
+      if (fileBase64 && file) {
+        try {
+          await api.invoices.uploadDocument(invoice.id, {
+            fileName: file.name,
+            mimeType: file.type,
+            content: fileBase64,
+          })
+        } catch (docError) {
+          console.error('Failed to upload document:', docError)
+          // Don't fail — invoice was already created
+        }
+      }
       toast.success(intl.formatMessage({ id: 'invoices.invoiceCreated' }))
       resetState()
       onOpenChange(false)
@@ -77,10 +100,12 @@ export function DocumentScannerModal({ open, onOpenChange }: DocumentScannerModa
   const resetState = useCallback(() => {
     setStep('upload')
     setFile(null)
+    setFileBase64(null)
     setResult(null)
     setEditedData(null)
     setErrorMessage('')
     setIsDragging(false)
+    setTouched({})
   }, [])
 
   const handleClose = () => {
@@ -111,6 +136,7 @@ export function DocumentScannerModal({ open, onOpenChange }: DocumentScannerModa
     const reader = new FileReader()
     reader.onload = () => {
       const base64 = (reader.result as string).split(',')[1]
+      setFileBase64(base64)
       extractMutation.mutate({
         fileName: f.name,
         mimeType: f.type,
@@ -141,8 +167,30 @@ export function DocumentScannerModal({ open, onOpenChange }: DocumentScannerModa
     setEditedData({ ...editedData, [field]: value })
   }
 
-  const handleCreateInvoice = () => {
+  const handleCreateInvoice = async () => {
     if (!editedData || !selectedCompany) return
+
+    // Mark required fields as touched to show validation
+    setTouched({ invoiceNumber: true, supplierNip: true, supplierName: true })
+
+    // Validate required fields
+    if (!editedData.invoiceNumber?.trim()) {
+      toast.error(intl.formatMessage({ id: 'scanner.extractionFailed' }))
+      return
+    }
+    if (!editedData.supplierNip?.trim()) {
+      toast.error(intl.formatMessage({ id: 'scanner.extractionFailed' }))
+      return
+    }
+    if (!editedData.supplierName?.trim()) {
+      toast.error(intl.formatMessage({ id: 'scanner.extractionFailed' }))
+      return
+    }
+
+    const addr = editedData.supplierAddress
+    const supplierAddressStr = addr
+      ? [addr.street, addr.buildingNumber, addr.postalCode, addr.city].filter(Boolean).join(', ')
+      : (editedData as Record<string, unknown>)._supplierAddressFlat as string | undefined
 
     const data: ManualInvoiceCreate = {
       tenantNip: selectedCompany.nip,
@@ -153,9 +201,7 @@ export function DocumentScannerModal({ open, onOpenChange }: DocumentScannerModa
       dueDate: editedData.dueDate,
       supplierName: editedData.supplierName ?? '',
       supplierNip: editedData.supplierNip ?? '',
-      supplierAddress: editedData.supplierAddress
-        ? `${editedData.supplierAddress.street ?? ''}, ${editedData.supplierAddress.postalCode ?? ''} ${editedData.supplierAddress.city ?? ''}`
-        : undefined,
+      supplierAddress: supplierAddressStr || undefined,
       netAmount: editedData.netAmount ?? 0,
       vatAmount: editedData.vatAmount ?? 0,
       grossAmount: editedData.grossAmount ?? 0,
@@ -163,6 +209,11 @@ export function DocumentScannerModal({ open, onOpenChange }: DocumentScannerModa
       mpk: editedData.suggestedMpk,
       category: editedData.suggestedCategory,
       description: editedData.suggestedDescription,
+      // AI suggestion fields - original values from extraction
+      aiMpkSuggestion: result?.data?.suggestedMpk || undefined,
+      aiCategorySuggestion: result?.data?.suggestedCategory || undefined,
+      aiDescription: result?.data?.suggestedDescription || undefined,
+      aiConfidence: result?.confidence,
     }
 
     createInvoiceMutation.mutate(data)
@@ -207,6 +258,7 @@ export function DocumentScannerModal({ open, onOpenChange }: DocumentScannerModa
               type="file"
               accept={ACCEPTED_TYPES.join(',')}
               className="hidden"
+              aria-label={intl.formatMessage({ id: 'scanner.dropOrClick' })}
               onChange={handleFileSelect}
             />
           </div>
@@ -283,6 +335,7 @@ export function DocumentScannerModal({ open, onOpenChange }: DocumentScannerModa
                     <Input
                       value={editedData.supplierName ?? ''}
                       onChange={(e) => updateField('supplierName', e.target.value)}
+                      className={touched.supplierName && !editedData.supplierName?.trim() ? 'border-destructive' : ''}
                     />
                   </div>
                   <div>
@@ -290,8 +343,21 @@ export function DocumentScannerModal({ open, onOpenChange }: DocumentScannerModa
                     <Input
                       value={editedData.supplierNip ?? ''}
                       onChange={(e) => updateField('supplierNip', e.target.value)}
+                      className={touched.supplierNip && !editedData.supplierNip?.trim() ? 'border-destructive' : ''}
                     />
                   </div>
+                </div>
+                <div className="mt-3">
+                  <Label className="text-xs">{intl.formatMessage({ id: 'common.street' })}</Label>
+                  <Input
+                    value={(editedData as Record<string, unknown>)._supplierAddressFlat as string ?? ''}
+                    onChange={(e) => {
+                      setEditedData((prev) => {
+                        if (!prev) return prev
+                        return { ...prev, _supplierAddressFlat: e.target.value } as typeof prev
+                      })
+                    }}
+                  />
                 </div>
               </div>
 
@@ -306,6 +372,7 @@ export function DocumentScannerModal({ open, onOpenChange }: DocumentScannerModa
                     <Input
                       value={editedData.invoiceNumber ?? ''}
                       onChange={(e) => updateField('invoiceNumber', e.target.value)}
+                      className={touched.invoiceNumber && !editedData.invoiceNumber?.trim() ? 'border-destructive' : ''}
                     />
                   </div>
                   <div>

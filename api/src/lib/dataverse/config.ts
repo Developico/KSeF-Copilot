@@ -279,9 +279,9 @@ export const INVOICE_TYPE = {
 } as const
 
 export const CURRENCY = {
-  PLN: 100000001,
+  PLN: 100000000,
+  USD: 100000001,
   EUR: 100000002,
-  USD: 100000003,
 } as const
 
 export const COST_CATEGORY = {

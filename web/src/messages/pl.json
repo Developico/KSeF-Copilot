@@ -286,6 +286,7 @@
       "currencyEur": "EUR (euro)",
       "currencyUsd": "USD (dolar amerykański)",
       "exchangeRateLabel": "Kurs {currency}/PLN",
+      "exchangeRateDateLabel": "Data kursu",
       "exchangeRatePlaceholder": "4.3500",
       "fetchNbpRate": "Pobierz NBP",
       "nbpRateHint": "Kurs średni NBP z dnia sprzedaży",

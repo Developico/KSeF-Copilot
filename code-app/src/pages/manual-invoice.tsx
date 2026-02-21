@@ -64,8 +64,6 @@ export function ManualInvoicePage() {
   const [supplierNip, setSupplierNip] = useState('')
   const [supplierName, setSupplierName] = useState('')
   const [supplierAddress, setSupplierAddress] = useState('')
-  const [supplierCity, setSupplierCity] = useState('')
-  const [supplierPostalCode, setSupplierPostalCode] = useState('')
   const [netAmount, setNetAmount] = useState('')
   const [vatAmount, setVatAmount] = useState('')
   const [grossAmount, setGrossAmount] = useState('')
@@ -110,9 +108,7 @@ export function ManualInvoicePage() {
   function handleSupplierSelect(data: SupplierData) {
     setSupplierNip(data.supplierNip)
     setSupplierName(data.supplierName)
-    setSupplierAddress(data.supplierAddress ?? '')
-    setSupplierCity(data.supplierCity ?? '')
-    setSupplierPostalCode(data.supplierPostalCode ?? '')
+    setSupplierAddress([data.supplierAddress, data.supplierPostalCode, data.supplierCity].filter(Boolean).join(', '))
     setNipError(null)
   }
 
@@ -171,8 +167,6 @@ export function ManualInvoicePage() {
       supplierNip,
       supplierName,
       supplierAddress: supplierAddress || undefined,
-      supplierCity: supplierCity || undefined,
-      supplierPostalCode: supplierPostalCode || undefined,
       invoiceDate,
       dueDate: dueDate || undefined,
       netAmount: parseFloat(netAmount) || 0,
@@ -299,25 +293,6 @@ export function ManualInvoicePage() {
                 value={supplierAddress}
                 onChange={(e) => setSupplierAddress(e.target.value)}
               />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="supplier-postal">{intl.formatMessage({ id: 'invoices.postalCode' })}</Label>
-                <Input
-                  id="supplier-postal"
-                  value={supplierPostalCode}
-                  onChange={(e) => setSupplierPostalCode(e.target.value)}
-                  placeholder="00-000"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="supplier-city">{intl.formatMessage({ id: 'invoices.city' })}</Label>
-                <Input
-                  id="supplier-city"
-                  value={supplierCity}
-                  onChange={(e) => setSupplierCity(e.target.value)}
-                />
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -527,6 +502,7 @@ export function ManualInvoicePage() {
                 multiple
                 accept={ACCEPTED_FILE_TYPES.join(',')}
                 className="hidden"
+                aria-label={intl.formatMessage({ id: 'invoices.addAttachment' })}
                 onChange={handleAttachmentAdd}
               />
             </div>

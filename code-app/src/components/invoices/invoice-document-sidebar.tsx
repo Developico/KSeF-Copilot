@@ -177,8 +177,7 @@ export function InvoiceDocumentSidebar({
             <div className="space-y-3">
               {/* Preview area */}
               <div
-                className="relative rounded-md border bg-muted/30 overflow-hidden cursor-pointer group"
-                style={{ minHeight: 120 }}
+                className="relative rounded-md border bg-muted/30 overflow-hidden cursor-pointer group min-h-[120px]"
                 onClick={handleFullscreen}
               >
                 {previewUrl ? (
@@ -278,6 +277,7 @@ export function InvoiceDocumentSidebar({
             type="file"
             accept={ACCEPTED_DOC_TYPES.join(',')}
             className="hidden"
+            aria-label={intl.formatMessage({ id: 'invoices.uploadDocument' })}
             onChange={handleFileSelect}
           />
         </CardContent>

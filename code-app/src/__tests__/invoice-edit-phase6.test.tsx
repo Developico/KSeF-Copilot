@@ -54,9 +54,7 @@ const manualInvoice = {
   invoiceNumber: 'MAN/2024/001',
   supplierNip: '5555555555',
   supplierName: 'Manual Supplier',
-  supplierAddress: 'Ręczna 1',
-  supplierCity: 'Kraków',
-  supplierPostalCode: '30-001',
+  supplierAddress: 'Ręczna 1, 30-001, Kraków',
   invoiceDate: '2024-03-10',
   dueDate: '2024-04-10',
   netAmount: 2000,
@@ -88,51 +86,70 @@ const mockUpdateMutate = vi.fn()
 const mockMarkAsPaidMutate = vi.fn()
 let currentInvoice = manualInvoice
 
-vi.mock('@/hooks/use-api', () => ({
-  useInvoice: vi.fn(() => ({
-    data: currentInvoice,
-    isLoading: false,
-    error: null,
-  })),
-  useMarkInvoiceAsPaid: vi.fn(() => ({
-    mutate: mockMarkAsPaidMutate,
-    isPending: false,
-    isSuccess: false,
-    isError: false,
-    error: null,
-  })),
-  useUpdateInvoice: vi.fn(() => ({
-    mutate: mockUpdateMutate,
-    isPending: false,
-    isSuccess: false,
-    isError: false,
-    error: null,
-  })),
-  useInvoiceAttachments: vi.fn(() => ({
-    data: { attachments: [], count: 0 },
-    isLoading: false,
-  })),
-  useUploadAttachment: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-  useDeleteAttachment: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-  useInvoiceNotes: vi.fn(() => ({
-    data: { notes: [], count: 0 },
-    isLoading: false,
-  })),
-  useCreateNote: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-  useUpdateNote: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-  useDeleteNote: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-  useVatLookup: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-  useRecentSuppliers: vi.fn(() => ({
-    suppliers: [],
-    isLoading: false,
-    error: null,
-    filter: vi.fn(() => []),
-  })),
-  useExchangeRate: vi.fn(() => ({
-    data: null,
-    isLoading: false,
-  })),
-}))
+vi.mock('@/hooks/use-api', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>()
+  return {
+    ...actual,
+    useInvoice: vi.fn(() => ({
+      data: currentInvoice,
+      isLoading: false,
+      error: null,
+    })),
+    useMarkInvoiceAsPaid: vi.fn(() => ({
+      mutate: mockMarkAsPaidMutate,
+      isPending: false,
+      isSuccess: false,
+      isError: false,
+      error: null,
+    })),
+    useUpdateInvoice: vi.fn(() => ({
+      mutate: mockUpdateMutate,
+      isPending: false,
+      isSuccess: false,
+      isError: false,
+      error: null,
+    })),
+    useInvoiceAttachments: vi.fn(() => ({
+      data: { attachments: [], count: 0 },
+      isLoading: false,
+    })),
+    useUploadAttachment: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+    useDeleteAttachment: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+    useInvoiceNotes: vi.fn(() => ({
+      data: { notes: [], count: 0 },
+      isLoading: false,
+    })),
+    useCreateNote: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+    useUpdateNote: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+    useDeleteNote: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+    useVatLookup: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+    useRecentSuppliers: vi.fn(() => ({
+      suppliers: [],
+      isLoading: false,
+      error: null,
+      filter: vi.fn(() => []),
+    })),
+    useExchangeRate: vi.fn(() => ({
+      data: null,
+      isLoading: false,
+    })),
+    useCategorizeWithAI: vi.fn(() => ({
+      mutate: vi.fn(),
+      isPending: false,
+      isSuccess: false,
+      isError: false,
+      error: null,
+    })),
+    useUploadDocument: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+    useDeleteDocument: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+    useInvoiceDocument: vi.fn(() => ({
+      data: null,
+      isLoading: false,
+    })),
+    useExtractDocument: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+    useCreateManualInvoice: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  }
+})
 
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -157,18 +174,18 @@ function createWrapper() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-//  Invoice Detail – Manual Invoice Edit Mode
+//  Invoice Detail – Invoice Edit Mode
 // ─────────────────────────────────────────────────────────────────
 
-/** Find the manual‐invoice edit button (the one that is NOT a dialog trigger). */
-function getManualEditButton(): HTMLElement {
+/** Find the invoice edit button (the one that is NOT a dialog trigger). */
+function getEditButton(): HTMLElement {
   const editButtons = screen.getAllByText(messages['common.edit'])
   const btn = editButtons.find((el) => !el.hasAttribute('data-slot'))
-  if (!btn) throw new Error('Manual edit button not found')
+  if (!btn) throw new Error('Edit button not found')
   return btn
 }
 
-describe('InvoiceDetailPage – Manual Invoice Edit', () => {
+describe('InvoiceDetailPage – Invoice Edit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     currentInvoice = manualInvoice
@@ -187,10 +204,10 @@ describe('InvoiceDetailPage – Manual Invoice Edit', () => {
       </Wrapper>,
     )
 
-    expect(getManualEditButton()).toBeInTheDocument()
+    expect(getEditButton()).toBeInTheDocument()
   })
 
-  it('does not show edit button for KSeF invoices', async () => {
+  it('shows edit button for KSeF invoices too', async () => {
     currentInvoice = ksefInvoice
     const { InvoiceDetailPage } = await import('@/pages/invoice-detail')
     const { AuthProvider } = await import('@/components/auth/auth-provider')
@@ -204,10 +221,7 @@ describe('InvoiceDetailPage – Manual Invoice Edit', () => {
       </Wrapper>,
     )
 
-    // Only the classification dialog "Edit" button should exist, no manual edit
-    const editButtons = screen.getAllByText(messages['common.edit'])
-    expect(editButtons).toHaveLength(1)
-    expect(editButtons[0]).toHaveAttribute('data-slot', 'dialog-trigger')
+    expect(getEditButton()).toBeInTheDocument()
   })
 
   it('shows edit form when edit button is clicked', async () => {
@@ -224,7 +238,7 @@ describe('InvoiceDetailPage – Manual Invoice Edit', () => {
       </Wrapper>,
     )
 
-    await user.click(getManualEditButton())
+    await user.click(getEditButton())
 
     // Edit form should show pre-filled values
     expect(screen.getByDisplayValue('Manual Supplier')).toBeInTheDocument()
@@ -246,7 +260,7 @@ describe('InvoiceDetailPage – Manual Invoice Edit', () => {
       </Wrapper>,
     )
 
-    await user.click(getManualEditButton())
+    await user.click(getEditButton())
 
     // Check date and amount fields
     expect(screen.getByDisplayValue('2024-03-10')).toBeInTheDocument()
@@ -270,7 +284,7 @@ describe('InvoiceDetailPage – Manual Invoice Edit', () => {
       </Wrapper>,
     )
 
-    await user.click(getManualEditButton())
+    await user.click(getEditButton())
 
     // Edit form should be visible
     expect(screen.getByDisplayValue('Manual Supplier')).toBeInTheDocument()
@@ -278,9 +292,9 @@ describe('InvoiceDetailPage – Manual Invoice Edit', () => {
     // Click cancel button
     await user.click(screen.getByText(messages['common.cancel']))
 
-    // Edit form should be gone, manual edit button should be back
+    // Edit form should be gone, edit button should be back
     expect(screen.queryByDisplayValue('Manual Supplier')).not.toBeInTheDocument()
-    expect(getManualEditButton()).toBeInTheDocument()
+    expect(getEditButton()).toBeInTheDocument()
   })
 
   it('calls updateInvoice.mutate when save is clicked', async () => {
@@ -297,7 +311,7 @@ describe('InvoiceDetailPage – Manual Invoice Edit', () => {
       </Wrapper>,
     )
 
-    await user.click(getManualEditButton())
+    await user.click(getEditButton())
 
     // Change supplier name
     const nameInput = screen.getByDisplayValue('Manual Supplier')

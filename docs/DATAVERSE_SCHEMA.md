@@ -810,9 +810,9 @@ Te dane są wykorzystywane do budowania kontekstu w promptach AI (few-shot learn
 
 | Wartość | Label (EN) | Label (PL) |
 |---------|------------|------------|
-| 100000001 | PLN | PLN |
+| 100000000 | PLN | PLN |
+| 100000001 | USD | USD |
 | 100000002 | EUR | EUR |
-| 100000003 | USD | USD |
 
 ---
 
@@ -1067,9 +1067,9 @@ const invoiceTypeMapping = {
 
 // Mapowanie walut
 const currencyMapping = {
-  'PLN': 100000001,
-  'EUR': 100000002,
-  'USD': 100000003
+  'PLN': 100000000,
+  'USD': 100000001,
+  'EUR': 100000002
 };
 
 // Mapowanie MPK (Cost Center)

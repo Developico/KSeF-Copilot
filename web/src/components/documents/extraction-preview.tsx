@@ -96,10 +96,7 @@ export function ExtractionPreview({
     dueDate: data.dueDate || '',
     supplierName: data.supplierName || '',
     supplierNip: data.supplierNip || '',
-    supplierStreet: data.supplierAddress?.street || '',
-    supplierBuildingNumber: data.supplierAddress?.buildingNumber || '',
-    supplierPostalCode: data.supplierAddress?.postalCode || '',
-    supplierCity: data.supplierAddress?.city || '',
+    supplierAddress: [data.supplierAddress?.street, data.supplierAddress?.buildingNumber, data.supplierAddress?.postalCode, data.supplierAddress?.city].filter(Boolean).join(', '),
     netAmount: data.netAmount?.toString() || '',
     vatAmount: data.vatAmount?.toString() || '',
     grossAmount: data.grossAmount?.toString() || '',
@@ -140,9 +137,7 @@ export function ExtractionPreview({
         invoiceNumber: formData.invoiceNumber.trim(),
         supplierNip: formData.supplierNip.replace(/\D/g, ''),
         supplierName: formData.supplierName.trim(),
-        supplierAddress: [formData.supplierStreet, formData.supplierBuildingNumber].filter(Boolean).join(' ') || undefined,
-        supplierCity: formData.supplierCity || undefined,
-        supplierPostalCode: formData.supplierPostalCode || undefined,
+        supplierAddress: formData.supplierAddress || undefined,
         invoiceDate: formData.issueDate || new Date().toISOString().split('T')[0],
         dueDate: formData.dueDate || undefined,
         netAmount: parseFloat(formData.netAmount) || 0,
@@ -235,13 +230,7 @@ export function ExtractionPreview({
 
   // Format address for display
   const formatAddress = () => {
-    const parts = [
-      formData.supplierStreet,
-      formData.supplierBuildingNumber,
-      formData.supplierPostalCode,
-      formData.supplierCity,
-    ].filter(Boolean)
-    return parts.join(', ') || t('scanner.noAddress')
+    return formData.supplierAddress || t('scanner.noAddress')
   }
 
   return (
@@ -365,45 +354,14 @@ export function ExtractionPreview({
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-2">
-                    <Label className="text-xs">{tCommon('street')}</Label>
-                    <Input
-                      value={formData.supplierStreet}
-                      onChange={(e) => updateField('supplierStreet', e.target.value)}
-                      placeholder={t('scanner.streetPlaceholder')}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">{t('scanner.buildingNumber')}</Label>
-                    <Input
-                      value={formData.supplierBuildingNumber}
-                      onChange={(e) => updateField('supplierBuildingNumber', e.target.value)}
-                      placeholder={t('scanner.buildingNumberPlaceholder')}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <Label className="text-xs">{t('scanner.postalCode')}</Label>
-                    <Input
-                      value={formData.supplierPostalCode}
-                      onChange={(e) => updateField('supplierPostalCode', e.target.value)}
-                      placeholder={t('scanner.postalCodePlaceholder')}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs">{t('scanner.city')}</Label>
-                    <Input
-                      value={formData.supplierCity}
-                      onChange={(e) => updateField('supplierCity', e.target.value)}
-                      placeholder={t('scanner.cityPlaceholder')}
-                      className="h-8 text-sm"
-                    />
-                  </div>
+                <div>
+                  <Label className="text-xs">{t('manualForm.addressLabel')}</Label>
+                  <Input
+                    value={formData.supplierAddress}
+                    onChange={(e) => updateField('supplierAddress', e.target.value)}
+                    placeholder={t('manualForm.addressPlaceholder')}
+                    className="h-8 text-sm"
+                  />
                 </div>
               </CardContent>
             </Card>
