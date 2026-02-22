@@ -22,6 +22,25 @@ export const ATTACHMENT_CONFIG = {
     'image/png',
     'image/gif',
     'image/webp',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/csv',
+    'text/plain',
+    'application/zip',
+    'application/x-zip-compressed',
+    'application/x-tar',
+    'application/gzip',
+    'application/x-7z-compressed',
+    'application/octet-stream',
+  ],
+  allowedExtensions: [
+    '.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp',
+    '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+    '.csv', '.txt', '.zip', '.tar', '.gz', '.7z',
   ],
 }
 
@@ -56,9 +75,12 @@ function isImage(mimeType: string): boolean {
  * Validate attachment before upload
  */
 export function validateAttachment(fileName: string, mimeType: string, sizeBytes: number): { valid: boolean; error?: string } {
-  // Check mime type
-  if (!ATTACHMENT_CONFIG.allowedMimeTypes.includes(mimeType)) {
-    return { valid: false, error: `Niedozwolony typ pliku: ${mimeType}. Dozwolone: PDF, JPEG, PNG, GIF, WebP` }
+  // Check by extension first (browsers report inconsistent MIME types)
+  const ext = '.' + (fileName.split('.').pop()?.toLowerCase() || '')
+  const extAllowed = ATTACHMENT_CONFIG.allowedExtensions.includes(ext)
+  const mimeAllowed = ATTACHMENT_CONFIG.allowedMimeTypes.includes(mimeType)
+  if (!extAllowed && !mimeAllowed) {
+    return { valid: false, error: `Niedozwolony typ pliku: ${mimeType} (${ext}). Dozwolone rozszerzenia: ${ATTACHMENT_CONFIG.allowedExtensions.join(', ')}` }
   }
 
   // Check size

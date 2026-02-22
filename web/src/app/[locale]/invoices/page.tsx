@@ -822,7 +822,7 @@ export default function InvoicesPage() {
                       <InvoiceMobileCard
                         key={invoice.id}
                         invoice={invoice}
-                        onTogglePaymentStatus={handleTogglePaymentStatus}
+                        onTogglePaymentStatus={isAdmin ? handleTogglePaymentStatus : undefined}
                         onDelete={isAdmin ? handleDeleteInvoice : undefined}
                         isUpdating={updateInvoiceMutation.isPending}
                       />
@@ -1103,17 +1103,25 @@ export default function InvoicesPage() {
                     <TableCell>
                       <div className="flex items-center justify-center gap-1">
                         {/* Fixed grid: always 3 button slots for consistent alignment */}
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => handleTogglePaymentStatus(invoice.id, invoice.invoiceNumber, invoice.paymentStatus)}
-                          disabled={updateInvoiceMutation.isPending}
-                          title={invoice.paymentStatus === 'paid' ? t('markAsUnpaid') : t('markAsPaid')}
-                        >
-                          <CheckCircle 
-                            className={`h-5 w-5 transition-colors ${invoice.paymentStatus === 'paid' ? 'text-green-500 fill-green-100' : 'text-gray-300'}`} 
-                          />
-                        </Button>
+                        {isAdmin ? (
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleTogglePaymentStatus(invoice.id, invoice.invoiceNumber, invoice.paymentStatus)}
+                            disabled={updateInvoiceMutation.isPending}
+                            title={invoice.paymentStatus === 'paid' ? t('markAsUnpaid') : t('markAsPaid')}
+                          >
+                            <CheckCircle 
+                              className={`h-5 w-5 transition-colors ${invoice.paymentStatus === 'paid' ? 'text-green-500 fill-green-100' : 'text-gray-300'}`} 
+                            />
+                          </Button>
+                        ) : (
+                          <span className="inline-flex items-center justify-center h-8 w-8">
+                            <CheckCircle 
+                              className={`h-5 w-5 ${invoice.paymentStatus === 'paid' ? 'text-green-500 fill-green-100' : 'text-gray-300'}`} 
+                            />
+                          </span>
+                        )}
                         <Button variant="ghost" size="icon" asChild>
                           <Link href={`/invoices/${invoice.id}`}>
                             <Eye className="h-4 w-4" />

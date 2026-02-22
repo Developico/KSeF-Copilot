@@ -63,7 +63,7 @@ export function Header() {
   }
 
   // Get role display name
-  const roleDisplay = user?.primaryRole || 'Unauthorized'
+  const roleDisplay = user?.primaryRole === 'User' ? 'Reader' : (user?.primaryRole || 'Unauthorized')
 
   return (
     <>

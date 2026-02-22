@@ -15,7 +15,8 @@ import {
 } from '@azure/msal-react'
 import { InteractionStatus } from '@azure/msal-browser'
 import { loginRequest, isAuthConfigured } from '@/lib/auth-config'
-import { Loader2, LogIn, Shield } from 'lucide-react'
+import { Loader2, LogIn } from 'lucide-react'
+import developicoLogo from '@/assets/developico-logo.png'
 
 interface AuthGateProps {
   children: ReactNode
@@ -35,9 +36,7 @@ function LoginPage() {
       <div className="w-full max-w-sm space-y-6 text-center">
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
-          <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <Shield className="h-8 w-8 text-primary" />
-          </div>
+          <img src={developicoLogo} alt="Developico" className="h-16 w-16 rounded-xl object-contain" />
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
               {intl.formatMessage({ id: 'header.title' })}

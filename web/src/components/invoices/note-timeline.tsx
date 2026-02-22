@@ -10,8 +10,8 @@ import type { Note } from '@/lib/api'
 
 interface NoteTimelineProps {
   notes: Note[]
-  onEdit: (note: Note) => void
-  onDelete: (note: Note) => void
+  onEdit?: (note: Note) => void
+  onDelete?: (note: Note) => void
   isDeleting?: string  // ID of note being deleted
 }
 
@@ -119,26 +119,32 @@ export function NoteTimeline({ notes, onEdit, onDelete, isDeleting }: NoteTimeli
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => onEdit(note)}
-                      title={t('edit')}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive hover:text-destructive"
-                      onClick={() => onDelete(note)}
-                      title={t('delete')}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                  {(onEdit || onDelete) && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {onEdit && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => onEdit(note)}
+                          title={t('edit')}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {onDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => onDelete(note)}
+                          title={t('delete')}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Content */}

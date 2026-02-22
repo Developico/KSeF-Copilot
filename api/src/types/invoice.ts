@@ -142,9 +142,9 @@ export const InvoiceUpdateSchema = z.object({
   invoiceNumber: z.string().max(100).optional(),
   invoiceDate: z.string().date().optional(),
   dueDate: z.string().date().optional(),
-  netAmount: z.number().positive().optional(),
+  netAmount: z.number().min(0).optional(),
   vatAmount: z.number().min(0).optional(),
-  grossAmount: z.number().positive().optional(),
+  grossAmount: z.number().min(0).optional(),
   // Currency fields
   currency: z.enum(['PLN', 'EUR', 'USD']).optional(),
   exchangeRate: z.number().min(0).optional(),

@@ -32,11 +32,13 @@ import { NoteTimeline } from './note-timeline'
 interface InvoiceNotesSectionProps {
   invoiceId: string
   defaultExpanded?: boolean
+  isReadOnly?: boolean
 }
 
 export function InvoiceNotesSection({ 
   invoiceId, 
-  defaultExpanded = false 
+  defaultExpanded = false,
+  isReadOnly = false,
 }: InvoiceNotesSectionProps) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
@@ -180,16 +182,18 @@ export function InvoiceNotesSection({
 
         {isExpanded && (
           <div className="mt-4 space-y-3">
-            {/* Add note button */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={handleAddNote}
-            >
-              <MessageSquarePlus className="h-4 w-4 mr-2" />
-              {t('addNote')}
-            </Button>
+            {/* Add note button - Admin only */}
+            {!isReadOnly && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={handleAddNote}
+              >
+                <MessageSquarePlus className="h-4 w-4 mr-2" />
+                {t('addNote')}
+              </Button>
+            )}
 
             {/* Notes content */}
             {notesLoading ? (
@@ -204,8 +208,8 @@ export function InvoiceNotesSection({
             ) : (
               <NoteTimeline
                 notes={notes}
-                onEdit={handleEditNote}
-                onDelete={handleDeleteNote}
+                onEdit={isReadOnly ? undefined : handleEditNote}
+                onDelete={isReadOnly ? undefined : handleDeleteNote}
                 isDeleting={deleteNoteMutation.isPending ? deletingNote?.id : undefined}
               />
             )}

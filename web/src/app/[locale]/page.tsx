@@ -20,6 +20,7 @@ import {
 import { Link } from '@/i18n/navigation'
 import { useContextInvoices } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
+import { useHasRole } from '@/components/auth/auth-provider'
 import { AnimatedKpiCard, AnimatedCardGrid, AnimatedCardWrapper, formatCurrency } from '@/components/dashboard/animated-kpi-card'
 
 export default function HomePage() {
@@ -27,6 +28,7 @@ export default function HomePage() {
   const locale = useLocale()
   const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
   const { data: invoicesData, isLoading: dataLoading } = useContextInvoices()
+  const isAdmin = useHasRole('Admin')
   const isLoading = companyLoading || dataLoading
 
   // Calculate stats from invoices
@@ -141,26 +143,28 @@ export default function HomePage() {
           </Card>
         </AnimatedCardWrapper>
 
-        <AnimatedCardWrapper delay={0.5}>
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <RefreshCw className="h-5 w-5 text-primary" />
-                {t('synchronization')}
-              </CardTitle>
-              <CardDescription>
-                {t('synchronizationDesc')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/sync">
-                  {t('syncPanel')}
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </AnimatedCardWrapper>
+        {isAdmin && (
+          <AnimatedCardWrapper delay={0.5}>
+            <Card className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5 text-primary" />
+                  {t('synchronization')}
+                </CardTitle>
+                <CardDescription>
+                  {t('synchronizationDesc')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/sync">
+                    {t('syncPanel')}
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </AnimatedCardWrapper>
+        )}
 
         <AnimatedCardWrapper delay={0.6}>
           <Card className="hover:shadow-md transition-shadow">

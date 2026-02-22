@@ -32,7 +32,7 @@ import type { Invoice } from '@/lib/api'
 
 interface InvoiceMobileCardProps {
   invoice: Invoice
-  onTogglePaymentStatus: (id: string, invoiceNumber: string, currentStatus: 'pending' | 'paid') => void
+  onTogglePaymentStatus?: (id: string, invoiceNumber: string, currentStatus: 'pending' | 'paid') => void
   onDelete?: (id: string, invoiceNumber: string) => void
   isUpdating?: boolean
 }
@@ -217,22 +217,24 @@ export function InvoiceMobileCard({
 
           {/* Actions */}
           <div className="flex items-center gap-2 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              onClick={(e) => {
-                e.stopPropagation()
-                onTogglePaymentStatus(invoice.id, invoice.invoiceNumber, invoice.paymentStatus)
-              }}
-              disabled={isUpdating}
-            >
-              <CheckCircle className={cn(
-                "h-4 w-4 mr-2",
-                invoice.paymentStatus === 'paid' ? 'text-green-500' : 'text-muted-foreground'
-              )} />
-              {invoice.paymentStatus === 'paid' ? 'Cofnij opłatę' : 'Oznacz opłaconą'}
-            </Button>
+            {onTogglePaymentStatus && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onTogglePaymentStatus(invoice.id, invoice.invoiceNumber, invoice.paymentStatus)
+                }}
+                disabled={isUpdating}
+              >
+                <CheckCircle className={cn(
+                  "h-4 w-4 mr-2",
+                  invoice.paymentStatus === 'paid' ? 'text-green-500' : 'text-muted-foreground'
+                )} />
+                {invoice.paymentStatus === 'paid' ? 'Cofnij opłatę' : 'Oznacz opłaconą'}
+              </Button>
+            )}
             
             <Button
               variant="outline"

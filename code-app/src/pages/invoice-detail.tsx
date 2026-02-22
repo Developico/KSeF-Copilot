@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { useInvoice, useMarkInvoiceAsPaid, useUpdateInvoice, useCategorizeWithAI, useExchangeRate } from '@/hooks/use-api'
 import { formatCurrency, formatDate } from '@/lib/format'
+import { useHasRole } from '@/components/auth/auth-provider'
 import { ClassificationEditDialog } from '@/components/invoices/classification-edit-dialog'
 import { AttachmentsSection } from '@/components/invoices/attachments-section'
 import { NotesSection } from '@/components/invoices/notes-section'
@@ -80,6 +81,7 @@ export function InvoiceDetailPage() {
   const intl = useIntl()
   const { selectedCompany } = useCompanyContext()
 
+  const isAdmin = useHasRole('Admin')
   const { data: invoice, isLoading, error, refetch } = useInvoice(id ?? '')
   const markAsPaid = useMarkInvoiceAsPaid()
   const updateInvoice = useUpdateInvoice()
@@ -325,7 +327,7 @@ export function InvoiceDetailPage() {
               {invoice.source === 'KSeF' ? 'KSeF' : intl.formatMessage({ id: 'invoices.manual' })}
             </Badge>
           )}
-          {invoice.paymentStatus === 'pending' ? (
+          {isAdmin && (invoice.paymentStatus === 'pending' ? (
             <Button
               size="sm"
               variant="default"
@@ -344,7 +346,7 @@ export function InvoiceDetailPage() {
             >
               {intl.formatMessage({ id: 'invoices.markAsUnpaid' })}
             </Button>
-          )}
+          ))}
         </div>
       </div>
 
@@ -358,7 +360,7 @@ export function InvoiceDetailPage() {
                 <Calendar className="h-4 w-4" />
                 {intl.formatMessage({ id: 'invoices.viewDetails' })}
               </CardTitle>
-              {!editing && (
+              {isAdmin && !editing && (
                 <Button size="sm" variant="ghost" className="h-6 px-2" onClick={startEdit}>
                   <Pencil className="h-3 w-3" />
                 </Button>
@@ -433,12 +435,12 @@ export function InvoiceDetailPage() {
                 {intl.formatMessage({ id: 'invoices.supplier' })}
               </CardTitle>
               <div className="flex items-center gap-1">
-                {editing && (
+                {isAdmin && editing && (
                   <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setSupplierDialogOpen(true)}>
                     <Search className="h-3 w-3" />
                   </Button>
                 )}
-                {!editing && (
+                {isAdmin && !editing && (
                   <Button size="sm" variant="ghost" className="h-6 px-2" onClick={startEdit}>
                     <Pencil className="h-3 w-3" />
                   </Button>
@@ -506,7 +508,7 @@ export function InvoiceDetailPage() {
                 <CreditCard className="h-4 w-4" />
                 {intl.formatMessage({ id: 'invoices.grossAmount' })}
               </CardTitle>
-              {!editing && (
+              {isAdmin && !editing && (
                 <Button size="sm" variant="ghost" className="h-6 px-2" onClick={startEdit}>
                   <Pencil className="h-3 w-3" />
                 </Button>
@@ -697,7 +699,7 @@ export function InvoiceDetailPage() {
               <Tag className="h-4 w-4" />
               {intl.formatMessage({ id: 'invoices.description' })}
             </CardTitle>
-            <ClassificationEditDialog invoice={invoice} />
+            {isAdmin && <ClassificationEditDialog invoice={invoice} />}
           </div>
         </CardHeader>
         <CardContent>
@@ -731,29 +733,31 @@ export function InvoiceDetailPage() {
                   </Badge>
                 )}
               </CardTitle>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={categorizeAI.isPending}
-                onClick={() => {
-                  categorizeAI.mutate(invoice.id, {
-                    onSuccess: () => {
-                      toast.success(intl.formatMessage({ id: 'invoices.aiTriggered' }))
-                      void refetch()
-                    },
-                    onError: (err) => toast.error(err.message),
-                  })
-                }}
-              >
-                {categorizeAI.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                ) : (
-                  <Sparkles className="h-4 w-4 mr-1" />
-                )}
-                {(invoice.aiMpkSuggestion || invoice.aiCategorySuggestion)
-                  ? intl.formatMessage({ id: 'invoices.aiReanalyze' })
-                  : intl.formatMessage({ id: 'invoices.aiTrigger' })}
-              </Button>
+              {isAdmin && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={categorizeAI.isPending}
+                  onClick={() => {
+                    categorizeAI.mutate(invoice.id, {
+                      onSuccess: () => {
+                        toast.success(intl.formatMessage({ id: 'invoices.aiTriggered' }))
+                        void refetch()
+                      },
+                      onError: (err) => toast.error(err.message),
+                    })
+                  }}
+                >
+                  {categorizeAI.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-1" />
+                  )}
+                  {(invoice.aiMpkSuggestion || invoice.aiCategorySuggestion)
+                    ? intl.formatMessage({ id: 'invoices.aiReanalyze' })
+                    : intl.formatMessage({ id: 'invoices.aiTrigger' })}
+                </Button>
+              )}
             </div>
           </CardHeader>
           {(invoice.aiMpkSuggestion || invoice.aiCategorySuggestion || invoice.aiDescription) && (

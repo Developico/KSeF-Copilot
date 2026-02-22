@@ -191,12 +191,12 @@ app.http('health-detailed', {
   route: 'health/detailed',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      // Require Admin role — endpoint exposes infrastructure details
+      // Reader role is sufficient — status badge is shown to all authenticated users
       const authResult = await verifyAuth(request)
       if (!authResult.success) {
         return { status: 401, jsonBody: { error: 'Unauthorized' } }
       }
-      const roleCheck = requireRole(authResult.user, 'Admin')
+      const roleCheck = requireRole(authResult.user, 'Reader')
       if (!roleCheck.success) {
         return { status: 403, jsonBody: { error: 'Forbidden' } }
       }

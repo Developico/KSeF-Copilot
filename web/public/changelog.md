@@ -6,6 +6,15 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.7.4] - 2026-02-22
+
+### ♻️ Uspójnienie ról i branding
+
+- **Tryb Reader w pełni tylko do odczytu** — wszystkie akcje edycji, notatek, załączników, AI i płatności ukryte lub zablokowane dla roli Reader
+- **Etykieta roli w menu użytkownika** — poprawiona z "USER" na "READER" dla spójności z uprawnieniami
+- **Branding logowania** — ekran logowania używa logo Developico (spójnie z code-app)
+
+
 ## [0.7.3] - 2026-02-14
 
 ### 🔄 GUS → VAT (Biała Lista) Migration

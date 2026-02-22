@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useIntl } from 'react-intl'
 import { Link } from 'react-router-dom'
+import { useHasRole } from '@/components/auth/auth-provider'
 import {
   Card,
   CardContent,
@@ -77,6 +78,7 @@ function formatCurrencyShort(amount: number): string {
 
 export function DashboardPage() {
   const intl = useIntl()
+  const isAdmin = useHasRole('Admin')
   const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
 
   // Date range — default last 12 months
@@ -522,7 +524,7 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        {isAdmin && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <RefreshCw className="h-5 w-5" />
@@ -540,7 +542,7 @@ export function DashboardPage() {
               {intl.formatMessage({ id: 'dashboard.syncPanel' })}
             </Link>
           </CardContent>
-        </Card>
+        </Card>}
 
         <Card>
           <CardHeader>

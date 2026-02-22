@@ -228,7 +228,7 @@ export function Header() {
                     <p className="text-sm font-medium truncate">{user.name ?? '—'}</p>
                     <p className="text-xs text-muted-foreground truncate">{user.email ?? ''}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {intl.formatMessage({ id: 'header.role' })}: {isAdmin ? 'Admin' : 'User'}
+                      {intl.formatMessage({ id: 'header.role' })}: {isAdmin ? 'Admin' : 'Reader'}
                     </p>
                   </div>
                   <a

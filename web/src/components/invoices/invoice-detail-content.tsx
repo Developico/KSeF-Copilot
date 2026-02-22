@@ -32,6 +32,7 @@ import {
 import Link from 'next/link'
 
 import { api, Invoice, Attachment } from '@/lib/api'
+import { useHasRole } from '@/components/auth/auth-provider'
 import { InvoiceDocumentSidebar } from '@/components/documents'
 import { InvoiceNotesSection } from './invoice-notes-section'
 import { Button } from '@/components/ui/button'
@@ -149,6 +150,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const t = useTranslations('invoices')
+  const isAdmin = useHasRole('Admin')
   const [isDragging, setIsDragging] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   
@@ -559,21 +561,16 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
 
   // Validate file
   const validateFile = useCallback((file: File): boolean => {
-    const validTypes = [
-      'application/pdf',
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    const allowedExtensions = [
+      '.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp',
+      '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+      '.csv', '.txt', '.zip', '.tar', '.7z',
     ]
-    if (!validTypes.includes(file.type)) {
+    const ext = '.' + (file.name.split('.').pop()?.toLowerCase() || '')
+    if (!allowedExtensions.includes(ext)) {
       toast({
         title: 'Nieobsługiwany typ pliku',
-        description: `Plik "${file.name}" ma nieobsługiwany format`,
+        description: `Plik "${file.name}" ma nieobsługiwany format. Dozwolone: ${allowedExtensions.join(', ')}`,
         variant: 'destructive',
       })
       return false
@@ -686,7 +683,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {invoice.paymentStatus === 'pending' && (
+          {isAdmin && invoice.paymentStatus === 'pending' && (
             <Button
               onClick={() => markPaidMutation.mutate()}
               disabled={markPaidMutation.isPending}
@@ -718,7 +715,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
         {/* Left Side - Invoice Data */}
         <div className="flex-1 space-y-4 min-w-0">
           {/* Edit form - compact 3-column layout (matches manual invoice form) */}
-          {isEditingInvoice && (
+          {isAdmin && isEditingInvoice && (
             <div className="space-y-4">
               {/* Top Row: Invoice Info + Supplier + Amounts in 3 columns */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -984,9 +981,11 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                   <FileText className="h-4 w-4" />
                   Dane faktury
                 </div>
-                <Button variant="ghost" size="sm" className="h-6 px-2" onClick={startEditingInvoice}>
-                  <Pencil className="h-3 w-3" />
-                </Button>
+                {isAdmin && (
+                  <Button variant="ghost" size="sm" className="h-6 px-2" onClick={startEditingInvoice}>
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
@@ -1023,9 +1022,11 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                   <Building2 className="h-4 w-4" />
                   Dostawca
                 </div>
-                <Button variant="ghost" size="sm" className="h-6 px-2" onClick={startEditingInvoice}>
-                  <Pencil className="h-3 w-3" />
-                </Button>
+                {isAdmin && (
+                  <Button variant="ghost" size="sm" className="h-6 px-2" onClick={startEditingInvoice}>
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
               <div className="space-y-2 text-sm">
                 <p className="font-medium break-words" title={invoice.supplierName}>
@@ -1049,9 +1050,11 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                   <CreditCard className="h-4 w-4" />
                   Kwoty
                 </div>
-                <Button variant="ghost" size="sm" className="h-6 px-2" onClick={startEditingInvoice}>
-                  <Pencil className="h-3 w-3" />
-                </Button>
+                {isAdmin && (
+                  <Button variant="ghost" size="sm" className="h-6 px-2" onClick={startEditingInvoice}>
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
@@ -1103,7 +1106,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                 <Tag className="h-4 w-4" />
                 Klasyfikacja
               </div>
-              {!isEditingClassification ? (
+              {isAdmin && (!isEditingClassification ? (
                 <Button variant="ghost" size="sm" className="h-6 px-2" onClick={startEditingClassification}>
                   <Pencil className="h-3 w-3" />
                 </Button>
@@ -1116,7 +1119,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                     <Save className="h-3 w-3" />
                   </Button>
                 </div>
-              )}
+              ))}
             </div>
             
             {isEditingClassification ? (
@@ -1235,35 +1238,37 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
             
             {attachmentsExpanded && (
               <div className="mt-4 space-y-3">
-                {/* Drop zone */}
-                <div
-                  className={cn(
-                    "border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer",
-                    isDragging ? "border-primary bg-primary/5" : "hover:border-primary",
-                    uploadMutation.isPending && "opacity-50 pointer-events-none"
-                  )}
-                  onDragOver={(e) => {
-                    e.preventDefault()
-                    setIsDragging(true)
-                  }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={handleFileDrop}
-                  onClick={() => document.getElementById('detail-file-input')?.click()}
-                >
-                  <FileUp className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
-                  <p className="text-xs text-muted-foreground">
-                    {t('attachments.dropOrSelect')} <span className="text-primary">{t('attachments.selectFiles')}</span>
-                  </p>
-                  <input
-                    id="detail-file-input"
-                    type="file"
-                    multiple
-                    accept=".pdf,image/jpeg,image/png,image/gif,image/webp,.doc,.docx,.xls,.xlsx"
-                    className="hidden"
-                    onChange={handleFileSelect}
-                    aria-label={t('attachments.selectFilesAriaLabel')}
-                  />
-                </div>
+                {/* Drop zone - Admin only */}
+                {isAdmin && (
+                  <div
+                    className={cn(
+                      "border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer",
+                      isDragging ? "border-primary bg-primary/5" : "hover:border-primary",
+                      uploadMutation.isPending && "opacity-50 pointer-events-none"
+                    )}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      setIsDragging(true)
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleFileDrop}
+                    onClick={() => document.getElementById('detail-file-input')?.click()}
+                  >
+                    <FileUp className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
+                    <p className="text-xs text-muted-foreground">
+                      {t('attachments.dropOrSelect')} <span className="text-primary">{t('attachments.selectFiles')}</span>
+                    </p>
+                    <input
+                      id="detail-file-input"
+                      type="file"
+                      multiple
+                      accept=".pdf,image/jpeg,image/png,image/gif,image/webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip,.tar,.7z"
+                      className="hidden"
+                      onChange={handleFileSelect}
+                      aria-label={t('attachments.selectFilesAriaLabel')}
+                    />
+                  </div>
+                )}
 
                 {/* Upload progress */}
                 {uploadMutation.isPending && (
@@ -1298,9 +1303,11 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDownload(attachment)} title={t('attachments.download')}>
                           <Download className="h-3 w-3" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteMutation.mutate(attachment.id)} title={t('attachments.delete')}>
-                          <Trash2 className="h-3 w-3 text-red-500" />
-                        </Button>
+                        {isAdmin && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteMutation.mutate(attachment.id)} title={t('attachments.delete')}>
+                            <Trash2 className="h-3 w-3 text-red-500" />
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1312,7 +1319,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
           </Card>
 
           {/* Notes Section */}
-          <InvoiceNotesSection invoiceId={invoiceId} />
+          <InvoiceNotesSection invoiceId={invoiceId} isReadOnly={!isAdmin} />
         </div>
 
         {/* Right Side - AI Panel + Document (sticky) */}
@@ -1324,6 +1331,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                 invoiceId={invoiceId}
                 hasDocument={invoice.hasDocument}
                 documentFileName={invoice.documentFileName}
+                isReadOnly={!isAdmin}
               />
             </div>
 
@@ -1456,8 +1464,8 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                       )}
                     </div>
 
-                    {/* Action Buttons - only show if there are differences */}
-                    {(invoice.mpk !== invoice.aiMpkSuggestion || 
+                    {/* Action Buttons - only show if there are differences (Admin only) */}
+                    {isAdmin && (invoice.mpk !== invoice.aiMpkSuggestion || 
                       invoice.category !== invoice.aiCategorySuggestion || 
                       invoice.description !== invoice.aiDescription) && (
                       <div className="space-y-2">
@@ -1485,17 +1493,19 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                       </div>
                     )}
 
-                    {/* Re-analyze button */}
-                    <Button
-                      className="w-full"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => categorizeAiMutation.mutate()}
-                      disabled={categorizeAiMutation.isPending}
-                    >
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      {categorizeAiMutation.isPending ? 'Analizuję...' : 'Ponów analizę'}
-                    </Button>
+                    {/* Re-analyze button - Admin only */}
+                    {isAdmin && (
+                      <Button
+                        className="w-full"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => categorizeAiMutation.mutate()}
+                        disabled={categorizeAiMutation.isPending}
+                      >
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        {categorizeAiMutation.isPending ? 'Analizuję...' : 'Ponów analizę'}
+                      </Button>
+                    )}
                   </>
                 ) : (
                   // No AI suggestions yet
@@ -1506,15 +1516,17 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                     <p className="text-sm text-muted-foreground mb-4">
                       AI może automatycznie zasugerować MPK, kategorię i opis dla tej faktury
                     </p>
-                    <Button
-                      className="w-full"
-                      variant="default"
-                      onClick={() => categorizeAiMutation.mutate()}
-                      disabled={categorizeAiMutation.isPending}
-                    >
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      {categorizeAiMutation.isPending ? 'Analizuję...' : 'Uruchom analizę AI'}
-                    </Button>
+                    {isAdmin && (
+                      <Button
+                        className="w-full"
+                        variant="default"
+                        onClick={() => categorizeAiMutation.mutate()}
+                        disabled={categorizeAiMutation.isPending}
+                      >
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        {categorizeAiMutation.isPending ? 'Analizuję...' : 'Uruchom analizę AI'}
+                      </Button>
+                    )}
                   </div>
                 )}
               </CardContent>
