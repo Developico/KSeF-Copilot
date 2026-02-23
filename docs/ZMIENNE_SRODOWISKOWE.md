@@ -45,7 +45,7 @@ Plik konfiguracyjny: `api/local.settings.json`
 | `AZURE_TENANT_ID` | ✅ | `your-tenant-...` | Directory (tenant) ID z Entra ID |
 | `AZURE_CLIENT_ID` | ✅ | `your-client-...` | Application (client) ID z App Registration |
 | `AZURE_CLIENT_SECRET` | ✅ | `your-client-secret` | Client Secret (dla Client Credentials flow) |
-| `SKIP_AUTH` | ❌ | `true` | Pominięcie walidacji JWT w dev (`true` = brak auth) |
+| `SKIP_AUTH` | ❌ | `true` | Pominięcie **całego auth** w dev — nie weryfikuje JWT, nie mapuje ról, zwraca hardcoded Admin. Crash w produkcji. |
 
 > ⚠️ `AZURE_CLIENT_SECRET` — w produkcji **NIGDY** nie ustawiaj bezpośrednio. Użyj Key Vault Reference.
 

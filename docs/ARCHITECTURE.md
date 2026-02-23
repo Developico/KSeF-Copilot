@@ -9,6 +9,7 @@
 - [Data Flow](#data-flow)
 - [Security Architecture](#security-architecture)
 - [Deployment Architecture](#deployment-architecture)
+- [Build Your Own Frontend](#build-your-own-frontend)
 - [Technology Stack](#technology-stack)
 - [Design Patterns](#design-patterns)
 - [Performance & Scalability](#performance--scalability)
@@ -19,9 +20,30 @@
 
 **dvlp-ksef** is a cloud-native integration platform for the Polish National e-Invoice System (KSeF) with AI-powered categorization and Microsoft Dataverse backend. The system follows a serverless, microservices-based architecture deployed on Azure.
 
+### Priority: Power Platform & Dataverse
+
+The fundamental architectural decision was to **maximize the use of the Microsoft Power Platform and Dataverse ecosystem**:
+
+- **Dataverse as the single source of truth** — data model, persistence, row-level security, auditing, and regulatory compliance (EU data sovereignty).
+- **Power Platform as the distribution channel** — Custom Connector, Model-Driven Apps (MDA), Canvas Apps, Power Automate, Copilot Studio — all of these tools can natively consume the solution’s API.
+- **Azure Functions as the integration layer** — connecting Dataverse to external systems (KSeF, Azure OpenAI, NBP, White List VAT).
+
+This means that any organization using Microsoft 365 / Power Platform already has the infrastructure to run the solution.
+
+### API-First Philosophy
+
+**The API is the product.** The REST API layer (Azure Functions) is the core of the solution and is fully independent of any frontend. The provided client applications — web (Next.js), code app (Vite + React SPA), Model-Driven App on Power Platform — are **reference implementations** designed to:
+
+- Demonstrate integration patterns with the API (direct fetch, Custom Connector, Power Platform managed auth)
+- Provide a ready-to-use UI for immediate adoption
+- Serve as a starting point for building custom clients
+
+> **Build your own client.** Any application supporting OAuth 2.0 / Entra ID and HTTP/REST can consume the API — Power Apps canvas app, Teams tab, mobile app, Power Automate flow, external ERP system, or any other solution.
+
 ### Key Architectural Principles
 - **Serverless-First**: Azure Functions for compute, Azure Storage for persistence
 - **API-Driven**: RESTful API with comprehensive endpoint coverage
+- **Frontend-Agnostic**: API designed independently of any frontend; provided client apps (web, code app, MDA) are reference implementations
 - **Security by Design**: Zero-trust with Entra ID authentication, JWT validation, RBAC
 - **Cloud-Native**: Built for Azure with PaaS services (Functions, Dataverse, Key Vault, OpenAI)
 - **Separation of Concerns**: Clear boundaries between API, frontend, and external integrations
@@ -38,11 +60,15 @@
 ```mermaid
 graph TB
     Users["End Users (Browsers)"] --> EntraID["Azure Entra ID<br/>JWT Token Issuance + RBAC Groups"]
-    EntraID --> WebApp["Azure App Service<br/>Next.js 15 Frontend — standalone"]
-    EntraID --> CodeApp["Power Apps Code App<br/>Vite + React SPA"]
+    EntraID --> WebApp["Web App ⓘ<br/>Next.js 15 — Reference Implementation"]
+    EntraID --> CodeApp["Code App ⓘ<br/>Vite + React SPA — Reference Implementation"]
+    EntraID --> MDA["Model-Driven App ⓘ<br/>Power Platform — Reference Implementation"]
+    EntraID -.->|OAuth 2.0 + JWT| CustomClient["Your Custom Client<br/>Canvas App · Teams Tab · Mobile<br/>Power Automate · ERP · ..."]
     
     WebApp -->|HTTPS/REST| API["Azure Functions v4<br/>Flex Consumption — Node.js 22 API"]
     CodeApp -->|Custom Connector<br/>or HTTPS/REST| API
+    MDA -->|Custom Connector<br/>or HTTPS/REST| API
+    CustomClient -.->|HTTPS/REST| API
 
     subgraph API_Modules["API Modules"]
         Auth["Auth Middleware"]
@@ -60,6 +86,8 @@ graph TB
     DVServices --> Dataverse["Microsoft Dataverse<br/>CRM / DB"]
     VATClient --> WLAPI["WL VAT API<br/>KAS — White List"]
     KSeFClient --> KeyVault["Azure Key Vault<br/>KSeF Tokens"]
+
+    style CustomClient stroke-dasharray: 5 5
 ```
 
 <details>
@@ -122,7 +150,9 @@ graph TB
 
 ## Component Design
 
-### 1. Frontend Layer (web/)
+### 1. Frontend Layer (web/) — *Reference Implementation*
+
+> **Note:** The web app is one of the reference client implementations. It demonstrates the integration pattern with the API via direct HTTP calls with an MSAL token. You can build your own client instead of using this app — see [Build Your Own Frontend](#build-your-own-frontend).
 
 **Technology**: Next.js 15 with App Router, React 19, TypeScript 5.7
 
@@ -626,7 +656,9 @@ sequenceDiagram
 - Role-Based Access Control (RBAC)
 - Security group membership from Entra ID
 - Fine-grained permissions per endpoint
-- Startup validation: crashes if `SKIP_AUTH=true` in production
+- Startup validation: crashes if `SKIP_AUTH=true` in production (see below)
+
+> ⚠️ **`SKIP_AUTH=true`** (dev only): Bypasses the **entire authentication and authorization pipeline** — does not read the `Authorization` header, does not verify the JWT, does not map groups to roles. Instead, it returns a hardcoded `dev-user` with the `Admin` role. In production (`NODE_ENV=production`), setting this flag causes an **immediate crash on startup**.
 
 **Layer 4: Data**
 - Sensitive data (KSeF tokens) in Azure Key Vault
@@ -722,6 +754,33 @@ Resource Group: dvlp-ksef-prod
 
 </details>
 
+## Build Your Own Frontend
+
+The solution’s API is **fully self-contained and independent of any frontend**. Any application supporting OAuth 2.0 (Azure Entra ID) and the HTTP/REST protocol can consume the API.
+
+### What You Need
+
+1. **Authentication** — obtain a JWT token from Azure Entra ID (MSAL, Power Platform managed auth, or any OIDC library)
+2. **API calls** — HTTP/REST with `Authorization: Bearer <JWT>` header to Azure Functions endpoints
+3. **Optionally: Custom Connector** — for clients within the Power Platform ecosystem (Canvas Apps, Power Automate, Copilot Studio)
+
+### Example Client Types
+
+| Client Type | Integration Pattern | Example Use Case |
+|---|---|---|
+| **Power Apps Canvas App** | Custom Connector | Simplified UI for a specific process |
+| **Model-Driven App (MDA)** | Dataverse natively + Custom Connector | Full data view with native CRUD |
+| **Power Automate Flow** | Custom Connector | Automated periodic synchronization |
+| **Copilot Studio** | Custom Connector / HTTP | Chatbot for querying invoice status |
+| **Teams Tab / Bot** | MSAL + HTTP/REST | Invoice notifications in Teams |
+| **Mobile App** | MSAL + HTTP/REST | Approving invoices in the field |
+| **External ERP System** | Service-to-service token + HTTP/REST | Importing invoices into accounting |
+| **Custom SPA / PWA** | MSAL + HTTP/REST | Dedicated supplier portal |
+
+> Entry point: [API Documentation](./API.md) contains the full specification of endpoints, parameters, and responses.
+
+---
+
 ## Technology Stack
 
 ### Backend (API)
@@ -734,7 +793,11 @@ Resource Group: dvlp-ksef-prod
 - **Testing**: Vitest 2.1.9
 - **Linting**: ESLint 9 with TypeScript rules
 
-### Frontend (Web)
+### Reference Frontend Implementations
+
+> The technologies below pertain to the provided reference implementations. Your own client can use any technology stack.
+
+**Web (Next.js)**:
 - **Framework**: Next.js 15 with App Router
 - **Runtime**: React 19
 - **Language**: TypeScript 5.7
@@ -744,6 +807,19 @@ Resource Group: dvlp-ksef-prod
 - **State**: React Server Components + hooks
 - **Forms**: React Hook Form + Zod
 - **Testing**: Vitest + React Testing Library
+
+**Code App (Vite + React)**:
+- **Framework**: Vite + React 19
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS + shadcn/ui
+- **Cache / mutations**: TanStack Query
+- **i18n**: react-intl (PL/EN)
+- **Deployment**: Power Platform (`pac code push`)
+
+**Model-Driven App (MDA)**:
+- **Platform**: Power Platform
+- **Views / forms**: Declarative Dataverse configuration
+- **API integration**: Custom Connector (DVLP-KSeF-PP-Connector)
 
 ### Infrastructure
 - **Compute**: Azure Functions (Consumption/Premium)

@@ -60,7 +60,7 @@ Centralny przewodnik diagnostyczny dla projektu KSeF. Zebrane rozwiązania ze ws
 1. Sprawdź `ADMIN_GROUP_ID` i `USER_GROUP_ID` w API config
 2. Sprawdź czy Object ID grup zgadza się z Entra ID
 3. Użyj jwt.ms aby zdekodować token i sprawdzić claim `groups`
-4. W dev: ustaw `SKIP_AUTH=true` aby ominąć weryfikację
+4. W dev: ustaw `SKIP_AUTH=true` aby pominąć cały auth (zwraca hardcoded Admin — patrz [Zmienne środowiskowe](./ZMIENNE_SRODOWISKOWE.md))
 
 ### Sesja wygasa zbyt szybko
 

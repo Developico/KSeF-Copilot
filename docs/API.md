@@ -37,7 +37,7 @@ Authorization: Bearer <jwt_token>
 - Issuer, audience, and expiration are verified
 - Security groups are mapped to application roles via `GROUP_ROLE_MAPPING`
 
-**Important**: Set `SKIP_AUTH=true` only for local development. The application will crash on startup if `SKIP_AUTH=true` in production (`NODE_ENV=production`).
+**Important**: Set `SKIP_AUTH=true` only for local development. This bypasses the **entire authentication pipeline** (not just JWT validation) — no token is read, no signature is verified, no groups are mapped. Instead, a hardcoded `dev-user` with `Admin` role is injected. The application will crash on startup if `SKIP_AUTH=true` in production (`NODE_ENV=production`).
 
 ---
 

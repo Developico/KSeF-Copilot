@@ -153,7 +153,7 @@ cp api/local.settings.json.example api/local.settings.json
 }
 ```
 
-> `SKIP_AUTH=true` — pomija walidację JWT, przydatne przy lokalnym dev bez konfiguracji MSAL.
+> `SKIP_AUTH=true` — pomija **cały proces autentykacji** (nie tylko walidację JWT). Nie odczytuje nagłówka `Authorization`, nie weryfikuje tokenu, nie mapuje grup. Zwraca hardcoded użytkownika `dev-user` z rolą `Admin`. Przydatne przy lokalnym dev bez konfiguracji MSAL.
 
 ### Web: `web/.env.local`
 

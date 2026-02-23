@@ -7,6 +7,7 @@
 - [Przepływy danych](#przepływy-danych)
 - [Architektura bezpieczeństwa](#architektura-bezpieczeństwa)
 - [Architektura wdrożenia](#architektura-wdrożenia)
+- [Budowanie własnego klienta](#budowanie-własnego-klienta)
 - [Stos technologiczny](#stos-technologiczny)
 - [Wzorce projektowe](#wzorce-projektowe)
 - [Wydajność i skalowalność](#wydajność-i-skalowalność)
@@ -17,10 +18,30 @@
 
 **dvlp-ksef** to natywna chmurowo platforma integracji z Krajowym Systemem e-Faktur (KSeF) z kategoryzacją AI i backendem Microsoft Dataverse. System oparty jest na architekturze serverless, wdrożony na Azure.
 
+### Priorytet: Power Platform i Dataverse
+
+Podstawowym założeniem architektonicznym było **maksymalne wykorzystanie ekosystemu Microsoft Power Platform i Dataverse**:
+
+- **Dataverse jako jedyne źródło prawdy** — model danych, persystencja, bezpieczeństwo na poziomie rekordów, audyt i zgodność z wymogami regulacyjnymi (EU data sovereignty).
+- **Power Platform jako kanał dystrybucji** — Custom Connector, Model-Driven Apps (MDA), Canvas Apps, Power Automate, Copilot Studio — wszystkie te narzędzia mogą natywnie konsumować API rozwiązania.
+- **Azure Functions jako warstwa integracji** — łącząca Dataverse z systemami zewnętrznymi (KSeF, Azure OpenAI, NBP, Biała Lista VAT).
+
+Ten wybór oznacza, że każda organizacja korzystająca z Microsoft 365 / Power Platform ma gotową infrastrukturę do uruchomienia rozwiązania.
+
+### Filozofia API-First
+
+**API jest produktem.** Warstwa REST API (Azure Functions) stanowi rdzeń rozwiązania i jest w pełni niezależna od jakiegokolwiek frontendu. Dostarczone aplikacje klienckie — web (Next.js), code app (Vite + React SPA), aplikacja MDA na Power Platform — to **implementacje referencyjne**, których celem jest:
+
+- Zademonstrowanie wzorców integracji z API (bezpośredni fetch, Custom Connector, Power Platform managed auth)
+- Dostarczenie gotowego UI do natychmiastowego użycia
+- Służenie jako punkt startowy do budowy własnych klientów
+
+> **Możesz zbudować własnego klienta.** Każda aplikacja obsługująca OAuth 2.0 / Entra ID i HTTP/REST może konsumować API — Power Apps canvas app, Teams tab, aplikacja mobilna, Power Automate flow, zewnętrzny system ERP, czy dowolne inne rozwiązanie.
+
 ### Kluczowe zasady architektoniczne
 - **Serverless-First**: Azure Functions (Flex Consumption) dla compute, Azure Storage dla persystencji
 - **API-Driven**: RESTful API z 65+ endpointami (22 moduły)
-- **Dual Frontend**: Web (Next.js 15) + Power Apps Code App (Vite + React SPA)
+- **Frontend-Agnostic**: API zaprojektowane niezależnie od frontendu; dostarczone aplikacje klienckie (web, code app, MDA) to implementacje referencyjne
 - **Security by Design**: Zero-trust z autentykacją Entra ID, walidacją JWT, RBAC
 - **Cloud-Native**: Usługi PaaS (Functions, Dataverse, Key Vault, OpenAI)
 - **Separation of Concerns**: Jasny podział między API, frontend i integracje zewnętrzne
@@ -37,11 +58,15 @@
 ```mermaid
 graph TB
     Users["Użytkownicy (przeglądarki)"] --> EntraID["Azure Entra ID<br/>Wydawanie tokenów JWT + grupy RBAC"]
-    EntraID --> WebApp["Azure App Service<br/>Next.js 15 Frontend — standalone"]
-    EntraID --> CodeApp["Power Apps Code App<br/>Vite + React SPA"]
+    EntraID --> WebApp["Web App ⓘ<br/>Next.js 15 — implementacja referencyjna"]
+    EntraID --> CodeApp["Code App ⓘ<br/>Vite + React SPA — implementacja referencyjna"]
+    EntraID --> MDA["Model-Driven App ⓘ<br/>Power Platform — implementacja referencyjna"]
+    EntraID -.->|OAuth 2.0 + JWT| CustomClient["Twój własny klient<br/>Canvas App · Teams Tab · Mobile<br/>Power Automate · ERP · ..."]
     
     WebApp -->|HTTPS/REST| API["Azure Functions v4<br/>Flex Consumption — Node.js 22 API"]
     CodeApp -->|Custom Connector<br/>lub HTTPS/REST| API
+    MDA -->|Custom Connector<br/>lub HTTPS/REST| API
+    CustomClient -.->|HTTPS/REST| API
 
     subgraph API_Modules["Moduły API"]
         Auth["Auth Middleware"]
@@ -59,13 +84,17 @@ graph TB
     DVServices --> Dataverse["Microsoft Dataverse<br/>CRM / DB"]
     VATClient --> WLAPI["WL VAT API<br/>KAS — Biała Lista"]
     KSeFClient --> KeyVault["Azure Key Vault<br/>Tokeny KSeF"]
+
+    style CustomClient stroke-dasharray: 5 5
 ```
 
 ---
 
 ## Projekt komponentów
 
-### 1a. Warstwa frontendowa — Web (web/)
+### 1a. Warstwa frontendowa — Web (web/) — *implementacja referencyjna*
+
+> **Uwaga:** Aplikacja web to jedna z referencyjnych implementacji klienckich. Demonstruje wzorzec integracji z API poprzez bezpośrednie wywołania HTTP z tokenem MSAL. Możesz zbudować własnego klienta zamiast korzystać z tej aplikacji — patrz [Budowanie własnego klienta](#budowanie-własnego-klienta).
 
 **Technologia**: Next.js 15 z App Router, React 19, TypeScript 5.7  
 **Wdrożenie**: Azure App Service (tryb standalone)
@@ -105,7 +134,9 @@ web/
 
 ---
 
-### 1b. Warstwa frontendowa — Code App (code-app/)
+### 1b. Warstwa frontendowa — Code App (code-app/) — *implementacja referencyjna*
+
+> **Uwaga:** Code App to druga z referencyjnych implementacji klienckich, osadzona w Power Platform. Demonstruje wzorzec dual-mode auth (MSAL standalone + Power Apps managed auth) oraz routing API przez Custom Connector. Trzecią referencyjną implementacją jest **aplikacja Model-Driven (MDA)** na Power Platform, która korzysta z danych Dataverse bezpośrednio oraz z Custom Connector do wywołań API. Możesz zbudować kolejne klienty — patrz [Budowanie własnego klienta](#budowanie-własnego-klienta).
 
 **Technologia**: Vite + React 19, TypeScript, TanStack Query  
 **Wdrożenie**: Power Platform (`pac code push`)
@@ -424,7 +455,9 @@ sequenceDiagram
 - RBAC (Role-Based Access Control)
 - Członkostwo w grupach z Entra ID
 - Szczegółowe uprawnienia per endpoint
-- Walidacja startowa: crash jeśli `SKIP_AUTH=true` w produkcji
+- Walidacja startowa: crash jeśli `SKIP_AUTH=true` w produkcji (patrz poniżej)
+
+> ⚠️ **`SKIP_AUTH=true`** (tylko dev): Pomija **cały proces autentykacji i autoryzacji** — nie odczytuje nagłówka `Authorization`, nie weryfikuje JWT, nie mapuje grup na role. Zamiast tego zwraca hardcoded użytkownika `dev-user` z rolą `Admin`. W produkcji (`NODE_ENV=production`) ustawienie tej flagi powoduje **natychmiastowy crash aplikacji przy starcie**.
 
 **Warstwa 4: Dane**
 - Wrażliwe dane (tokeny KSeF) w Azure Key Vault
@@ -490,6 +523,33 @@ graph TB
 
 ---
 
+## Budowanie własnego klienta
+
+API rozwiązania jest **w pełni samodzielne i niezależne od frontendów**. Każda aplikacja obsługująca standard OAuth 2.0 (Azure Entra ID) i protokół HTTP/REST może konsumować API.
+
+### Co jest potrzebne
+
+1. **Autentykacja** — uzyskanie tokenu JWT z Azure Entra ID (MSAL, Power Platform managed auth, lub dowolna biblioteka OIDC)
+2. **Wywołania API** — HTTP/REST z nagłówkiem `Authorization: Bearer <JWT>` na endpointy Azure Functions
+3. **Opcjonalnie: Custom Connector** — dla klientów w ekosystemie Power Platform (Canvas Apps, Power Automate, Copilot Studio)
+
+### Przykłady możliwych klientów
+
+| Typ klienta | Wzorzec integracji | Przykład zastosowania |
+|---|---|---|
+| **Power Apps Canvas App** | Custom Connector | Uproszczony UI dla konkretnego procesu |
+| **Model-Driven App (MDA)** | Dataverse natywnie + Custom Connector | Pełny widok danych z natywnym CRUD |
+| **Power Automate Flow** | Custom Connector | Automatyczna synchronizacja cykliczna |
+| **Copilot Studio** | Custom Connector / HTTP | Chatbot do odpytywania statusu faktur |
+| **Teams Tab / Bot** | MSAL + HTTP/REST | Powiadomienia o fakturach w Teams |
+| **Aplikacja mobilna** | MSAL + HTTP/REST | Zatwierdzanie faktur w terenie |
+| **Zewnętrzny system ERP** | Service-to-service token + HTTP/REST | Import faktur do systemu księgowego |
+| **Custom SPA / PWA** | MSAL + HTTP/REST | Dedykowany portal dla dostawców |
+
+> Punkt wejścia: [Dokumentacja API](./API_PL.md) zawiera pełną specyfikację endpointów, parametrów i odpowiedzi.
+
+---
+
 ## Stos technologiczny
 
 ### Backend (API)
@@ -502,7 +562,11 @@ graph TB
 - **Testowanie**: Vitest 2.1.9
 - **Linting**: ESLint 9 z regułami TypeScript
 
-### Frontend (Web)
+### Referencyjne implementacje frontendowe
+
+> Poniższe technologie dotyczą dostarczonych implementacji referencyjnych. Własny klient może używać dowolnego stosu technologicznego.
+
+**Web (Next.js)**:
 - **Framework**: Next.js 15 z App Router (tryb standalone)
 - **Runtime**: React 19
 - **Język**: TypeScript 5.7
@@ -511,6 +575,19 @@ graph TB
 - **Autentykacja**: MSAL (Microsoft Authentication Library)
 - **Stan**: React Server Components + hooki
 - **Formularze**: React Hook Form + Zod
+
+**Code App (Vite + React)**:
+- **Framework**: Vite + React 19
+- **Język**: TypeScript
+- **Stylowanie**: Tailwind CSS + shadcn/ui
+- **Cache / mutacje**: TanStack Query
+- **i18n**: react-intl (PL/EN)
+- **Wdrożenie**: Power Platform (`pac code push`)
+
+**Model-Driven App (MDA)**:
+- **Platforma**: Power Platform
+- **Widoki / formularze**: Konfiguracja deklaratywna Dataverse
+- **Integracja API**: Custom Connector (DVLP-KSeF-PP-Connector)
 
 ### Infrastruktura
 - **Compute API**: Azure Functions (Flex Consumption)

@@ -6,15 +6,39 @@ This project is an open-source integration module for the Polish National e-Invo
 
 ## Table of Contents
 
-- [Code of Conduct](#code-of-conduct)
-- [How Can I Contribute?](#how-can-i-contribute)
-- [Development Setup](#development-setup)
-- [Project Structure](#project-structure)
-- [Coding Guidelines](#coding-guidelines)
-- [Commit Messages](#commit-messages)
-- [Pull Request Process](#pull-request-process)
-- [Reporting Bugs](#reporting-bugs)
-- [Suggesting Features](#suggesting-features)
+- [Contributing to KSeF Copilot](#contributing-to-ksef-copilot)
+  - [Table of Contents](#table-of-contents)
+  - [Code of Conduct](#code-of-conduct)
+  - [How Can I Contribute?](#how-can-i-contribute)
+    - [🐛 Reporting Bugs](#-reporting-bugs)
+    - [💡 Suggesting Features](#-suggesting-features)
+    - [🔧 Contributing Code](#-contributing-code)
+    - [📝 Improving Documentation](#-improving-documentation)
+  - [Development Setup](#development-setup)
+    - [Prerequisites](#prerequisites)
+    - [Getting Started](#getting-started)
+    - [Running Tests](#running-tests)
+  - [Project Structure](#project-structure)
+  - [Coding Guidelines](#coding-guidelines)
+    - [TypeScript](#typescript)
+    - [Code Style](#code-style)
+    - [Naming Conventions](#naming-conventions)
+    - [Documentation](#documentation)
+    - [Security](#security)
+  - [Commit Messages](#commit-messages)
+    - [Types](#types)
+    - [Examples](#examples)
+  - [Pull Request Process](#pull-request-process)
+    - [PR Size Policy](#pr-size-policy)
+    - [Rebase Workflow (mandatory)](#rebase-workflow-mandatory)
+    - [Before Submitting](#before-submitting)
+    - [Submitting](#submitting)
+    - [After Submitting](#after-submitting)
+    - [Review Criteria](#review-criteria)
+    - [Automatic Rejection Criteria](#automatic-rejection-criteria)
+  - [Reporting Bugs](#reporting-bugs)
+  - [Suggesting Features](#suggesting-features)
+  - [Questions?](#questions)
 
 ## Code of Conduct
 
@@ -201,6 +225,43 @@ security(auth): implement JWT signature verification
 
 ## Pull Request Process
 
+### PR Size Policy
+
+**Pull requests should be as small as logically possible.** Each PR should represent a single, coherent change — one feature, one bug fix, one refactor. Think of it as "the smallest diff that makes sense on its own."
+
+| Guideline | Threshold |
+|---|---|
+| **Ideal PR** | 1–5 files, < 200 lines changed |
+| **Acceptable** | 6–15 files, < 500 lines changed |
+| **Needs justification** | 16+ files or 500+ lines — explain in PR description why it cannot be split |
+| **Will be rejected** | Sweeping changes across unrelated areas with no coherent narrative |
+
+**Why?** Large PRs are impossible to review meaningfully. They hide bugs, they block other contributors, and they create merge conflicts for everyone. If your change touches 20+ files, it is almost certainly decomposable into smaller PRs that can be reviewed and merged independently.
+
+> ⚠️ **AI-generated bulk PRs**: We frequently receive pull requests where an AI tool has been pointed at the repo and generated sweeping "improvements" across dozens of files (reformatting, renaming, "optimizations"). These will be **closed without review**. If you want to contribute refactoring work, discuss it in an issue first and submit focused, incremental PRs.
+
+### Rebase Workflow (mandatory)
+
+**We use a rebase workflow. Merge commits are not accepted.** Your branch must be rebased on top of the latest `main` before submitting a PR. Resolving conflicts is the contributor's responsibility — we will not merge PRs with conflicts or review PRs that are behind `main`.
+
+```bash
+# Before creating your PR (and before pushing after review changes):
+git fetch upstream
+git rebase upstream/main
+
+# If there are conflicts:
+# 1. Resolve them in your editor
+# 2. Stage the resolved files: git add <file>
+# 3. Continue rebase: git rebase --continue
+# 4. Force-push to your fork: git push --force-with-lease origin feature/my-feature
+```
+
+**Key rules:**
+- Always rebase, never merge `main` into your branch
+- Use `--force-with-lease` (not `--force`) to push rebased branches
+- If your PR goes stale (more than a few days behind `main`), rebase before requesting re-review
+- If the rebase is too complex, your PR is probably too large — consider splitting it
+
 ### Before Submitting
 
 1. **Create a feature branch** from `main`:
@@ -223,11 +284,15 @@ security(auth): implement JWT signature verification
 
 6. **Commit your changes** with meaningful messages
 
+7. **Rebase on latest `main`** (see [Rebase Workflow](#rebase-workflow-mandatory))
+
 ### Submitting
 
 1. **Push to your fork**:
    ```bash
    git push origin feature/amazing-feature
+   # or after rebase:
+   git push --force-with-lease origin feature/amazing-feature
    ```
 
 2. **Open a Pull Request** against `main`
@@ -236,11 +301,14 @@ security(auth): implement JWT signature verification
 
 4. **Link related issues** using `Fixes #123` or `Closes #123`
 
+5. **If your PR is larger than the "Acceptable" threshold**, explain in the description why it cannot be split into smaller PRs
+
 ### After Submitting
 
 - Respond to review feedback promptly
 - Make requested changes in new commits (we squash on merge)
-- Keep your branch up to date with main if needed
+- Rebase on `main` if your branch falls behind — do **not** merge `main` into your branch
+- If requested changes substantially alter the scope, consider opening a new PR
 
 ### Review Criteria
 
@@ -252,6 +320,19 @@ Your PR will be reviewed for:
 - ✅ Security considerations
 - ✅ Performance impact
 - ✅ Backwards compatibility
+- ✅ PR size and focus (single coherent change)
+- ✅ Clean rebase on latest `main`
+
+### Automatic Rejection Criteria
+
+The following PRs will be **closed without review**:
+
+- ❌ Merge conflicts with `main` (rebase first)
+- ❌ Sweeping changes across unrelated modules without prior discussion
+- ❌ Bulk AI-generated refactoring, formatting, or renaming without an approved issue
+- ❌ Missing tests for new functionality
+- ❌ Force-pushed rewrites that destroy review history without explanation
+- ❌ PRs without a linked issue (for non-trivial changes)
 
 ## Reporting Bugs
 

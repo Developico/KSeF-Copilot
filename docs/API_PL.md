@@ -35,7 +35,7 @@ Authorization: Bearer <jwt_token>
 - Weryfikowane są: issuer, audience i czas wygaśnięcia
 - Grupy bezpieczeństwa są mapowane na role aplikacji przez `GROUP_ROLE_MAPPING`
 
-**Ważne**: Ustaw `SKIP_AUTH=true` wyłącznie dla lokalnego developmentu. Aplikacja crashuje przy starcie jeśli `SKIP_AUTH=true` w produkcji (`NODE_ENV=production`).
+**Ważne**: Ustaw `SKIP_AUTH=true` wyłącznie dla lokalnego developmentu. Flaga pomija **cały pipeline autentykacji** (nie tylko walidację JWT) — nie odczytuje tokenu, nie weryfikuje podpisu, nie mapuje grup na role. Zamiast tego wstrzykuje hardcoded użytkownika `dev-user` z rolą `Admin`. Aplikacja crashuje przy starcie jeśli `SKIP_AUTH=true` w produkcji (`NODE_ENV=production`).
 
 ---
 
