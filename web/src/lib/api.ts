@@ -84,7 +84,7 @@ export interface ForecastResult {
   trend: 'up' | 'down' | 'stable'
   trendPercent: number
   confidence: number
-  method: 'moving-average' | 'linear-regression' | 'seasonal'
+  method: 'moving-average' | 'linear-regression' | 'seasonal' | 'exponential-smoothing'
   summary: {
     nextMonth: number
     totalForecast: number
@@ -148,11 +148,102 @@ export interface AnomalyResult {
 
 export type ForecastHorizon = 1 | 6 | 12
 
+// ── Algorithm / Rule types ────────────────────────────────────
+
+export type ForecastAlgorithm =
+  | 'auto'
+  | 'moving-average'
+  | 'linear-regression'
+  | 'seasonal'
+  | 'exponential-smoothing'
+
+export interface AlgorithmConfigMap {
+  'moving-average'?: { windowSize?: number }
+  'linear-regression'?: { blendRatio?: number }
+  'seasonal'?: { significanceThreshold?: number }
+  'exponential-smoothing'?: { alpha?: number; beta?: number }
+}
+
+export interface AlgorithmParameterDescriptor {
+  key: string
+  label: string
+  description: string
+  type: 'number'
+  min: number
+  max: number
+  step: number
+  default: number
+}
+
+export interface AlgorithmDescriptor {
+  id: ForecastAlgorithm
+  name: string
+  description: string
+  minDataPoints: number
+  parameters: AlgorithmParameterDescriptor[]
+}
+
+export type ForecastPreset = 'default' | 'conservative' | 'aggressive'
+
+export interface ForecastPresetDescriptor {
+  label: string
+  description: string
+  algorithm: ForecastAlgorithm
+  algorithmConfig: AlgorithmConfigMap
+}
+
+export interface ForecastAlgorithmsResponse {
+  algorithms: AlgorithmDescriptor[]
+  presets: Record<ForecastPreset, ForecastPresetDescriptor>
+}
+
+export interface AnomalyRuleConfig {
+  'amount-spike'?: { zScoreThreshold?: number }
+  'new-supplier'?: { amountThreshold?: number }
+  'duplicate-suspect'?: { amountTolerancePct?: number; dayWindow?: number }
+  'category-shift'?: { shiftThresholdPct?: number }
+  'frequency-change'?: { frequencyMultiplier?: number }
+}
+
+export interface AnomalyRuleParameterDescriptor {
+  key: string
+  label: string
+  description: string
+  type: 'number'
+  min: number
+  max: number
+  step: number
+  default: number
+}
+
+export interface AnomalyRuleDescriptor {
+  id: AnomalyType
+  name: string
+  description: string
+  parameters: AnomalyRuleParameterDescriptor[]
+}
+
+export type AnomalyPreset = 'default' | 'conservative' | 'aggressive'
+
+export interface AnomalyPresetDescriptor {
+  label: string
+  description: string
+  enabledRules: AnomalyType[]
+  ruleConfig: AnomalyRuleConfig
+}
+
+export interface AnomalyRulesResponse {
+  rules: AnomalyRuleDescriptor[]
+  presets: Record<AnomalyPreset, AnomalyPresetDescriptor>
+}
+
 export interface ForecastParams {
   horizon?: ForecastHorizon
   historyMonths?: number
   settingId?: string
   tenantNip?: string
+  algorithm?: ForecastAlgorithm
+  algorithmConfig?: string  // JSON-encoded AlgorithmConfigMap
 }
 
 export interface AnomalyParams {
@@ -160,6 +251,8 @@ export interface AnomalyParams {
   sensitivity?: number
   settingId?: string
   tenantNip?: string
+  enabledRules?: string   // comma-separated AnomalyType[]
+  ruleConfig?: string     // JSON-encoded AnomalyRuleConfig
 }
 
 // Invoice Types
@@ -641,6 +734,8 @@ export const api = {
       if (params?.historyMonths) searchParams.append('historyMonths', String(params.historyMonths))
       if (params?.settingId) searchParams.append('settingId', params.settingId)
       else if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
+      if (params?.algorithm) searchParams.append('algorithm', params.algorithm)
+      if (params?.algorithmConfig) searchParams.append('algorithmConfig', params.algorithmConfig)
       return apiFetch<ForecastResult>(`/api/forecast/monthly?${searchParams}`)
     },
     byMpk: (params?: ForecastParams) => {
@@ -649,6 +744,8 @@ export const api = {
       if (params?.historyMonths) searchParams.append('historyMonths', String(params.historyMonths))
       if (params?.settingId) searchParams.append('settingId', params.settingId)
       else if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
+      if (params?.algorithm) searchParams.append('algorithm', params.algorithm)
+      if (params?.algorithmConfig) searchParams.append('algorithmConfig', params.algorithmConfig)
       return apiFetch<GroupedForecastResponse>(`/api/forecast/by-mpk?${searchParams}`)
     },
     byCategory: (params?: ForecastParams) => {
@@ -657,6 +754,8 @@ export const api = {
       if (params?.historyMonths) searchParams.append('historyMonths', String(params.historyMonths))
       if (params?.settingId) searchParams.append('settingId', params.settingId)
       else if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
+      if (params?.algorithm) searchParams.append('algorithm', params.algorithm)
+      if (params?.algorithmConfig) searchParams.append('algorithmConfig', params.algorithmConfig)
       return apiFetch<GroupedForecastResponse>(`/api/forecast/by-category?${searchParams}`)
     },
     bySupplier: (params?: ForecastParams & { top?: number }) => {
@@ -665,9 +764,13 @@ export const api = {
       if (params?.historyMonths) searchParams.append('historyMonths', String(params.historyMonths))
       if (params?.settingId) searchParams.append('settingId', params.settingId)
       else if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
+      if (params?.algorithm) searchParams.append('algorithm', params.algorithm)
+      if (params?.algorithmConfig) searchParams.append('algorithmConfig', params.algorithmConfig)
       if (params?.top) searchParams.append('top', String(params.top))
       return apiFetch<GroupedForecastResponse>(`/api/forecast/by-supplier?${searchParams}`)
     },
+    algorithms: () =>
+      apiFetch<ForecastAlgorithmsResponse>('/api/forecast/algorithms'),
   },
 
   // Anomalies
@@ -678,6 +781,8 @@ export const api = {
       if (params?.sensitivity) searchParams.append('sensitivity', String(params.sensitivity))
       if (params?.settingId) searchParams.append('settingId', params.settingId)
       else if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
+      if (params?.enabledRules) searchParams.append('enabledRules', params.enabledRules)
+      if (params?.ruleConfig) searchParams.append('ruleConfig', params.ruleConfig)
       return apiFetch<AnomalyResult>(`/api/anomalies?${searchParams}`)
     },
     summary: (params?: AnomalyParams) => {
@@ -686,8 +791,12 @@ export const api = {
       if (params?.sensitivity) searchParams.append('sensitivity', String(params.sensitivity))
       if (params?.settingId) searchParams.append('settingId', params.settingId)
       else if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
+      if (params?.enabledRules) searchParams.append('enabledRules', params.enabledRules)
+      if (params?.ruleConfig) searchParams.append('ruleConfig', params.ruleConfig)
       return apiFetch<AnomalySummary>(`/api/anomalies/summary?${searchParams}`)
     },
+    rules: () =>
+      apiFetch<AnomalyRulesResponse>('/api/anomalies/rules'),
   },
 
   // KSeF Status & Session
@@ -1268,10 +1377,12 @@ export const queryKeys = {
     ['forecast', 'by-category', params] as const,
   forecastBySupplier: (params?: ForecastParams) =>
     ['forecast', 'by-supplier', params] as const,
+  forecastAlgorithms: ['forecast', 'algorithms'] as const,
   anomalies: (params?: AnomalyParams) =>
     ['anomalies', params] as const,
   anomaliesSummary: (params?: AnomalyParams) =>
     ['anomalies', 'summary', params] as const,
+  anomalyRules: ['anomalies', 'rules'] as const,
 
   // VAT White List query keys
   vatLookup: (identifier: string) => ['vat', 'lookup', identifier] as const,

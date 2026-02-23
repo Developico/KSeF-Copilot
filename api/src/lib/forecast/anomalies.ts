@@ -7,6 +7,8 @@
  * - Category spending shifts
  * - Frequency changes
  * - Duplicate suspects
+ * 
+ * All detection rules are configurable via AnomalyRuleConfig.
  */
 
 // ============================================================================
@@ -70,9 +72,156 @@ export interface InvoiceRecord {
   dueDate?: string
 }
 
+// ── Per-rule configuration ──────────────────────────────────────
+
+export interface AmountSpikeRuleConfig {
+  /** Z-score threshold (1.0–5.0, default: 2.0) */
+  zScoreThreshold?: number
+}
+
+export interface NewSupplierRuleConfig {
+  /** Minimum invoice amount (PLN) to flag a new supplier (default: 10000) */
+  amountThreshold?: number
+}
+
+export interface DuplicateSuspectRuleConfig {
+  /** Amount tolerance percentage (1–20, default: 5) */
+  amountTolerancePct?: number
+  /** Date window in days (1–14, default: 3) */
+  dayWindow?: number
+}
+
+export interface CategoryShiftRuleConfig {
+  /** Percentage above monthly average to flag (10–200, default: 50) */
+  shiftThresholdPct?: number
+}
+
+export interface FrequencyChangeRuleConfig {
+  /** Multiplier of expected frequency to trigger flag (1.5–5, default: 2) */
+  frequencyMultiplier?: number
+}
+
+export interface AnomalyRuleConfig {
+  'amount-spike'?: AmountSpikeRuleConfig
+  'new-supplier'?: NewSupplierRuleConfig
+  'duplicate-suspect'?: DuplicateSuspectRuleConfig
+  'category-shift'?: CategoryShiftRuleConfig
+  'frequency-change'?: FrequencyChangeRuleConfig
+}
+
+// ── Rule descriptor (metadata for UI) ───────────────────────────
+
+export interface AnomalyRuleDescriptor {
+  id: AnomalyType
+  name: string
+  description: string
+  parameters: AnomalyRuleParameterDescriptor[]
+}
+
+export interface AnomalyRuleParameterDescriptor {
+  key: string
+  label: string
+  description: string
+  type: 'number'
+  min: number
+  max: number
+  step: number
+  default: number
+}
+
+export const ANOMALY_RULE_DESCRIPTORS: AnomalyRuleDescriptor[] = [
+  {
+    id: 'amount-spike',
+    name: 'Amount Spike',
+    description: 'Detects invoices with amounts significantly higher than the supplier average (Z-score).',
+    parameters: [
+      { key: 'zScoreThreshold', label: 'Z-Score Threshold', description: 'Standard deviations above supplier mean', type: 'number', min: 1.0, max: 5.0, step: 0.1, default: 2.0 },
+    ],
+  },
+  {
+    id: 'new-supplier',
+    name: 'New Supplier',
+    description: 'Flags first-time invoices from previously unknown suppliers above a certain amount.',
+    parameters: [
+      { key: 'amountThreshold', label: 'Amount Threshold (PLN)', description: 'Minimum gross amount to trigger alert', type: 'number', min: 1000, max: 100000, step: 1000, default: 10000 },
+    ],
+  },
+  {
+    id: 'duplicate-suspect',
+    name: 'Duplicate Suspect',
+    description: 'Identifies potential duplicate invoices — same supplier, similar amount, close dates.',
+    parameters: [
+      { key: 'amountTolerancePct', label: 'Amount Tolerance (%)', description: 'Maximum amount difference percentage', type: 'number', min: 1, max: 20, step: 1, default: 5 },
+      { key: 'dayWindow', label: 'Day Window', description: 'Maximum days between suspected duplicates', type: 'number', min: 1, max: 14, step: 1, default: 3 },
+    ],
+  },
+  {
+    id: 'category-shift',
+    name: 'Category Shift',
+    description: 'Flags spending categories where recent total is significantly above the monthly average.',
+    parameters: [
+      { key: 'shiftThresholdPct', label: 'Shift Threshold (%)', description: 'Minimum percentage above average to flag', type: 'number', min: 10, max: 200, step: 5, default: 50 },
+    ],
+  },
+  {
+    id: 'frequency-change',
+    name: 'Frequency Change',
+    description: 'Detects suppliers sending invoices much more frequently than their historical average.',
+    parameters: [
+      { key: 'frequencyMultiplier', label: 'Frequency Multiplier', description: 'Multiplier of expected invoice frequency to trigger', type: 'number', min: 1.5, max: 5, step: 0.5, default: 2 },
+    ],
+  },
+]
+
+// ── Anomaly presets ─────────────────────────────────────────────
+
+export type AnomalyPreset = 'default' | 'conservative' | 'aggressive'
+
+export const ANOMALY_PRESETS: Record<AnomalyPreset, {
+  label: string
+  description: string
+  enabledRules: AnomalyType[]
+  ruleConfig: AnomalyRuleConfig
+}> = {
+  default: {
+    label: 'Default',
+    description: 'Balanced detection with standard thresholds',
+    enabledRules: ['amount-spike', 'new-supplier', 'duplicate-suspect', 'category-shift', 'frequency-change'],
+    ruleConfig: {},
+  },
+  conservative: {
+    label: 'Conservative',
+    description: 'Higher thresholds — only flags clear anomalies, fewer false positives',
+    enabledRules: ['amount-spike', 'new-supplier', 'duplicate-suspect'],
+    ruleConfig: {
+      'amount-spike': { zScoreThreshold: 3.0 },
+      'new-supplier': { amountThreshold: 25000 },
+      'duplicate-suspect': { amountTolerancePct: 3, dayWindow: 2 },
+    },
+  },
+  aggressive: {
+    label: 'Aggressive',
+    description: 'Lower thresholds — catches more anomalies, may include more false positives',
+    enabledRules: ['amount-spike', 'new-supplier', 'duplicate-suspect', 'category-shift', 'frequency-change'],
+    ruleConfig: {
+      'amount-spike': { zScoreThreshold: 1.5 },
+      'new-supplier': { amountThreshold: 5000 },
+      'duplicate-suspect': { amountTolerancePct: 10, dayWindow: 5 },
+      'category-shift': { shiftThresholdPct: 30 },
+      'frequency-change': { frequencyMultiplier: 1.5 },
+    },
+  },
+}
+
+// ── Extended params ─────────────────────────────────────────────
+
 export interface AnomalyParams {
   periodDays?: number               // default: 30
-  sensitivityThreshold?: number     // default: 2.0 (standard deviations)
+  sensitivityThreshold?: number     // default: 2.0 (standard deviations) — legacy compat (maps to amount-spike zScoreThreshold)
+  /** Which rules to enable. If omitted, all rules run. */
+  enabledRules?: AnomalyType[]
+  /** Per-rule parameter overrides */
+  ruleConfig?: AnomalyRuleConfig
 }
 
 // ============================================================================
@@ -84,43 +233,66 @@ export interface AnomalyParams {
  * 
  * @param recentInvoices - invoices in the analysis period
  * @param historicalInvoices - older invoices used as baseline
- * @param params - detection parameters
+ * @param params - detection parameters (enabledRules, ruleConfig, etc.)
  */
 export function detectAnomalies(
   recentInvoices: InvoiceRecord[],
   historicalInvoices: InvoiceRecord[],
   params: AnomalyParams = {}
 ): AnomalyResult {
-  const threshold = params.sensitivityThreshold ?? 2.0
+  const ruleConfig = params.ruleConfig ?? {}
+  // Legacy compat: sensitivityThreshold maps to amount-spike zScoreThreshold
+  const amountSpikeThreshold = ruleConfig['amount-spike']?.zScoreThreshold
+    ?? params.sensitivityThreshold
+    ?? 2.0
+  const enabledRules = new Set<AnomalyType>(
+    params.enabledRules ?? ['amount-spike', 'new-supplier', 'duplicate-suspect', 'category-shift', 'frequency-change']
+  )
+
   const anomalies: Anomaly[] = []
 
   // Build historical baselines
   const supplierBaseline = buildSupplierBaseline(historicalInvoices)
-  const mpkBaseline = buildMpkMonthlyBaseline(historicalInvoices)
   const categoryBaseline = buildCategoryMonthlyBaseline(historicalInvoices)
+
+  // Rule configs (with defaults)
+  const newSupplierCfg = ruleConfig['new-supplier'] ?? {}
+  const dupCfg = ruleConfig['duplicate-suspect'] ?? {}
+  const catCfg = ruleConfig['category-shift'] ?? {}
+  const freqCfg = ruleConfig['frequency-change'] ?? {}
 
   // Run detection rules
   for (const invoice of recentInvoices) {
     // Rule 1: Amount spike vs supplier average
-    const amountAnomaly = detectAmountSpike(invoice, supplierBaseline, threshold)
-    if (amountAnomaly) anomalies.push(amountAnomaly)
+    if (enabledRules.has('amount-spike')) {
+      const amountAnomaly = detectAmountSpike(invoice, supplierBaseline, amountSpikeThreshold)
+      if (amountAnomaly) anomalies.push(amountAnomaly)
+    }
 
     // Rule 2: New high-value supplier
-    const newSupplierAnomaly = detectNewSupplier(invoice, supplierBaseline)
-    if (newSupplierAnomaly) anomalies.push(newSupplierAnomaly)
+    if (enabledRules.has('new-supplier')) {
+      const newSupplierAnomaly = detectNewSupplier(invoice, supplierBaseline, newSupplierCfg.amountThreshold)
+      if (newSupplierAnomaly) anomalies.push(newSupplierAnomaly)
+    }
 
     // Rule 3: Duplicate suspect
-    const duplicates = detectDuplicateSuspect(invoice, recentInvoices)
-    anomalies.push(...duplicates)
+    if (enabledRules.has('duplicate-suspect')) {
+      const duplicates = detectDuplicateSuspect(invoice, recentInvoices, dupCfg.amountTolerancePct, dupCfg.dayWindow)
+      anomalies.push(...duplicates)
+    }
   }
 
   // Rule 4: Category spending shift (aggregate level)
-  const categoryShifts = detectCategoryShifts(recentInvoices, categoryBaseline)
-  anomalies.push(...categoryShifts)
+  if (enabledRules.has('category-shift')) {
+    const categoryShifts = detectCategoryShifts(recentInvoices, categoryBaseline, catCfg.shiftThresholdPct)
+    anomalies.push(...categoryShifts)
+  }
 
   // Rule 5: Supplier frequency change
-  const frequencyChanges = detectFrequencyChanges(recentInvoices, supplierBaseline)
-  anomalies.push(...frequencyChanges)
+  if (enabledRules.has('frequency-change')) {
+    const frequencyChanges = detectFrequencyChanges(recentInvoices, supplierBaseline, freqCfg.frequencyMultiplier)
+    anomalies.push(...frequencyChanges)
+  }
 
   // Deduplicate (same invoice can't have same anomaly type twice)
   const unique = deduplicateAnomalies(anomalies)
@@ -143,6 +315,16 @@ export function detectAnomalies(
       to: dates[dates.length - 1] || '',
     },
   }
+}
+
+/** Return available anomaly rule descriptors (for metadata endpoint) */
+export function getAnomalyRuleDescriptors(): AnomalyRuleDescriptor[] {
+  return ANOMALY_RULE_DESCRIPTORS
+}
+
+/** Return available anomaly presets */
+export function getAnomalyPresets(): Record<AnomalyPreset, { label: string; description: string; enabledRules: AnomalyType[]; ruleConfig: AnomalyRuleConfig }> {
+  return ANOMALY_PRESETS
 }
 
 // ============================================================================
@@ -272,12 +454,12 @@ function detectAmountSpike(
 
 function detectNewSupplier(
   invoice: InvoiceRecord,
-  supplierBaseline: Map<string, SupplierStats>
+  supplierBaseline: Map<string, SupplierStats>,
+  amountThreshold = 10000
 ): Anomaly | null {
   if (supplierBaseline.has(invoice.supplierNip)) return null
 
-  // Only flag if amount is significant (> 10,000 PLN)
-  const HIGH_VALUE_THRESHOLD = 10000
+  const HIGH_VALUE_THRESHOLD = Math.max(1000, amountThreshold)
   if (invoice.grossAmount < HIGH_VALUE_THRESHOLD) return null
 
   const score = Math.min(100, Math.round((invoice.grossAmount / HIGH_VALUE_THRESHOLD) * 20))
@@ -306,23 +488,27 @@ function detectNewSupplier(
 
 function detectDuplicateSuspect(
   invoice: InvoiceRecord,
-  allRecent: InvoiceRecord[]
+  allRecent: InvoiceRecord[],
+  amountTolerancePct = 5,
+  dayWindow = 3
 ): Anomaly[] {
   const anomalies: Anomaly[] = []
+  const tolerancePct = Math.max(1, Math.min(20, amountTolerancePct))
+  const maxDays = Math.max(1, Math.min(14, dayWindow))
 
   for (const other of allRecent) {
     if (other.id === invoice.id) continue
     if (other.id > invoice.id) continue // avoid duplicate pairs
 
-    // Same supplier + similar amount (±5%) + close dates (±3 days)
+    // Same supplier + similar amount + close dates
     if (other.supplierNip !== invoice.supplierNip) continue
 
     const amountDiff = Math.abs(other.grossAmount - invoice.grossAmount)
     const amountPct = (amountDiff / Math.max(invoice.grossAmount, 1)) * 100
-    if (amountPct > 5) continue
+    if (amountPct > tolerancePct) continue
 
     const daysDiff = Math.abs(dateDiffDays(invoice.invoiceDate, other.invoiceDate))
-    if (daysDiff > 3) continue
+    if (daysDiff > maxDays) continue
 
     anomalies.push({
       id: `dup-${invoice.id}-${other.id}`,
@@ -351,9 +537,11 @@ function detectDuplicateSuspect(
 
 function detectCategoryShifts(
   recentInvoices: InvoiceRecord[],
-  categoryBaseline: Map<string, MonthlyBaseline>
+  categoryBaseline: Map<string, MonthlyBaseline>,
+  shiftThresholdPct = 50
 ): Anomaly[] {
   const anomalies: Anomaly[] = []
+  const threshold = Math.max(10, Math.min(200, shiftThresholdPct))
 
   // Aggregate recent by category
   const recentByCategory = new Map<string, number>()
@@ -367,7 +555,7 @@ function detectCategoryShifts(
     if (!baseline || baseline.avgMonthly === 0) continue
 
     const deviationPct = ((recentTotal - baseline.avgMonthly) / baseline.avgMonthly) * 100
-    if (deviationPct < 50) continue // Only flag 50%+ increases
+    if (deviationPct < threshold) continue
 
     const score = Math.min(100, Math.round(deviationPct / 3))
     // Use the highest-value invoice from this category as representative
@@ -403,9 +591,11 @@ function detectCategoryShifts(
 
 function detectFrequencyChanges(
   recentInvoices: InvoiceRecord[],
-  supplierBaseline: Map<string, SupplierStats>
+  supplierBaseline: Map<string, SupplierStats>,
+  frequencyMultiplier = 2
 ): Anomaly[] {
   const anomalies: Anomaly[] = []
+  const multiplier = Math.max(1.5, Math.min(5, frequencyMultiplier))
 
   // Count recent invoices per supplier
   const recentCounts = new Map<string, InvoiceRecord[]>()
@@ -422,8 +612,8 @@ function detectFrequencyChanges(
     const recentCount = invoices.length
     const expectedPerMonth = stats.avgPerMonth
 
-    // Flag if 2x+ the expected frequency
-    if (recentCount < expectedPerMonth * 2) continue
+    // Flag if frequency exceeds multiplier × expected
+    if (recentCount < expectedPerMonth * multiplier) continue
 
     const deviationPct = ((recentCount - expectedPerMonth) / expectedPerMonth) * 100
     const score = Math.min(100, Math.round(deviationPct / 3))

@@ -35,7 +35,14 @@ import {
   ShieldAlert,
   ArrowUpRight,
   ArrowDownRight,
+  Settings2,
+  GitCompareArrows,
 } from 'lucide-react'
+import { ForecastSettings, DEFAULT_FORECAST_SETTINGS } from '@/components/forecast/forecast-settings'
+import type { ForecastSettingsState } from '@/components/forecast/forecast-settings'
+import { AnomalySettings, DEFAULT_ANOMALY_SETTINGS } from '@/components/forecast/anomaly-settings'
+import type { AnomalySettingsState } from '@/components/forecast/anomaly-settings'
+import { ForecastComparison } from '@/components/forecast/forecast-comparison'
 import {
   AreaChart,
   Area,
@@ -610,7 +617,20 @@ export function ForecastContent() {
   const [horizon, setHorizon] = useState<ForecastHorizon>(6)
   const [activeTab, setActiveTab] = useState('overview')
 
-  const forecastParams = { horizon }
+  // Settings state
+  const [forecastSettingsOpen, setForecastSettingsOpen] = useState(false)
+  const [anomalySettingsOpen, setAnomalySettingsOpen] = useState(false)
+  const [forecastSettings, setForecastSettings] = useState<ForecastSettingsState>(DEFAULT_FORECAST_SETTINGS)
+  const [anomalySettings, setAnomalySettings] = useState<AnomalySettingsState>(DEFAULT_ANOMALY_SETTINGS)
+
+  // Build params with algorithm from settings
+  const forecastParams = useMemo(() => ({
+    horizon,
+    ...(forecastSettings.algorithm !== 'auto' && { algorithm: forecastSettings.algorithm }),
+    ...(Object.keys(forecastSettings.algorithmConfig).length > 0 && {
+      algorithmConfig: JSON.stringify(forecastSettings.algorithmConfig),
+    }),
+  }), [horizon, forecastSettings])
 
   const monthlyQuery = useContextForecastMonthly(forecastParams)
   const mpkQuery = useContextForecastByMpk(forecastParams)
@@ -629,7 +649,7 @@ export function ForecastContent() {
           <p className="text-sm md:text-base text-muted-foreground">{t('subtitle')}</p>
         </div>
 
-        {/* Horizon selector */}
+        {/* Horizon selector + settings */}
         <div className="flex items-center gap-2">
           <Select
             value={String(horizon)}
@@ -646,6 +666,24 @@ export function ForecastContent() {
               ))}
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setForecastSettingsOpen(true)}
+            title={t('forecastSettingsBtn')}
+          >
+            <Settings2 className="h-4 w-4" />
+          </Button>
+          {activeTab === 'anomalies' && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setAnomalySettingsOpen(true)}
+              title={t('anomalySettingsBtn')}
+            >
+              <AlertTriangle className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -682,6 +720,10 @@ export function ForecastContent() {
           <TabsTrigger value="anomalies">
             <AlertTriangle className="mr-2 h-4 w-4" />
             {t('tabAnomalies')}
+          </TabsTrigger>
+          <TabsTrigger value="comparison">
+            <GitCompareArrows className="mr-2 h-4 w-4" />
+            {t('tabComparison')}
           </TabsTrigger>
         </TabsList>
 
@@ -733,7 +775,26 @@ export function ForecastContent() {
         <TabsContent value="anomalies" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
           <AnomalySection locale={locale} t={t} />
         </TabsContent>
+
+        {/* A/B Comparison */}
+        <TabsContent value="comparison" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
+          <ForecastComparison horizon={horizon} />
+        </TabsContent>
       </Tabs>
+
+      {/* Settings side panels */}
+      <ForecastSettings
+        open={forecastSettingsOpen}
+        onOpenChange={setForecastSettingsOpen}
+        value={forecastSettings}
+        onChange={setForecastSettings}
+      />
+      <AnomalySettings
+        open={anomalySettingsOpen}
+        onOpenChange={setAnomalySettingsOpen}
+        value={anomalySettings}
+        onChange={setAnomalySettings}
+      />
     </div>
   )
 }

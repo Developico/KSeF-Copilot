@@ -6,6 +6,26 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.7.5] - 2026-02-23
+
+### 🐛 Poprawki — Moduł prognozowania
+
+- **Naprawione klucze presetów i18n** — zmiana kluczy `strict`/`relaxed` na `conservative`/`aggressive` w pl.json i en.json (zgodność z kodem backendu)
+- **Naprawiony licznik aktywnych reguł** — zmienna formatowania `enabledCount` poprawiona z `enabled` na `count` w panelu ustawień anomalii
+- **Naprawiony scroll panelu anomalii** — dodanie flex/overflow do SheetContent i naprawienie wewnętrznego wrappera w komponencie Sheet (Radix Dialog)
+- **Naprawione ostrzeżenia Recharts** — dodanie `initialDimension={{ width: 1, height: 1 }}` do `ResponsiveContainer` w forecast-comparison i dashboard-content (eliminacja `width(-1) height(-1)`)
+- **Route Handlers z fallbackiem** — nowe Next.js Route Handlers dla `/api/forecast/algorithms` i `/api/anomalies/rules` z proxy do Azure Functions i automatycznym fallbackiem do lokalnych metadanych (eliminacja błędów 404 w konsoli)
+
+### 📚 Dokumentacja algorytmów i anomalii
+
+- **Nowy dokument PL** — `docs/pl/PROGNOZOWANIE_I_ANOMALIE.md` — kompletna dokumentacja 5 algorytmów prognozowania (wzory matematyczne, parametry, presety) i 5 reguł anomalii (logika detekcji, scoring, progi) z diagramami Mermaid
+- **Nowy dokument EN** — `docs/en/FORECASTING_AND_ANOMALIES.md` — angielska wersja powyższego
+- **Rozszerzenie API.md** — dodanie sekcji Prognoza wydatków (5 endpointów) i Wykrywanie anomalii (3 endpointy) do dokumentacji API w PL i EN
+- **Rozszerzenie ARCHITEKTURA.md** — nowy diagram sekwencji przepływu danych prognozowania i anomalii w sekcji Data Flows (PL i EN)
+- **Aktualizacja nawigacji** — linki do nowych dokumentów w `docs/README.md`
+
+---
+
 ## [0.7.4] - 2026-02-22
 
 ### ♻️ Uspójnienie ról i branding

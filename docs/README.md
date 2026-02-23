@@ -36,6 +36,7 @@ Zalecana ścieżka czytania:
 |----------|------|
 | [Architektura](./pl/ARCHITEKTURA.md) | Architektura systemu, wzorce projektowe, stos technologiczny, przepływy danych |
 | [Dokumentacja API (PL)](./pl/API.md) | Pełna dokumentacja REST API — endpointy, autentykacja, błędy, limity |
+| [Prognozowanie i anomalie](./pl/PROGNOZOWANIE_I_ANOMALIE.md) | Algorytmy prognozowania, reguły anomalii, parametry, presety |
 | [Schemat Dataverse](./pl/DATAVERSE_SCHEMAT.md) | Model danych Dataverse — tabele, relacje, OptionSets, indeksy |
 
 ### Materiały referencyjne
@@ -55,6 +56,7 @@ Zalecana ścieżka czytania:
 |----------|------|
 | [Architecture (EN)](./en/ARCHITECTURE.md) | System architecture — English version |
 | [API Reference (EN)](./en/API.md) | REST API documentation — English version |
+| [Forecasting & Anomalies (EN)](./en/FORECASTING_AND_ANOMALIES.md) | Forecasting algorithms, anomaly rules, parameters, presets |
 | [Dataverse Schema (EN)](./en/DATAVERSE_SCHEMA.md) | Dataverse schema & entity definitions — English version |
 | [Environment Variables (EN)](./en/ENVIRONMENT_VARIABLES.md) | All env vars (API + Web) — English version |
 | [Troubleshooting (EN)](./en/TROUBLESHOOTING.md) | Troubleshooting guide — English version |

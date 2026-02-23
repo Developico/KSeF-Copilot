@@ -20,8 +20,12 @@ import { getMpkKey } from '../lib/dataverse/entities'
 import { escapeOData } from '../lib/dataverse/odata-utils'
 import {
   detectAnomalies,
+  getAnomalyRuleDescriptors,
+  getAnomalyPresets,
   type InvoiceRecord,
   type AnomalyResult,
+  type AnomalyType,
+  type AnomalyRuleConfig,
 } from '../lib/forecast/anomalies'
 
 // ============================================================================
@@ -34,7 +38,25 @@ function parseAnomalyParams(url: URL) {
   const settingId = url.searchParams.get('settingId') || undefined
   const tenantNip = url.searchParams.get('tenantNip') || undefined
 
-  return { periodDays, sensitivity, settingId, tenantNip }
+  // Enabled rules
+  const enabledRulesRaw = url.searchParams.get('enabledRules')
+  const allRules: AnomalyType[] = ['amount-spike', 'new-supplier', 'duplicate-suspect', 'category-shift', 'frequency-change']
+  let enabledRules: AnomalyType[] | undefined
+  if (enabledRulesRaw) {
+    const parsed = enabledRulesRaw.split(',').filter((r) => allRules.includes(r as AnomalyType)) as AnomalyType[]
+    if (parsed.length > 0) enabledRules = parsed
+  }
+
+  // Per-rule config (JSON)
+  let ruleConfig: AnomalyRuleConfig | undefined
+  const ruleConfigRaw = url.searchParams.get('ruleConfig')
+  if (ruleConfigRaw) {
+    try {
+      ruleConfig = JSON.parse(ruleConfigRaw) as AnomalyRuleConfig
+    } catch { /* ignore invalid JSON */ }
+  }
+
+  return { periodDays, sensitivity, settingId, tenantNip, enabledRules, ruleConfig }
 }
 
 function buildDateFilter(field: string, fromDate: string, toDate?: string): string[] {
@@ -105,7 +127,7 @@ async function anomaliesListHandler(
     if (!roleCheck.success) return { status: 403, jsonBody: { error: 'Forbidden' } }
 
     const url = new URL(request.url)
-    const { periodDays, sensitivity, settingId, tenantNip } = parseAnomalyParams(url)
+    const { periodDays, sensitivity, settingId, tenantNip, enabledRules, ruleConfig } = parseAnomalyParams(url)
 
     // Define time windows
     const today = new Date()
@@ -131,6 +153,8 @@ async function anomaliesListHandler(
     const result = detectAnomalies(recentInvoices, historicalInvoices, {
       periodDays,
       sensitivityThreshold: sensitivity,
+      enabledRules,
+      ruleConfig,
     })
 
     return { status: 200, jsonBody: result }
@@ -154,7 +178,7 @@ async function anomaliesSummaryHandler(
     if (!roleCheck.success) return { status: 403, jsonBody: { error: 'Forbidden' } }
 
     const url = new URL(request.url)
-    const { periodDays, sensitivity, settingId, tenantNip } = parseAnomalyParams(url)
+    const { periodDays, sensitivity, settingId, tenantNip, enabledRules, ruleConfig } = parseAnomalyParams(url)
 
     const today = new Date()
     const recentFrom = new Date(today)
@@ -177,6 +201,8 @@ async function anomaliesSummaryHandler(
     const result = detectAnomalies(recentInvoices, historicalInvoices, {
       periodDays,
       sensitivityThreshold: sensitivity,
+      enabledRules,
+      ruleConfig,
     })
 
     return { status: 200, jsonBody: result.summary }
@@ -202,4 +228,41 @@ app.http('anomalies-summary', {
   authLevel: 'anonymous',
   route: 'anomalies/summary',
   handler: anomaliesSummaryHandler,
+})
+
+// ============================================================================
+// Metadata Endpoint
+// ============================================================================
+
+/**
+ * GET /api/anomalies/rules — list available anomaly detection rules with parameter metadata
+ */
+async function anomalyRulesHandler(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  try {
+    const authResult = await verifyAuth(request)
+    if (!authResult.success) return { status: 401, jsonBody: { error: 'Unauthorized' } }
+    const roleCheck = requireRole(authResult.user, 'Reader')
+    if (!roleCheck.success) return { status: 403, jsonBody: { error: 'Forbidden' } }
+
+    return {
+      status: 200,
+      jsonBody: {
+        rules: getAnomalyRuleDescriptors(),
+        presets: getAnomalyPresets(),
+      },
+    }
+  } catch (error) {
+    context.error('Anomaly rules metadata failed:', error)
+    return { status: 500, jsonBody: { error: 'Failed to get anomaly rules metadata' } }
+  }
+}
+
+app.http('anomalies-rules', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  route: 'anomalies/rules',
+  handler: anomalyRulesHandler,
 })

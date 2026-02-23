@@ -14,14 +14,17 @@ import {
 } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
+import { FALLBACK_FORECAST_META, FALLBACK_ANOMALY_META } from '@/lib/forecast-metadata'
 import type {
   DashboardStats,
   ForecastResult,
   ForecastParams,
+  ForecastAlgorithmsResponse,
   GroupedForecastResponse,
   AnomalyResult,
   AnomalySummary,
   AnomalyParams,
+  AnomalyRulesResponse,
   Invoice,
   InvoiceListResponse,
   InvoiceListParams,
@@ -179,6 +182,44 @@ export function useAnomaliesSummary(
   return useQuery({
     queryKey: queryKeys.anomaliesSummary(params),
     queryFn: () => api.anomalies.summary(params),
+    ...options,
+  })
+}
+
+export function useForecastAlgorithms(
+  options?: Partial<UseQueryOptions<ForecastAlgorithmsResponse>>
+) {
+  return useQuery({
+    queryKey: queryKeys.forecastAlgorithms,
+    queryFn: async () => {
+      try {
+        return await api.forecast.algorithms()
+      } catch {
+        // Fallback when the metadata endpoint is not yet deployed
+        return FALLBACK_FORECAST_META
+      }
+    },
+    staleTime: Infinity,
+    placeholderData: FALLBACK_FORECAST_META,
+    ...options,
+  })
+}
+
+export function useAnomalyRules(
+  options?: Partial<UseQueryOptions<AnomalyRulesResponse>>
+) {
+  return useQuery({
+    queryKey: queryKeys.anomalyRules,
+    queryFn: async () => {
+      try {
+        return await api.anomalies.rules()
+      } catch {
+        // Fallback when the metadata endpoint is not yet deployed
+        return FALLBACK_ANOMALY_META
+      }
+    },
+    staleTime: Infinity,
+    placeholderData: FALLBACK_ANOMALY_META,
     ...options,
   })
 }

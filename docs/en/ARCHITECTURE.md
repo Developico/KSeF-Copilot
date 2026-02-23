@@ -635,6 +635,67 @@ sequenceDiagram
 
 </details>
 
+### Forecasting and Anomaly Detection
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant FE as Frontend (Web / Code App)
+    participant API as Azure Functions
+    participant DV as Dataverse
+
+    U->>FE: Open "Forecast" tab
+    FE->>API: GET /api/forecast/algorithms
+    API-->>FE: Algorithm list + parameters
+
+    U->>FE: Select algorithm / preset
+    FE->>API: GET /api/forecast/monthly?algorithm=seasonal&horizon=6
+    API->>DV: Fetch invoices (historyMonths=24)
+    API->>API: Monthly aggregation + fill gaps
+    API->>API: Auto-select → strategySeasonal
+    API->>API: Compute forecast + CI (80%)
+    API-->>FE: ForecastResult (points, trend, summary)
+    FE->>FE: Render Recharts chart
+
+    U->>FE: Open anomaly panel
+    FE->>API: GET /api/anomalies?periodDays=30&sensitivity=2
+    API->>DV: Fetch invoices (recent + historical)
+    API->>API: Build baseline (suppliers, categories)
+    API->>API: Execute 5 detection rules
+    API->>API: Scoring + sort by severity
+    API-->>FE: AnomalyResult (anomalies[], summary)
+    FE->>FE: Render anomaly list
+```
+
+<details>
+<summary>Text fallback (click to expand)</summary>
+
+```
+1. User opens "Forecast" tab
+   ↓
+2. Frontend fetches algorithm list from /api/forecast/algorithms
+   ↓
+3. User selects algorithm/preset, frontend calls /api/forecast/monthly
+   ↓
+4. API fetches invoices from Dataverse (24 months default)
+   ↓
+5. API aggregates monthly, fills gaps, runs selected strategy
+   ↓
+6. API returns ForecastResult with points, CI, trend, summary
+   ↓
+7. Frontend renders chart (Recharts)
+   ↓
+8. For anomalies: API fetches recent + historical invoices
+   ↓
+9. API builds supplier/category baselines
+   ↓
+10. API runs 5 detection rules, scores & sorts results
+   ↓
+11. Frontend renders anomaly list with severity indicators
+```
+
+</details>
+
 ---
 
 ## Security Architecture

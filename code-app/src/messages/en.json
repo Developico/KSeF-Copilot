@@ -449,7 +449,96 @@
     "predicted": "Predicted",
     "lower": "Lower bound",
     "upper": "Upper bound",
-    "comparison": "Comparison"
+    "comparison": "Comparison",
+    "tabComparison": "A/B Compare"
+  },
+  "forecastComparison": {
+    "title": "Algorithm Comparison",
+    "description": "Compare two forecast algorithms side-by-side",
+    "algorithmA": "Algorithm A",
+    "algorithmB": "Algorithm B",
+    "historical": "Historical"
+  },
+  "forecastSettings": {
+    "title": "Forecast Settings",
+    "description": "Configure the forecast algorithm and its parameters",
+    "preset": "Preset",
+    "preset.default": "Default",
+    "preset.conservative": "Conservative",
+    "preset.aggressive": "Aggressive",
+    "preset.custom": "Custom",
+    "algorithm": "Algorithm",
+    "parameters": "Parameters",
+    "autoDescription": "Auto mode selects the best algorithm based on data characteristics (seasonality, data volume).",
+    "reset": "Reset to defaults",
+    "algo": {
+      "auto": { "name": "Automatic", "description": "Automatically selects the best algorithm based on data availability" },
+      "moving-average": {
+        "name": "Weighted Moving Average",
+        "description": "Weighted moving average — more weight on recent months. Best for stable, low-variance data.",
+        "params": { "windowSize": { "label": "Window Size", "description": "Number of recent months to consider" } }
+      },
+      "linear-regression": {
+        "name": "Linear Regression",
+        "description": "OLS linear regression blended with moving average. Good for data with a clear linear trend.",
+        "params": { "blendRatio": { "label": "Blend Ratio", "description": "Weight of regression vs moving average (1.0 = pure regression)" } }
+      },
+      "seasonal": {
+        "name": "Seasonal Decomposition",
+        "description": "Linear regression on deseasonalized data with seasonal index re-application. Requires 12+ months.",
+        "params": { "significanceThreshold": { "label": "Significance Threshold", "description": "Minimum variance of seasonal indices to consider pattern significant" } }
+      },
+      "exponential-smoothing": {
+        "name": "Exponential Smoothing",
+        "description": "Simple or Holt's double exponential smoothing. Responsive to recent changes.",
+        "params": {
+          "alpha": { "label": "Alpha (level)", "description": "Level smoothing factor — higher = more reactive to recent data" },
+          "beta": { "label": "Beta (trend)", "description": "Trend smoothing factor — 0 disables trend component (simple ES)" }
+        }
+      }
+    }
+  },
+  "anomalySettings": {
+    "title": "Anomaly Settings",
+    "description": "Configure anomaly detection rules and their sensitivity",
+    "preset": "Preset",
+    "preset.default": "Default",
+    "preset.conservative": "Conservative",
+    "preset.aggressive": "Aggressive",
+    "preset.custom": "Custom",
+    "rules": "Detection Rules",
+    "enabledCount": "{count} of {total} rules enabled",
+    "reset": "Reset to defaults",
+    "rule": {
+      "amount-spike": {
+        "name": "Amount Spike",
+        "description": "Detects invoices with amounts significantly higher than the supplier average (Z-score).",
+        "params": { "zScoreThreshold": { "label": "Z-Score Threshold", "description": "Standard deviations above supplier mean" } }
+      },
+      "new-supplier": {
+        "name": "New Supplier",
+        "description": "Flags first-time invoices from previously unknown suppliers above a certain amount.",
+        "params": { "amountThreshold": { "label": "Amount Threshold (PLN)", "description": "Minimum gross amount to trigger alert" } }
+      },
+      "duplicate-suspect": {
+        "name": "Duplicate Suspect",
+        "description": "Identifies potential duplicate invoices — same supplier, similar amount, close dates.",
+        "params": {
+          "amountTolerancePct": { "label": "Amount Tolerance (%)", "description": "Maximum amount difference percentage" },
+          "dayWindow": { "label": "Day Window", "description": "Maximum days between suspected duplicates" }
+        }
+      },
+      "category-shift": {
+        "name": "Category Shift",
+        "description": "Flags spending categories where recent total is significantly above the monthly average.",
+        "params": { "shiftThresholdPct": { "label": "Shift Threshold (%)", "description": "Minimum percentage above average to flag" } }
+      },
+      "frequency-change": {
+        "name": "Frequency Change",
+        "description": "Detects suppliers sending invoices much more frequently than their historical average.",
+        "params": { "frequencyMultiplier": { "label": "Frequency Multiplier", "description": "Multiplier of expected invoice frequency to trigger" } }
+      }
+    }
   },
   "auth": {
     "signIn": "Sign in",

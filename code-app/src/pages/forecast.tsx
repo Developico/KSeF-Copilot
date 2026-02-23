@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
 import {
   AreaChart,
   Area,
@@ -28,6 +29,8 @@ import {
   Users,
   AlertTriangle,
   ShieldAlert,
+  Settings2,
+  GitCompareArrows,
 } from 'lucide-react'
 import {
   useForecastMonthly,
@@ -43,6 +46,21 @@ import {
   AnimatedCardGrid,
   AnimatedCardWrapper,
 } from '@/components/dashboard/animated-kpi-card'
+import {
+  ForecastSettings,
+  DEFAULT_FORECAST_SETTINGS,
+  type ForecastSettingsState,
+} from '@/components/forecast/forecast-settings'
+import {
+  AnomalySettings,
+  DEFAULT_ANOMALY_SETTINGS,
+  type AnomalySettingsState,
+} from '@/components/forecast/anomaly-settings'
+import { ForecastComparison } from '@/components/forecast/forecast-comparison'
+import {
+  useForecastSettingsPersist,
+  useAnomalySettingsPersist,
+} from '@/hooks/use-forecast-settings-persist'
 import type { ForecastHorizon, ForecastResult } from '@/lib/types'
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -183,18 +201,45 @@ export function ForecastPage() {
   const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
 
   const [horizon, setHorizon] = useState<ForecastHorizon>(6)
+  const [forecastSettings, setForecastSettings] = useForecastSettingsPersist()
+  const [anomalySettings, setAnomalySettings] = useAnomalySettingsPersist()
+  const [forecastSettingsOpen, setForecastSettingsOpen] = useState(false)
+  const [anomalySettingsOpen, setAnomalySettingsOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('overview')
 
   const enabled = !companyLoading && Boolean(selectedCompany?.id)
-  const queryParams = { horizon, settingId: selectedCompany?.id }
+
+  // Build query params including algorithm settings
+  const queryParams = useMemo(() => {
+    const base: Record<string, unknown> = { horizon, settingId: selectedCompany?.id }
+    if (forecastSettings.algorithm !== 'auto') {
+      base.algorithm = forecastSettings.algorithm
+    }
+    const cfgKeys = Object.keys(forecastSettings.algorithmConfig)
+    if (cfgKeys.length > 0) {
+      base.algorithmConfig = JSON.stringify(forecastSettings.algorithmConfig)
+    }
+    return base as import('@/lib/types').ForecastParams
+  }, [horizon, selectedCompany?.id, forecastSettings])
+
+  // Build anomaly params including rule settings
+  const anomalyQueryParams = useMemo(() => {
+    const base: Record<string, unknown> = { settingId: selectedCompany?.id }
+    if (anomalySettings.enabledRules.size > 0) {
+      base.enabledRules = Array.from(anomalySettings.enabledRules).join(',')
+    }
+    const ruleKeys = Object.keys(anomalySettings.ruleConfig)
+    if (ruleKeys.length > 0) {
+      base.ruleConfig = JSON.stringify(anomalySettings.ruleConfig)
+    }
+    return base as import('@/lib/types').AnomalyParams
+  }, [selectedCompany?.id, anomalySettings])
 
   const { data: forecast, isLoading, error } = useForecastMonthly(queryParams, { enabled })
   const { data: byMpk } = useForecastByMpk(queryParams, { enabled })
   const { data: byCategory } = useForecastByCategory(queryParams, { enabled })
   const { data: bySupplier } = useForecastBySupplier(queryParams, { enabled })
-  const { data: anomalyData } = useAnomalies(
-    { settingId: selectedCompany?.id },
-    { enabled },
-  )
+  const { data: anomalyData } = useAnomalies(anomalyQueryParams, { enabled })
 
   // Build combined chart data: historical + forecast + CI band
   const chartData = useMemo(() => {
@@ -304,20 +349,30 @@ export function ForecastPage() {
             {intl.formatMessage({ id: 'forecast.subtitle' })}
           </p>
         </div>
-        <div className="flex gap-1 rounded-md border p-0.5">
-          {([1, 6, 12] as ForecastHorizon[]).map((h) => (
-            <button
-              key={h}
-              onClick={() => setHorizon(h)}
-              className={`rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-                horizon === h
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted'
-              }`}
-            >
-              {intl.formatMessage({ id: `forecast.horizon${h}` })}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 rounded-md border p-0.5">
+            {([1, 6, 12] as ForecastHorizon[]).map((h) => (
+              <button
+                key={h}
+                onClick={() => setHorizon(h)}
+                className={`rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+                  horizon === h
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {intl.formatMessage({ id: `forecast.horizon${h}` })}
+              </button>
+            ))}
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setForecastSettingsOpen(true)}
+            title={intl.formatMessage({ id: 'forecastSettings.title' })}
+          >
+            <Settings2 className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -367,8 +422,8 @@ export function ForecastPage() {
       </AnimatedCardGrid>
 
       {/* ── Tabs ────────────────────────────────────────────── */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="w-full justify-start">
           <TabsTrigger value="overview" className="gap-1.5">
             <Activity className="h-4 w-4" />
             {intl.formatMessage({ id: 'forecast.tabOverview' })}
@@ -394,7 +449,26 @@ export function ForecastPage() {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="comparison" className="gap-1.5">
+            <GitCompareArrows className="h-4 w-4" />
+            {intl.formatMessage({ id: 'forecast.tabComparison' })}
+          </TabsTrigger>
         </TabsList>
+
+        {/* ── Anomaly settings button (shown only on anomalies tab) ─── */}
+        {activeTab === 'anomalies' && (
+          <div className="flex items-center justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAnomalySettingsOpen(true)}
+              className="gap-1.5 text-muted-foreground"
+            >
+              <Settings2 className="h-4 w-4" />
+              {intl.formatMessage({ id: 'anomalySettings.title' })}
+            </Button>
+          </div>
+        )}
 
         {/* ── Overview tab ─────────────────────────────────── */}
         <TabsContent value="overview" className="space-y-6">
@@ -531,7 +605,7 @@ export function ForecastPage() {
           />
         </TabsContent>
 
-        {/* ── Anomalies tab ────────────────────────────────── */}
+        {/* ── Anomalies tab ──────────────────────────────── */}
         <TabsContent value="anomalies" className="space-y-4">
           {anomalyData && anomalyData.anomalies.length > 0 ? (
             <>
@@ -623,7 +697,26 @@ export function ForecastPage() {
             </Card>
           )}
         </TabsContent>
+
+        {/* ── Comparison tab ───────────────────────────────── */}
+        <TabsContent value="comparison" className="space-y-4">
+          <ForecastComparison horizon={horizon} />
+        </TabsContent>
       </Tabs>
+
+      {/* ── Settings panels ─────────────────────────────── */}
+      <ForecastSettings
+        open={forecastSettingsOpen}
+        onOpenChange={setForecastSettingsOpen}
+        value={forecastSettings}
+        onChange={setForecastSettings}
+      />
+      <AnomalySettings
+        open={anomalySettingsOpen}
+        onOpenChange={setAnomalySettingsOpen}
+        value={anomalySettings}
+        onChange={setAnomalySettings}
+      />
     </div>
   )
 }

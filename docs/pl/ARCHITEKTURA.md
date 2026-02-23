@@ -435,6 +435,38 @@ sequenceDiagram
     API-->>FE: Odpowiedź z kontekstem roli
 ```
 
+### Prognozowanie i wykrywanie anomalii
+
+```mermaid
+sequenceDiagram
+    actor U as Użytkownik
+    participant FE as Frontend (Web / Code App)
+    participant API as Azure Functions
+    participant DV as Dataverse
+
+    U->>FE: Otwarcie zakładki "Prognoza"
+    FE->>API: GET /api/forecast/algorithms
+    API-->>FE: Lista algorytmów + parametry
+
+    U->>FE: Wybór algorytmu / presetu
+    FE->>API: GET /api/forecast/monthly?algorithm=seasonal&horizon=6
+    API->>DV: Pobierz faktury (historyMonths=24)
+    API->>API: Agregacja miesięczna + uzupełnienie luk
+    API->>API: Auto-select → strategySeasonal
+    API->>API: Oblicz prognozę + CI (80%)
+    API-->>FE: ForecastResult (points, trend, summary)
+    FE->>FE: Renderowanie wykresu Recharts
+
+    U->>FE: Otwarcie panelu anomalii
+    FE->>API: GET /api/anomalies?periodDays=30&sensitivity=2
+    API->>DV: Pobierz faktury (recent + historical)
+    API->>API: Budowanie baseline (dostawcy, kategorie)
+    API->>API: Wykonanie 5 reguł detekcji
+    API->>API: Scoring + sortowanie po severity
+    API-->>FE: AnomalyResult (anomalies[], summary)
+    FE->>FE: Renderowanie listy anomalii
+```
+
 ---
 
 ## Architektura bezpieczeństwa

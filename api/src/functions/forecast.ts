@@ -23,10 +23,14 @@ import { escapeOData } from '../lib/dataverse/odata-utils'
 import {
   generateForecast,
   parseDateToMonth,
+  getAlgorithmDescriptors,
+  getForecastPresets,
   type MonthlyDataPoint,
   type ForecastParams,
   type ForecastResult,
   type GroupedForecastResult,
+  type ForecastAlgorithm,
+  type AlgorithmConfigMap,
 } from '../lib/forecast/engine'
 
 // ============================================================================
@@ -38,6 +42,8 @@ function parseForecastParams(url: URL): {
   historyMonths: number
   settingId?: string
   tenantNip?: string
+  algorithm: ForecastAlgorithm
+  algorithmConfig: AlgorithmConfigMap
 } {
   const horizonRaw = parseInt(url.searchParams.get('horizon') || '6', 10)
   const horizon = ([1, 6, 12].includes(horizonRaw) ? horizonRaw : 6) as 1 | 6 | 12
@@ -45,7 +51,23 @@ function parseForecastParams(url: URL): {
   const settingId = url.searchParams.get('settingId') || undefined
   const tenantNip = url.searchParams.get('tenantNip') || undefined
 
-  return { horizon, historyMonths, settingId, tenantNip }
+  // Algorithm selection
+  const algorithmRaw = url.searchParams.get('algorithm') || 'auto'
+  const validAlgorithms: ForecastAlgorithm[] = ['auto', 'moving-average', 'linear-regression', 'seasonal', 'exponential-smoothing']
+  const algorithm: ForecastAlgorithm = validAlgorithms.includes(algorithmRaw as ForecastAlgorithm)
+    ? (algorithmRaw as ForecastAlgorithm)
+    : 'auto'
+
+  // Per-algorithm config passed as JSON
+  let algorithmConfig: AlgorithmConfigMap = {}
+  const configRaw = url.searchParams.get('algorithmConfig')
+  if (configRaw) {
+    try {
+      algorithmConfig = JSON.parse(configRaw) as AlgorithmConfigMap
+    } catch { /* ignore invalid JSON */ }
+  }
+
+  return { horizon, historyMonths, settingId, tenantNip, algorithm, algorithmConfig }
 }
 
 async function fetchInvoicesForForecast(
@@ -172,11 +194,11 @@ async function forecastMonthlyHandler(
     if (!roleCheck.success) return { status: 403, jsonBody: { error: 'Forbidden' } }
 
     const url = new URL(request.url)
-    const { horizon, historyMonths, settingId, tenantNip } = parseForecastParams(url)
+    const { horizon, historyMonths, settingId, tenantNip, algorithm, algorithmConfig } = parseForecastParams(url)
 
     const invoices = await fetchInvoicesForForecast(historyMonths, settingId, tenantNip)
     const monthly = aggregateMonthly(invoices)
-    const result = generateForecast(monthly, { horizon })
+    const result = generateForecast(monthly, { horizon, algorithm, algorithmConfig })
 
     return { status: 200, jsonBody: result }
   } catch (error) {
@@ -199,7 +221,7 @@ async function forecastByMpkHandler(
     if (!roleCheck.success) return { status: 403, jsonBody: { error: 'Forbidden' } }
 
     const url = new URL(request.url)
-    const { horizon, historyMonths, settingId, tenantNip } = parseForecastParams(url)
+    const { horizon, historyMonths, settingId, tenantNip, algorithm, algorithmConfig } = parseForecastParams(url)
 
     const invoices = await fetchInvoicesForForecast(historyMonths, settingId, tenantNip)
     const f = InvoiceEntity.fields
@@ -207,7 +229,7 @@ async function forecastByMpkHandler(
 
     const results: GroupedForecastResult[] = []
     for (const [group, monthly] of grouped) {
-      results.push({ group, forecast: generateForecast(monthly, { horizon }) })
+      results.push({ group, forecast: generateForecast(monthly, { horizon, algorithm, algorithmConfig }) })
     }
 
     // Sort by total forecast amount desc
@@ -234,7 +256,7 @@ async function forecastByCategoryHandler(
     if (!roleCheck.success) return { status: 403, jsonBody: { error: 'Forbidden' } }
 
     const url = new URL(request.url)
-    const { horizon, historyMonths, settingId, tenantNip } = parseForecastParams(url)
+    const { horizon, historyMonths, settingId, tenantNip, algorithm, algorithmConfig } = parseForecastParams(url)
 
     const invoices = await fetchInvoicesForForecast(historyMonths, settingId, tenantNip)
     const f = InvoiceEntity.fields
@@ -242,7 +264,7 @@ async function forecastByCategoryHandler(
 
     const results: GroupedForecastResult[] = []
     for (const [group, monthly] of grouped) {
-      results.push({ group, forecast: generateForecast(monthly, { horizon }) })
+      results.push({ group, forecast: generateForecast(monthly, { horizon, algorithm, algorithmConfig }) })
     }
 
     results.sort((a, b) => b.forecast.summary.totalForecast - a.forecast.summary.totalForecast)
@@ -268,7 +290,7 @@ async function forecastBySupplierHandler(
     if (!roleCheck.success) return { status: 403, jsonBody: { error: 'Forbidden' } }
 
     const url = new URL(request.url)
-    const { horizon, historyMonths, settingId, tenantNip } = parseForecastParams(url)
+    const { horizon, historyMonths, settingId, tenantNip, algorithm, algorithmConfig } = parseForecastParams(url)
     const topN = Math.min(20, parseInt(url.searchParams.get('top') || '10', 10))
 
     const invoices = await fetchInvoicesForForecast(historyMonths, settingId, tenantNip)
@@ -298,7 +320,7 @@ async function forecastBySupplierHandler(
     const results: GroupedForecastResult[] = []
     for (const [group, monthly] of grouped) {
       if (group === '__other__') continue
-      results.push({ group, forecast: generateForecast(monthly, { horizon }) })
+      results.push({ group, forecast: generateForecast(monthly, { horizon, algorithm, algorithmConfig }) })
     }
 
     results.sort((a, b) => b.forecast.summary.totalForecast - a.forecast.summary.totalForecast)
@@ -340,4 +362,41 @@ app.http('forecast-by-supplier', {
   authLevel: 'anonymous',
   route: 'forecast/by-supplier',
   handler: forecastBySupplierHandler,
+})
+
+// ============================================================================
+// Metadata Endpoints
+// ============================================================================
+
+/**
+ * GET /api/forecast/algorithms — list available forecast algorithms with parameter metadata
+ */
+async function forecastAlgorithmsHandler(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  try {
+    const authResult = await verifyAuth(request)
+    if (!authResult.success) return { status: 401, jsonBody: { error: 'Unauthorized' } }
+    const roleCheck = requireRole(authResult.user, 'Reader')
+    if (!roleCheck.success) return { status: 403, jsonBody: { error: 'Forbidden' } }
+
+    return {
+      status: 200,
+      jsonBody: {
+        algorithms: getAlgorithmDescriptors(),
+        presets: getForecastPresets(),
+      },
+    }
+  } catch (error) {
+    context.error('Forecast algorithms metadata failed:', error)
+    return { status: 500, jsonBody: { error: 'Failed to get algorithm metadata' } }
+  }
+}
+
+app.http('forecast-algorithms', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  route: 'forecast/algorithms',
+  handler: forecastAlgorithmsHandler,
 })

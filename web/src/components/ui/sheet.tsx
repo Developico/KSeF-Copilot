@@ -70,6 +70,7 @@ function SheetContent({
         {...props}
       >
         <div className={cn(
+          "flex flex-col min-h-0 flex-1",
           side === "bottom" ? "p-4 pt-3 overflow-y-auto" : "",
         )}>
           {children}

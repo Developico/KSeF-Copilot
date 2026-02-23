@@ -6,6 +6,18 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.5.2] - 2026-02-23
+
+### 📚 Dokumentacja algorytmów i anomalii
+
+- **Nowy dokument PL** — `docs/pl/PROGNOZOWANIE_I_ANOMALIE.md` — kompletna dokumentacja 5 algorytmów prognozowania (wzory, parametry, presety, auto-select) i 5 reguł wykrywania anomalii (logika, scoring, progi) z diagramami Mermaid
+- **Nowy dokument EN** — `docs/en/FORECASTING_AND_ANOMALIES.md` — angielska wersja
+- **Rozszerzenie API.md** — sekcje Prognoza wydatków (5 endpointów) i Wykrywanie anomalii (3 endpointy) w PL i EN
+- **Rozszerzenie ARCHITEKTURA.md** — diagram sekwencji przepływu prognozowania i anomalii (PL i EN)
+- **Aktualizacja nawigacji docs** — linki do nowych dokumentów w `docs/README.md`
+
+---
+
 ## [2.5.1] - 2026-02-22
 
 ### ♻️ Uspójnienie ról i branding

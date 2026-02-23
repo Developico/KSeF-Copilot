@@ -14,6 +14,8 @@
   - [Attachments](#attachments)
   - [AI Categorization](#ai-categorization)
   - [Dashboard & Analytics](#dashboard--analytics)
+  - [Expense Forecast](#expense-forecast)
+  - [Anomaly Detection](#anomaly-detection)
   - [GUS Integration](#gus-integration)
   - [Document Processing](#document-processing)
 - [Error Handling](#error-handling)
@@ -764,6 +766,120 @@ Get dashboard statistics.
   "recentInvoices": [ ... ],
   "topSuppliers": [ ... ]
 }
+```
+
+---
+
+### Expense Forecast
+
+#### GET /api/forecast/monthly
+Returns a monthly expense forecast based on invoice history.
+
+**Auth**: User
+
+**Query Parameters**:
+- `settingId` (uuid, required): Client settings identifier
+- `tenantNip` (string, optional): Client NIP (if no settingId)
+- `horizon` (1 | 6 | 12, default 6): Number of months ahead
+- `historyMonths` (3–60, default 24): Number of months of history
+- `algorithm` (string, optional): Forced algorithm (`auto`, `moving-average`, `linear-regression`, `seasonal`, `exponential-smoothing`)
+- `algorithmConfig` (JSON, optional): Algorithm parameters
+
+**Response** (200):
+```json
+{
+  "points": [
+    { "month": "2024-03", "predicted": 12000, "lower": 10000, "upper": 14000 },
+    ...
+  ],
+  "trend": "up",
+  "summary": { "total": 72000, "avg": 12000 }
+}
+```
+
+#### GET /api/forecast/by-mpk
+Expense forecast by cost center (MPK).
+
+**Parameters**: as above + `top` (int, default 10, max 20)
+
+**Response**: array of forecasts per MPK
+
+#### GET /api/forecast/by-category
+Expense forecast by category.
+
+**Parameters**: as above + `top` (int, default 10, max 20)
+
+**Response**: array of forecasts per category
+
+#### GET /api/forecast/by-supplier
+Expense forecast by supplier.
+
+**Parameters**: as above + `top` (int, default 10, max 20)
+
+**Response**: array of forecasts per supplier
+
+#### GET /api/forecast/algorithms
+Returns a list of available forecasting algorithms and their parameters.
+
+**Response** (200):
+```json
+[
+  {
+    "id": "linear-regression",
+    "name": "Linear Regression",
+    "minDataPoints": 3,
+    "parameters": [ ... ]
+  }, ...
+]
+```
+
+---
+
+### Anomaly Detection
+
+#### GET /api/anomalies
+Detects anomalies in expenses based on rules.
+
+**Auth**: User
+
+**Query Parameters**:
+- `settingId` (uuid, required): Client settings identifier
+- `tenantNip` (string, optional): Client NIP
+- `periodDays` (7–365, default 30): Analysis period in days
+- `sensitivity` (1–5, default 2.0): Detection sensitivity
+- `enabledRules` (string, optional): List of active rules (e.g. `amount-spike,new-supplier`)
+- `ruleConfig` (JSON, optional): Rule parameter overrides
+
+**Response** (200):
+```json
+{
+  "anomalies": [
+    { "id": "a1", "type": "amount-spike", "score": 85, "severity": "critical", ... },
+    ...
+  ],
+  "summary": { "critical": 2, "high": 3, "medium": 1, "low": 0 }
+}
+```
+
+#### GET /api/anomalies/summary
+Summary of detected anomalies (counts, amounts, types).
+
+**Parameters**: as above
+
+**Response**: as above, only the `summary` field
+
+#### GET /api/anomalies/rules
+Returns a list of available anomaly detection rules and their parameters.
+
+**Response** (200):
+```json
+[
+  {
+    "id": "amount-spike",
+    "name": "Amount Spike",
+    "parameters": [ ... ]
+  }, ...
+]
 ```
 
 ---

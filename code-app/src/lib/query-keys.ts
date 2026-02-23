@@ -55,11 +55,13 @@ export const queryKeys = {
     ['forecast', 'by-category', params] as const,
   forecastBySupplier: (params?: ForecastParams) =>
     ['forecast', 'by-supplier', params] as const,
+  forecastAlgorithms: ['forecast', 'algorithms'] as const,
 
   // Anomalies
   anomalies: (params?: AnomalyParams) => ['anomalies', params] as const,
   anomaliesSummary: (params?: AnomalyParams) =>
     ['anomalies', 'summary', params] as const,
+  anomalyRules: ['anomalies', 'rules'] as const,
 
   // VAT White List
   vatLookup: (identifier: string) => ['vat', 'lookup', identifier] as const,

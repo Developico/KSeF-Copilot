@@ -12,6 +12,8 @@
   - [Załączniki](#załączniki)
   - [Kategoryzacja AI](#kategoryzacja-ai)
   - [Dashboard i analityka](#dashboard-i-analityka)
+  - [Prognoza wydatków](#prognoza-wydatków)
+  - [Wykrywanie anomalii](#wykrywanie-anomalii)
   - [Wyszukiwanie WL VAT (Biała Lista)](#wyszukiwanie-wl-vat-biała-lista)
   - [Przetwarzanie dokumentów](#przetwarzanie-dokumentów)
 - [Obsługa błędów](#obsługa-błędów)
@@ -778,6 +780,120 @@ Pobranie statystyk dashboardu.
   "recentInvoices": [ "..." ],
   "topSuppliers": [ "..." ]
 }
+```
+
+---
+
+### Prognoza wydatków
+
+#### GET /api/forecast/monthly
+Zwraca prognozę miesięcznych wydatków na podstawie historii faktur.
+
+**Autentykacja**: User
+
+**Parametry zapytania**:
+- `settingId` (uuid, wymagany): Identyfikator ustawień klienta
+- `tenantNip` (string, opcjonalny): NIP klienta (jeśli brak settingId)
+- `horizon` (1 | 6 | 12, domyślnie 6): Liczba miesięcy do przodu
+- `historyMonths` (3–60, domyślnie 24): Liczba miesięcy historii
+- `algorithm` (string, opcjonalny): Wymuszony algorytm (`auto`, `moving-average`, `linear-regression`, `seasonal`, `exponential-smoothing`)
+- `algorithmConfig` (JSON, opcjonalny): Parametry algorytmu
+
+**Odpowiedź** (200):
+```json
+{
+  "points": [
+    { "month": "2024-03", "predicted": 12000, "lower": 10000, "upper": 14000 },
+    ...
+  ],
+  "trend": "up",
+  "summary": { "total": 72000, "avg": 12000 }
+}
+```
+
+#### GET /api/forecast/by-mpk
+Prognoza wydatków z podziałem na MPK (ośrodek kosztów).
+
+**Parametry**: jak wyżej + `top` (int, domyślnie 10, max 20)
+
+**Odpowiedź**: tablica prognoz per MPK
+
+#### GET /api/forecast/by-category
+Prognoza wydatków z podziałem na kategorię.
+
+**Parametry**: jak wyżej + `top` (int, domyślnie 10, max 20)
+
+**Odpowiedź**: tablica prognoz per kategoria
+
+#### GET /api/forecast/by-supplier
+Prognoza wydatków z podziałem na dostawcę.
+
+**Parametry**: jak wyżej + `top` (int, domyślnie 10, max 20)
+
+**Odpowiedź**: tablica prognoz per dostawca
+
+#### GET /api/forecast/algorithms
+Zwraca listę dostępnych algorytmów prognozowania i ich parametry.
+
+**Odpowiedź** (200):
+```json
+[
+  {
+    "id": "linear-regression",
+    "name": "Regresja liniowa",
+    "minDataPoints": 3,
+    "parameters": [ ... ]
+  }, ...
+]
+```
+
+---
+
+### Wykrywanie anomalii
+
+#### GET /api/anomalies
+Wykrywa anomalie w wydatkach na podstawie reguł.
+
+**Autentykacja**: User
+
+**Parametry zapytania**:
+- `settingId` (uuid, wymagany): Identyfikator ustawień klienta
+- `tenantNip` (string, opcjonalny): NIP klienta
+- `periodDays` (7–365, domyślnie 30): Okres analizy w dniach
+- `sensitivity` (1–5, domyślnie 2.0): Czułość wykrywania
+- `enabledRules` (string, opcjonalny): Lista aktywnych reguł (np. `amount-spike,new-supplier`)
+- `ruleConfig` (JSON, opcjonalny): Nadpisania parametrów reguł
+
+**Odpowiedź** (200):
+```json
+{
+  "anomalies": [
+    { "id": "a1", "type": "amount-spike", "score": 85, "severity": "critical", ... },
+    ...
+  ],
+  "summary": { "critical": 2, "high": 3, "medium": 1, "low": 0 }
+}
+```
+
+#### GET /api/anomalies/summary
+Podsumowanie wykrytych anomalii (liczby, kwoty, typy).
+
+**Parametry**: jak wyżej
+
+**Odpowiedź**: jak wyżej, tylko pole `summary`
+
+#### GET /api/anomalies/rules
+Zwraca listę dostępnych reguł wykrywania anomalii i ich parametry.
+
+**Odpowiedź** (200):
+```json
+[
+  {
+    "id": "amount-spike",
+    "name": "Skok kwoty",
+    "parameters": [ ... ]
+  }, ...
+]
 ```
 
 ---

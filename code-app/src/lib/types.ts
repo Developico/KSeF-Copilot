@@ -73,13 +73,60 @@ export interface ForecastPoint {
   upper: number
 }
 
+export type ForecastAlgorithm =
+  | 'auto'
+  | 'moving-average'
+  | 'linear-regression'
+  | 'seasonal'
+  | 'exponential-smoothing'
+
+export interface AlgorithmConfigMap {
+  'moving-average'?: { windowSize?: number }
+  'linear-regression'?: { blendRatio?: number }
+  'seasonal'?: { significanceThreshold?: number }
+  'exponential-smoothing'?: { alpha?: number; beta?: number }
+}
+
+export interface AlgorithmParameterDescriptor {
+  key: string
+  label: string
+  description: string
+  type: 'number'
+  min: number
+  max: number
+  step: number
+  default: number
+}
+
+export interface AlgorithmDescriptor {
+  id: ForecastAlgorithm
+  name: string
+  description: string
+  minDataPoints: number
+  parameters: AlgorithmParameterDescriptor[]
+}
+
+export type ForecastPreset = 'default' | 'conservative' | 'aggressive'
+
+export interface ForecastPresetDescriptor {
+  label: string
+  description: string
+  algorithm: ForecastAlgorithm
+  algorithmConfig: AlgorithmConfigMap
+}
+
+export interface ForecastAlgorithmsResponse {
+  algorithms: AlgorithmDescriptor[]
+  presets: Record<ForecastPreset, ForecastPresetDescriptor>
+}
+
 export interface ForecastResult {
   historical: ForecastMonthlyData[]
   forecast: ForecastPoint[]
   trend: 'up' | 'down' | 'stable'
   trendPercent: number
   confidence: number
-  method: 'moving-average' | 'linear-regression' | 'seasonal'
+  method: 'moving-average' | 'linear-regression' | 'seasonal' | 'exponential-smoothing'
   summary: {
     nextMonth: number
     totalForecast: number
@@ -103,6 +150,8 @@ export interface ForecastParams {
   historyMonths?: number
   settingId?: string
   tenantNip?: string
+  algorithm?: ForecastAlgorithm
+  algorithmConfig?: string  // JSON-encoded AlgorithmConfigMap for query param
 }
 
 // ─── Anomalies ────────────────────────────────────────────────────
@@ -115,6 +164,46 @@ export type AnomalyType =
   | 'duplicate-suspect'
 
 export type AnomalySeverity = 'low' | 'medium' | 'high' | 'critical'
+
+export interface AnomalyRuleConfig {
+  'amount-spike'?: { zScoreThreshold?: number }
+  'new-supplier'?: { amountThreshold?: number }
+  'duplicate-suspect'?: { amountTolerancePct?: number; dayWindow?: number }
+  'category-shift'?: { shiftThresholdPct?: number }
+  'frequency-change'?: { frequencyMultiplier?: number }
+}
+
+export interface AnomalyRuleParameterDescriptor {
+  key: string
+  label: string
+  description: string
+  type: 'number'
+  min: number
+  max: number
+  step: number
+  default: number
+}
+
+export interface AnomalyRuleDescriptor {
+  id: AnomalyType
+  name: string
+  description: string
+  parameters: AnomalyRuleParameterDescriptor[]
+}
+
+export type AnomalyPreset = 'default' | 'conservative' | 'aggressive'
+
+export interface AnomalyPresetDescriptor {
+  label: string
+  description: string
+  enabledRules: AnomalyType[]
+  ruleConfig: AnomalyRuleConfig
+}
+
+export interface AnomalyRulesResponse {
+  rules: AnomalyRuleDescriptor[]
+  presets: Record<AnomalyPreset, AnomalyPresetDescriptor>
+}
 
 export interface Anomaly {
   id: string
@@ -156,6 +245,8 @@ export interface AnomalyParams {
   sensitivity?: number
   settingId?: string
   tenantNip?: string
+  enabledRules?: string          // comma-separated AnomalyType
+  ruleConfig?: string            // JSON-encoded AnomalyRuleConfig
 }
 
 // ─── Invoice ──────────────────────────────────────────────────────

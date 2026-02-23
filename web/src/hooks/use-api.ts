@@ -1,5 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, queryKeys, Invoice, InvoiceListParams, SyncResult, KsefSetting, CostCenter } from '../lib/api'
+import {
+  api,
+  queryKeys,
+  Invoice,
+  InvoiceListParams,
+  SyncResult,
+  KsefSetting,
+  CostCenter,
+  type ForecastAlgorithmsResponse,
+  type AnomalyRulesResponse,
+  type ForecastResult,
+  type ForecastParams,
+} from '../lib/api'
+import { FALLBACK_FORECAST_META, FALLBACK_ANOMALY_META } from '../lib/forecast-metadata'
 import { useCompanyContext } from '@/contexts/company-context'
 
 // ============================================================================
@@ -536,7 +549,7 @@ export function useContextDashboardStats(params?: { fromDate?: string; toDate?: 
 /**
  * Hook for overall monthly expense forecast.
  */
-export function useContextForecastMonthly(params?: { horizon?: 1 | 6 | 12; historyMonths?: number }) {
+export function useContextForecastMonthly(params?: ForecastParams) {
   const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
 
   return useQuery({
@@ -604,7 +617,7 @@ export function useContextForecastBySupplier(params?: { horizon?: 1 | 6 | 12; hi
 /**
  * Hook for anomaly detection results.
  */
-export function useContextAnomalies(params?: { periodDays?: number; sensitivity?: number }) {
+export function useContextAnomalies(params?: { periodDays?: number; sensitivity?: number; enabledRules?: string; ruleConfig?: string }) {
   const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
 
   return useQuery({
@@ -621,7 +634,7 @@ export function useContextAnomalies(params?: { periodDays?: number; sensitivity?
 /**
  * Hook for anomaly summary (quick counts).
  */
-export function useContextAnomalySummary(params?: { periodDays?: number }) {
+export function useContextAnomalySummary(params?: { periodDays?: number; enabledRules?: string; ruleConfig?: string }) {
   const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
 
   return useQuery({
@@ -632,6 +645,48 @@ export function useContextAnomalySummary(params?: { periodDays?: number }) {
     }),
     enabled: !companyLoading && Boolean(selectedCompany),
     staleTime: 5 * 60 * 1000,
+  })
+}
+
+// ============================================================================
+// Forecast & Anomaly Metadata Hooks
+// ============================================================================
+
+/**
+ * Hook for forecast algorithm metadata (descriptors + presets).
+ * Uses fallback data when the API endpoint is unavailable.
+ */
+export function useForecastAlgorithms() {
+  return useQuery<ForecastAlgorithmsResponse>({
+    queryKey: queryKeys.forecastAlgorithms,
+    queryFn: async () => {
+      try {
+        return await api.forecast.algorithms()
+      } catch {
+        return FALLBACK_FORECAST_META
+      }
+    },
+    staleTime: Infinity,
+    placeholderData: FALLBACK_FORECAST_META,
+  })
+}
+
+/**
+ * Hook for anomaly rule metadata (descriptors + presets).
+ * Uses fallback data when the API endpoint is unavailable.
+ */
+export function useAnomalyRules() {
+  return useQuery<AnomalyRulesResponse>({
+    queryKey: queryKeys.anomalyRules,
+    queryFn: async () => {
+      try {
+        return await api.anomalies.rules()
+      } catch {
+        return FALLBACK_ANOMALY_META
+      }
+    },
+    staleTime: Infinity,
+    placeholderData: FALLBACK_ANOMALY_META,
   })
 }
 

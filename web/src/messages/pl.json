@@ -746,6 +746,9 @@
     "tabCategory": "Wg kategorii",
     "tabSupplier": "Wg dostawcy",
     "tabAnomalies": "Anomalie",
+    "tabComparison": "A/B Porównanie",
+    "forecastSettingsBtn": "Ustawienia prognozy",
+    "anomalySettingsBtn": "Ustawienia anomalii",
     "nextMonth": "Następny miesiąc",
     "predictedExpenses": "Prognozowane wydatki",
     "trend": "Trend",
@@ -785,5 +788,100 @@
     "descCategoryShift": "\"{category}\" — wydatki {percent}% powyżej średniej miesięcznej",
     "descFrequencyChange": "{count} faktur w tym okresie (śr. {avg}/mies.)",
     "descDuplicateSuspect": "Możliwy duplikat: podobna kwota do {otherInvoice} ({days} dni różnicy)"
+  },
+  "forecastSettings": {
+    "title": "Ustawienia prognozy",
+    "description": "Wybierz algorytm i dostosuj parametry prognozowania",
+    "preset": "Preset",
+    "presets": {
+      "default": "Domyślny",
+      "conservative": "Konserwatywny",
+      "aggressive": "Agresywny",
+      "custom": "Niestandardowy"
+    },
+    "algorithm": "Algorytm",
+    "parameters": "Parametry",
+    "autoDescription": "Algorytm zostanie dobrany automatycznie na podstawie danych",
+    "reset": "Reset do domyślnych",
+    "algo": {
+      "auto": { "name": "Automatyczny", "description": "Automatycznie dobiera najlepszy algorytm na podstawie dostępnych danych" },
+      "moving-average": {
+        "name": "Średnia ważona",
+        "description": "Średnia ważona — większa waga dla ostatnich miesięcy. Najlepsza dla stabilnych danych o niskiej zmienności.",
+        "params": { "windowSize": { "label": "Rozmiar okna", "description": "Liczba ostatnich miesięcy do uwzględnienia" } }
+      },
+      "linear-regression": {
+        "name": "Regresja liniowa",
+        "description": "Regresja liniowa OLS połączona ze średnią kroczącą. Dobra dla danych z wyraźnym trendem liniowym.",
+        "params": { "blendRatio": { "label": "Proporcja mieszania", "description": "Waga regresji vs średniej kroczącej (1.0 = czysta regresja)" } }
+      },
+      "seasonal": {
+        "name": "Dekompozycja sezonowa",
+        "description": "Regresja liniowa na danych odsezonowanych z ponownym nałożeniem indeksów sezonowych. Wymaga 12+ miesięcy.",
+        "params": { "significanceThreshold": { "label": "Próg istotności", "description": "Minimalna wariancja indeksów sezonowych, aby uznać wzorzec za istotny" } }
+      },
+      "exponential-smoothing": {
+        "name": "Wygładzanie wykładnicze",
+        "description": "Proste lub podwójne wygładzanie wykładnicze Holta. Wrażliwe na ostatnie zmiany.",
+        "params": {
+          "alpha": { "label": "Alfa (poziom)", "description": "Współczynnik wygładzania poziomu — wyższy = bardziej reaktywny na nowe dane" },
+          "beta": { "label": "Beta (trend)", "description": "Współczynnik wygładzania trendu — 0 wyłącza komponent trendu (proste ES)" }
+        }
+      }
+    }
+  },
+  "anomalySettings": {
+    "title": "Ustawienia wykrywania anomalii",
+    "description": "Włącz/wyłącz reguły i dostosuj parametry wykrywania",
+    "preset": "Preset",
+    "presets": {
+      "default": "Domyślny",
+      "conservative": "Konserwatywny",
+      "aggressive": "Agresywny",
+      "custom": "Niestandardowy"
+    },
+    "rules": "Reguły",
+    "enabledCount": "{count} z {total} aktywnych",
+    "reset": "Reset do domyślnych",
+    "rule": {
+      "amount-spike": {
+        "name": "Skok kwoty",
+        "description": "Wykrywa faktury z kwotami znacznie wyższymi niż średnia dostawcy (Z-score).",
+        "params": { "zScoreThreshold": { "label": "Próg Z-Score", "description": "Odchylenia standardowe powyżej średniej dostawcy" } }
+      },
+      "new-supplier": {
+        "name": "Nowy dostawca",
+        "description": "Oznacza pierwsze faktury od wcześniej nieznanych dostawców powyżej określonej kwoty.",
+        "params": { "amountThreshold": { "label": "Próg kwoty (PLN)", "description": "Minimalna kwota brutto do wyzwolenia alertu" } }
+      },
+      "duplicate-suspect": {
+        "name": "Podejrzenie duplikatu",
+        "description": "Identyfikuje potencjalne duplikaty faktur — ten sam dostawca, podobna kwota, bliskie daty.",
+        "params": {
+          "amountTolerancePct": { "label": "Tolerancja kwoty (%)", "description": "Maksymalna procentowa różnica kwot" },
+          "dayWindow": { "label": "Okno dni", "description": "Maksymalna liczba dni między podejrzanymi duplikatami" }
+        }
+      },
+      "category-shift": {
+        "name": "Zmiana kategorii",
+        "description": "Oznacza kategorie wydatków, w których suma ostatnio znacznie przekracza średnią miesięczną.",
+        "params": { "shiftThresholdPct": { "label": "Próg zmiany (%)", "description": "Minimalna procentowa nadwyżka ponad średnią do oznaczenia" } }
+      },
+      "frequency-change": {
+        "name": "Zmiana częstotliwości",
+        "description": "Wykrywa dostawców wysyłających faktury znacznie częściej niż ich historyczna średnia.",
+        "params": { "frequencyMultiplier": { "label": "Mnożnik częstotliwości", "description": "Mnożnik oczekiwanej częstotliwości faktur do wyzwolenia" } }
+      }
+    }
+  },
+  "forecastComparison": {
+    "title": "Porównanie algorytmów A/B",
+    "description": "Porównaj wyniki dwóch algorytmów prognostycznych obok siebie",
+    "algorithmA": "Algorytm A",
+    "algorithmB": "Algorytm B",
+    "historical": "Dane historyczne",
+    "nextMonth": "Następny miesiąc",
+    "trend": "Trend",
+    "confidence": "Pewność"
   }
 }

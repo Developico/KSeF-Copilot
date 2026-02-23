@@ -20,10 +20,12 @@ import type {
   ForecastResult,
   ForecastParams,
   GroupedForecastResponse,
+  ForecastAlgorithmsResponse,
   // Anomalies
   AnomalyResult,
   AnomalySummary,
   AnomalyParams,
+  AnomalyRulesResponse,
   // Invoices
   Invoice,
   InvoiceListResponse,
@@ -264,6 +266,9 @@ const _directApi = {
       apiFetch<GroupedForecastResponse>('/api/forecast/by-supplier', {
         params: params as FetchOptions['params'],
       }),
+
+    algorithms: () =>
+      apiFetch<ForecastAlgorithmsResponse>('/api/forecast/algorithms'),
   },
 
   // ── Anomalies ──
@@ -277,6 +282,9 @@ const _directApi = {
       apiFetch<AnomalySummary>('/api/anomalies/summary', {
         params: params as FetchOptions['params'],
       }),
+
+    rules: () =>
+      apiFetch<AnomalyRulesResponse>('/api/anomalies/rules'),
   },
 
   // ── KSeF ──
