@@ -1,6 +1,6 @@
 # KSeF Copilot
 
-🇬🇧 [English version](README.en.md)
+EN [English version](README.en.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
@@ -8,11 +8,11 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 [![npm](https://img.shields.io/badge/npm-10+-orange.svg)](https://www.npmjs.com/)
 
-> Otwarte rozwiązanie do integracji z Krajowym Systemem e-Faktur (KSeF). Umożliwia automatyczną synchronizację faktur zakupowych, ich kategoryzację z wykorzystaniem sztucznej inteligencji (Azure OpenAI) oraz zarządzanie przez intuicyjny dashboard webowy. Backend oparty o Azure Functions i Microsoft Dataverse, frontend w Next.js. Gotowe do wdrożenia w chmurze Azure.
+> Otwarte rozwiązanie do integracji z Krajowym Systemem e-Faktur (KSeF), zbudowane w filozofii **API-First**. REST API (Azure Functions) stanowi rdzeń produktu — każdy klient HTTP może z niego korzystać. Repozytorium zawiera referencyjne implementacje frontendowe (Next.js, React SPA, Model-Driven App), ale prawdziwym produktem jest API. Priorytetem architektonicznym jest wykorzystanie **Power Platform i Microsoft Dataverse** jako backendu. Gotowe do wdrożenia w chmurze Azure.
 
-## 🎯 Funkcjonalności
+## 🎯 Funkcje
 
-### MVP (darmowe)
+### Podstawowe
 - ✅ Synchronizacja faktur zakupowych z KSeF
 - ✅ Ręczna kategoryzacja (MPK, kategoria, projekt)
 - ✅ Śledzenie statusu płatności (oczekująca/zapłacona)
@@ -24,9 +24,7 @@
 - 🤖 Automatyczna kategoryzacja AI (Azure OpenAI)
 - 🏢 Obsługa wielu firm (multi-tenant)
 - 📊 Eksport do CSV/Excel
-- 📧 Powiadomienia e-mail
-- 🔗 Webhooki API
-- ⏰ Automatyczna synchronizacja wg harmonogramu
+
 
 ## 🏗️ Architektura
 
@@ -34,26 +32,38 @@
 
 ```mermaid
 graph TB
-    AppService["Azure App Service<br/>Next.js — Dashboard"] -->|HTTPS/REST| Functions["Azure Functions<br/>Node.js REST API"]
+    subgraph Refs["Referencyjne frontendy (przykłady)"]
+        MDA["Model-Driven App<br/>Power Platform"]
+        CodeApp["Code App (SPA)<br/>React + Vite na Power Platform"]
+        WebApp["Web App<br/>Next.js"]
+    end
+    CustomClient["Twój własny klient"]:::dashed -.->|HTTPS/REST| Functions
+    MDA -->|HTTPS/REST| Functions["Azure Functions v4<br/>Node.js REST API"]
+    CodeApp -->|HTTPS/REST| Functions
+    WebApp -->|HTTPS/REST| Functions
     Functions --> KSeF["KSeF API<br/>MF.gov.pl"]
     Functions --> OpenAI["Azure OpenAI<br/>GPT-4o-mini"]
     Functions --> Dataverse["Microsoft Dataverse<br/>Backend"]
     KSeF --> KeyVault["Azure Key Vault<br/>Tokeny"]
+    classDef dashed stroke-dasharray: 5 5
 ```
 
 <details>
 <summary>ASCII fallback</summary>
 
 ```
+                Referencyjne frontendy (przykłady)
+    ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+    │ Model-Driven│  │  Code App   │  │   Web App   │
+    │     App     │  │ (React SPA) │  │  (Next.js)  │
+    └──────┬──────┘  └──────┬──────┘  └──────┬──────┘
+           │                │                │
+           └────────────────┼────────────────┘
+                            │ HTTPS/REST
+                            ▼
 ┌─────────────────────────────────────────────────────────┐
-│           Azure App Service (Next.js)                   │
-│  Dashboard do zarządzania fakturami i kategoryzacji     │
-└─────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│              Azure Functions (Node.js)                  │
-│  REST API: synchronizacja, import, kategoryzacja        │
+│         Azure Functions v4 (Node.js) — REST API         │
+│              ★ Rdzeń produktu (API-First) ★             │
 └─────────────────────────────────────────────────────────┘
         │                │                │
         ▼                ▼                ▼
@@ -73,16 +83,17 @@ graph TB
 
 ```
 KSeFCopilot/
-├── api/                 # Azure Functions (REST API)
+├── api/                 # Azure Functions (REST API) — rdzeń produktu
 │   ├── src/
 │   │   ├── functions/   # HTTP triggers (endpointy)
 │   │   ├── lib/         # Biblioteki (ksef, dataverse, auth)
 │   │   └── types/       # Typy TypeScript
 │   └── tests/
-├── web/                 # Aplikacja webowa (Next.js)
+├── web/                 # Implementacja referencyjna: Next.js
 │   ├── app/             # App router (strony)
 │   ├── components/      # Komponenty React
 │   └── lib/             # Narzędzia klienckie
+├── code-app/            # Implementacja referencyjna: React SPA (Power Platform)
 ├── docs/                # Dokumentacja
 └── deployment/          # IaC (Bicep)
 ```

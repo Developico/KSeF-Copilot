@@ -8,11 +8,11 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 [![npm](https://img.shields.io/badge/npm-10+-orange.svg)](https://www.npmjs.com/)
 
-> Open-source solution for integrating with Poland's National e-Invoice System (KSeF). Provides automatic purchase invoice synchronization, AI-powered categorization (Azure OpenAI), and an intuitive web dashboard for invoice management. Powered by Azure Functions and Microsoft Dataverse on the backend, with a Next.js frontend. Cloud-ready for Azure deployment.
+> Open-source **API-First** solution for integrating with Poland's National e-Invoice System (KSeF). The REST API (Azure Functions) is the core product — any HTTP client can consume it. The repository includes reference frontend implementations (Next.js, React SPA, Model-Driven App), but the real product is the API. The architectural priority is **Power Platform and Microsoft Dataverse** as the backend. Cloud-ready for Azure deployment.
 
 ## 🎯 Features
 
-### MVP (Free)
+### Basic
 - ✅ Synchronize purchase invoices from KSeF
 - ✅ Manual categorization (MPK, category, project)
 - ✅ Payment status tracking (pending/paid)
@@ -34,26 +34,38 @@
 
 ```mermaid
 graph TB
-    AppService["Azure App Service<br/>Next.js — Dashboard"] -->|HTTPS/REST| Functions["Azure Functions<br/>Node.js REST API"]
+    subgraph Refs["Reference frontends (examples)"]
+        MDA["Model-Driven App<br/>Power Platform"]
+        CodeApp["Code App (SPA)<br/>React + Vite on Power Platform"]
+        WebApp["Web App<br/>Next.js"]
+    end
+    CustomClient["Your own client"]:::dashed -.->|HTTPS/REST| Functions
+    MDA -->|HTTPS/REST| Functions["Azure Functions v4<br/>Node.js REST API"]
+    CodeApp -->|HTTPS/REST| Functions
+    WebApp -->|HTTPS/REST| Functions
     Functions --> KSeF["KSeF API<br/>MF.gov.pl"]
     Functions --> OpenAI["Azure OpenAI<br/>GPT-4o-mini"]
     Functions --> Dataverse["Microsoft Dataverse<br/>Backend"]
     KSeF --> KeyVault["Azure Key Vault<br/>Tokens"]
+    classDef dashed stroke-dasharray: 5 5
 ```
 
 <details>
 <summary>ASCII fallback</summary>
 
 ```
+                 Reference frontends (examples)
+    ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+    │ Model-Driven│  │  Code App   │  │   Web App   │
+    │     App     │  │ (React SPA) │  │  (Next.js)  │
+    └──────┬──────┘  └──────┬──────┘  └──────┬──────┘
+           │                │                │
+           └────────────────┼────────────────┘
+                            │ HTTPS/REST
+                            ▼
 ┌─────────────────────────────────────────────────────────┐
-│           Azure App Service (Next.js)                   │
-│  Dashboard for invoice management and categorization    │
-└─────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│              Azure Functions (Node.js)                  │
-│  REST API: sync, import, categorize, manage             │
+│         Azure Functions v4 (Node.js) — REST API         │
+│             ★ Core product (API-First) ★                │
 └─────────────────────────────────────────────────────────┘
         │                │                │
         ▼                ▼                ▼
@@ -75,16 +87,17 @@ graph TB
 
 ```
 KSeFCopilot/
-├── api/                 # Azure Functions (REST API)
+├── api/                 # Azure Functions (REST API) — core product
 │   ├── src/
 │   │   ├── functions/   # HTTP triggers (endpoints)
 │   │   ├── lib/         # Core libraries (ksef, dataverse, auth)
 │   │   └── types/       # TypeScript types
 │   └── tests/
-├── web/                 # Web Application (Next.js)
+├── web/                 # Reference implementation: Next.js
 │   ├── app/             # App router pages
 │   ├── components/      # React components
 │   └── lib/             # Client utilities
+├── code-app/            # Reference implementation: React SPA (Power Platform)
 ├── docs/                # Documentation
 └── deployment/          # IaC (Bicep)
 ```
