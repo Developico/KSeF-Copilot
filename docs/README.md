@@ -14,17 +14,17 @@
 Zalecana ścieżka czytania:
 
 1. [README projektu](../README.md) — ogólny opis, quick start
-2. [Uruchomienie lokalne](./LOCAL_DEVELOPMENT.md) — jak uruchomić projekt na swoim komputerze
-3. [Architektura](./ARCHITEKTURA.md) — jak działa system
-4. [Dokumentacja API](./API_PL.md) — endpointy REST API
-5. [Schemat Dataverse](./DATAVERSE_SCHEMA.md) — model danych
+2. [Uruchomienie lokalne](./pl/LOKALNE_WDRO%C5%BBENIE.md) — jak uruchomić projekt na swoim komputerze
+3. [Architektura](./pl/ARCHITEKTURA.md) — jak działa system
+4. [Dokumentacja API](./pl/API.md) — endpointy REST API
+5. [Schemat Dataverse](./pl/DATAVERSE_SCHEMAT.md) — model danych
 
 ### Dla administratora / DevOps
 
 1. [Przewodnik wdrożenia](../deployment/README.md) — **pełny przewodnik 13 kroków**
 2. [Lista kontrolna](../deployment/CHECKLIST.md) — interaktywna checklist z polami danych
-3. [Zmienne środowiskowe](./ZMIENNE_SRODOWISKOWE.md) — kompletna lista env vars
-4. [Rozwiązywanie problemów](./ROZWIAZYWANIE_PROBLEMOW.md) — troubleshooting
+3. [Zmienne środowiskowe](./pl/ZMIENNE_SRODOWISKOWE.md) — kompletna lista env vars
+4. [Rozwiązywanie problemów](./pl/ROZWIAZYWANIE_PROBLEMOW.md) — troubleshooting
 
 ---
 
@@ -34,27 +34,34 @@ Zalecana ścieżka czytania:
 
 | Dokument | Opis |
 |----------|------|
-| [Architektura](./ARCHITEKTURA.md) | Architektura systemu, wzorce projektowe, stos technologiczny, przepływy danych |
-| [Dokumentacja API (PL)](./API_PL.md) | Pełna dokumentacja REST API — endpointy, autentykacja, błędy, limity |
-| [Schemat Dataverse](./DATAVERSE_SCHEMA.md) | Model danych Dataverse — tabele, relacje, OptionSets, indeksy |
+| [Architektura](./pl/ARCHITEKTURA.md) | Architektura systemu, wzorce projektowe, stos technologiczny, przepływy danych |
+| [Dokumentacja API (PL)](./pl/API.md) | Pełna dokumentacja REST API — endpointy, autentykacja, błędy, limity |
+| [Schemat Dataverse](./pl/DATAVERSE_SCHEMAT.md) | Model danych Dataverse — tabele, relacje, OptionSets, indeksy |
 
 ### Materiały referencyjne
 
 | Dokument | Opis |
 |----------|------|
-| [Zmienne środowiskowe](./ZMIENNE_SRODOWISKOWE.md) | Jedno źródło prawdy dla wszystkich env vars (API + Web) |
-| [Rozwiązywanie problemów](./ROZWIAZYWANIE_PROBLEMOW.md) | Troubleshooting zebrane z całej dokumentacji |
-| [Uruchomienie lokalne](./LOCAL_DEVELOPMENT.md) | Instrukcja uruchomienia projektu od zera |
-| [Custom Connector](./POWER_PLATFORM_CUSTOM_CONNECTOR.md) | Konfiguracja Custom Connector w Power Platform |
-| [Code Apps — plan](./POWER_APPS_CODE_APPS_PLAN.md) | Analiza, fazy wdrożenia, Code App (Vite + React) |
-| [Analiza kosztów](./ANALIZA_KOSZTÓW.md) | Analiza kosztów rozwiązania w Azure |
+| [Zmienne środowiskowe](./pl/ZMIENNE_SRODOWISKOWE.md) | Jedno źródło prawdy dla wszystkich env vars (API + Web) |
+| [Rozwiązywanie problemów](./pl/ROZWIAZYWANIE_PROBLEMOW.md) | Troubleshooting zebrane z całej dokumentacji |
+| [Uruchomienie lokalne](./pl/LOKALNE_WDRO%C5%BBENIE.md) | Instrukcja uruchomienia projektu od zera |
+| [Custom Connector](./pl/POWER_PLATFORM_CUSTOM_CONNECTOR.md) | Konfiguracja Custom Connector w Power Platform |
+| [Code Apps — plan](./pl/POWER_APPS_CODE_APPS_PLAN.md) | Analiza, fazy wdrożenia, Code App (Vite + React) |
+| [Analiza kosztów](./pl/ANALIZA_KOSZTOW.md) | Analiza kosztów rozwiązania w Azure |
 
-### Wersje angielskie (nice-to-have)
+### English versions
 
-| Dokument | Opis |
+| Document | Description |
 |----------|------|
 | [Architecture (EN)](./en/ARCHITECTURE.md) | System architecture — English version |
 | [API Reference (EN)](./en/API.md) | REST API documentation — English version |
+| [Dataverse Schema (EN)](./en/DATAVERSE_SCHEMA.md) | Dataverse schema & entity definitions — English version |
+| [Environment Variables (EN)](./en/ENVIRONMENT_VARIABLES.md) | All env vars (API + Web) — English version |
+| [Troubleshooting (EN)](./en/TROUBLESHOOTING.md) | Troubleshooting guide — English version |
+| [Local Development (EN)](./en/LOCAL_DEVELOPMENT.md) | Local setup instructions — English version |
+| [Custom Connector (EN)](./en/POWER_PLATFORM_CUSTOM_CONNECTOR.md) | Power Platform Custom Connector — English version |
+| [Code Apps Plan (EN)](./en/POWER_APPS_CODE_APPS_PLAN.md) | Code App analysis & rollout plan — English version |
+| [Cost Analysis (EN)](./en/COST_ANALYSIS.md) | Azure cost analysis — English version |
 
 ---
 
@@ -101,8 +108,9 @@ Kluczowe dokumenty wdrożeniowe:
 
 ## Konwencje dokumentacji
 
-- **Język główny:** polski 🇵🇱
-- **Wersje EN:** dostępne w folderze `docs/en/` (nice-to-have)
+- **Język główny:** polski 🇵🇱 → folder `docs/pl/` (nazwy plików po polsku)
+- **Wersje EN:** folder `docs/en/` (nazwy plików po angielsku)
+- **Konwencja nazw:** tytuł pliku w języku danego podkatalogu (np. `pl/ANALIZA_KOSZTOW.md`, `en/COST_ANALYSIS.md`)
 - **Format:** Markdown (`.md`)
 - **Diagramy:** Mermaid (w blokach ` ```mermaid `)
 - **Metadane:** każdy dokument zawiera datę aktualizacji na końcu

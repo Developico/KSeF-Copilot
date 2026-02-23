@@ -1,6 +1,6 @@
 # Architecture Documentation
 
-> **Wersja polska (zaktualizowana):** [ARCHITEKTURA.md](./ARCHITEKTURA.md) | **English copy:** [en/ARCHITECTURE.md](./en/ARCHITECTURE.md)
+> **Polish version:** [ARCHITEKTURA.md](../pl/ARCHITEKTURA.md) | **English version:** [ARCHITECTURE.md](./ARCHITECTURE.md)
 
 ## Table of Contents
 - [Overview](#overview)

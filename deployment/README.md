@@ -891,7 +891,7 @@ az functionapp config appsettings set `
 
 ### Pełna dokumentacja zmiennych
 
-→ [`docs/ZMIENNE_SRODOWISKOWE.md`](../docs/ZMIENNE_SRODOWISKOWE.md)
+→ [`docs/pl/ZMIENNE_SRODOWISKOWE.md`](../docs/pl/ZMIENNE_SRODOWISKOWE.md)
 
 ### Walidacja
 
@@ -1634,7 +1634,7 @@ Rozważ automatyzację deployu:
 
 ### Szczegółowa diagnostyka
 
-→ [`docs/ROZWIAZYWANIE_PROBLEMOW.md`](../docs/ROZWIAZYWANIE_PROBLEMOW.md)
+→ [`docs/pl/ROZWIAZYWANIE_PROBLEMOW.md`](../docs/pl/ROZWIAZYWANIE_PROBLEMOW.md)
 
 ### Logi
 
@@ -1746,9 +1746,9 @@ az webapp deploy `
 | [`powerplatform/README.md`](powerplatform/README.md) | Solucja Power Platform |
 | [`powerplatform/connector/README.md`](powerplatform/connector/README.md) | Custom Connector |
 | [`local/LOCAL_DEVELOPMENT.md`](local/LOCAL_DEVELOPMENT.md) | Lokalne uruchomienie |
-| [`docs/ZMIENNE_SRODOWISKOWE.md`](../docs/ZMIENNE_SRODOWISKOWE.md) | Pełna lista zmiennych |
-| [`docs/ROZWIAZYWANIE_PROBLEMOW.md`](../docs/ROZWIAZYWANIE_PROBLEMOW.md) | Troubleshooting |
-| [`docs/ANALIZA_KOSZTÓW.md`](../docs/ANALIZA_KOSZTÓW.md) | Analiza kosztów rozwiązania |
+| [`docs/pl/ZMIENNE_SRODOWISKOWE.md`](../docs/pl/ZMIENNE_SRODOWISKOWE.md) | Pełna lista zmiennych |
+| [`docs/pl/ROZWIAZYWANIE_PROBLEMOW.md`](../docs/pl/ROZWIAZYWANIE_PROBLEMOW.md) | Troubleshooting |
+| [`docs/pl/ANALIZA_KOSZTOW.md`](../docs/pl/ANALIZA_KOSZTOW.md) | Analiza kosztów rozwiązania |
 
 ---
 

@@ -132,6 +132,19 @@ if (sharedNM) {
   cpSync(sharedNM, join(DEPLOY_DIR, 'node_modules'), { recursive: true })
   console.log('     ✓ workspace node_modules (merged after npm install)')
 }
+
+// Re-copy app-specific node_modules from standalone/web/node_modules/ on top.
+// With npm workspaces, some packages (e.g. 'next') end up ONLY in the nested
+// web/node_modules/ and NOT in the shared root node_modules/. The npm install
+// step above prunes them, and the shared NM copy doesn't restore them.
+// This final merge ensures all app-specific deps (including 'next') are present.
+if (APP_DIR !== STANDALONE_DIR) {
+  const appNM = join(APP_DIR, 'node_modules')
+  if (existsSync(appNM)) {
+    cpSync(appNM, join(DEPLOY_DIR, 'node_modules'), { recursive: true })
+    console.log('     ✓ app-specific node_modules (merged last — includes next)')
+  }
+}
 console.log('')
 
 // ── Verify deploy contents ──────────────────────────────────────────

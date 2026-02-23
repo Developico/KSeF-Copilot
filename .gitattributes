@@ -1,0 +1,1 @@
+deployment/powerplatform/*.zip filter=lfs diff=lfs merge=lfs -text

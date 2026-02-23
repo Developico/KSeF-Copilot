@@ -547,8 +547,8 @@ Przy migracji na nowe środowisko zmień wartości w następujących plikach:
 
 ## Powiązane dokumenty
 
-- [API REST](./API_PL.md) — pełna dokumentacja endpointów
-- [Konfiguracja Entra ID](./ENTRA_ID_KONFIGURACJA.md) — App Registration, scope
+- [API REST](./API.md) — pełna dokumentacja endpointów
+- [Konfiguracja Entra ID](../../deployment/azure/ENTRA_ID_KONFIGURACJA.md) — App Registration, scope
 - [Schemat Dataverse](./DATAVERSE_SCHEMA.md) — model danych
 
 ---

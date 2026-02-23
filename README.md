@@ -213,11 +213,11 @@ Pełna lista w pliku [.env.example](.env.example).
 
 ### Dokumentacja techniczna (`docs/`)
 
-- [Architektura](docs/ARCHITEKTURA.md) — Szczegóły architektury systemu
-- [API Reference (PL)](docs/API_PL.md) — Dokumentacja REST API
-- [Schemat Dataverse](docs/DATAVERSE_SCHEMA.md) — Model danych
-- [Zmienne środowiskowe](docs/ZMIENNE_SRODOWISKOWE.md) — Opis konfiguracji
-- [Rozwiązywanie problemów](docs/ROZWIAZYWANIE_PROBLEMOW.md) — Troubleshooting
+- [Architektura](docs/pl/ARCHITEKTURA.md) — Szczegóły architektury systemu
+- [API Reference (PL)](docs/pl/API.md) — Dokumentacja REST API
+- [Schemat Dataverse](docs/pl/DATAVERSE_SCHEMAT.md) — Model danych
+- [Zmienne środowiskowe](docs/pl/ZMIENNE_SRODOWISKOWE.md) — Opis konfiguracji
+- [Rozwiązywanie problemów](docs/pl/ROZWIAZYWANIE_PROBLEMOW.md) — Troubleshooting
 - [Nawigacja po dokumentacji](docs/README.md) — Pełny spis dokumentów
 
 ### Wdrożenie produkcyjne (`deployment/`)
@@ -230,7 +230,7 @@ Pełna lista w pliku [.env.example](.env.example).
 - [Tokeny KSeF](deployment/azure/TOKEN_SETUP_GUIDE.md) — Tokeny w Key Vault
 - [Solucja Power Platform](deployment/powerplatform/README.md) — Import solucji, schemat Dataverse
 - [Custom Connector](deployment/powerplatform/connector/README.md) — Konfiguracja konektora
-- [Analiza kosztów](docs/ANALIZA_KOSZTÓW.md) — Koszty rozwiązania w Azure
+- [Analiza kosztów](docs/pl/ANALIZA_KOSZTOW.md) — Koszty rozwiązania w Azure
 
 ## 🤝 Współpraca
 

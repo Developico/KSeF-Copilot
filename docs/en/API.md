@@ -1,6 +1,6 @@
 # API Documentation
 
-> **Wersja polska:** [API_PL.md](./API_PL.md) | **English copy:** [en/API.md](./en/API.md)
+> **Polish version:** [API.md](../pl/API.md) | **English version:** [API.md](./API.md)
 
 ## Table of Contents
 - [Authentication](#authentication)
