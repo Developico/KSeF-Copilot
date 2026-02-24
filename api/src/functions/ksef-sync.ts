@@ -12,6 +12,7 @@ interface SyncResult {
   imported: number
   skipped: number
   failed: number
+  newInvoiceIds: string[]
   invoices: SyncedInvoice[]
   errors: SyncError[]
 }
@@ -146,6 +147,7 @@ app.http('ksef-sync', {
         imported: 0,
         skipped: 0,
         failed: 0,
+        newInvoiceIds: [],
         invoices: [],
         errors: [],
       }
@@ -196,9 +198,10 @@ app.http('ksef-sync', {
             rawXml: invoiceResponse.invoiceXml,
           }
 
-          await createInvoice(invoiceData)
+          const createdInvoice = await createInvoice(invoiceData)
 
           result.imported++
+          result.newInvoiceIds.push(createdInvoice.id)
           result.invoices.push({
             ksefReferenceNumber: header.ksefNumber,
             invoiceNumber: parsed.invoiceNumber,
@@ -449,6 +452,7 @@ app.http('ksef-sync-import', {
         imported: 0,
         skipped: 0,
         failed: 0,
+        newInvoiceIds: [],
         invoices: [],
         errors: [],
       }
@@ -492,9 +496,10 @@ app.http('ksef-sync-import', {
             rawXml: invoiceResponse.invoiceXml,
           }
 
-          await createInvoice(invoiceData)
+          const createdInvoice = await createInvoice(invoiceData)
 
           result.imported++
+          result.newInvoiceIds.push(createdInvoice.id)
           result.invoices.push({
             ksefReferenceNumber: refNumber,
             invoiceNumber: parsed.invoiceNumber,

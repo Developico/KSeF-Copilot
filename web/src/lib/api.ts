@@ -377,6 +377,7 @@ export interface SyncResult {
   imported: number
   skipped: number
   failed: number
+  newInvoiceIds?: string[]
   invoices: {
     ksefReferenceNumber: string
     invoiceNumber: string
@@ -1010,6 +1011,17 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ invoiceId }),
       }),
+
+    batchCategorizeWithAI: (invoiceIds: string[], autoApply = false) =>
+      apiFetch<{
+        processed: number
+        success: number
+        failed: number
+        errors?: string[]
+      }>('/api/ai/batch-categorize', {
+        method: 'POST',
+        body: JSON.stringify({ invoiceIds, autoApply }),
+      }),
   },
 
   // Settings
@@ -1334,6 +1346,7 @@ export interface DvSyncResult {
   created: number
   updated: number
   failed: number
+  newInvoiceIds?: string[]
   errors: Array<{ reference: string; error: string }>
 }
 

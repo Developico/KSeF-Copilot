@@ -6,6 +6,19 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.5.3] - 2026-02-24
+
+### ✨ Automatyczna kategoryzacja AI po synchronizacji
+
+- **Checkbox „AI categorization after sync"** — nowa opcja (domyślnie wyłączona) w panelu synchronizacji, uruchamiająca automatyczny opis faktur przez AI po imporcie z KSeF
+- **Auto-apply sugestii AI** — wykorzystanie parametru `autoApply` w `POST /api/ai/batch-categorize`; AI zapisuje wyniki bezpośrednio do pól MPK, kategoria i opis
+- **Pasek postępu AI** — wizualizacja postępu kategoryzacji z procentem i kolorami statusu (fioletowy/zielony/czerwony)
+- **Informacja o czasie** — komunikat „Adds ~2s per invoice to the sync time" przy checkboxie
+- **Przetwarzanie wsadowe** — faktury przetwarzane w partiach po 50 z śledzeniem postępu
+- **Blokowanie przycisków** — przyciski Sync i Import zablokowane podczas przetwarzania AI
+
+---
+
 ## [2.5.2] - 2026-02-23
 
 ### 📚 Dokumentacja algorytmów i anomalii

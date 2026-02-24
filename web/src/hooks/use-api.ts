@@ -123,6 +123,22 @@ export function useImportInvoices() {
 }
 
 // ============================================================================
+// AI Categorization
+// ============================================================================
+
+export function useBatchCategorize() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ invoiceIds, autoApply }: { invoiceIds: string[]; autoApply?: boolean }) =>
+      api.invoices.batchCategorizeWithAI(invoiceIds, autoApply),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+  })
+}
+
+// ============================================================================
 // Invoices
 // ============================================================================
 

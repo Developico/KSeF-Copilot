@@ -28,6 +28,7 @@ const CategorizeRequestSchema = z.object({
 
 const BatchCategorizeRequestSchema = z.object({
   invoiceIds: z.array(z.string().uuid()).min(1).max(50),
+  autoApply: z.boolean().optional().default(false),
 })
 
 /**
@@ -138,7 +139,7 @@ export async function batchCategorizeHandler(
       }
     }
 
-    const { invoiceIds } = parseResult.data
+    const { invoiceIds, autoApply } = parseResult.data
 
     // Fetch all invoices
     const invoices = await Promise.all(
@@ -175,14 +176,23 @@ export async function batchCategorizeHandler(
       } else {
         summary.success++
         // Save AI results to Dataverse
+        const updateData: Record<string, unknown> = {
+          aiMpkSuggestion: result.mpk as MPK,
+          aiCategorySuggestion: result.category,
+          aiDescription: result.description,
+          aiConfidence: result.confidence,
+          aiProcessedAt: new Date().toISOString(),
+        }
+        // When autoApply is enabled, also write to actual invoice fields
+        if (autoApply) {
+          Object.assign(updateData, {
+            mpk: result.mpk as MPK,
+            category: result.category,
+            description: result.description,
+          })
+        }
         updatePromises.push(
-          invoiceService.update(invoiceId, {
-            aiMpkSuggestion: result.mpk as MPK,
-            aiCategorySuggestion: result.category,
-            aiDescription: result.description,
-            aiConfidence: result.confidence,
-            aiProcessedAt: new Date().toISOString(),
-          }).catch(err => {
+          invoiceService.update(invoiceId, updateData).catch(err => {
             context.warn(`[AI] Failed to update invoice ${invoiceId}:`, err)
           })
         )

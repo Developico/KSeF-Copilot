@@ -19,6 +19,7 @@ import {
   ExternalLink,
   Terminal,
   Import,
+  Sparkles,
 } from 'lucide-react'
 import {
   useKsefStatus,
@@ -28,6 +29,7 @@ import {
   useSyncPreview,
   useRunSync,
   useImportInvoices,
+  useBatchCategorize,
 } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
 import { formatCurrency, formatDate } from '@/lib/format'
@@ -65,7 +67,8 @@ export function SyncPage() {
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [log, setLog] = useState<LogEntry[]>([])
-
+  const [aiCategorize, setAiCategorize] = useState(false)
+  const [aiProgress, setAiProgress] = useState<{ total: number; done: number; status: 'idle' | 'running' | 'done' | 'error' }>({ total: 0, done: 0, status: 'idle' })
   const appendLog = useCallback((type: LogEntry['type'], message: string) => {
     setLog((prev) => [
       ...prev,
@@ -97,6 +100,7 @@ export function SyncPage() {
 
   const runSync = useRunSync()
   const importInvoices = useImportInvoices()
+  const batchCategorize = useBatchCategorize()
 
   const session = sessionData?.session
   const isConnected = status?.isConnected ?? false
@@ -126,6 +130,35 @@ export function SyncPage() {
 
   // ── Handlers ─────────────────────────────────────────────────
 
+  async function runAiCategorization(invoiceIds: string[]) {
+    if (invoiceIds.length === 0) return
+    const BATCH_SIZE = 50
+    const batches: string[][] = []
+    for (let i = 0; i < invoiceIds.length; i += BATCH_SIZE) {
+      batches.push(invoiceIds.slice(i, i + BATCH_SIZE))
+    }
+    setAiProgress({ total: invoiceIds.length, done: 0, status: 'running' })
+    appendLog('info', `🤖 AI categorization started for ${invoiceIds.length} invoice(s)...`)
+    let totalSuccess = 0
+    let totalFailed = 0
+    try {
+      for (const batch of batches) {
+        const result = await batchCategorize.mutateAsync({ invoiceIds: batch, autoApply: true })
+        totalSuccess += result.success
+        totalFailed += result.failed
+        setAiProgress(prev => ({ ...prev, done: prev.done + batch.length }))
+        if (result.errors && result.errors.length > 0) {
+          result.errors.forEach(err => appendLog('error', `AI: ${err}`))
+        }
+      }
+      appendLog('success', `AI categorization completed: ${totalSuccess} success, ${totalFailed} failed`)
+      setAiProgress(prev => ({ ...prev, status: 'done' }))
+    } catch (error) {
+      appendLog('error', `AI categorization error: ${error instanceof Error ? error.message : 'Unknown'}`)
+      setAiProgress(prev => ({ ...prev, status: 'error' }))
+    }
+  }
+
   function handleSync() {
     if (!selectedCompany) return
     appendLog('info', `Starting full sync for ${selectedCompany.companyName}...`)
@@ -137,12 +170,16 @@ export function SyncPage() {
         dateTo: dateTo || undefined,
       },
       {
-        onSuccess: (result) => {
+        onSuccess: async (result) => {
           appendLog('success', `Sync completed. Imported: ${result.imported}, skipped: ${result.skipped}`)
           if (result.errors.length > 0) {
             result.errors.forEach((err) =>
               appendLog('error', `${err.ksefReferenceNumber}: ${err.error}`)
             )
+          }
+          // Auto-categorize new invoices with AI if enabled
+          if (aiCategorize && result.newInvoiceIds && result.newInvoiceIds.length > 0) {
+            await runAiCategorization(result.newInvoiceIds)
           }
         },
         onError: (err) => appendLog('error', `Sync failed: ${err.message}`),
@@ -161,9 +198,13 @@ export function SyncPage() {
         settingId: selectedCompany.id,
       },
       {
-        onSuccess: (result) => {
+        onSuccess: async (result) => {
           appendLog('success', `Import completed. Imported: ${result.imported}`)
           setSelected(new Set())
+          // Auto-categorize new invoices with AI if enabled
+          if (aiCategorize && result.newInvoiceIds && result.newInvoiceIds.length > 0) {
+            await runAiCategorization(result.newInvoiceIds)
+          }
         },
         onError: (err) => appendLog('error', `Import failed: ${err.message}`),
       }
@@ -371,14 +412,78 @@ export function SyncPage() {
             </Button>
             <Button
               onClick={handleSync}
-              disabled={runSync.isPending || !selectedCompany}
+              disabled={runSync.isPending || batchCategorize.isPending || !selectedCompany}
             >
-              {runSync.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {(runSync.isPending || batchCategorize.isPending) && (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              )}
               {runSync.isPending
                 ? intl.formatMessage({ id: 'dashboard.syncing' })
                 : intl.formatMessage({ id: 'common.ksefSync' })}
             </Button>
           </div>
+
+          {/* AI categorization option */}
+          <div className="flex items-start gap-3 rounded-md border border-purple-200 bg-purple-50 dark:bg-purple-950/30 dark:border-purple-800 p-3">
+            <input
+              type="checkbox"
+              id="ai-categorize"
+              checked={aiCategorize}
+              onChange={(e) => setAiCategorize(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+            />
+            <label htmlFor="ai-categorize" className="flex-1 cursor-pointer">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-purple-700 dark:text-purple-300">
+                <Sparkles className="h-4 w-4" />
+                AI Categorization
+              </div>
+              <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                Automatically describe invoices with AI after sync (MPK, category, description). Adds ~2s per invoice.
+              </p>
+            </label>
+          </div>
+
+          {/* AI progress */}
+          {aiProgress.status !== 'idle' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-1.5 text-purple-700 dark:text-purple-300">
+                  <Sparkles className="h-4 w-4" />
+                  AI Categorization
+                </span>
+                <span className="text-muted-foreground">
+                  {aiProgress.done}/{aiProgress.total}{' '}
+                  ({aiProgress.total > 0
+                    ? Math.round((aiProgress.done / aiProgress.total) * 100)
+                    : 0}%)
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-purple-100 dark:bg-purple-900 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    aiProgress.status === 'error'
+                      ? 'bg-red-500'
+                      : aiProgress.status === 'done'
+                        ? 'bg-green-500'
+                        : 'bg-purple-500'
+                  }`}
+                  style={{
+                    width: `${aiProgress.total > 0 ? (aiProgress.done / aiProgress.total) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+              {aiProgress.status === 'done' && (
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  AI categorization completed successfully.
+                </p>
+              )}
+              {aiProgress.status === 'error' && (
+                <p className="text-xs text-red-600 dark:text-red-400">
+                  AI categorization encountered errors. Check the log below for details.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Sync result */}
           {runSync.isSuccess && runSync.data && (
@@ -421,7 +526,7 @@ export function SyncPage() {
                   <Button
                     size="sm"
                     onClick={handleImportSelected}
-                    disabled={importInvoices.isPending}
+                    disabled={importInvoices.isPending || batchCategorize.isPending}
                   >
                     {importInvoices.isPending
                       ? <Loader2 className="h-4 w-4 animate-spin mr-2" />

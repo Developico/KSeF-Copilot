@@ -50,6 +50,7 @@ import type {
   DocumentConfig,
   DocumentInfo,
   AiCategorizationResult,
+  AiBatchCategorizationResult,
   ExchangeRateResponse,
   ConversionResponse,
   DvSetting,
@@ -651,6 +652,20 @@ export function useCategorizeWithAI(
       void qc.invalidateQueries({
         queryKey: queryKeys.invoice(invoiceId),
       })
+    },
+    ...options,
+  })
+}
+
+export function useBatchCategorize(
+  options?: UseMutationOptions<AiBatchCategorizationResult, Error, { invoiceIds: string[]; autoApply?: boolean }>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ invoiceIds, autoApply }: { invoiceIds: string[]; autoApply?: boolean }) =>
+      api.invoices.batchCategorizeWithAI(invoiceIds, autoApply),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['invoices'] })
     },
     ...options,
   })

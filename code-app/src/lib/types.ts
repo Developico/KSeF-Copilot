@@ -451,6 +451,7 @@ export interface SyncResult {
   imported: number
   skipped: number
   failed: number
+  newInvoiceIds?: string[]
   invoices: {
     ksefReferenceNumber: string
     invoiceNumber: string
@@ -745,6 +746,7 @@ export interface DvSyncResult {
   created: number
   updated: number
   failed: number
+  newInvoiceIds?: string[]
   errors: Array<{ reference: string; error: string }>
 }
 
@@ -830,6 +832,13 @@ export interface AiCategorizationResult {
     confidence: number
   }
   message: string
+}
+
+export interface AiBatchCategorizationResult {
+  processed: number
+  success: number
+  failed: number
+  errors?: string[]
 }
 
 // ─── KSeF Testdata ────────────────────────────────────────────────

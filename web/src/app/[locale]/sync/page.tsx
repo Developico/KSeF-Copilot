@@ -30,6 +30,7 @@ import {
   ArrowDownToLine,
   Building2,
   ExternalLink,
+  Sparkles,
 } from 'lucide-react'
 import {
   useKsefStatus,
@@ -39,6 +40,7 @@ import {
   useSyncPreview,
   useRunSync,
   useImportInvoices,
+  useBatchCategorize,
 } from '@/hooks/use-api'
 import { useSelectedCompany } from '@/contexts/company-context'
 import { RequireRole } from '@/components/auth/auth-provider'
@@ -59,7 +61,8 @@ export default function SyncPage() {
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0])
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set())
   const [syncLog, setSyncLog] = useState<string[]>([])
-
+  const [aiCategorize, setAiCategorize] = useState(false)
+  const [aiProgress, setAiProgress] = useState<{ total: number; done: number; status: 'idle' | 'running' | 'done' | 'error' }>({ total: 0, done: 0, status: 'idle' })
   // Mobile detection
   const [isMobile, setIsMobile] = useState(false)
   
@@ -89,6 +92,7 @@ export default function SyncPage() {
   const endSessionMutation = useEndSession()
   const runSyncMutation = useRunSync()
   const importMutation = useImportInvoices()
+  const batchCategorizeMutation = useBatchCategorize()
 
   const session = sessionData?.session
   const newInvoices = previewData?.invoices.filter(inv => !inv.alreadyImported) || []
@@ -140,6 +144,35 @@ export default function SyncPage() {
     }
   }
 
+  async function runAiCategorization(invoiceIds: string[]) {
+    if (invoiceIds.length === 0) return
+    const BATCH_SIZE = 50
+    const batches = []
+    for (let i = 0; i < invoiceIds.length; i += BATCH_SIZE) {
+      batches.push(invoiceIds.slice(i, i + BATCH_SIZE))
+    }
+    setAiProgress({ total: invoiceIds.length, done: 0, status: 'running' })
+    addLog(`🤖 AI categorization started for ${invoiceIds.length} invoice(s)...`)
+    let totalSuccess = 0
+    let totalFailed = 0
+    try {
+      for (const batch of batches) {
+        const result = await batchCategorizeMutation.mutateAsync({ invoiceIds: batch, autoApply: true })
+        totalSuccess += result.success
+        totalFailed += result.failed
+        setAiProgress(prev => ({ ...prev, done: prev.done + batch.length }))
+        if (result.errors && result.errors.length > 0) {
+          result.errors.forEach(err => addLog(`⚠️ AI: ${err}`))
+        }
+      }
+      addLog(`✅ AI categorization completed: ${totalSuccess} success, ${totalFailed} failed`)
+      setAiProgress(prev => ({ ...prev, status: 'done' }))
+    } catch (error) {
+      addLog(`❌ AI categorization error: ${error instanceof Error ? error.message : 'Unknown'}`)
+      setAiProgress(prev => ({ ...prev, status: 'error' }))
+    }
+  }
+
   async function handleSyncAll() {
     addLog(t('startingFullSync'))
     try {
@@ -152,6 +185,10 @@ export default function SyncPage() {
         })
       }
       await refetchPreview()
+      // Auto-categorize new invoices with AI if enabled
+      if (aiCategorize && result.newInvoiceIds && result.newInvoiceIds.length > 0) {
+        await runAiCategorization(result.newInvoiceIds)
+      }
     } catch (error) {
       addLog(`${t('syncError')}: ${error instanceof Error ? error.message : 'Unknown'}`)
     }
@@ -174,6 +211,10 @@ export default function SyncPage() {
       }
       setSelectedInvoices(new Set())
       await refetchPreview()
+      // Auto-categorize new invoices with AI if enabled
+      if (aiCategorize && result.newInvoiceIds && result.newInvoiceIds.length > 0) {
+        await runAiCategorization(result.newInvoiceIds)
+      }
     } catch (error) {
       addLog(`${t('importError')}: ${error instanceof Error ? error.message : 'Unknown'}`)
     }
@@ -200,7 +241,7 @@ export default function SyncPage() {
   }
 
   const isLoading = isLoadingStatus || isLoadingSession
-  const isSyncing = runSyncMutation.isPending || importMutation.isPending
+  const isSyncing = runSyncMutation.isPending || importMutation.isPending || batchCategorizeMutation.isPending
 
   return (
     <RequireRole role="Admin" fallback={
@@ -390,6 +431,48 @@ export default function SyncPage() {
                 </Button>
               </div>
             </div>
+
+            {/* AI auto-categorization option */}
+            <div className="flex items-start gap-3 rounded-md border border-purple-200 bg-purple-50 dark:bg-purple-950/30 dark:border-purple-800 p-3">
+              <Checkbox
+                id="ai-categorize"
+                checked={aiCategorize}
+                onCheckedChange={(checked) => setAiCategorize(checked === true)}
+              />
+              <div className="space-y-1">
+                <label htmlFor="ai-categorize" className="text-sm font-medium flex items-center gap-2 cursor-pointer">
+                  <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  AI categorization after sync
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Automatically assign MPK, category and description using AI for newly imported invoices. Adds ~2s per invoice to the sync time.
+                </p>
+              </div>
+            </div>
+
+            {/* AI progress indicator */}
+            {aiProgress.status === 'running' && (
+              <div className="flex items-center gap-3 rounded-md border border-purple-200 bg-purple-50 dark:bg-purple-950/30 dark:border-purple-800 p-3">
+                <RefreshCw className="h-4 w-4 animate-spin text-purple-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                    AI categorization in progress... ({aiProgress.done}/{aiProgress.total})
+                  </p>
+                  <div className="mt-1 h-1.5 rounded-full bg-purple-200 dark:bg-purple-800 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-purple-600 transition-all duration-300"
+                      style={{ width: `${aiProgress.total > 0 ? (aiProgress.done / aiProgress.total) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            {aiProgress.status === 'done' && (
+              <div className="flex items-center gap-2 text-sm text-purple-700 dark:text-purple-300">
+                <CheckCircle className="h-4 w-4" />
+                AI categorization completed ({aiProgress.done} invoices)
+              </div>
+            )}
             
             {isLoadingPreview && session && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">

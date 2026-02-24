@@ -62,6 +62,7 @@ import type {
   DocumentConfig,
   // AI
   AiCategorizationResult,
+  AiBatchCategorizationResult,
   // Exchange
   ExchangeRateResponse,
   ConversionResponse,
@@ -464,6 +465,12 @@ const _directApi = {
       apiFetch<AiCategorizationResult>('/api/ai/categorize', {
         method: 'POST',
         body: JSON.stringify({ invoiceId }),
+      }),
+
+    batchCategorizeWithAI: (invoiceIds: string[], autoApply = false) =>
+      apiFetch<AiBatchCategorizationResult>('/api/ai/batch-categorize', {
+        method: 'POST',
+        body: JSON.stringify({ invoiceIds, autoApply }),
       }),
   },
 

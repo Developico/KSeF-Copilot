@@ -56,6 +56,7 @@ interface SyncProgress {
   created: number
   updated: number
   failed: number
+  newInvoiceIds: string[]
   errors: Array<{ reference: string; error: string }>
 }
 
@@ -128,6 +129,7 @@ app.http('sync-start', {
         created: 0,
         updated: 0,
         failed: 0,
+        newInvoiceIds: [],
         errors: [],
       }
 
@@ -172,7 +174,7 @@ app.http('sync-start', {
             const parsed = parseInvoiceXml(invoiceData.invoiceXml)
 
             // Create invoice in Dataverse
-            await invoiceService.create({
+            const createdInvoice = await invoiceService.create({
               settingId: settingId,
               tenantNip: setting.nip,
               tenantName: setting.companyName,
@@ -190,6 +192,9 @@ app.http('sync-start', {
             })
 
             progress.created++
+            if (createdInvoice?.id) {
+              progress.newInvoiceIds.push(createdInvoice.id)
+            }
 
             // Update progress periodically
             if (progress.processed % 10 === 0 && syncLogId) {
