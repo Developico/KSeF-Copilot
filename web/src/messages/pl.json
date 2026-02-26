@@ -500,7 +500,11 @@
     "seller": "Sprzedawca",
     "date": "Data",
     "grossAmount": "Kwota brutto",
-    "openInKsef": "Otwórz w portalu KSeF"
+    "openInKsef": "Otwórz w portalu KSeF",
+    "aiCategorizeLabel": "Kategoryzacja AI",
+    "aiCategorizeDesc": "Automatyczne przypisanie MPK, kategorii i opisu przez AI dla nowych faktur. Dodaje ~2s na fakturę do czasu synchronizacji.",
+    "aiCategorizeInProgress": "Kategoryzacja AI w toku... ({done}/{total})",
+    "aiCategorizeCompleted": "Kategoryzacja AI zakończona ({done} faktur)"
   },
   "settings": {
     "title": "Ustawienia",

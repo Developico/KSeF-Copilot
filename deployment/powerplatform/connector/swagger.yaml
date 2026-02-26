@@ -27,8 +27,11 @@ paths:
         '401':
           description: Unauthorized
         '403':
-          description: Forbidden — requires Admin role
+          description: Forbidden — requires Reader role
       summary: Health Check (Detailed)
+      description: >-
+        Returns detailed system health status including Dataverse connectivity,
+        Key Vault access, and KSeF service availability.
       operationId: HealthCheck
       parameters:
         - name: environment
@@ -242,6 +245,25 @@ paths:
           description: Validation error
           schema:
             $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Invoice not found
+    delete:
+      operationId: DeleteInvoice
+      summary: Delete Invoice
+      description: Permanently delete an invoice by ID.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (Dataverse GUID)
+      responses:
+        '204':
+          description: Invoice deleted
         '401':
           description: Unauthorized
         '403':
@@ -477,6 +499,122 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden — requires Reader role
+  /anomalies:
+    get:
+      operationId: GetAnomalies
+      summary: Get Invoice Anomalies
+      description: >-
+        Detect unusual invoice patterns: amount spikes, new suppliers,
+        duplicate suspects, category shifts, and frequency changes.
+      x-ms-visibility: important
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: false
+          description: ID ustawienia firmy (UUID)
+        - name: tenantNip
+          in: query
+          type: string
+          required: false
+          description: NIP firmy (fallback jeśli brak settingId)
+        - name: periodDays
+          in: query
+          type: integer
+          required: false
+          description: >-
+            Okres analizy w dniach (domyślnie 30, zakres 7–365)
+        - name: sensitivity
+          in: query
+          type: number
+          required: false
+          description: >-
+            Próg czułości detekcji — mnożnik odchylenia standardowego
+            (domyślnie 2.0, zakres 1–5)
+        - name: enabledRules
+          in: query
+          type: string
+          required: false
+          description: >-
+            Lista aktywnych reguł oddzielona przecinkami
+            (amount-spike, new-supplier, duplicate-suspect,
+            category-shift, frequency-change)
+      responses:
+        '200':
+          description: Anomaly detection result
+          schema:
+            $ref: '#/definitions/AnomalyResult'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+  /anomalies/summary:
+    get:
+      operationId: GetAnomaliesSummary
+      summary: Get Anomaly Summary
+      description: Returns anomaly counts grouped by type and severity for the selected period.
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: false
+          description: ID ustawienia firmy (UUID)
+        - name: tenantNip
+          in: query
+          type: string
+          required: false
+          description: NIP firmy (fallback jeśli brak settingId)
+        - name: periodDays
+          in: query
+          type: integer
+          required: false
+          description: Okres analizy w dniach (domyślnie 30, zakres 7–365)
+        - name: sensitivity
+          in: query
+          type: number
+          required: false
+          description: >-
+            Próg czułości detekcji (domyślnie 2.0, zakres 1–5)
+        - name: enabledRules
+          in: query
+          type: string
+          required: false
+          description: Lista aktywnych reguł oddzielona przecinkami
+      responses:
+        '200':
+          description: Anomaly summary counts
+          schema:
+            $ref: '#/definitions/AnomalySummary'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+  /anomalies/rules:
+    get:
+      operationId: GetAnomalyRules
+      summary: Get Anomaly Detection Rules
+      description: >-
+        Returns available anomaly detection rules with their parameter
+        descriptors and preset configurations.
+      parameters: []
+      responses:
+        '200':
+          description: Rule descriptors and presets
+          schema:
+            type: object
+            properties:
+              rules:
+                type: array
+                items:
+                  type: object
+              presets:
+                type: array
+                items:
+                  type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
   /settings:
     get:
       operationId: ListSettings
@@ -672,6 +810,46 @@ paths:
           description: Forbidden — requires Admin role
         '404':
           description: Invoice not found
+  /ai/batch-categorize:
+    post:
+      operationId: AIBatchCategorize
+      summary: AI Batch Categorize Invoices
+      description: >-
+        Use AI to suggest MPK and category for multiple invoices in one call.
+        Processes all specified invoices and saves AI suggestions to Dataverse.
+        If autoApply is enabled, also writes AI results to the actual invoice fields.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - invoiceIds
+            properties:
+              invoiceIds:
+                type: array
+                items:
+                  type: string
+                description: Lista ID faktur do kategoryzacji (UUIDs)
+              autoApply:
+                type: boolean
+                description: >-
+                  Automatycznie zastosuj wyniki AI do pól faktury mpk/category/description
+                  (domyślnie false)
+      responses:
+        '200':
+          description: Batch categorization result
+          schema:
+            $ref: '#/definitions/BatchCategorizeResult'
+        '400':
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
   /vat/lookup:
     post:
       operationId: VatLookup
@@ -1012,6 +1190,32 @@ paths:
           description: Grouped forecast by supplier
           schema:
             $ref: '#/definitions/GroupedForecastResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+  /forecast/algorithms:
+    get:
+      operationId: GetForecastAlgorithms
+      summary: Get Forecast Algorithms
+      description: >-
+        Returns available forecast algorithms with their parameter metadata
+        and preset configurations.
+      parameters: []
+      responses:
+        '200':
+          description: Algorithm descriptors and presets
+          schema:
+            type: object
+            properties:
+              algorithms:
+                type: array
+                items:
+                  type: object
+              presets:
+                type: array
+                items:
+                  type: object
         '401':
           description: Unauthorized
         '403':
@@ -1993,6 +2197,80 @@ definitions:
               type: string
             error:
               type: string
+  AnomalyItem:
+    type: object
+    properties:
+      type:
+        type: string
+        description: Anomaly type
+        enum:
+          - amount-spike
+          - new-supplier
+          - duplicate-suspect
+          - category-shift
+          - frequency-change
+      severity:
+        type: string
+        enum:
+          - low
+          - medium
+          - high
+      invoiceId:
+        type: string
+        description: Related invoice ID
+      description:
+        type: string
+        description: Human-readable anomaly description
+      amount:
+        type: number
+        description: Related invoice gross amount
+      detectedAt:
+        type: string
+        format: date-time
+  AnomalySummary:
+    type: object
+    properties:
+      total:
+        type: integer
+        description: Total number of anomalies detected
+      byType:
+        type: object
+        description: Anomaly counts grouped by type
+      bySeverity:
+        type: object
+        description: Anomaly counts grouped by severity
+  AnomalyResult:
+    type: object
+    properties:
+      anomalies:
+        type: array
+        items:
+          $ref: '#/definitions/AnomalyItem'
+      summary:
+        $ref: '#/definitions/AnomalySummary'
+      periodDays:
+        type: integer
+        description: Analysis period used
+      analyzedAt:
+        type: string
+        format: date-time
+  BatchCategorizeResult:
+    type: object
+    properties:
+      processed:
+        type: integer
+        description: Total number of invoices processed
+      success:
+        type: integer
+        description: Number of successfully categorized invoices
+      failed:
+        type: integer
+        description: Number of failed categorizations
+      errors:
+        type: array
+        items:
+          type: string
+        description: Error messages for failed categorizations
 parameters: {}
 responses: {}
 security:

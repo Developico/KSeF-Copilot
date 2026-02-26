@@ -442,10 +442,10 @@ export default function SyncPage() {
               <div className="space-y-1">
                 <label htmlFor="ai-categorize" className="text-sm font-medium flex items-center gap-2 cursor-pointer">
                   <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                  AI categorization after sync
+                  {t('aiCategorizeLabel')}
                 </label>
                 <p className="text-xs text-muted-foreground">
-                  Automatically assign MPK, category and description using AI for newly imported invoices. Adds ~2s per invoice to the sync time.
+                  {t('aiCategorizeDesc')}
                 </p>
               </div>
             </div>
@@ -456,7 +456,7 @@ export default function SyncPage() {
                 <RefreshCw className="h-4 w-4 animate-spin text-purple-600" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                    AI categorization in progress... ({aiProgress.done}/{aiProgress.total})
+                    {t('aiCategorizeInProgress', { done: aiProgress.done, total: aiProgress.total })}
                   </p>
                   <div className="mt-1 h-1.5 rounded-full bg-purple-200 dark:bg-purple-800 overflow-hidden">
                     <div
@@ -470,7 +470,7 @@ export default function SyncPage() {
             {aiProgress.status === 'done' && (
               <div className="flex items-center gap-2 text-sm text-purple-700 dark:text-purple-300">
                 <CheckCircle className="h-4 w-4" />
-                AI categorization completed ({aiProgress.done} invoices)
+                {t('aiCategorizeCompleted', { done: aiProgress.done })}
               </div>
             )}
             

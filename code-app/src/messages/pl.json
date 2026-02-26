@@ -352,7 +352,10 @@
     "demo": "Demo",
     "noPermission": "Brak uprawnień do synchronizacji faktur.",
     "connectionStatus": "Status połączenia KSeF",
-    "connected": "Połączony"
+    "connected": "Połączony",
+    "aiCategorizeLabel": "Kategoryzacja AI",
+    "aiCategorizeDesc": "Automatyczny opis faktur przez AI po synchronizacji (MPK, kategoria, opis). Dodaje ~2s na fakturę.",
+    "aiCategorizeCompleted": "Kategoryzacja AI zakończona pomyślnie."
   },
   "settings": {
     "title": "Ustawienia",

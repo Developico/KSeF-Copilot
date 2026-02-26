@@ -96,12 +96,17 @@ export function InvoiceDetailPage() {
     { enabled: Boolean(isCorrectiveInvoice && invoice?.parentInvoiceId) }
   )
 
-  // Fetch corrections that reference this invoice as parent
+  // Fetch corrections that reference this invoice as parent.
+  // invoiceType: 'Corrective' narrows the result set on the API side.
+  // The client-side filter is a safety net in case the Dataverse
+  // _dvlp_parentinvoiceid_value OData filter is silently ignored.
   const { data: linkedCorrectionsData, isLoading: linkedCorrectionsLoading } = useInvoices(
-    { parentInvoiceId: invoice?.id },
+    { parentInvoiceId: invoice?.id, invoiceType: 'Corrective' },
     { enabled: Boolean(invoice?.id) }
   )
-  const linkedCorrections = linkedCorrectionsData?.invoices ?? []
+  const linkedCorrections = (linkedCorrectionsData?.invoices ?? []).filter(
+    (c) => c.parentInvoiceId === invoice?.id
+  )
   const markAsPaid = useMarkInvoiceAsPaid()
   const updateInvoice = useUpdateInvoice()
   const categorizeAI = useCategorizeWithAI()

@@ -500,7 +500,11 @@
     "seller": "Seller",
     "date": "Date",
     "grossAmount": "Gross amount",
-    "openInKsef": "Open in KSeF portal"
+    "openInKsef": "Open in KSeF portal",
+    "aiCategorizeLabel": "AI categorization after sync",
+    "aiCategorizeDesc": "Automatically assign MPK, category and description using AI for newly imported invoices. Adds ~2s per invoice to the sync time.",
+    "aiCategorizeInProgress": "AI categorization in progress... ({done}/{total})",
+    "aiCategorizeCompleted": "AI categorization completed ({done} invoices)"
   },
   "settings": {
     "title": "Settings",

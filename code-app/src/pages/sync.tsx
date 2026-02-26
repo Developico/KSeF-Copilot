@@ -435,10 +435,10 @@ export function SyncPage() {
             <label htmlFor="ai-categorize" className="flex-1 cursor-pointer">
               <div className="flex items-center gap-1.5 text-sm font-medium text-purple-700 dark:text-purple-300">
                 <Sparkles className="h-4 w-4" />
-                AI Categorization
+                {intl.formatMessage({ id: 'sync.aiCategorizeLabel' })}
               </div>
               <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
-                Automatically describe invoices with AI after sync (MPK, category, description). Adds ~2s per invoice.
+                {intl.formatMessage({ id: 'sync.aiCategorizeDesc' })}
               </p>
             </label>
           </div>
@@ -449,7 +449,7 @@ export function SyncPage() {
               <div className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-1.5 text-purple-700 dark:text-purple-300">
                   <Sparkles className="h-4 w-4" />
-                  AI Categorization
+                  {intl.formatMessage({ id: 'sync.aiCategorizeLabel' })}
                 </span>
                 <span className="text-muted-foreground">
                   {aiProgress.done}/{aiProgress.total}{' '}
@@ -474,7 +474,7 @@ export function SyncPage() {
               </div>
               {aiProgress.status === 'done' && (
                 <p className="text-xs text-green-600 dark:text-green-400">
-                  AI categorization completed successfully.
+                  {intl.formatMessage({ id: 'sync.aiCategorizeCompleted' })}
                 </p>
               )}
               {aiProgress.status === 'error' && (

@@ -352,7 +352,10 @@
     "demo": "Demo",
     "noPermission": "You don't have permission to sync invoices.",
     "connectionStatus": "KSeF connection status",
-    "connected": "Connected"
+    "connected": "Connected",
+    "aiCategorizeLabel": "AI Categorization",
+    "aiCategorizeDesc": "Automatically describe invoices with AI after sync (MPK, category, description). Adds ~2s per invoice.",
+    "aiCategorizeCompleted": "AI categorization completed successfully."
   },
   "settings": {
     "title": "Settings",
