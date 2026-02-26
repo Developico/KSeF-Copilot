@@ -4,6 +4,8 @@
  * Uses @azure/msal-react to enforce login before rendering
  * the app content. Shows a sign-in page when not authenticated.
  * When auth is not configured (env vars missing), renders children directly.
+ * When running inside Power Apps, renders children directly (auth is
+ * managed by the host platform via AuthProvider).
  */
 
 import { ReactNode } from 'react'
@@ -15,6 +17,7 @@ import {
 } from '@azure/msal-react'
 import { InteractionStatus } from '@azure/msal-browser'
 import { loginRequest, isAuthConfigured } from '@/lib/auth-config'
+import { isPowerAppsHost } from '@/lib/power-apps-host'
 import { Loader2, LogIn } from 'lucide-react'
 import developicoLogo from '@/assets/developico-logo.png'
 
@@ -99,6 +102,11 @@ function LoadingScreen() {
 }
 
 export function AuthGate({ children }: AuthGateProps) {
+  // Power Apps host — auth is managed by the platform, skip MSAL gate
+  if (isPowerAppsHost()) {
+    return <>{children}</>
+  }
+
   // If auth is not configured, render children directly (dev mode without auth)
   if (!isAuthConfigured()) {
     return <>{children}</>

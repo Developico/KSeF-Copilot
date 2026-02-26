@@ -10,7 +10,7 @@ export default function NewInvoicePage() {
   const t = useTranslations('invoices')
   
   return (
-    <div className="container mx-auto py-6 px-4">
+    <div>
       <div className="flex items-center gap-4 mb-6">
         <Link href="/invoices">
           <Button variant="ghost" size="icon">
