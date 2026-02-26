@@ -262,6 +262,18 @@
       "nipOrRegonHint": "Enter a 10-digit NIP or 9/14-digit REGON",
       "searchPrompt": "Enter NIP or REGON to search VAT registry"
     },
+    "invoiceType": "Invoice type",
+    "invoiceTypeVat": "VAT",
+    "invoiceTypeCorrective": "Corrective",
+    "invoiceTypeAdvance": "Advance",
+    "correctedInvoiceNumber": "Corrected invoice number",
+    "correctionReason": "Correction reason",
+    "parentInvoice": "Parent invoice",
+    "noParentInvoice": "Parent invoice not linked",
+    "correctionDetails": "Correction details",
+    "withCorrections": "With corrections",
+    "linkedCorrections": "Linked corrections",
+    "noLinkedCorrections": "No linked corrections",
     "notes": {
       "title": "Notes",
       "justNow": "just now",

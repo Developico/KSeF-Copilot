@@ -20,8 +20,11 @@ import {
   logDataverseInfo,
   logDataverseError,
 } from '../lib/dataverse'
+import { findParentInvoice } from '../lib/dataverse/invoices'
 import { queryInvoices, getInvoice } from '../lib/ksef/invoices'
 import { parseInvoiceXml } from '../lib/ksef/parser'
+import { InvoiceTypeEnum } from '../types/invoice'
+import type { ParsedInvoiceType } from '../lib/ksef/types'
 import { z } from 'zod'
 
 // Flexible datetime: accepts multiple formats and normalizes to ISO 8601 datetime.
@@ -174,7 +177,7 @@ app.http('sync-start', {
             const parsed = parseInvoiceXml(invoiceData.invoiceXml)
 
             // Create invoice in Dataverse
-            const createdInvoice = await invoiceService.create({
+            const invoiceCreateData = {
               settingId: settingId,
               tenantNip: setting.nip,
               tenantName: setting.companyName,
@@ -189,7 +192,33 @@ app.http('sync-start', {
               vatAmount: parsed.vatAmount,
               grossAmount: parsed.grossAmount,
               rawXml: invoiceData.invoiceXml,
-            })
+              // Invoice type & correction fields
+              invoiceType: mapParsedTypeToApp(parsed.invoiceType),
+              correctedInvoiceNumber: parsed.correctedInvoiceNumber,
+              correctionReason: parsed.correctionReason,
+              parentInvoiceId: undefined as string | undefined,
+            }
+
+            // Link corrective invoice to parent
+            if (parsed.invoiceType === 'KOR' || parsed.invoiceType === 'KOR_ZAL') {
+              try {
+                const parentId = await findParentInvoice(
+                  parsed.correctedInvoiceKsefRef,
+                  parsed.correctedInvoiceNumber,
+                  settingId,
+                )
+                if (parentId) {
+                  invoiceCreateData.parentInvoiceId = parentId
+                  context.log(`Linked corrective invoice to parent: ${parentId}`)
+                } else {
+                  context.warn(`Parent invoice not found for correction ${parsed.invoiceNumber}`)
+                }
+              } catch (linkError) {
+                context.warn(`Failed to link parent invoice for ${parsed.invoiceNumber}:`, linkError)
+              }
+            }
+
+            const createdInvoice = await invoiceService.create(invoiceCreateData)
 
             progress.created++
             if (createdInvoice?.id) {
@@ -432,3 +461,18 @@ app.http('sync-stats', {
     }
   },
 })
+
+/**
+ * Map parsed XML invoice type to application InvoiceTypeEnum
+ */
+function mapParsedTypeToApp(parsed: ParsedInvoiceType): InvoiceTypeEnum {
+  switch (parsed) {
+    case 'KOR':
+    case 'KOR_ZAL':
+      return 'Corrective'
+    case 'ZAL':
+      return 'Advance'
+    default:
+      return 'VAT'
+  }
+}

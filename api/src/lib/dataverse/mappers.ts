@@ -8,7 +8,7 @@
 import { DV, KSEF_STATUS, KSEF_DIRECTION, PAYMENT_STATUS, INVOICE_TYPE, CURRENCY, SESSION_STATUS, SESSION_TYPE, SYNC_STATUS, SYNC_DIRECTION, SYNC_OPERATION_TYPE, KSEF_ENVIRONMENT, INVOICE_SOURCE, LAST_SYNC_STATUS } from './config'
 import { logDataverseMapping } from './logger'
 import type { DvInvoice, DvSetting, DvSession, DvSyncLog } from '../../types/dataverse'
-import type { Invoice, PaymentStatus as AppPaymentStatus, MPK, InvoiceSource, Currency } from '../../types/invoice'
+import type { Invoice, PaymentStatus as AppPaymentStatus, MPK, InvoiceSource, Currency, InvoiceTypeEnum } from '../../types/invoice'
 
 // ============================================================
 // Invoice Mappers
@@ -16,7 +16,7 @@ import type { Invoice, PaymentStatus as AppPaymentStatus, MPK, InvoiceSource, Cu
 
 // MPK (Cost Center) Option Set values - MUST match Dataverse exactly!
 // Accepted Values: 100000000,100000001,100000002,100000003,100000005,100000006,100000007,100000008,100000009,100000100
-import { MpkValues } from './entities'
+import { MpkValues, InvoiceTypeValues } from './entities'
 
 /**
  * Map Dataverse Cost Center (number) to MPK enum
@@ -72,6 +72,24 @@ export function mapAppCurrencyToDv(currency: Currency | undefined): number {
 }
 
 /**
+ * Map Dataverse Invoice Type to App Invoice Type
+ */
+function mapDvInvoiceTypeToApp(value: number | undefined): InvoiceTypeEnum {
+  if (value === INVOICE_TYPE.CORRECTIVE) return 'Corrective'
+  if (value === INVOICE_TYPE.ADVANCE) return 'Advance'
+  return 'VAT'
+}
+
+/**
+ * Map App Invoice Type to Dataverse Invoice Type
+ */
+function mapAppInvoiceTypeToDv(type: InvoiceTypeEnum | undefined): number {
+  if (type === 'Corrective') return INVOICE_TYPE.CORRECTIVE
+  if (type === 'Advance') return INVOICE_TYPE.ADVANCE
+  return INVOICE_TYPE.VAT
+}
+
+/**
  * Map Dataverse Invoice to App Invoice
  */
 export function mapDvInvoiceToApp(raw: DvInvoice): Invoice {
@@ -108,6 +126,11 @@ export function mapDvInvoiceToApp(raw: DvInvoice): Invoice {
     rawXml: raw[s.ksefRawXml as keyof DvInvoice] as string | undefined,
     importedAt: raw[s.createdOn as keyof DvInvoice] as string,
     source: mapDvSourceToApp(raw[s.source as keyof DvInvoice] as number | undefined),
+    // Invoice type & correction fields
+    invoiceType: mapDvInvoiceTypeToApp(raw[s.invoiceType as keyof DvInvoice] as number | undefined),
+    parentInvoiceId: raw[s.parentInvoiceLookup as keyof DvInvoice] as string | undefined,
+    correctedInvoiceNumber: raw['dvlp_correctedinvoicenumber' as keyof DvInvoice] as string | undefined,
+    correctionReason: raw['dvlp_correctionreason' as keyof DvInvoice] as string | undefined,
     // AI Categorization fields
     aiMpkSuggestion: mapDvCostCenterToMpk(raw[s.aiMpkSuggestion as keyof DvInvoice] as number | undefined),
     aiCategorySuggestion: raw[s.aiCategorySuggestion as keyof DvInvoice] as string | undefined,
@@ -155,6 +178,14 @@ export function mapAppInvoiceToDv(app: Partial<Invoice>): Record<string, unknown
   if (app.referenceNumber !== undefined) payload[s.ksefReferenceNumber] = app.referenceNumber
   if (app.rawXml !== undefined) payload[s.ksefRawXml] = app.rawXml
   if (app.source !== undefined) payload[s.source] = mapAppSourceToDv(app.source)
+  // Invoice type & correction fields
+  if (app.invoiceType !== undefined) payload[s.invoiceType] = mapAppInvoiceTypeToDv(app.invoiceType)
+  if ((app as { correctedInvoiceNumber?: string }).correctedInvoiceNumber !== undefined) {
+    payload['dvlp_correctedinvoicenumber'] = (app as { correctedInvoiceNumber?: string }).correctedInvoiceNumber
+  }
+  if ((app as { correctionReason?: string }).correctionReason !== undefined) {
+    payload['dvlp_correctionreason'] = (app as { correctionReason?: string }).correctionReason
+  }
   
   // AI Categorization fields
   if (app.aiMpkSuggestion !== undefined) payload[s.aiMpkSuggestion] = mapMpkToDvCostCenter(app.aiMpkSuggestion)

@@ -6,6 +6,22 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.5.4] - 2026-02-26
+
+### ✨ Faktury korygujące — pełna obsługa
+
+- **Wykrywanie korekt** — logika wykrywania faktur korygujących na podstawie pola `invoiceType === 'Corrective'` z fallbackiem na prefiks numeru `KOR/` (odporność na brak pola w starszych danych)
+- **Zagnieżdżone wyświetlanie korekt** — korekty widoczne bezpośrednio pod fakturą nadrzędną na liście faktur z wcięciem i ikoną `CornerDownRight`
+- **Filtr „Z korektami"** — nowy szybki filtr na liście faktur z licznikiem wykrytych korekt
+- **Karta faktury nadrzędnej** — na stronie szczegółów korekty wyświetlana jest karta z numerem, dostawcą, datą i kwotą faktury nadrzędnej (klikalny link)
+- **Karta powiązanych korekt** — na stronie szczegółów faktury nadrzędnej wyświetlana jest lista powiązanych korekt z numerem, datą, przyczyną korekty i kwotą brutto
+
+### 🐛 Poprawki
+
+- **Walidacja kwoty brutto** — usunięto ograniczenie `min(0)` dla pól kwot w `InvoiceUpdateSchema` — faktury korygujące mogą mieć wartości ujemne
+
+---
+
 ## [2.5.3] - 2026-02-24
 
 ### ✨ Automatyczna kategoryzacja AI po synchronizacji

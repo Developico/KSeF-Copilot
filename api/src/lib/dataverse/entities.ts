@@ -58,6 +58,12 @@ export const InvoiceEntity = {
     // Document (File column for invoice image/scan)
     document: 'dvlp_doc',
     documentName: 'dvlp_doc_name',
+    // Invoice type & correction
+    invoiceType: 'dvlp_invoicetype',
+    parentInvoiceId: '_dvlp_parentinvoiceid_value',
+    parentInvoiceIdBind: 'dvlp_parentinvoiceid@odata.bind',
+    correctedInvoiceNumber: 'dvlp_correctedinvoicenumber',
+    correctionReason: 'dvlp_correctionreason',
   },
 }
 
@@ -171,4 +177,21 @@ export function getInvoiceSourceKey(value: number): 'KSeF' | 'Manual' {
   const entries = Object.entries(InvoiceSourceValues)
   const found = entries.find(([, v]) => v === value)
   return (found?.[0] as 'KSeF' | 'Manual') || 'KSeF'
+}
+
+/**
+ * Invoice type choice values
+ * Must match Dataverse OptionSet values
+ */
+export const InvoiceTypeValues = {
+  VAT: 100000001,
+  Corrective: 100000002,
+  Advance: 100000003,
+} as const
+
+export function getInvoiceTypeKey(value: number | null | undefined): 'VAT' | 'Corrective' | 'Advance' {
+  if (value === null || value === undefined) return 'VAT'
+  const entries = Object.entries(InvoiceTypeValues)
+  const found = entries.find(([, v]) => v === value)
+  return (found?.[0] as 'VAT' | 'Corrective' | 'Advance') || 'VAT'
 }

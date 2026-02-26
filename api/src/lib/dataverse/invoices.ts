@@ -1,5 +1,5 @@
 import { dataverseRequest, dataverseClient } from './client'
-import { InvoiceEntity, PaymentStatusValues, MpkValues, InvoiceSourceValues, getPaymentStatusKey, getMpkKey, getInvoiceSourceKey } from './entities'
+import { InvoiceEntity, PaymentStatusValues, MpkValues, InvoiceSourceValues, InvoiceTypeValues, getPaymentStatusKey, getMpkKey, getInvoiceSourceKey, getInvoiceTypeKey } from './entities'
 import { escapeOData } from './odata-utils'
 import { mapDvCurrencyToApp, mapAppCurrencyToDv } from './mappers'
 import { Invoice, InvoiceCreate, InvoiceUpdate, InvoiceListParams, ManualInvoiceCreate, InvoiceSource } from '../../types/invoice'
@@ -27,6 +27,7 @@ function buildInvoiceFilter(params: InvoiceListParams): string[] {
     source,
     overdue,
     search,
+    parentInvoiceId,
   } = params
 
   const filters: string[] = []
@@ -99,6 +100,16 @@ function buildInvoiceFilter(params: InvoiceListParams): string[] {
   // Source filter
   if (source && source in InvoiceSourceValues) {
     filters.push(`${InvoiceEntity.fields.source} eq ${InvoiceSourceValues[source]}`)
+  }
+
+  // Invoice type filter
+  if (params.invoiceType && params.invoiceType in InvoiceTypeValues) {
+    filters.push(`${InvoiceEntity.fields.invoiceType} eq ${InvoiceTypeValues[params.invoiceType as keyof typeof InvoiceTypeValues]}`)
+  }
+
+  // Parent invoice filter (to fetch corrections linked to a specific parent)
+  if (parentInvoiceId) {
+    filters.push(`${InvoiceEntity.fields.parentInvoiceId} eq ${parentInvoiceId}`)
   }
 
   // Overdue filter (pending + past due date)
@@ -234,6 +245,40 @@ export async function invoiceExistsByReference(referenceNumber: string): Promise
 
   const response = await dataverseRequest<{ value: unknown[] }>(path)
   return response.value.length > 0
+}
+
+/**
+ * Find parent invoice by KSeF reference number or invoice number.
+ * Used to link corrective invoices to their originals.
+ */
+export async function findParentInvoice(
+  ksefReference?: string,
+  invoiceNumber?: string,
+  settingId?: string,
+): Promise<string | undefined> {
+  // Prefer lookup by KSeF reference as it's unique
+  if (ksefReference) {
+    const path = `${InvoiceEntity.entitySet}?$filter=${InvoiceEntity.fields.referenceNumber} eq '${escapeOData(ksefReference)}'&$select=${InvoiceEntity.fields.id}&$top=1`
+    const response = await dataverseRequest<{ value: Array<Record<string, unknown>> }>(path)
+    if (response.value.length > 0) {
+      return response.value[0][InvoiceEntity.fields.id] as string
+    }
+  }
+
+  // Fallback: search by invoice number (may not be unique across settings)
+  if (invoiceNumber) {
+    let filter = `${InvoiceEntity.fields.invoiceNumber} eq '${escapeOData(invoiceNumber)}'`
+    if (settingId) {
+      filter += ` and _dvlp_settingid_value eq ${settingId}`
+    }
+    const path = `${InvoiceEntity.entitySet}?$filter=${filter}&$select=${InvoiceEntity.fields.id}&$top=1&$orderby=${InvoiceEntity.fields.invoiceDate} desc`
+    const response = await dataverseRequest<{ value: Array<Record<string, unknown>> }>(path)
+    if (response.value.length > 0) {
+      return response.value[0][InvoiceEntity.fields.id] as string
+    }
+  }
+
+  return undefined
 }
 
 /**
@@ -498,6 +543,11 @@ function mapFromDataverse(record: DataverseInvoice): Invoice {
     // Document fields (File column)
     hasDocument: !!(record[f.documentName]),
     documentFileName: record[f.documentName] as string | undefined,
+    // Invoice type & correction fields
+    invoiceType: getInvoiceTypeKey(record[f.invoiceType] as number | null | undefined),
+    parentInvoiceId: record[f.parentInvoiceId] as string | undefined,
+    correctedInvoiceNumber: record[f.correctedInvoiceNumber] as string | undefined,
+    correctionReason: record[f.correctionReason] as string | undefined,
   }
 }
 
@@ -557,6 +607,26 @@ function mapToDataverse(data: InvoiceCreate): Record<string, unknown> {
   // Add settingId lookup binding if provided
   if (data.settingId) {
     result['dvlp_settingid@odata.bind'] = `/dvlp_ksefsettings(${data.settingId})`
+  }
+
+  // Invoice type
+  if (data.invoiceType && data.invoiceType in InvoiceTypeValues) {
+    result[f.invoiceType] = InvoiceTypeValues[data.invoiceType as keyof typeof InvoiceTypeValues]
+  } else {
+    result[f.invoiceType] = InvoiceTypeValues.VAT
+  }
+
+  // Correction fields
+  if (data.correctedInvoiceNumber) {
+    result[f.correctedInvoiceNumber] = data.correctedInvoiceNumber
+  }
+  if (data.correctionReason) {
+    result[f.correctionReason] = data.correctionReason
+  }
+
+  // Parent invoice lookup binding
+  if (data.parentInvoiceId) {
+    result[f.parentInvoiceIdBind] = `/dvlp_ksefinvoices(${data.parentInvoiceId})`
   }
 
   return result

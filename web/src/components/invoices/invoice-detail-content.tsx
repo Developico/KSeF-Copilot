@@ -28,6 +28,8 @@ import {
   ChevronUp,
   Eye,
   Loader2,
+  CornerDownRight,
+  ExternalLink,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -214,6 +216,31 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
     queryKey: ['invoice', invoiceId],
     queryFn: () => api.invoices.get(invoiceId),
   })
+
+  // Determine if this is a corrective invoice (by type or invoice number prefix)
+  const isCorrectiveInvoice = invoice?.invoiceType === 'Corrective' ||
+    (invoice?.invoiceNumber && /^KOR[/\-]/i.test(invoice.invoiceNumber))
+
+  // Fetch parent invoice details (only for corrective invoices with a parentInvoiceId)
+  const {
+    data: parentInvoice,
+    isLoading: parentInvoiceLoading,
+  } = useQuery({
+    queryKey: ['invoice', invoice?.parentInvoiceId],
+    queryFn: () => api.invoices.get(invoice!.parentInvoiceId!),
+    enabled: Boolean(isCorrectiveInvoice && invoice?.parentInvoiceId),
+  })
+
+  // Fetch corrections that reference this invoice as parent
+  const {
+    data: linkedCorrectionsData,
+    isLoading: linkedCorrectionsLoading,
+  } = useQuery({
+    queryKey: ['invoices', { parentInvoiceId: invoice?.id }],
+    queryFn: () => api.invoices.list({ parentInvoiceId: invoice!.id }),
+    enabled: Boolean(invoice?.id),
+  })
+  const linkedCorrections = linkedCorrectionsData?.invoices ?? []
 
   // Fetch attachments
   const {
@@ -678,7 +705,19 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
             </Button>
           </Link>
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold truncate">{invoice.invoiceNumber}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold truncate">{invoice.invoiceNumber}</h1>
+              {isCorrectiveInvoice && (
+                <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800 shrink-0">
+                  {t('invoiceTypeCorrective')}
+                </Badge>
+              )}
+              {invoice.invoiceType === 'Advance' && (
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 shrink-0">
+                  {t('invoiceTypeAdvance')}
+                </Badge>
+              )}
+            </div>
             <p className="text-muted-foreground text-sm truncate">{invoice.supplierName}</p>
           </div>
         </div>
@@ -1097,6 +1136,136 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
               </div>
             </Card>
           </div>
+          )}
+
+          {/* Correction Details Section - only shown for corrective invoices */}
+          {isCorrectiveInvoice && (
+          <Card className="p-4 border-orange-200 dark:border-orange-800 bg-orange-50/30 dark:bg-orange-950/20">
+            <div className="flex items-center gap-2 text-sm font-medium mb-3">
+              <CornerDownRight className="h-4 w-4 text-orange-500" />
+              {t('correctionDetails')}
+              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800 text-xs">
+                {t('invoiceTypeCorrective')}
+              </Badge>
+            </div>
+            <div className="space-y-3 text-sm">
+              {invoice.correctedInvoiceNumber && (
+                <div>
+                  <span className="text-muted-foreground">{t('correctedInvoiceNumber')}:</span>
+                  <span className="ml-2 font-medium">{invoice.correctedInvoiceNumber}</span>
+                </div>
+              )}
+              {invoice.correctionReason && (
+                <div>
+                  <span className="text-muted-foreground">{t('correctionReason')}:</span>
+                  <span className="ml-2">{invoice.correctionReason}</span>
+                </div>
+              )}
+
+              {/* Parent invoice details */}
+              <Separator />
+              <div>
+                <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">{t('parentInvoice')}</span>
+              </div>
+              {invoice.parentInvoiceId ? (
+                parentInvoiceLoading ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span className="text-xs">{t('loading')}...</span>
+                  </div>
+                ) : parentInvoice ? (
+                  <Link
+                    href={`/invoices/${invoice.parentInvoiceId}`}
+                    className="block rounded-md border border-orange-200 dark:border-orange-800 bg-white dark:bg-background p-3 hover:bg-orange-50 dark:hover:bg-orange-950/40 transition-colors group"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{parentInvoice.invoiceNumber}</span>
+                          <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Building2 className="h-3 w-3" />
+                            {parentInvoice.supplierName}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDate(parentInvoice.invoiceDate)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-medium">{formatCurrency(parentInvoice.grossAmount, parentInvoice.currency)}</div>
+                      </div>
+                    </div>
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground italic text-xs">{t('noParentInvoice')}</span>
+                )
+              ) : (
+                <span className="text-muted-foreground italic text-xs">{t('noParentInvoice')}</span>
+              )}
+            </div>
+          </Card>
+          )}
+
+          {/* Linked Corrections Section - shown when invoice has corrections referencing it */}
+          {(linkedCorrectionsLoading || linkedCorrections.length > 0) && (
+          <Card className="p-4 border-orange-200 dark:border-orange-800 bg-orange-50/30 dark:bg-orange-950/20">
+            <div className="flex items-center gap-2 text-sm font-medium mb-3">
+              <CornerDownRight className="h-4 w-4 text-orange-500" />
+              {t('linkedCorrections')}
+              {!linkedCorrectionsLoading && (
+                <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800 text-xs">
+                  {linkedCorrections.length}
+                </Badge>
+              )}
+            </div>
+            <div className="space-y-2">
+              {linkedCorrectionsLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span className="text-xs">{t('loading')}...</span>
+                </div>
+              ) : linkedCorrections.length === 0 ? (
+                <span className="text-muted-foreground italic text-xs">{t('noLinkedCorrections')}</span>
+              ) : (
+                linkedCorrections.map((correction) => (
+                  <Link
+                    key={correction.id}
+                    href={`/invoices/${correction.id}`}
+                    className="block rounded-md border border-orange-200 dark:border-orange-800 bg-white dark:bg-background p-3 hover:bg-orange-50 dark:hover:bg-orange-950/40 transition-colors group"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{correction.invoiceNumber}</span>
+                          <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDate(correction.invoiceDate)}
+                          </span>
+                          {correction.correctionReason && (
+                            <span className="truncate max-w-xs">{correction.correctionReason}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-medium text-orange-700 dark:text-orange-300">
+                          {formatCurrency(correction.grossAmount, correction.currency)}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+          </Card>
           )}
 
           {/* Classification Section */}

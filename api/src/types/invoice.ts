@@ -21,6 +21,17 @@ export const InvoiceSource = {
 export type InvoiceSource = (typeof InvoiceSource)[keyof typeof InvoiceSource]
 
 /**
+ * Invoice type enum
+ */
+export const InvoiceTypeEnum = {
+  VAT: 'VAT',
+  Corrective: 'Corrective',
+  Advance: 'Advance',
+} as const
+
+export type InvoiceTypeEnum = (typeof InvoiceTypeEnum)[keyof typeof InvoiceTypeEnum]
+
+/**
  * MPK (Cost Center) enum
  */
 export const MPK = {
@@ -89,6 +100,11 @@ export interface Invoice {
   rawXml?: string
   importedAt: string
   source: InvoiceSource
+  // Invoice type & correction
+  invoiceType: InvoiceTypeEnum
+  parentInvoiceId?: string
+  correctedInvoiceNumber?: string
+  correctionReason?: string
   // Extended (AI Categorization)
   aiMpkSuggestion?: MPK
   aiCategorySuggestion?: string
@@ -142,15 +158,15 @@ export const InvoiceUpdateSchema = z.object({
   invoiceNumber: z.string().max(100).optional(),
   invoiceDate: z.string().date().optional(),
   dueDate: z.string().date().optional(),
-  netAmount: z.number().min(0).optional(),
-  vatAmount: z.number().min(0).optional(),
-  grossAmount: z.number().min(0).optional(),
+  netAmount: z.number().optional(), // Allow negative for corrective invoices
+  vatAmount: z.number().optional(), // Allow negative for corrective invoices
+  grossAmount: z.number().optional(), // Allow negative for corrective invoices
   // Currency fields
   currency: z.enum(['PLN', 'EUR', 'USD']).optional(),
   exchangeRate: z.number().min(0).optional(),
   exchangeDate: z.string().optional(),
   exchangeSource: z.string().max(50).optional(),
-  grossAmountPln: z.number().min(0).optional(),
+  grossAmountPln: z.number().optional(), // Allow negative for corrective invoices
   // AI Categorization fields
   aiMpkSuggestion: z.nativeEnum(MPK).optional(),
   aiCategorySuggestion: z.string().max(100).optional(),
@@ -193,6 +209,11 @@ export interface InvoiceCreate {
   grossAmountPln?: number
   rawXml?: string
   source?: InvoiceSource
+  // Correction fields
+  invoiceType?: InvoiceTypeEnum
+  parentInvoiceId?: string
+  correctedInvoiceNumber?: string
+  correctionReason?: string
   // Manual entry fields
   description?: string
   mpk?: string
@@ -220,9 +241,9 @@ export const ManualInvoiceCreateSchema = z.object({
   supplierCountry: z.string().max(100).optional(),
   invoiceDate: z.string().date(),
   dueDate: z.string().date().optional(),
-  netAmount: z.number().min(0),
-  vatAmount: z.number().min(0),
-  grossAmount: z.number().min(0),
+  netAmount: z.number(), // Allow negative for corrective invoices
+  vatAmount: z.number(), // Allow negative for corrective invoices
+  grossAmount: z.number(), // Allow negative for corrective invoices
   description: z.string().max(500).optional(),
   mpk: z.nativeEnum(MPK).optional(),
   category: z.string().max(50).optional(),
@@ -254,6 +275,8 @@ export interface InvoiceListParams {
   supplierNip?: string
   supplierName?: string
   source?: InvoiceSource
+  invoiceType?: InvoiceTypeEnum
+  parentInvoiceId?: string // Filter corrections by parent invoice ID
   overdue?: boolean
   search?: string // Full-text search
   top?: number

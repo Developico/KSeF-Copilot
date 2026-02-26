@@ -1,5 +1,5 @@
 import { XMLParser, XMLBuilder } from 'fast-xml-parser'
-import { ParsedInvoice, ParsedInvoiceItem, KsefInvoice, KsefInvoiceItem } from './types'
+import { ParsedInvoice, ParsedInvoiceItem, ParsedInvoiceType, KsefInvoice, KsefInvoiceItem } from './types'
 
 /**
  * Strip XML namespace prefixes (e.g. tns:Faktura → Faktura) and xmlns declarations
@@ -48,8 +48,52 @@ export function parseInvoiceXml(xml: string): ParsedInvoice {
   const buyerData = podmiot2.DaneIdentyfikacyjne || {}
   const buyerAddress = podmiot2.Adres || {}
 
+  // Parse invoice type (RodzajFaktury)
+  const rodzajFaktury = String(fa.RodzajFaktury || 'VAT').toUpperCase()
+  const invoiceType: ParsedInvoiceType = (
+    ['VAT', 'KOR', 'ZAL', 'ROZ', 'UPR', 'KOR_ZAL'].includes(rodzajFaktury)
+      ? rodzajFaktury
+      : 'VAT'
+  ) as ParsedInvoiceType
+
+  // Parse correction-specific fields
+  let correctedInvoiceNumber: string | undefined
+  let correctionReason: string | undefined
+  let correctedInvoiceKsefRef: string | undefined
+  let correctionPeriodFrom: string | undefined
+  let correctionPeriodTo: string | undefined
+
+  if (invoiceType === 'KOR' || invoiceType === 'KOR_ZAL') {
+    // FA(2): NrFaKorygowanej, FA(3): may use different path
+    correctedInvoiceNumber = fa.NrFaKorygowanej
+      ? String(fa.NrFaKorygowanej)
+      : fa.FaKorygujaca?.NrFaKorygowanej
+        ? String(fa.FaKorygujaca.NrFaKorygowanej)
+        : undefined
+
+    correctionReason = fa.PrzyczynaKorekty
+      ? String(fa.PrzyczynaKorekty)
+      : fa.FaKorygujaca?.PrzyczynaKorekty
+        ? String(fa.FaKorygujaca.PrzyczynaKorekty)
+        : undefined
+
+    // KSeF reference of corrected invoice
+    correctedInvoiceKsefRef = fa.NrKSeFFaKorygowanej
+      ? String(fa.NrKSeFFaKorygowanej)
+      : fa.FaKorygujaca?.NrKSeFFaKorygowanej
+        ? String(fa.FaKorygujaca.NrKSeFFaKorygowanej)
+        : undefined
+
+    // Correction period
+    const okres = fa.OkresFaKorygowanej || fa.FaKorygujaca?.OkresFaKorygowanej
+    if (okres) {
+      correctionPeriodFrom = okres.DataOd ? String(okres.DataOd) : undefined
+      correctionPeriodTo = okres.DataDo ? String(okres.DataDo) : undefined
+    }
+  }
+
   // Parse amounts
-  const netAmount = parseFloat(fa.P_13_1 || fa.RodzajFaktury?.P_13_1 || '0')
+  const netAmount = parseFloat(fa.P_13_1 || '0')
   const grossAmount = parseFloat(fa.P_15 || '0')
   const vatAmount = grossAmount - netAmount
 
@@ -96,6 +140,13 @@ export function parseInvoiceXml(xml: string): ParsedInvoice {
     grossAmount,
     items,
     rawXml: xml,
+    // Invoice type and correction fields
+    invoiceType,
+    correctedInvoiceNumber,
+    correctionReason,
+    correctedInvoiceKsefRef,
+    correctionPeriodFrom,
+    correctionPeriodTo,
   }
 }
 
@@ -103,7 +154,7 @@ export function parseInvoiceXml(xml: string): ParsedInvoice {
  * Format NIP to always be a 10-digit string with leading zeros
  */
 function formatNip(nip: unknown): string {
-  if (!nip) return ''
+  if (nip === undefined || nip === null || nip === '') return ''
   const nipStr = String(nip).replace(/\D/g, '')
   return nipStr.padStart(10, '0')
 }

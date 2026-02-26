@@ -262,6 +262,18 @@
       "nipOrRegonHint": "Wpisz 10-cyfrowy NIP lub 9/14-cyfrowy REGON",
       "searchPrompt": "Wpisz NIP lub REGON, aby wyszukać w rejestrze VAT"
     },
+    "invoiceType": "Typ faktury",
+    "invoiceTypeVat": "VAT",
+    "invoiceTypeCorrective": "Korygująca",
+    "invoiceTypeAdvance": "Zaliczkowa",
+    "correctedInvoiceNumber": "Numer faktury korygowanej",
+    "correctionReason": "Przyczyna korekty",
+    "parentInvoice": "Faktura nadrzędna",
+    "noParentInvoice": "Faktura nadrzędna nie powiązana",
+    "correctionDetails": "Szczegóły korekty",
+    "withCorrections": "Z korektami",
+    "linkedCorrections": "Powiązane korekty",
+    "noLinkedCorrections": "Brak powiązanych korekt",
     "notes": {
       "title": "Notatki",
       "justNow": "przed chwilą",

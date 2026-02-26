@@ -6,6 +6,30 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.7.7] - 2026-02-26
+
+### ✨ Faktury korygujące — pełna obsługa
+
+- **Wykrywanie korekt** — logika wykrywania faktur korygujących na podstawie pola `invoiceType === 'Corrective'` z fallbackiem na prefiks numeru `KOR/` (odporność na brak pola w starszych danych)
+- **Zagnieżdżone wyświetlanie korekt** — korekty widoczne bezpośrednio pod fakturą nadrzędną na liście faktur z wcięciem i ikoną `CornerDownRight`
+- **Filtr „Z korektami"** — nowy szybki filtr na liście faktur z licznikiem wykrytych korekt
+- **Karta faktury nadrzędnej** — na stronie szczegółów korekty wyświetlana jest karta z numerem, dostawcą, datą i kwotą faktury nadrzędnej (klikalny link)
+- **Karta powiązanych korekt** — na stronie szczegółów faktury nadrzędnej wyświetlana jest lista powiązanych korekt z numerem, datą, przyczyną korekty i kwotą brutto
+- **Filtr `parentInvoiceId`** — nowy parametr API do pobierania korekt powiązanych z daną fakturą nadrzędną
+
+### 🐛 Poprawki
+
+- **Walidacja kwoty brutto** — usunięto ograniczenie `min(0)` dla pól `netAmount`, `vatAmount`, `grossAmount` i `grossAmountPln` w `InvoiceUpdateSchema` i `ManualInvoiceCreateSchema` — faktury korygujące mogą mieć wartości ujemne
+- **Klucz i18n `invoices.loading`** — dodano brakujący klucz `loading` w namespace `invoices` (powodował błąd MISSING_MESSAGE w konsoli przeglądarki)
+
+### 🔧 Backend
+
+- **Nowe pola Dataverse** — encja faktur rozszerzona o `invoiceType`, `parentInvoiceId`, `correctedInvoiceNumber`, `correctionReason` (mapowanie do/z Dataverse)
+- **Parser KSeF XML** — automatyczne wykrywanie faktur korygujących z pola `TypFaktury` w XML KSeF oraz ekstrakcja numeru korygowanej faktury
+- **Filtr OData `parentInvoiceId`** — funkcja `listInvoices` obsługuje filtrowanie po polu `_dvlp_parentinvoiceid_value`
+
+---
+
 ## [0.7.6] - 2026-02-24
 
 ### ✨ Automatyczna kategoryzacja AI po synchronizacji

@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui'
 import {
-  Filter, ChevronDown, ChevronUp, X,
+  Filter, ChevronDown, ChevronUp, X, CornerDownRight,
 } from 'lucide-react'
 
 export type GroupBy = 'none' | 'date' | 'mpk' | 'category'
@@ -35,6 +35,7 @@ export interface InvoiceFilterValues {
   groupBy: GroupBy
   sortColumn: SortColumn
   sortDirection: SortDirection
+  correctionsOnly: boolean
 }
 
 export const DEFAULT_FILTERS: InvoiceFilterValues = {
@@ -54,6 +55,7 @@ export const DEFAULT_FILTERS: InvoiceFilterValues = {
   groupBy: 'none',
   sortColumn: 'invoiceDate',
   sortDirection: 'desc',
+  correctionsOnly: false,
 }
 
 interface InvoiceFiltersProps {
@@ -79,6 +81,7 @@ export function InvoiceFilters({
   const activeFilterCount = [
     filters.paymentStatus !== 'all',
     filters.descriptionStatus !== 'all',
+    filters.correctionsOnly,
     filters.fromDate !== '',
     filters.toDate !== '',
     filters.dueDateFrom !== '',
@@ -125,6 +128,17 @@ export function InvoiceFilters({
             </Button>
           ))}
         </div>
+
+        {/* Corrections toggle */}
+        <Button
+          size="sm"
+          variant={filters.correctionsOnly ? 'default' : 'outline'}
+          className={filters.correctionsOnly ? '' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'}
+          onClick={() => update({ correctionsOnly: !filters.correctionsOnly })}
+        >
+          <CornerDownRight className="h-3.5 w-3.5 mr-1" />
+          {intl.formatMessage({ id: 'invoices.withCorrections' })}
+        </Button>
 
         {/* Grouping */}
         <Select value={filters.groupBy} onValueChange={(v) => update({ groupBy: v as GroupBy })}>

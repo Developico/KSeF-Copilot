@@ -17,6 +17,7 @@
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "seed:testdata": "tsx scripts/seed-testdata.ts",
+    "seed:corrections": "tsx scripts/seed-corrective-invoices.ts",
     "cleanup:testdata": "tsx scripts/cleanup-testdata.ts"
   },
   "dependencies": {

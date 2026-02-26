@@ -2,10 +2,11 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { queryInvoices, getInvoice } from '../lib/ksef/invoices'
 import { parseInvoiceXml } from '../lib/ksef/parser'
-import { createInvoice, invoiceExistsByReference } from '../lib/dataverse/invoices'
+import { createInvoice, invoiceExistsByReference, findParentInvoice } from '../lib/dataverse/invoices'
 import { settingService, sessionService, syncLogService, logDataverseInfo, logDataverseError } from '../lib/dataverse'
 import { getKsefConfig } from '../lib/ksef/config'
-import { InvoiceCreate } from '../types/invoice'
+import { InvoiceCreate, InvoiceTypeEnum } from '../types/invoice'
+import type { ParsedInvoiceType } from '../lib/ksef/types'
 
 interface SyncResult {
   total: number
@@ -196,6 +197,29 @@ app.http('ksef-sync', {
             vatAmount: parsed.vatAmount,
             grossAmount: parsed.grossAmount,
             rawXml: invoiceResponse.invoiceXml,
+            // Invoice type & correction fields
+            invoiceType: mapParsedTypeToApp(parsed.invoiceType),
+            correctedInvoiceNumber: parsed.correctedInvoiceNumber,
+            correctionReason: parsed.correctionReason,
+          }
+
+          // Link corrective invoice to parent
+          if (parsed.invoiceType === 'KOR' || parsed.invoiceType === 'KOR_ZAL') {
+            try {
+              const parentId = await findParentInvoice(
+                parsed.correctedInvoiceKsefRef,
+                parsed.correctedInvoiceNumber,
+                settingId,
+              )
+              if (parentId) {
+                invoiceData.parentInvoiceId = parentId
+                context.log(`Linked corrective invoice to parent: ${parentId}`)
+              } else {
+                context.warn(`Parent invoice not found for correction ${parsed.invoiceNumber}`)
+              }
+            } catch (linkError) {
+              context.warn(`Failed to link parent invoice for ${parsed.invoiceNumber}:`, linkError)
+            }
           }
 
           const createdInvoice = await createInvoice(invoiceData)
@@ -494,6 +518,29 @@ app.http('ksef-sync-import', {
             vatAmount: parsed.vatAmount,
             grossAmount: parsed.grossAmount,
             rawXml: invoiceResponse.invoiceXml,
+            // Invoice type & correction fields
+            invoiceType: mapParsedTypeToApp(parsed.invoiceType),
+            correctedInvoiceNumber: parsed.correctedInvoiceNumber,
+            correctionReason: parsed.correctionReason,
+          }
+
+          // Link corrective invoice to parent
+          if (parsed.invoiceType === 'KOR' || parsed.invoiceType === 'KOR_ZAL') {
+            try {
+              const parentId = await findParentInvoice(
+                parsed.correctedInvoiceKsefRef,
+                parsed.correctedInvoiceNumber,
+                settingId,
+              )
+              if (parentId) {
+                invoiceData.parentInvoiceId = parentId
+                context.log(`Linked corrective invoice to parent: ${parentId}`)
+              } else {
+                context.warn(`Parent invoice not found for correction ${parsed.invoiceNumber}`)
+              }
+            } catch (linkError) {
+              context.warn(`Failed to link parent invoice for ${parsed.invoiceNumber}:`, linkError)
+            }
           }
 
           const createdInvoice = await createInvoice(invoiceData)
@@ -570,3 +617,18 @@ app.http('ksef-sync-import', {
     }
   },
 })
+
+/**
+ * Map parsed XML invoice type to application InvoiceTypeEnum
+ */
+function mapParsedTypeToApp(parsed: ParsedInvoiceType): InvoiceTypeEnum {
+  switch (parsed) {
+    case 'KOR':
+    case 'KOR_ZAL':
+      return 'Corrective'
+    case 'ZAL':
+      return 'Advance'
+    default:
+      return 'VAT'
+  }
+}

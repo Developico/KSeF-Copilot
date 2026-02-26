@@ -14,7 +14,7 @@ import {
   FileText, AlertCircle, ArrowUpDown, ChevronUp, ChevronDown,
   RefreshCw, Eye, Plus, ScanLine, Download,
   MoreHorizontal, CheckCircle, XCircle, Trash2,
-  Paperclip, StickyNote,
+  Paperclip, StickyNote, CornerDownRight,
 } from 'lucide-react'
 import { useInvoices, useMarkInvoiceAsPaid, useUpdateInvoice, useDeleteInvoice } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
@@ -58,6 +58,60 @@ function PaymentBadge({ status, dueDate }: { status: Invoice['paymentStatus']; d
       {intl.formatMessage({ id: 'invoices.pending' })}
     </Badge>
   )
+}
+
+// ============================================================================
+// Correction nesting — place corrective invoices right after their parent
+// ============================================================================
+
+interface NestedInvoice {
+  invoice: Invoice
+  isCorrection: boolean
+}
+
+/** Detect corrective invoices by type field OR by KOR/ prefix (fallback when invoiceType is missing) */
+function isCorrectiveInvoice(inv: Invoice): boolean {
+  return inv.invoiceType === 'Corrective' || /^KOR[/\-]/i.test(inv.invoiceNumber ?? '')
+}
+
+function nestCorrections(invoices: Invoice[]): NestedInvoice[] {
+  const correctionsByParent = new Map<string, Invoice[]>()
+
+  for (const inv of invoices) {
+    if (isCorrectiveInvoice(inv) && inv.parentInvoiceId) {
+      const list = correctionsByParent.get(inv.parentInvoiceId) ?? []
+      list.push(inv)
+      correctionsByParent.set(inv.parentInvoiceId, list)
+    }
+  }
+
+  if (correctionsByParent.size === 0) {
+    return invoices.map(inv => ({ invoice: inv, isCorrection: false }))
+  }
+
+  const nestedCorrectionIds = new Set<string>()
+  for (const [parentId, corrs] of correctionsByParent) {
+    if (invoices.some(i => i.id === parentId)) {
+      for (const c of corrs) nestedCorrectionIds.add(c.id)
+    }
+  }
+
+  const result: NestedInvoice[] = []
+  for (const inv of invoices) {
+    if (nestedCorrectionIds.has(inv.id)) continue
+    result.push({ invoice: inv, isCorrection: false })
+    const corrections = correctionsByParent.get(inv.id)
+    if (corrections) {
+      corrections.sort((a, b) =>
+        (b.invoiceDate ?? '').localeCompare(a.invoiceDate ?? '')
+      )
+      for (const corr of corrections) {
+        result.push({ invoice: corr, isCorrection: true })
+      }
+    }
+  }
+
+  return result
 }
 
 /** Group invoices by selected grouping key. */
@@ -193,13 +247,31 @@ export function InvoicesPage() {
     },
   })
 
-  // Client-side filtering (supplier search + description status)
+  // Client-side filtering (supplier search + description status + corrections)
   const allInvoices = data?.invoices ?? []
+  
+  // Build correction parent IDs set once for reuse
+  const correctionsParentIds = useMemo(() => {
+    return new Set(
+      allInvoices
+        .filter(i => isCorrectiveInvoice(i) && i.parentInvoiceId)
+        .map(i => i.parentInvoiceId!)
+    )
+  }, [allInvoices])
+  
   const clientFilteredInvoices = useMemo(() => {
-    return allInvoices
+    let result = allInvoices
       .filter((inv) => matchesDescriptionStatus(inv, filters.descriptionStatus))
       .filter((inv) => matchesSupplierSearch(inv, filters.supplierSearch))
-  }, [allInvoices, filters.descriptionStatus, filters.supplierSearch])
+    
+    if (filters.correctionsOnly) {
+      result = result.filter(
+        inv => isCorrectiveInvoice(inv) || correctionsParentIds.has(inv.id)
+      )
+    }
+    
+    return result
+  }, [allInvoices, filters.descriptionStatus, filters.supplierSearch, filters.correctionsOnly, correctionsParentIds])
 
   const totalFiltered = clientFilteredInvoices.length
 
@@ -444,10 +516,27 @@ export function InvoicesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {group.invoices.map((inv) => (
-                      <tr key={inv.id} className="border-b hover:bg-muted/30 transition-colors">
+                    {nestCorrections(group.invoices).map(({ invoice: inv, isCorrection }) => (
+                      <tr key={inv.id} className={`border-b hover:bg-muted/30 transition-colors ${isCorrection ? 'bg-orange-50/40 dark:bg-orange-950/20 border-l-2 border-l-orange-300 dark:border-l-orange-700' : ''}`}>
                         <td className="p-3 whitespace-nowrap">{formatDate(inv.invoiceDate)}</td>
-                        <td className="p-3 font-mono text-xs">{inv.invoiceNumber}</td>
+                        <td className="p-3 font-mono text-xs">
+                          <div className="flex items-center gap-1.5">
+                            {isCorrection && (
+                              <CornerDownRight className="h-3.5 w-3.5 text-orange-400 shrink-0" />
+                            )}
+                            <span className={isCorrection ? 'text-orange-700 dark:text-orange-300' : ''}>{inv.invoiceNumber}</span>
+                            {isCorrectiveInvoice(inv) && (
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800 text-[10px] px-1 py-0 leading-tight font-sans">
+                                {intl.formatMessage({ id: 'invoices.invoiceTypeCorrective' })}
+                              </Badge>
+                            )}
+                            {inv.invoiceType === 'Advance' && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 text-[10px] px-1 py-0 leading-tight font-sans">
+                                {intl.formatMessage({ id: 'invoices.invoiceTypeAdvance' })}
+                              </Badge>
+                            )}
+                          </div>
+                        </td>
                         <td className="p-3 max-w-48" title={inv.supplierName}>
                           <div className="flex items-center gap-1.5">
                             <span className="truncate">{inv.supplierName}</span>
@@ -463,7 +552,7 @@ export function InvoicesPage() {
                             )}
                           </div>
                         </td>
-                        <td className="p-3 text-right font-medium whitespace-nowrap">
+                        <td className={`p-3 text-right font-medium whitespace-nowrap ${inv.grossAmount < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
                           {formatCurrency(inv.grossAmount, inv.currency)}
                         </td>
                         <td className="p-3 text-muted-foreground">{inv.mpk ?? '—'}</td>
@@ -488,24 +577,38 @@ export function InvoicesPage() {
 
               {/* Mobile cards */}
               <div className="md:hidden space-y-3 mb-4">
-                {group.invoices.map((inv) => (
-                  <Card key={inv.id} className="hover:bg-muted/30 transition-colors">
+                {nestCorrections(group.invoices).map(({ invoice: inv, isCorrection }) => (
+                  <div key={inv.id} className={isCorrection ? 'ml-4 border-l-2 border-l-orange-300 dark:border-l-orange-700 pl-2' : ''}>
+                  <Card className={`hover:bg-muted/30 transition-colors ${isCorrection ? 'bg-orange-50/40 dark:bg-orange-950/20' : ''}`}>
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <Link to={`/invoices/${inv.id}`} className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
+                            {isCorrection && <CornerDownRight className="h-3.5 w-3.5 text-orange-400 shrink-0" />}
                             <p className="font-medium truncate">{inv.supplierName}</p>
                             {inv.hasAttachments && <Paperclip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                             {inv.hasNotes && <StickyNote className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                           </div>
-                          <p className="text-xs text-muted-foreground font-mono mt-0.5">
-                            {inv.invoiceNumber}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className={`text-xs font-mono mt-0.5 ${isCorrection ? 'text-orange-700 dark:text-orange-300' : 'text-muted-foreground'}`}>
+                              {inv.invoiceNumber}
+                            </p>
+                            {isCorrectiveInvoice(inv) && (
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800 text-[10px] px-1 py-0 leading-tight mt-0.5">
+                                {intl.formatMessage({ id: 'invoices.invoiceTypeCorrective' })}
+                              </Badge>
+                            )}
+                            {inv.invoiceType === 'Advance' && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 text-[10px] px-1 py-0 leading-tight mt-0.5">
+                                {intl.formatMessage({ id: 'invoices.invoiceTypeAdvance' })}
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground mt-1">{formatDate(inv.invoiceDate)}</p>
                         </Link>
                         <div className="flex items-start gap-2 shrink-0 ml-3">
                           <div className="text-right">
-                            <p className="font-medium">{formatCurrency(inv.grossAmount, inv.currency)}</p>
+                            <p className={`font-medium ${inv.grossAmount < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>{formatCurrency(inv.grossAmount, inv.currency)}</p>
                             <div className="mt-1">
                               <PaymentBadge status={inv.paymentStatus} dueDate={inv.dueDate} />
                             </div>
@@ -531,6 +634,7 @@ export function InvoicesPage() {
                       )}
                     </CardContent>
                   </Card>
+                  </div>
                 ))}
               </div>
               </>

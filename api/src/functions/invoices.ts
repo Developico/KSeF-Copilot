@@ -46,6 +46,8 @@ export async function listInvoicesHandler(
       supplierNip: url.searchParams.get('supplierNip') || undefined,
       supplierName: url.searchParams.get('supplierName') || undefined,
       source: url.searchParams.get('source') as InvoiceSource | undefined,
+      invoiceType: url.searchParams.get('invoiceType') as 'VAT' | 'Corrective' | 'Advance' | undefined,
+      parentInvoiceId: url.searchParams.get('parentInvoiceId') || undefined,
       overdue: url.searchParams.get('overdue') === 'true',
       search: url.searchParams.get('search') || undefined,
       orderBy: url.searchParams.get('orderBy') as 'invoiceDate' | 'grossAmount' | 'supplierName' | 'dueDate' || 'invoiceDate',

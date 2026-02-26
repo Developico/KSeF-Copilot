@@ -21,8 +21,10 @@ import {
   X,
   Loader2,
   Search,
+  CornerDownRight,
+  ExternalLink,
 } from 'lucide-react'
-import { useInvoice, useMarkInvoiceAsPaid, useUpdateInvoice, useCategorizeWithAI, useExchangeRate } from '@/hooks/use-api'
+import { useInvoice, useInvoices, useMarkInvoiceAsPaid, useUpdateInvoice, useCategorizeWithAI, useExchangeRate } from '@/hooks/use-api'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { useHasRole } from '@/components/auth/auth-provider'
 import { ClassificationEditDialog } from '@/components/invoices/classification-edit-dialog'
@@ -83,6 +85,23 @@ export function InvoiceDetailPage() {
 
   const isAdmin = useHasRole('Admin')
   const { data: invoice, isLoading, error, refetch } = useInvoice(id ?? '')
+
+  // Detect corrective invoice by type or invoice number prefix
+  const isCorrectiveInvoice = invoice?.invoiceType === 'Corrective' ||
+    (invoice?.invoiceNumber != null && /^KOR[/\-]/i.test(invoice.invoiceNumber))
+
+  // Fetch parent invoice (only when needed)
+  const { data: parentInvoice, isLoading: parentInvoiceLoading } = useInvoice(
+    invoice?.parentInvoiceId ?? '',
+    { enabled: Boolean(isCorrectiveInvoice && invoice?.parentInvoiceId) }
+  )
+
+  // Fetch corrections that reference this invoice as parent
+  const { data: linkedCorrectionsData, isLoading: linkedCorrectionsLoading } = useInvoices(
+    { parentInvoiceId: invoice?.id },
+    { enabled: Boolean(invoice?.id) }
+  )
+  const linkedCorrections = linkedCorrectionsData?.invoices ?? []
   const markAsPaid = useMarkInvoiceAsPaid()
   const updateInvoice = useUpdateInvoice()
   const categorizeAI = useCategorizeWithAI()
@@ -315,6 +334,16 @@ export function InvoiceDetailPage() {
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <FileText className="h-6 w-6" />
             {invoice.invoiceNumber}
+            {isCorrectiveInvoice && (
+              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800">
+                {intl.formatMessage({ id: 'invoices.invoiceTypeCorrective' })}
+              </Badge>
+            )}
+            {invoice.invoiceType === 'Advance' && (
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
+                {intl.formatMessage({ id: 'invoices.invoiceTypeAdvance' })}
+              </Badge>
+            )}
           </h1>
           <p className="text-muted-foreground mt-1">
             {invoice.supplierName}
@@ -719,6 +748,138 @@ export function InvoiceDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Correction details - only for corrective invoices */}
+      {isCorrectiveInvoice && (
+      <Card className="border-orange-200 dark:border-orange-800 bg-orange-50/30 dark:bg-orange-950/20">
+        <CardContent className="pt-4 pb-4">
+          <div className="flex items-center gap-2 text-sm font-medium mb-3">
+            <CornerDownRight className="h-4 w-4 text-orange-500" />
+            {intl.formatMessage({ id: 'invoices.correctionDetails' })}
+          </div>
+          <div className="space-y-3 text-sm">
+            {invoice.correctedInvoiceNumber && (
+              <div>
+                <span className="text-muted-foreground">{intl.formatMessage({ id: 'invoices.correctedInvoiceNumber' })}:</span>
+                <span className="ml-2 font-medium">{invoice.correctedInvoiceNumber}</span>
+              </div>
+            )}
+            {invoice.correctionReason && (
+              <div>
+                <span className="text-muted-foreground">{intl.formatMessage({ id: 'invoices.correctionReason' })}:</span>
+                <span className="ml-2">{invoice.correctionReason}</span>
+              </div>
+            )}
+
+            {/* Parent invoice card */}
+            <div className="pt-2 border-t border-orange-200 dark:border-orange-800">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                {intl.formatMessage({ id: 'invoices.parentInvoice' })}
+              </p>
+              {invoice.parentInvoiceId ? (
+                parentInvoiceLoading ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span className="text-xs">{intl.formatMessage({ id: 'common.loading' })}...</span>
+                  </div>
+                ) : parentInvoice ? (
+                  <Link
+                    to={`/invoices/${invoice.parentInvoiceId}`}
+                    className="block rounded-md border border-orange-200 dark:border-orange-800 bg-white dark:bg-background p-3 hover:bg-orange-50 dark:hover:bg-orange-950/40 transition-colors group"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{parentInvoice.invoiceNumber}</span>
+                          <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Building2 className="h-3 w-3" />
+                            {parentInvoice.supplierName}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDate(parentInvoice.invoiceDate)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-medium">{formatCurrency(parentInvoice.grossAmount, parentInvoice.currency)}</div>
+                      </div>
+                    </div>
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground italic text-xs">{intl.formatMessage({ id: 'invoices.noParentInvoice' })}</span>
+                )
+              ) : (
+                <span className="text-muted-foreground italic text-xs">{intl.formatMessage({ id: 'invoices.noParentInvoice' })}</span>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      )}
+
+      {/* Linked corrections - shown when this invoice has corrections referencing it */}
+      {(linkedCorrectionsLoading || linkedCorrections.length > 0) && (
+      <Card className="border-orange-200 dark:border-orange-800 bg-orange-50/30 dark:bg-orange-950/20">
+        <CardContent className="pt-4 pb-4">
+          <div className="flex items-center gap-2 text-sm font-medium mb-3">
+            <CornerDownRight className="h-4 w-4 text-orange-500" />
+            {intl.formatMessage({ id: 'invoices.linkedCorrections' })}
+            {!linkedCorrectionsLoading && (
+              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800 text-xs">
+                {linkedCorrections.length}
+              </Badge>
+            )}
+          </div>
+          <div className="space-y-2">
+            {linkedCorrectionsLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span className="text-xs">{intl.formatMessage({ id: 'common.loading' })}...</span>
+              </div>
+            ) : linkedCorrections.length === 0 ? (
+              <span className="text-muted-foreground italic text-xs">{intl.formatMessage({ id: 'invoices.noLinkedCorrections' })}</span>
+            ) : (
+              linkedCorrections.map((correction) => (
+                <Link
+                  key={correction.id}
+                  to={`/invoices/${correction.id}`}
+                  className="block rounded-md border border-orange-200 dark:border-orange-800 bg-white dark:bg-background p-3 hover:bg-orange-50 dark:hover:bg-orange-950/40 transition-colors group"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{correction.invoiceNumber}</span>
+                        <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(correction.invoiceDate)}
+                        </span>
+                        {correction.correctionReason && (
+                          <span className="truncate max-w-xs">{correction.correctionReason}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-medium text-orange-700 dark:text-orange-300">
+                        {formatCurrency(correction.grossAmount, correction.currency)}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+      )}
 
       {/* AI suggestions */}
       <Card className={`${(invoice.aiMpkSuggestion || invoice.aiCategorySuggestion || invoice.aiDescription) ? 'border-purple-200 dark:border-purple-800' : ''}`}>

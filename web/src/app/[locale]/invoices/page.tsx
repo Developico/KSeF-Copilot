@@ -47,6 +47,7 @@ import {
   FileImage,
   Paperclip,
   StickyNote,
+  CornerDownRight,
 } from 'lucide-react'
 import { useInvoices, useMarkAsPaid, useDeleteInvoice, useUpdateInvoice } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
@@ -136,6 +137,80 @@ interface InvoiceGroup {
   totalGross: number
 }
 
+// ============================================================================
+// Correction nesting — place corrective invoices right after their parent
+// ============================================================================
+
+/** Detect corrective invoices by type field OR by KOR/ prefix (fallback for older API data) */
+function isCorrectiveInvoice(inv: Invoice): boolean {
+  return inv.invoiceType === 'Corrective' || /^KOR[/\-]/i.test(inv.invoiceNumber ?? '')
+}
+
+interface NestedInvoice {
+  invoice: Invoice
+  /** true when this is a correction displayed under its parent */
+  isCorrection: boolean
+}
+
+/**
+ * Re-orders an invoice list so that corrective invoices (those with
+ * `parentInvoiceId`) appear immediately after their parent and are
+ * flagged with `isCorrection: true`.
+ *
+ * Corrections whose parent is not in the current list are kept in
+ * their original sort position (standalone).
+ */
+function nestCorrections(invoices: Invoice[]): NestedInvoice[] {
+  // Build lookup: parentId → corrections[]
+  const correctionsByParent = new Map<string, Invoice[]>()
+  const parentIds = new Set<string>()
+
+  for (const inv of invoices) {
+    if (isCorrectiveInvoice(inv) && inv.parentInvoiceId) {
+      const list = correctionsByParent.get(inv.parentInvoiceId) ?? []
+      list.push(inv)
+      correctionsByParent.set(inv.parentInvoiceId, list)
+      parentIds.add(inv.parentInvoiceId)
+    }
+  }
+
+  // If there are no corrections, skip the work
+  if (correctionsByParent.size === 0) {
+    return invoices.map(inv => ({ invoice: inv, isCorrection: false }))
+  }
+
+  // Collect IDs of corrections that will be nested under their parent
+  const nestedCorrectionIds = new Set<string>()
+  for (const [parentId, corrs] of correctionsByParent) {
+    // Only nest if the parent is present in this list
+    if (invoices.some(i => i.id === parentId)) {
+      for (const c of corrs) nestedCorrectionIds.add(c.id)
+    }
+  }
+
+  const result: NestedInvoice[] = []
+  for (const inv of invoices) {
+    // Skip corrections that will be inserted after their parent
+    if (nestedCorrectionIds.has(inv.id)) continue
+
+    result.push({ invoice: inv, isCorrection: false })
+
+    // After a parent, inject its corrections
+    const corrections = correctionsByParent.get(inv.id)
+    if (corrections) {
+      // Sort corrections by date descending
+      corrections.sort((a, b) =>
+        (b.invoiceDate ?? '').localeCompare(a.invoiceDate ?? '')
+      )
+      for (const corr of corrections) {
+        result.push({ invoice: corr, isCorrection: true })
+      }
+    }
+  }
+
+  return result
+}
+
 export default function InvoicesPage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -214,6 +289,9 @@ export default function InvoicesPage() {
   // Description status filter (client-side)
   const [descriptionFilter, setDescriptionFilter] = useState<DescriptionStatus | null>(null)
   
+  // Corrections-only filter (client-side)
+  const [correctionsOnly, setCorrectionsOnly] = useState(false)
+  
   // Document scanner modal state
   const [scannerOpen, setScannerOpen] = useState(false)
   
@@ -246,9 +324,34 @@ export default function InvoicesPage() {
 
   // Apply client-side description filter
   const allInvoices = data?.invoices || []
-  const invoices = descriptionFilter
+  const descriptionFiltered = descriptionFilter
     ? allInvoices.filter(i => getDescriptionStatus(i) === descriptionFilter)
     : allInvoices
+
+  // Apply corrections-only filter
+  const invoices = correctionsOnly
+    ? (() => {
+        // Build a set of parent invoice IDs that have at least one correction
+        const parentIdsWithCorrections = new Set(
+          allInvoices
+            .filter(i => isCorrectiveInvoice(i) && i.parentInvoiceId)
+            .map(i => i.parentInvoiceId!)
+        )
+        return descriptionFiltered.filter(
+          i => isCorrectiveInvoice(i) || parentIdsWithCorrections.has(i.id)
+        )
+      })()
+    : descriptionFiltered
+
+  // Corrections count (how many invoices are part of correction sets - based on allInvoices)
+  const correctionsParentIds = new Set(
+    allInvoices
+      .filter(i => isCorrectiveInvoice(i) && i.parentInvoiceId)
+      .map(i => i.parentInvoiceId!)
+  )
+  const correctionsCount = allInvoices.filter(
+    i => isCorrectiveInvoice(i) || correctionsParentIds.has(i.id)
+  ).length
 
   // Counts based on allInvoices (before description filter) for KPI display
   const pendingCount = allInvoices.filter(i => i.paymentStatus === 'pending').length
@@ -577,6 +680,20 @@ export default function InvoicesPage() {
                     </div>
                   </div>
                   
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">{t('withCorrections')}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant={correctionsOnly ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => { setCorrectionsOnly(v => !v); setFiltersDrawerOpen(false) }}
+                      >
+                        <CornerDownRight className="h-3.5 w-3.5 mr-1" />
+                        {t('withCorrections')} <Badge className="ml-1 bg-orange-100 text-orange-800">{correctionsCount}</Badge>
+                      </Button>
+                    </div>
+                  </div>
+                  
                   {/* Grouping & Sorting in mobile drawer */}
                   <div className="space-y-4 pt-4 border-t">
                     <div className="space-y-2">
@@ -736,6 +853,23 @@ export default function InvoicesPage() {
                 <Badge className="ml-1 h-5 px-1.5 bg-green-100 text-green-800">{describedCount}</Badge>
               </Button>
             </div>
+            
+            {/* Separator - hidden on tablet */}
+            <div className="h-6 w-px bg-border hidden lg:block" />
+            
+            {/* Corrections filter */}
+            <div className="flex items-center gap-1 lg:gap-2">
+              <Button
+                variant={correctionsOnly ? "default" : "ghost"}
+                size="sm"
+                className={correctionsOnly ? "h-8 gap-1 lg:gap-1.5" : "h-8 gap-1 lg:gap-1.5 text-orange-600 hover:text-orange-700 hover:bg-orange-50"}
+                onClick={() => setCorrectionsOnly(v => !v)}
+              >
+                <CornerDownRight className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline">{t('withCorrections')}</span>
+                <Badge className="ml-1 h-5 px-1.5 bg-orange-100 text-orange-800">{correctionsCount}</Badge>
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -818,14 +952,15 @@ export default function InvoicesPage() {
                 {/* Invoices in group */}
                 {!collapsedGroups.has(group.key) && (
                   <div className="space-y-2">
-                    {group.invoices.map((invoice) => (
-                      <InvoiceMobileCard
-                        key={invoice.id}
-                        invoice={invoice}
-                        onTogglePaymentStatus={isAdmin ? handleTogglePaymentStatus : undefined}
-                        onDelete={isAdmin ? handleDeleteInvoice : undefined}
-                        isUpdating={updateInvoiceMutation.isPending}
-                      />
+                    {nestCorrections(group.invoices).map(({ invoice, isCorrection }) => (
+                      <div key={invoice.id} className={isCorrection ? 'ml-4 border-l-2 border-l-orange-300 dark:border-l-orange-700 pl-2' : ''}>
+                        <InvoiceMobileCard
+                          invoice={invoice}
+                          onTogglePaymentStatus={isAdmin ? handleTogglePaymentStatus : undefined}
+                          onDelete={isAdmin ? handleDeleteInvoice : undefined}
+                          isUpdating={updateInvoiceMutation.isPending}
+                        />
+                      </div>
                     ))}
                   </div>
                 )}
@@ -996,17 +1131,33 @@ export default function InvoicesPage() {
                       </TableRow>
                     )}
                     {/* Invoice rows in group */}
-                    {!collapsedGroups.has(group.key) && group.invoices.map((invoice) => (
+                    {!collapsedGroups.has(group.key) && nestCorrections(group.invoices).map(({ invoice, isCorrection }) => (
                   <TableRow 
                     key={invoice.id}
-                    className="cursor-pointer hover:bg-muted/50"
+                    className={`cursor-pointer hover:bg-muted/50 ${isCorrection ? 'bg-orange-50/40 dark:bg-orange-950/20 border-l-2 border-l-orange-300 dark:border-l-orange-700' : ''}`}
                     onDoubleClick={() => router.push(`/invoices/${invoice.id}`)}
                   >
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <ArrowDownToLine className="h-4 w-4 text-blue-500 hidden sm:block" />
+                        {isCorrection ? (
+                          <CornerDownRight className="h-4 w-4 text-orange-400 hidden sm:block" />
+                        ) : (
+                          <ArrowDownToLine className="h-4 w-4 text-blue-500 hidden sm:block" />
+                        )}
                         <div>
-                          <div className="font-medium text-sm">{invoice.invoiceNumber}</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`font-medium text-sm ${isCorrection ? 'text-orange-700 dark:text-orange-300' : ''}`}>{invoice.invoiceNumber}</span>
+                            {isCorrectiveInvoice(invoice) && (
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800 text-[10px] px-1 py-0 leading-tight">
+                                {t('invoiceTypeCorrective')}
+                              </Badge>
+                            )}
+                            {invoice.invoiceType === 'Advance' && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 text-[10px] px-1 py-0 leading-tight">
+                                {t('invoiceTypeAdvance')}
+                              </Badge>
+                            )}
+                          </div>
                           <div className="text-xs text-muted-foreground font-mono hidden sm:block">
                             {invoice.referenceNumber?.slice(0, 20) || '-'}
                           </div>
@@ -1034,7 +1185,7 @@ export default function InvoicesPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right font-medium text-sm">
+                    <TableCell className={`text-right font-medium text-sm ${invoice.grossAmount < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
                       {formatCurrency(invoice.grossAmount)}
                     </TableCell>
                     <TableCell className="hidden xl:table-cell">

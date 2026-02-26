@@ -313,6 +313,11 @@ export interface Invoice {
   // Notes summary
   hasNotes?: boolean
   noteCount?: number
+  // Invoice type & correction fields
+  invoiceType?: 'VAT' | 'Corrective' | 'Advance'
+  parentInvoiceId?: string
+  correctedInvoiceNumber?: string
+  correctionReason?: string
 }
 
 export interface InvoiceItem {
@@ -465,6 +470,8 @@ export interface InvoiceListParams {
   supplierNip?: string
   supplierName?: string
   source?: 'KSeF' | 'Manual'
+  invoiceType?: 'VAT' | 'Corrective' | 'Advance'
+  parentInvoiceId?: string // Filter to get corrective invoices linked to a parent
   overdue?: boolean
   search?: string
   top?: number

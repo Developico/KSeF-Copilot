@@ -88,6 +88,11 @@ export interface KsefInvoiceDownloadResponse {
 }
 
 /**
+ * Invoice type detected from FA(2)/FA(3) XML (RodzajFaktury field)
+ */
+export type ParsedInvoiceType = 'VAT' | 'KOR' | 'ZAL' | 'ROZ' | 'UPR' | 'KOR_ZAL'
+
+/**
  * Parsed invoice from FA(2) XML
  */
 export interface ParsedInvoice {
@@ -109,6 +114,13 @@ export interface ParsedInvoice {
   grossAmount: number
   items: ParsedInvoiceItem[]
   rawXml: string
+  // Invoice type and correction fields
+  invoiceType: ParsedInvoiceType
+  correctedInvoiceNumber?: string
+  correctionReason?: string
+  correctedInvoiceKsefRef?: string
+  correctionPeriodFrom?: string
+  correctionPeriodTo?: string
 }
 
 /**
