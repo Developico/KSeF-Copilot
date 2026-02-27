@@ -10,7 +10,7 @@ EN [English version](README.en.md)
 
 ## 🎬 Webinar — demonstracja rozwiązania
 
-[![KSeF Copilot — demonstracja webinaru](https://img.youtube.com/vi/MDGhP9tcLQk/maxresdefault.jpg)](https://youtu.be/MDGhP9tcLQk)
+[![asciicast][KSeF Copilot — demonstracja webinaru](https://img.youtube.com/vi/MDGhP9tcLQk/maxresdefault.jpg)](https://youtu.be/MDGhP9tcLQk)
 
 ---
 
@@ -267,3 +267,4 @@ Projekt udostępniony na licencji MIT — szczegóły w pliku [LICENSE](LICENSE)
 Stworzone przez **[Developico Sp. z o.o.](https://developico.com)** | Łukasz Falaciński
 
 📍 Hajoty 53/1, 01-821 Warszawa, Polska | 📧 contact@developico.com
+
