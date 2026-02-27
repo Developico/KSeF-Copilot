@@ -129,11 +129,13 @@ export function parseInvoiceXml(xml: string): ParsedInvoice {
       nip: formatNip(supplierData.NIP),
       name: String(supplierData.Nazwa || supplierData.PelnaNazwa || ''),
       address: formatAddress(supplierAddress),
+      country: supplierAddress.KodKraju ? String(supplierAddress.KodKraju) : undefined,
     },
     buyer: {
       nip: formatNip(buyerData.NIP),
       name: String(buyerData.Nazwa || buyerData.PelnaNazwa || ''),
       address: formatAddress(buyerAddress),
+      country: buyerAddress.KodKraju ? String(buyerAddress.KodKraju) : undefined,
     },
     netAmount,
     vatAmount,
@@ -161,21 +163,39 @@ function formatNip(nip: unknown): string {
 
 /**
  * Format address object to string
+ * Supports FA(3) format (AdresL1/AdresL2) and FA(2) structural format
+ * (Ulica, NrDomu, NrLokalu, KodPocztowy, Miejscowosc)
  */
 function formatAddress(address: Record<string, unknown>): string {
   if (!address || typeof address !== 'object') return ''
 
-  const parts = [
-    address.Ulica,
-    address.NrDomu,
-    address.NrLokalu ? `/${address.NrLokalu}` : '',
-    ', ',
-    address.KodPocztowy,
-    ' ',
-    address.Miejscowosc,
-  ].filter(Boolean)
+  // FA(3): free-text lines (schema since 2025)
+  if (address.AdresL1) {
+    return [
+      String(address.AdresL1),
+      address.AdresL2 ? String(address.AdresL2) : undefined,
+    ].filter(Boolean).join(', ')
+  }
 
-  return parts.join('').trim().replace(/^,\s*/, '')
+  // FA(2): structured fields
+  const houseNumber = [
+    address.NrDomu ? String(address.NrDomu) : undefined,
+    address.NrLokalu ? String(address.NrLokalu) : undefined,
+  ].filter(Boolean).join('/')
+
+  const streetParts = [
+    address.Ulica ? String(address.Ulica) : undefined,
+    houseNumber || undefined,
+  ].filter(Boolean)
+  const street = streetParts.join(' ')
+
+  const cityParts = [
+    address.KodPocztowy ? String(address.KodPocztowy) : undefined,
+    address.Miejscowosc ? String(address.Miejscowosc) : undefined,
+  ].filter(Boolean)
+  const city = cityParts.join(' ')
+
+  return [street, city].filter(Boolean).join(', ')
 }
 
 /**

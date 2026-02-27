@@ -182,11 +182,12 @@ export function getInvoiceSourceKey(value: number): 'KSeF' | 'Manual' {
 /**
  * Invoice type choice values
  * Must match Dataverse OptionSet values
+ * Verified: 100000000=VAT, 100000001=korygująca, 100000002=zaliczkowa
  */
 export const InvoiceTypeValues = {
-  VAT: 100000001,
-  Corrective: 100000002,
-  Advance: 100000003,
+  VAT: 100000000,
+  Corrective: 100000001,
+  Advance: 100000002,
 } as const
 
 export function getInvoiceTypeKey(value: number | null | undefined): 'VAT' | 'Corrective' | 'Advance' {

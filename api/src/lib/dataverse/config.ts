@@ -273,9 +273,9 @@ export const PAYMENT_STATUS = {
 } as const
 
 export const INVOICE_TYPE = {
-  VAT: 100000001,
-  CORRECTIVE: 100000002,
-  ADVANCE: 100000003,
+  VAT: 100000000,
+  CORRECTIVE: 100000001,
+  ADVANCE: 100000002,
 } as const
 
 export const CURRENCY = {

@@ -797,9 +797,9 @@ Te dane są wykorzystywane do budowania kontekstu w promptach AI (few-shot learn
 
 | Wartość | Label (EN) | Label (PL) |
 |---------|------------|------------|
-| 100000001 | VAT Invoice | Faktura VAT |
-| 100000002 | Corrective | Faktura korygująca |
-| 100000003 | Advance | Faktura zaliczkowa |
+| 100000000 | VAT Invoice | Faktura VAT |
+| 100000001 | Corrective | Faktura korygująca |
+| 100000002 | Advance | Faktura zaliczkowa |
 
 ---
 
@@ -1060,9 +1060,9 @@ const paymentStatusMapping = {
 
 // Mapowanie typów faktur
 const invoiceTypeMapping = {
-  'VAT': 100000001,        // VAT Invoice
-  'CORRECTION': 100000002, // Corrective
-  'ADVANCE': 100000003     // Advance
+  'VAT': 100000000,        // VAT Invoice
+  'CORRECTION': 100000001, // Corrective
+  'ADVANCE': 100000002     // Advance
 };
 
 // Mapowanie walut

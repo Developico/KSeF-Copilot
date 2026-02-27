@@ -14,7 +14,8 @@ config({ path: resolve(__dirname, '../../.env.local') })
 import { ConfidentialClientApplication } from '@azure/msal-node'
 
 const dataverseUrl = process.env.DATAVERSE_URL!.replace(/\/$/, '')
-const nip = process.env.KSEF_NIP || '5272926470'
+const nip = process.env.KSEF_NIP!
+if (!nip) throw new Error('KSEF_NIP env variable is required')
 let accessToken: string
 
 const execute = process.argv.includes('--execute')
@@ -108,18 +109,13 @@ async function main() {
     console.log()
   }
 
-  // Identify source and target by name/id
-  // "Developico" (0c2b20f6) = wrong target (prod), "Developico DEMO" (465ae07e) = correct demo
-  const sourceSetting = settings.find((s: Record<string, unknown>) =>
-    s.dvlp_ksefsettingid === '0c2b20f6-1ffe-f011-8407-7ced8d455b3a'
-  ) || settings.find((s: Record<string, unknown>) => {
+  // Identify source (production, non-demo) and target (demo) settings by naming convention
+  const sourceSetting = settings.find((s: Record<string, unknown>) => {
     const name = ((s.dvlp_companyname || s.dvlp_name) as string || '').toLowerCase()
     return !name.includes('demo') && !name.includes('test')
   })
 
-  const targetSetting = settings.find((s: Record<string, unknown>) =>
-    s.dvlp_ksefsettingid === '465ae07e-85ff-f011-8407-7ced8d455b3a'
-  ) || settings.find((s: Record<string, unknown>) => {
+  const targetSetting = settings.find((s: Record<string, unknown>) => {
     const name = ((s.dvlp_companyname || s.dvlp_name) as string || '').toLowerCase()
     return name.includes('demo')
   })

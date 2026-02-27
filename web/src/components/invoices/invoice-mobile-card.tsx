@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { Invoice } from '@/lib/api'
+import { InvoiceAmountCell } from '@/components/invoices/currency-amount'
 
 interface InvoiceMobileCardProps {
   invoice: Invoice
@@ -47,13 +48,6 @@ function getDescriptionStatus(invoice: Invoice): DescriptionStatus {
   if (hasDescription) return 'described'
   if (hasAiSuggestion) return 'ai_suggested'
   return 'not_described'
-}
-
-function formatCurrency(amount: number, currency: string = 'PLN') {
-  return new Intl.NumberFormat('pl-PL', {
-    style: 'currency',
-    currency: currency,
-  }).format(amount)
 }
 
 export function InvoiceMobileCard({
@@ -151,7 +145,12 @@ export function InvoiceMobileCard({
             {new Date(invoice.invoiceDate).toLocaleDateString('pl-PL')}
           </div>
           <p className="text-lg font-bold">
-            {formatCurrency(invoice.grossAmount)}
+            <InvoiceAmountCell
+              amount={invoice.grossAmount}
+              currency={invoice.currency}
+              grossAmountPln={invoice.grossAmountPln}
+              className={invoice.grossAmount < 0 ? 'text-red-600 dark:text-red-400' : undefined}
+            />
           </p>
         </div>
       </div>

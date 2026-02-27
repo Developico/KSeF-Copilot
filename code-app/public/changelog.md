@@ -6,6 +6,20 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.7.8] - 2026-02-27
+
+### ✨ Wielowalutowość na liście faktur
+
+- **Tooltip PLN dla walut obcych** — tabela faktur (desktop) i karty mobilne wyświetlają tooltip `≈ X zł` po najechaniu na kwotę faktury EUR/USD, gdy dostępne jest pole `grossAmountPln`
+- **`TooltipProvider`** — strona faktur opakowana w `TooltipProvider` z Radix UI dla obsługi tooltipów
+
+### 🌐 i18n — badge statusu systemu
+
+- **Statusy przetłumaczone** — `SystemStatusBadge` używa `intl.formatMessage` dla etykiety statusu (`statusHealthy`, `statusDegraded`, `statusUnhealthy`) oraz podsumowania usług (`statusSummary`) zamiast twardych ciągów angielskich
+- **Nowe klucze i18n** — `settings.statusSummary`, `settings.statusHealthy/Degraded/Unhealthy` dodane do `en.json` i `pl.json`
+
+---
+
 ## [2.5.4] - 2026-02-26
 
 ### ✨ Faktury korygujące — pełna obsługa

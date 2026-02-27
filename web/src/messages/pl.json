@@ -53,6 +53,14 @@
     "clickHint": "Kliknij jeszcze {count} raz{suffix}...",
     "openMenu": "Otwórz menu"
   },
+  "systemStatus": {
+    "checking": "Sprawdzanie stanu systemu...",
+    "cannotConnect": "Nie można połączyć się z punktem końcowym health",
+    "allOperational": "Wszystkie systemy działają prawidłowo",
+    "servicesDegraded": "{count} usługa(i) z obniżoną wydajnością",
+    "servicesUnavailable": "{count} usługa(i) niedostępna(e)",
+    "servicesHealthy": "{healthy}/{total} usług sprawnych"
+  },
   "dashboard": {
     "title": "Dashboard",
     "subtitle": "Zarządzaj fakturami kosztowymi z KSeF",

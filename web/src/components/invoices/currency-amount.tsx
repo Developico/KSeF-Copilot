@@ -262,6 +262,50 @@ export function CurrencyDisplay({
 }
 
 // ============================================================================
+// InvoiceAmountCell — compact table variant
+// ============================================================================
+
+interface InvoiceAmountCellProps {
+  amount: number
+  currency: 'PLN' | 'EUR' | 'USD'
+  grossAmountPln?: number
+  className?: string
+}
+
+/**
+ * Table-optimised amount cell.
+ * For foreign-currency invoices, wraps the amount in a tooltip that shows
+ * the PLN equivalent on hover. When PLN equivalent is unknown, shows only
+ * the original amount (silent – no warning badge).
+ */
+export function InvoiceAmountCell({
+  amount,
+  currency,
+  grossAmountPln,
+  className,
+}: InvoiceAmountCellProps) {
+  const isForeign = currency !== 'PLN'
+  const formatted = formatAmount(amount, currency)
+
+  if (isForeign && grossAmountPln) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className={cn('cursor-help', className)}>{formatted}</span>
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            <span className="text-xs">≈ {formatAmount(grossAmountPln, 'PLN')}</span>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
+  return <span className={className}>{formatted}</span>
+}
+
+// ============================================================================
 // Helpers
 // ============================================================================
 

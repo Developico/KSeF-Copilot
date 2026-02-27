@@ -98,9 +98,14 @@ export interface DvInvoice {
   // Seller data
   dvlp_sellernip: string
   dvlp_sellername: string
+  dvlp_selleraddress?: string
+  dvlp_sellercountry?: string
   
   // Buyer data
   dvlp_buyernip: string
+  dvlp_buyername?: string
+  dvlp_buyeraddress?: string
+  dvlp_buyercountry?: string
   
   // Amounts
   dvlp_netamount: number

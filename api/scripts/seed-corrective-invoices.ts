@@ -25,9 +25,9 @@ let accessToken: string
 
 // Dataverse OptionSet values
 const InvoiceTypeValues = {
-  VAT: 100000001,
-  Corrective: 100000002,
-  Advance: 100000003,
+  VAT: 100000000,
+  Corrective: 100000001,
+  Advance: 100000002,
 } as const
 
 const SourceValues = {

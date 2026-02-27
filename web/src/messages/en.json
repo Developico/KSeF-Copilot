@@ -53,6 +53,14 @@
     "clickHint": "Click {count} more time{suffix}...",
     "openMenu": "Open menu"
   },
+  "systemStatus": {
+    "checking": "Checking system status...",
+    "cannotConnect": "Unable to connect to health endpoint",
+    "allOperational": "All systems are operational",
+    "servicesDegraded": "{count} service(s) degraded",
+    "servicesUnavailable": "{count} service(s) unavailable",
+    "servicesHealthy": "{healthy}/{total} services healthy"
+  },
   "dashboard": {
     "title": "Dashboard",
     "subtitle": "Manage cost invoices from KSeF",

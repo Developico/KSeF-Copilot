@@ -56,6 +56,7 @@ import { Invoice, InvoiceListParams } from '@/lib/api'
 import { exportInvoicesToCsv } from '@/lib/export'
 import { InvoiceFilters, GroupBy, SortColumn, SortDirection } from '@/components/invoices/invoice-filters'
 import { InvoiceMobileCard } from '@/components/invoices/invoice-mobile-card'
+import { InvoiceAmountCell } from '@/components/invoices/currency-amount'
 import { DocumentScannerModal } from '@/components/documents'
 import { useHasRole } from '@/components/auth/auth-provider'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
@@ -135,6 +136,7 @@ interface InvoiceGroup {
   label: string
   invoices: Invoice[]
   totalGross: number
+  isPartialPln: boolean
 }
 
 // ============================================================================
@@ -429,7 +431,8 @@ export default function InvoicesPage() {
         key: 'all',
         label: t('allInvoices'),
         invoices: sortedInvoices,
-        totalGross: sortedInvoices.reduce((sum, i) => sum + i.grossAmount, 0),
+        totalGross: sortedInvoices.reduce((sum, i) => sum + (i.currency === 'PLN' ? i.grossAmount : (i.grossAmountPln ?? i.grossAmount)), 0),
+        isPartialPln: sortedInvoices.some(i => i.currency !== 'PLN' && !i.grossAmountPln),
       }]
     }
 
@@ -467,10 +470,12 @@ export default function InvoicesPage() {
       }
 
       if (!groups[key]) {
-        groups[key] = { key, label, invoices: [], totalGross: 0 }
+        groups[key] = { key, label, invoices: [], totalGross: 0, isPartialPln: false }
       }
       groups[key].invoices.push(invoice)
-      groups[key].totalGross += invoice.grossAmount
+      const plnValue = invoice.currency === 'PLN' ? invoice.grossAmount : (invoice.grossAmountPln ?? invoice.grossAmount)
+      groups[key].totalGross += plnValue
+      if (invoice.currency !== 'PLN' && !invoice.grossAmountPln) groups[key].isPartialPln = true
     }
 
     // Sort groups - for date descending, for others alphabetically
@@ -945,7 +950,7 @@ export default function InvoicesPage() {
                       </Badge>
                     </div>
                     <span className="font-medium text-sm">
-                      {formatCurrency(group.totalGross)}
+                      {group.isPartialPln ? '~ ' : ''}{formatCurrency(group.totalGross)}
                     </span>
                   </button>
                 )}
@@ -1124,7 +1129,7 @@ export default function InvoicesPage() {
                               </Badge>
                             </div>
                             <span className="font-semibold">
-                              {formatCurrency(group.totalGross)}
+                              {group.isPartialPln ? '~ ' : ''}{formatCurrency(group.totalGross)}
                             </span>
                           </div>
                         </TableCell>
@@ -1185,8 +1190,13 @@ export default function InvoicesPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className={`text-right font-medium text-sm ${invoice.grossAmount < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
-                      {formatCurrency(invoice.grossAmount)}
+                    <TableCell className="text-right font-medium text-sm">
+                      <InvoiceAmountCell
+                        amount={invoice.grossAmount}
+                        currency={invoice.currency}
+                        grossAmountPln={invoice.grossAmountPln}
+                        className={invoice.grossAmount < 0 ? 'text-red-600 dark:text-red-400' : undefined}
+                      />
                     </TableCell>
                     <TableCell className="hidden xl:table-cell">
                       {invoice.mpk ? (

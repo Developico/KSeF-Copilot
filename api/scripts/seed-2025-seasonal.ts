@@ -251,7 +251,7 @@ async function main() {
     const invoices = [
       ...generateInvoices({
         tenantNip: opts.nip,
-        tenantName: 'Developico Sp. z o.o.',
+        tenantName: process.env.KSEF_COMPANY_NAME || opts.nip,
         count: ksefCount,
         fromDate, toDate,
         paidPercentage: plan.paidPercentage,
@@ -260,7 +260,7 @@ async function main() {
       }),
       ...generateInvoices({
         tenantNip: opts.nip,
-        tenantName: 'Developico Sp. z o.o.',
+        tenantName: process.env.KSEF_COMPANY_NAME || opts.nip,
         count: manualCount,
         fromDate, toDate,
         paidPercentage: plan.paidPercentage,

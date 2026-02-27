@@ -760,9 +760,19 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Invoice Info - Compact */}
                 <Card className="p-4">
-                  <div className="flex items-center gap-2 text-sm font-medium mb-3">
-                    <FileText className="h-4 w-4" />
-                    {t('manualForm.invoiceSection')}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <FileText className="h-4 w-4" />
+                      {t('manualForm.invoiceSection')}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" className="h-6 px-2" onClick={cancelEditingInvoice} title={t('manualForm.cancel')}>
+                        <X className="h-3 w-3" />
+                      </Button>
+                      <Button variant="default" size="sm" className="h-6 px-2" onClick={saveInvoice} disabled={updateInvoiceMutation.isPending} title={t('manualForm.saveInvoice')}>
+                        {updateInvoiceMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-3">
                     <div className="space-y-1">
@@ -995,18 +1005,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                 </Card>
               </div>
 
-              {/* Save / Cancel */}
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" size="sm" onClick={cancelEditingInvoice}>
-                  <X className="h-4 w-4 mr-1" />
-                  {t('manualForm.cancel')}
-                </Button>
-                <Button size="sm" onClick={saveInvoice} disabled={updateInvoiceMutation.isPending}>
-                  {updateInvoiceMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-                  <Save className="h-4 w-4 mr-1" />
-                  {t('manualForm.saveInvoice')}
-                </Button>
-              </div>
+
             </div>
           )}
 

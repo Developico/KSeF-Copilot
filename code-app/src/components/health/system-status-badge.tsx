@@ -36,10 +36,10 @@ export function SystemStatusBadge() {
       </TooltipTrigger>
       <TooltipContent>
         <p className="font-medium capitalize mb-1">
-          {intl.formatMessage({ id: 'settings.systemStatus' })}: {health.status}
+          {intl.formatMessage({ id: 'settings.systemStatus' })}: {intl.formatMessage({ id: `settings.status${health.status.charAt(0).toUpperCase() + health.status.slice(1)}` })}
         </p>
         <p className="text-xs">
-          {healthy} healthy, {degraded} degraded, {unhealthy} unhealthy
+          {intl.formatMessage({ id: 'settings.statusSummary' }, { healthy, degraded, unhealthy })}
         </p>
       </TooltipContent>
     </Tooltip>

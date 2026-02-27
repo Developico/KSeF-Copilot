@@ -1,6 +1,7 @@
 'use client'
 
 import { CheckCircle, AlertCircle, XCircle, Loader2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useHealthDetailed } from '@/hooks/use-api'
 import { useSelectedCompany } from '@/contexts/company-context'
 import { cn } from '@/lib/utils'
@@ -16,6 +17,7 @@ export function SystemStatusBadge() {
   const { selectedCompany } = useSelectedCompany()
   const environment = selectedCompany?.environment
   const { data: health, isLoading } = useHealthDetailed(environment)
+  const t = useTranslations('systemStatus')
 
   if (isLoading) {
     return (
@@ -32,7 +34,7 @@ export function SystemStatusBadge() {
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Checking system status...</p>
+            <p>{t('checking')}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -53,7 +55,7 @@ export function SystemStatusBadge() {
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Unable to connect to health endpoint</p>
+            <p>{t('cannotConnect')}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -65,19 +67,19 @@ export function SystemStatusBadge() {
       icon: CheckCircle,
       buttonClass: 'border-green-200 bg-green-50 hover:bg-green-100 dark:border-green-900 dark:bg-green-950 dark:hover:bg-green-900',
       iconClass: 'text-green-600 dark:text-green-400',
-      tooltip: 'All systems are operational',
+      tooltip: t('allOperational'),
     },
     degraded: {
       icon: AlertCircle,
       buttonClass: 'border-yellow-200 bg-yellow-50 hover:bg-yellow-100 dark:border-yellow-900 dark:bg-yellow-950 dark:hover:bg-yellow-900',
       iconClass: 'text-yellow-600 dark:text-yellow-400',
-      tooltip: `${health.summary.degraded} service(s) degraded`,
+      tooltip: t('servicesDegraded', { count: health.summary.degraded }),
     },
     unhealthy: {
       icon: XCircle,
       buttonClass: 'border-red-200 bg-red-50 hover:bg-red-100 dark:border-red-900 dark:bg-red-950 dark:hover:bg-red-900',
       iconClass: 'text-red-600 dark:text-red-400',
-      tooltip: `${health.summary.unhealthy} service(s) unavailable`,
+      tooltip: t('servicesUnavailable', { count: health.summary.unhealthy }),
     },
   }
 
@@ -100,7 +102,7 @@ export function SystemStatusBadge() {
           <div className="space-y-1">
             <p className="font-medium">{config.tooltip}</p>
             <p className="text-xs text-muted-foreground">
-              {health.summary.healthy}/{health.summary.total} services healthy
+              {t('servicesHealthy', { healthy: health.summary.healthy, total: health.summary.total })}
             </p>
             {health.services.length > 0 && (
               <div className="pt-2 mt-2 border-t space-y-1">

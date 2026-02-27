@@ -103,11 +103,13 @@ export interface ParsedInvoice {
     nip: string
     name: string
     address?: string
+    country?: string
   }
   buyer: {
     nip: string
     name: string
     address?: string
+    country?: string
   }
   netAmount: number
   vatAmount: number

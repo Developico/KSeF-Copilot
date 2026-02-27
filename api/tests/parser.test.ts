@@ -270,4 +270,61 @@ describe('Multiple line items', () => {
     expect(result.items).toHaveLength(1)
     expect(result.items[0].description).toBe('Usługi programistyczne')
   })
+
+  it('should parse FA(3) address (AdresL1/AdresL2 format)', () => {
+    // Represents the new FA(3) schema used since 2025 (e.g. Cyber_Folks invoices)
+    const fa3WithAddressXml = `<?xml version="1.0" encoding="UTF-8"?>
+<Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+  <Naglowek><KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</KodFormularza></Naglowek>
+  <Podmiot1>
+    <DaneIdentyfikacyjne><NIP>7792467259</NIP><Nazwa>CYBER_FOLKS SPÓŁKA AKCYJNA</Nazwa></DaneIdentyfikacyjne>
+    <Adres><KodKraju>PL</KodKraju><AdresL1>ul. Wierzbięcice 1B</AdresL1><AdresL2>61-569 Poznań</AdresL2></Adres>
+  </Podmiot1>
+  <Podmiot2>
+    <DaneIdentyfikacyjne><NIP>5272926984</NIP><Nazwa>Akademia Aplikacji Sp z o.o.</Nazwa></DaneIdentyfikacyjne>
+    <Adres><KodKraju>PL</KodKraju><AdresL1>Hajoty 53/1</AdresL1><AdresL2>01-821 Warszawa</AdresL2></Adres>
+  </Podmiot2>
+  <Fa><P_1>2026-02-25</P_1><P_2>EQV/FV/2026/02/0029878</P_2><P_13_1>447.00</P_13_1><P_15>549.81</P_15>
+    <FaWiersz><NrWierszaFa>1</NrWierszaFa><P_7>Usługa</P_7><P_8A>1</P_8A><P_8B>szt.</P_8B><P_9A>447.00</P_9A><P_11>447.00</P_11><P_12>23</P_12></FaWiersz>
+  </Fa>
+</Faktura>`
+
+    const result = parseInvoiceXml(fa3WithAddressXml)
+
+    // Supplier address: AdresL1 + AdresL2 joined with ", "
+    expect(result.supplier.address).toBe('ul. Wierzbięcice 1B, 61-569 Poznań')
+    expect(result.supplier.country).toBe('PL')
+
+    // Buyer address
+    expect(result.buyer.address).toBe('Hajoty 53/1, 01-821 Warszawa')
+    expect(result.buyer.country).toBe('PL')
+  })
+
+  it('should parse FA(2) address (structured fields) with correct spacing', () => {
+    const result = parseInvoiceXml(sampleInvoiceXml)
+
+    // FA(2): "Ulica NrDomu, KodPocztowy Miejscowosc" — space between street and number
+    expect(result.supplier.address).toBe('Testowa 1, 00-001 Warszawa')
+    expect(result.supplier.country).toBe('PL')
+
+    // Buyer has NrLokalu: "Ulica NrDomu/NrLokalu, KodPocztowy Miejscowosc"
+    expect(result.buyer.address).toBe('Kupiecka 10/5, 00-002 Kraków')
+    expect(result.buyer.country).toBe('PL')
+  })
+
+  it('should return empty string for missing address in FA(3)', () => {
+    const noAddressXml = `<?xml version="1.0" encoding="UTF-8"?>
+<Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+  <Naglowek><KodFormularza>FA</KodFormularza></Naglowek>
+  <Podmiot1><DaneIdentyfikacyjne><NIP>1234567890</NIP><Nazwa>Test</Nazwa></DaneIdentyfikacyjne></Podmiot1>
+  <Podmiot2><DaneIdentyfikacyjne><NIP>0987654321</NIP><Nazwa>Buyer</Nazwa></DaneIdentyfikacyjne></Podmiot2>
+  <Fa><P_1>2026-01-01</P_1><P_2>FV/001</P_2><P_13_1>100</P_13_1><P_15>123</P_15>
+    <FaWiersz><NrWierszaFa>1</NrWierszaFa><P_7>Test</P_7><P_8A>1</P_8A><P_8B>szt.</P_8B><P_9A>100</P_9A><P_11>100</P_11><P_12>23</P_12></FaWiersz>
+  </Fa>
+</Faktura>`
+
+    const result = parseInvoiceXml(noAddressXml)
+    expect(result.supplier.address).toBe('')
+    expect(result.supplier.country).toBeUndefined()
+  })
 })

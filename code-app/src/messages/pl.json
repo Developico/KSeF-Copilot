@@ -398,7 +398,11 @@
     "cleanupPreviewDesc": "Znaleziono {total} faktur do usunięcia",
     "cleanupDone": "Usunięto {deleted} faktur",
     "systemStatus": "Status systemu",
-    "noHealthData": "Dane o zdrowiu systemu niedostępne"
+    "noHealthData": "Dane o zdrowiu systemu niedostępne",
+    "statusHealthy": "Sprawny",
+    "statusDegraded": "Obniżona wydajność",
+    "statusUnhealthy": "Niedostępny",
+    "statusSummary": "{healthy} sprawne, {degraded} obniżona wydajność, {unhealthy} niedostępne"
   },
   "reports": {
     "title": "Raporty",

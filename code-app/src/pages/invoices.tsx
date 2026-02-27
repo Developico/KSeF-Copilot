@@ -9,6 +9,7 @@ import {
   AlertDialogTitle, AlertDialogTrigger,
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui'
 import {
   FileText, AlertCircle, ArrowUpDown, ChevronUp, ChevronDown,
@@ -553,7 +554,18 @@ export function InvoicesPage() {
                           </div>
                         </td>
                         <td className={`p-3 text-right font-medium whitespace-nowrap ${inv.grossAmount < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
-                          {formatCurrency(inv.grossAmount, inv.currency)}
+                          {inv.currency !== 'PLN' && inv.grossAmountPln ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="cursor-help">{formatCurrency(inv.grossAmount, inv.currency)}</span>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">
+                                  <span className="text-xs">≈ {formatCurrency(inv.grossAmountPln, 'PLN')}</span>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : formatCurrency(inv.grossAmount, inv.currency)}
                         </td>
                         <td className="p-3 text-muted-foreground">{inv.mpk ?? '—'}</td>
                         <td className="p-3 text-muted-foreground">{inv.category ?? '—'}</td>
@@ -608,7 +620,20 @@ export function InvoicesPage() {
                         </Link>
                         <div className="flex items-start gap-2 shrink-0 ml-3">
                           <div className="text-right">
-                            <p className={`font-medium ${inv.grossAmount < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>{formatCurrency(inv.grossAmount, inv.currency)}</p>
+                            <p className={`font-medium ${inv.grossAmount < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
+                              {inv.currency !== 'PLN' && inv.grossAmountPln ? (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="cursor-help">{formatCurrency(inv.grossAmount, inv.currency)}</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left">
+                                      <span className="text-xs">≈ {formatCurrency(inv.grossAmountPln, 'PLN')}</span>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ) : formatCurrency(inv.grossAmount, inv.currency)}
+                            </p>
                             <div className="mt-1">
                               <PaymentBadge status={inv.paymentStatus} dueDate={inv.dueDate} />
                             </div>

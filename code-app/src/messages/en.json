@@ -398,7 +398,11 @@
     "cleanupPreviewDesc": "Found {total} invoices to delete",
     "cleanupDone": "Deleted {deleted} invoices",
     "systemStatus": "System Status",
-    "noHealthData": "Health data unavailable"
+    "noHealthData": "Health data unavailable",
+    "statusHealthy": "Healthy",
+    "statusDegraded": "Degraded",
+    "statusUnhealthy": "Unhealthy",
+    "statusSummary": "{healthy} healthy, {degraded} degraded, {unhealthy} unhealthy"
   },
   "reports": {
     "title": "Reports",

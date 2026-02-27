@@ -6,6 +6,30 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.7.8] - 2026-02-27
+
+### ✨ Wielowalutowość na liście faktur
+
+- **`InvoiceAmountCell`** — nowy komponent tabeli wyświetlający kwotę w oryginalnej walucie z tooltipem `≈ X zł` (hover) dla faktur EUR/USD, gdy dostępne jest pole `grossAmountPln`
+- **Sumy grup w PLN** — sumy grupowe na liście faktur normalizowane do PLN przy użyciu `grossAmountPln ?? grossAmount`; prefiks `~` gdy co najmniej jedna faktura w grupie nie ma przeliczonej kwoty PLN
+- **Widok mobilny** — karty mobilne faktur używają `InvoiceAmountCell` zamiast lokalnej funkcji `formatCurrency`
+
+### 🎨 UX — formularz szczegółów faktury
+
+- **Przyciski Zapisz/Anuluj w nagłówku** — ikony `[X][✓]` przeniesione z oddzielnego paska na dole do nagłówka karty „Dane faktury"; spinner `Loader2` podczas zapisu — spójnie z kartą Klasyfikacja
+
+### 🌐 i18n — badge statusu systemu
+
+- **Namespace `systemStatus`** — wszystkie teksty tooltipów w `SystemStatusBadge` przeniesione do kluczy i18n (`checking`, `cannotConnect`, `allOperational`, `servicesDegraded`, `servicesUnavailable`, `servicesHealthy`) w `en.json` i `pl.json`
+
+### 🔧 Backend — parser KSeF i synchronizacja
+
+- **Obsługa formatu FA(3)** — parser XML KSeF obsługuje nowy format adresu `AdresL1/AdresL2` (schemat od 2025) jako fallback przed strukturalnym formatem FA(2) (`Ulica`, `NrDomu`, `KodPocztowy`, `Miejscowosc`)
+- **Ekstrakcja kraju** — parser wyodrębnia `KodKraju` (kod kraju ISO) dla dostawcy i nabywcy z XML
+- **Zapis kraju/adresu nabywcy** — synchronizacja KSeF zapisuje do Dataverse pola `supplierCountry`, `buyerAddress`, `buyerCountry` z danych parsera
+
+---
+
 ## [0.7.7] - 2026-02-26
 
 ### ✨ Faktury korygujące — pełna obsługa

@@ -975,9 +975,9 @@ const paymentStatusMapping = {
 
 // Invoice type mapping
 const invoiceTypeMapping = {
-  'VAT': 100000001,        // VAT Invoice
-  'CORRECTION': 100000002, // Corrective
-  'ADVANCE': 100000003     // Advance
+  'VAT': 100000000,        // VAT Invoice
+  'CORRECTION': 100000001, // Corrective
+  'ADVANCE': 100000002     // Advance
 };
 
 // Currency mapping

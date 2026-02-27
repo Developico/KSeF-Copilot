@@ -8,6 +8,12 @@ EN [English version](README.en.md)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 [![npm](https://img.shields.io/badge/npm-10+-orange.svg)](https://www.npmjs.com/)
 
+## 🎬 Webinar — demonstracja rozwiązania
+
+[![KSeF Copilot — demonstracja webinaru](https://img.youtube.com/vi/MDGhP9tcLQk/maxresdefault.jpg)](https://youtu.be/MDGhP9tcLQk)
+
+---
+
 > Otwarte rozwiązanie do integracji z Krajowym Systemem e-Faktur (KSeF), zbudowane w filozofii **API-First**. REST API (Azure Functions) stanowi rdzeń produktu — każdy klient HTTP może z niego korzystać. Repozytorium zawiera referencyjne implementacje frontendowe (Next.js, React SPA, Model-Driven App), ale prawdziwym produktem jest API. Priorytetem architektonicznym jest wykorzystanie **Power Platform i Microsoft Dataverse** jako backendu. Gotowe do wdrożenia w chmurze Azure.
 
 ## 🎯 Funkcje
