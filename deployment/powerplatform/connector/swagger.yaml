@@ -47,9 +47,14 @@ paths:
   /invoices:
     get:
       responses:
-        default:
-          description: default
-          schema: {}
+        '200':
+          description: Invoice list
+          schema:
+            $ref: '#/definitions/InvoiceListResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
       summary: List Invoices
       operationId: ListInvoices
       x-ms-visibility: important
@@ -268,6 +273,76 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden — requires Admin role
+        '404':
+          description: Invoice not found
+  /invoices/{id}/notes:
+    post:
+      operationId: CreateInvoiceNote
+      summary: Add Note to Invoice
+      description: Add a text note to an invoice for internal comments or audit trail.
+      x-ms-visibility: important
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (GUID)
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - noteText
+            properties:
+              noteText:
+                type: string
+                description: Note content (max 10000 characters)
+              subject:
+                type: string
+                description: Note subject (max 500 characters)
+      responses:
+        '201':
+          description: Note created
+          schema:
+            $ref: '#/definitions/Note'
+        '400':
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Invoice not found
+    get:
+      operationId: ListInvoiceNotes
+      summary: List Invoice Notes
+      description: Returns all notes attached to an invoice.
+      x-ms-visibility: important
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (GUID)
+      responses:
+        '200':
+          description: List of notes
+          schema:
+            type: object
+            properties:
+              notes:
+                type: array
+                items:
+                  $ref: '#/definitions/Note'
+              count:
+                type: integer
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
         '404':
           description: Invoice not found
   /invoices/manual:
@@ -499,6 +574,47 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden — requires Reader role
+  /ksef/sync:
+    post:
+      operationId: StartKsefSync
+      summary: Start KSeF Invoice Sync
+      description: >-
+        Synchronize incoming invoices from KSeF for a given company (by NIP).
+        Uses the native KSeF session-based sync. Imports invoices found in
+        the specified date range directly from KSeF API.
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: false
+          schema:
+            type: object
+            properties:
+              nip:
+                type: string
+                description: NIP firmy (domyślnie z konfiguracji)
+              dateFrom:
+                type: string
+                format: date-time
+                description: Data od (ISO 8601, domyślnie 30 dni wstecz)
+              dateTo:
+                type: string
+                format: date-time
+                description: Data do (ISO 8601, domyślnie teraz)
+              importAll:
+                type: boolean
+                description: Importuj wszystkie znalezione faktury bez potwierdzenia (domyślnie true)
+      responses:
+        '200':
+          description: KSeF sync result
+          schema:
+            $ref: '#/definitions/KsefSyncResult'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
   /anomalies:
     get:
       operationId: GetAnomalies
@@ -2271,6 +2387,95 @@ definitions:
         items:
           type: string
         description: Error messages for failed categorizations
+  InvoiceListResponse:
+    type: object
+    properties:
+      invoices:
+        type: array
+        items:
+          $ref: '#/definitions/Invoice'
+        description: List of invoices for the current page
+      total:
+        type: integer
+        description: Total number of invoices matching the filters
+      page:
+        type: integer
+        description: Current page number (1-based)
+      pageSize:
+        type: integer
+        description: Number of invoices per page
+  Note:
+    type: object
+    properties:
+      id:
+        type: string
+        description: Note ID (GUID)
+      invoiceId:
+        type: string
+        description: Related invoice ID
+      subject:
+        type: string
+        description: Note subject
+      noteText:
+        type: string
+        description: Note content
+      createdAt:
+        type: string
+        format: date-time
+      modifiedAt:
+        type: string
+        format: date-time
+      createdBy:
+        type: string
+        description: Display name of note author
+  KsefSyncResult:
+    type: object
+    properties:
+      total:
+        type: integer
+        description: Total invoices found in KSeF
+      imported:
+        type: integer
+        description: Number of invoices successfully imported
+      skipped:
+        type: integer
+        description: Number of invoices skipped (already exist in Dataverse)
+      failed:
+        type: integer
+        description: Number of failed imports
+      newInvoiceIds:
+        type: array
+        items:
+          type: string
+        description: Dataverse IDs of newly created invoices
+      invoices:
+        type: array
+        items:
+          type: object
+          properties:
+            ksefReferenceNumber:
+              type: string
+            invoiceNumber:
+              type: string
+            supplierName:
+              type: string
+            grossAmount:
+              type: number
+            status:
+              type: string
+              enum:
+                - imported
+                - skipped
+                - failed
+      errors:
+        type: array
+        items:
+          type: object
+          properties:
+            ksefReferenceNumber:
+              type: string
+            error:
+              type: string
 parameters: {}
 responses: {}
 security:

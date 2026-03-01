@@ -91,3 +91,7 @@ web/.env.production
 
 # Local swagger with real values
 **/swagger.local.yaml
+
+# Internal architecture and audit docs (private only)
+docs/CONNECTOR_AUDIT.md
+docs/AI_AGENT_ARCHITECTURE.md
