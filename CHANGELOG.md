@@ -1,51 +1,56 @@
-# Changelog
+# Historia zmian
 
-All notable changes to this project will be documented in this file.
+Wszystkie istotne zmiany w projekcie **KSeF Copilot** są dokumentowane w tym pliku.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
+Projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+> Ten plik obejmuje zmiany w **API** (`api/`) oraz zasobach **Power Platform** (`deployment/powerplatform/`).
+> Historia zmian poszczególnych frontendów dostępna jest osobno:
+> - 📄 [Web App (Next.js) — changelog](web/public/changelog.md)
+> - 📄 [Code App (React SPA) — changelog](code-app/public/changelog.md)
 
 ---
 
-## [Unreleased]
+## [Nieudostępnione]
 
 ---
 
 ## [0.2.0] — 2026-03-01
 
-### Added
-- **Power Platform Custom Connector** — full OpenAPI connector definition for KSeF Copilot API (`deployment/powerplatform/connector/`)
-- **Copilot Studio Agent** — sample agent for Microsoft Teams with 14 connector tools (invoice search, expense reports, anomaly detection, forecasts, VAT lookup)
-- `POST /ksef/sync` (`StartKsefSync`) — native KSeF session-based invoice synchronization endpoint
-- `POST /invoices/{id}/notes` (`CreateInvoiceNote`) — add internal notes to invoices
-- `GET /invoices/{id}/notes` (`ListInvoiceNotes`) — list notes attached to an invoice
-- New response schemas: `InvoiceListResponse`, `Note`, `KsefSyncResult`
+### Dodane
+- **Power Platform Custom Connector** — pełna definicja OpenAPI konektora do KSeF Copilot API (`deployment/powerplatform/connector/`)
+- **Copilot Studio Agent** — przykładowy agent dla Microsoft Teams z 14 narzędziami konektora (wyszukiwanie faktur, raporty wydatków, wykrywanie anomalii, prognozy, weryfikacja VAT)
+- `POST /ksef/sync` (`StartKsefSync`) — endpoint natywnej synchronizacji faktur z KSeF przez sesję
+- `POST /invoices/{id}/notes` (`CreateInvoiceNote`) — dodawanie notatek wewnętrznych do faktur
+- `GET /invoices/{id}/notes` (`ListInvoiceNotes`) — pobieranie notatek przypisanych do faktury
+- Nowe schematy odpowiedzi: `InvoiceListResponse`, `Note`, `KsefSyncResult`
 
-### Fixed
-- `GET /invoices` response schema was empty (`schema: {}`) — now returns `InvoiceListResponse` with pagination metadata
-- Custom Connector swagger: corrected sync route from legacy `/sync` to `/ksef/sync`
+### Poprawki
+- `GET /invoices` — pusty schemat odpowiedzi (`schema: {}`) zastąpiony przez `InvoiceListResponse` z metadanymi paginacji
+- Custom Connector swagger: poprawiona trasa synchronizacji z przestarzałej `/sync` na `/ksef/sync`
 
-### Changed
-- Updated `.gitignore` to exclude internal architecture and audit documents from public repository
+### Zmiany
+- Zaktualizowano `.gitignore` — wewnętrzne dokumenty architektoniczne i audytowe wykluczone z publicznego repozytorium
 
 ---
 
 ## [0.1.0] — 2026-01-15
 
-### Added
-- Initial release of KSeF Copilot API
-- Azure Functions v4 (Node.js/TypeScript) REST API core
-- Microsoft Dataverse backend integration
-- KSeF (Krajowy System e-Faktur) session-based invoice synchronization
-- Azure OpenAI (GPT-4o-mini) invoice categorization — MPK, category, project assignment
-- Anomaly detection engine with configurable rules
-- Monthly expense forecasting (by category, MPK, supplier)
-- Dashboard statistics endpoint
-- VAT White List lookup (Polish tax authority)
-- NBP exchange rate integration (PLN/EUR/USD)
-- Entra ID (Azure AD) OAuth2 authentication middleware
-- Multi-company support via `settingId` / `tenantNip`
+### Dodane
+- Pierwsze wydanie KSeF Copilot API
+- Azure Functions v4 (Node.js/TypeScript) — rdzeń REST API
+- Integracja z Microsoft Dataverse
+- Synchronizacja faktur zakupowych z KSeF przez sesję
+- Kategoryzacja faktur przez Azure OpenAI (GPT-4o-mini) — MPK, kategoria, projekt
+- Silnik wykrywania anomalii z konfigurowalnymi regułami
+- Prognozowanie wydatków miesięcznych (wg kategorii, MPK, dostawcy)
+- Endpoint statystyk dashboardu
+- Weryfikacja dostawców na białej liście VAT
+- Integracja z kursami walut NBP (PLN/EUR/USD)
+- Middleware uwierzytelniania Entra ID (Azure AD) OAuth2
+- Obsługa wielu firm (`settingId` / `tenantNip`)
 
-[Unreleased]: https://github.com/Developico/KSeF-Copilot/compare/v0.2.0...HEAD
+[Nieudostępnione]: https://github.com/Developico/KSeF-Copilot/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/Developico/KSeF-Copilot/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Developico/KSeF-Copilot/releases/tag/v0.1.0

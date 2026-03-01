@@ -236,6 +236,9 @@ Pełna lista w pliku [.env.example](.env.example).
 - [Tokeny KSeF](deployment/azure/TOKEN_SETUP_GUIDE.md) — Tokeny w Key Vault
 - [Solucja Power Platform](deployment/powerplatform/README.md) — Import solucji, schemat Dataverse
 - [Custom Connector](deployment/powerplatform/connector/README.md) — Konfiguracja konektora
+- [Historia zmian API](CHANGELOG.md) — Wersje i zmiany w API oraz Power Platform
+  - [Historia zmian Web App](web/public/changelog.md)
+  - [Historia zmian Code App](code-app/public/changelog.md)
 - [Analiza kosztów](docs/pl/ANALIZA_KOSZTOW.md) — Koszty rozwiązania w Azure
 
 ## 🤝 Współpraca
