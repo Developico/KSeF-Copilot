@@ -12,7 +12,6 @@ on:
 
 env:
   AZURE_FUNCTIONAPP_NAME: dvlp-ksef-func
-  AZURE_FUNCTIONAPP_HOST: dvlp-ksef-func-hmh7hvhcc6bhazcd.polandcentral-01.azurewebsites.net
   NODE_VERSION: '20.x'
 
 permissions:
@@ -70,9 +69,10 @@ jobs:
 
       - name: Smoke test
         run: |
+          HOSTNAME=$(az functionapp show --name ${{ env.AZURE_FUNCTIONAPP_NAME }} --resource-group rg-ksef --query defaultHostName -o tsv)
           echo "Waiting for deployment to stabilize..."
           sleep 20
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.AZURE_FUNCTIONAPP_HOST }}/api/health" || echo "000")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${HOSTNAME}/api/health" || echo "000")
           if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
             echo "✓ Smoke test passed (HTTP $STATUS)"
           else
