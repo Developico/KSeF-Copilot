@@ -1,0 +1,68 @@
+name: Deploy Web to Azure App Service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: dvlp-ksef
+  NODE_VERSION: '20.x'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-web:
+    name: Build & Deploy Web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (web)
+        run: npm run typecheck --workspace=web
+
+      - name: Test (web)
+        run: npm test --workspace=web
+
+      - name: Build deploy artifact
+        working-directory: web
+        run: node scripts/build-deploy.mjs
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: web/.deploy
+
+      - name: Smoke test
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 30
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/" || echo "000")
+          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
+            echo "✓ Smoke test passed (HTTP $STATUS)"
+          else
+            echo "⚠ Smoke test returned HTTP $STATUS — check deployment"
+            exit 1
+          fi

@@ -49,6 +49,9 @@ coverage/
 # TypeScript
 *.tsbuildinfo
 
+# Internal docs (not for public repo)
+docs/internal/
+
 # Temporary
 tmp/
 temp/

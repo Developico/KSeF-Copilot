@@ -1,0 +1,81 @@
+name: Deploy API to Azure Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+  workflow_dispatch:
+
+env:
+  AZURE_FUNCTIONAPP_NAME: dvlp-ksef-func
+  AZURE_FUNCTIONAPP_HOST: dvlp-ksef-func-hmh7hvhcc6bhazcd.polandcentral-01.azurewebsites.net
+  NODE_VERSION: '20.x'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-api:
+    name: Build & Deploy API
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (api)
+        run: npm run typecheck --workspace=api
+
+      - name: Test (api)
+        run: npm test --workspace=api
+
+      - name: Build (api)
+        run: npm run build --workspace=api
+
+      - name: Prepare Functions package
+        working-directory: api
+        run: |
+          cp host.json dist/ 2>/dev/null || true
+          cp package.json dist/
+          cp package-lock.json dist/ 2>/dev/null || true
+          cd dist
+          npm ci --omit=dev --ignore-scripts
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to Azure Functions
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: api/dist
+
+      - name: Smoke test
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 20
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.AZURE_FUNCTIONAPP_HOST }}/api/health" || echo "000")
+          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
+            echo "✓ Smoke test passed (HTTP $STATUS)"
+          else
+            echo "⚠ Smoke test returned HTTP $STATUS — check deployment"
+            exit 1
+          fi
