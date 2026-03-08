@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+vi.mock('next-intl', () => ({
+  useTranslations: () => (key: string) => key,
+  useLocale: () => 'pl',
+}))
+
 import SettingsPage from '@/app/[locale]/settings/page'
 
 // Mock company context
@@ -59,6 +65,10 @@ vi.mock('@/hooks/use-api', () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useUpdateCompany: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useDeleteCompany: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -67,9 +77,25 @@ vi.mock('@/hooks/use-api', () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useUpdateCostCenter: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useDeleteCostCenter: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
+  }),
+  useGenerateTestData: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useCleanupTestData: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useCleanupTestDataPreview: () => ({
+    data: null,
+    isLoading: false,
   }),
 }))
 
@@ -104,36 +130,36 @@ describe('SettingsPage', () => {
 
   it('renders page title', () => {
     renderWithProviders(<SettingsPage />)
-    expect(screen.getByText('Ustawienia')).toBeInTheDocument()
+    expect(screen.getByText('title')).toBeInTheDocument()
   })
 
   it('shows tabs for settings sections', () => {
     renderWithProviders(<SettingsPage />)
-    expect(screen.getByRole('tab', { name: /Firmy/i })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /Centra kosztów/i })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /Bezpieczeństwo/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /companies/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /costCenters/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /testData/i })).toBeInTheDocument()
   })
 
   it('displays company list', () => {
     renderWithProviders(<SettingsPage />)
     expect(screen.getByText('Test Company')).toBeInTheDocument()
-    expect(screen.getByText('1234567890')).toBeInTheDocument()
+    expect(screen.getAllByText('1234567890').length).toBeGreaterThan(0)
   })
 
   it('opens add company dialog', async () => {
     renderWithProviders(<SettingsPage />)
     
-    const addButton = screen.getByRole('button', { name: /Dodaj firmę/i })
+    const addButton = screen.getByRole('button', { name: /addCompany/i })
     fireEvent.click(addButton)
     
     await waitFor(() => {
-      expect(screen.getByText('Dodaj nową firmę')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('np. Moja Firma Sp. z o.o.')).toBeInTheDocument()
+      expect(screen.getByText('addNewCompany')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('companyNamePlaceholder')).toBeInTheDocument()
     })
   })
 
   it('displays configuration description', () => {
     renderWithProviders(<SettingsPage />)
-    expect(screen.getByText('Konfiguracja integracji z KSeF')).toBeInTheDocument()
+    expect(screen.getByText('subtitle')).toBeInTheDocument()
   })
 })

@@ -102,7 +102,7 @@ describe('InvoicesPage', () => {
 
   it('renders page title', () => {
     renderWithProviders(<InvoicesPage />)
-    expect(screen.getByText('Faktury')).toBeInTheDocument()
+    expect(screen.getByText('title')).toBeInTheDocument()
   })
 
   it('displays invoice list', () => {
@@ -119,22 +119,22 @@ describe('InvoicesPage', () => {
 
   it('shows filter cards', () => {
     renderWithProviders(<InvoicesPage />)
-    // Check for filter card titles
-    expect(screen.getAllByText('Wszystkie').length).toBeGreaterThan(0)
+    // With mocked translations, the "all" filter renders the key "all"
+    expect(screen.getByRole('button', { name: /all/i })).toBeInTheDocument()
   })
 
   it('has refresh button', () => {
     renderWithProviders(<InvoicesPage />)
-    expect(screen.getByRole('button', { name: /Odśwież/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument()
   })
 
   it('has export button', () => {
     renderWithProviders(<InvoicesPage />)
-    expect(screen.getByRole('button', { name: /Eksportuj/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /export/i })).toBeInTheDocument()
   })
 
   it('displays page description', () => {
     renderWithProviders(<InvoicesPage />)
-    expect(screen.getByText('Przeglądaj i zarządzaj fakturami kosztowymi z KSeF')).toBeInTheDocument()
+    expect(screen.getByText('subtitle')).toBeInTheDocument()
   })
 })

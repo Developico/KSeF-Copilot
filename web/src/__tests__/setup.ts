@@ -22,6 +22,33 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
+// Mock next-intl/navigation (uses next/navigation internally, breaks ESM resolution)
+vi.mock('next-intl/navigation', () => ({
+  createNavigation: () => ({
+    Link: ({ children, ...props }: { children: React.ReactNode; href: string }) => children,
+    redirect: vi.fn(),
+    usePathname: () => '/',
+    useRouter: () => ({
+      push: vi.fn(),
+      replace: vi.fn(),
+      back: vi.fn(),
+    }),
+    getPathname: vi.fn(),
+  }),
+}))
+
+vi.mock('@/i18n/navigation', () => ({
+  Link: ({ children, ...props }: { children: React.ReactNode; href: string }) => children,
+  redirect: vi.fn(),
+  usePathname: () => '/',
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+  }),
+  getPathname: vi.fn(),
+}))
+
 // Mock @azure/msal-react
 vi.mock('@azure/msal-react', () => ({
   useMsal: () => ({
