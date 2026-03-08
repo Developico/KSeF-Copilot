@@ -48,11 +48,15 @@ jobs:
       - name: Prepare Functions package
         working-directory: api
         run: |
-          cp host.json dist/ 2>/dev/null || true
-          cp package.json dist/
-          cp package-lock.json dist/ 2>/dev/null || true
-          cd dist
-          npm ci --omit=dev --ignore-scripts
+          # Flex Consumption requires node_modules in the deploy package (no remote build).
+          # --no-workspaces prevents npm from hoisting deps to root node_modules.
+          rm -rf node_modules
+          npm install --omit=dev --no-workspaces --ignore-scripts
+          # Verify critical dependency is present
+          test -d node_modules/@azure/functions && echo "✓ @azure/functions found" || { echo "✗ @azure/functions missing!"; exit 1; }
+          # Remove source/dev files to reduce package size (functions-action doesn't use .funcignore)
+          rm -rf src tests scripts .vscode .env .env.local local.settings.json
+          rm -f vitest.config.ts tsconfig.json *.md LICENSE
 
       - name: Azure Login
         uses: azure/login@v2
@@ -65,7 +69,7 @@ jobs:
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-          package: api/dist
+          package: api
 
       - name: Smoke test
         continue-on-error: true
