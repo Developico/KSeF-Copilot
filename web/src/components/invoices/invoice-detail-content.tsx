@@ -35,12 +35,21 @@ import Link from 'next/link'
 
 import { api, Invoice, Attachment } from '@/lib/api'
 import { useHasRole } from '@/components/auth/auth-provider'
+import { useContextMpkCenters, useMpkApprovers } from '@/hooks/use-api'
 import { InvoiceDocumentSidebar } from '@/components/documents'
 import { InvoiceNotesSection } from './invoice-notes-section'
+import { ApprovalStatusBadge, InvoiceApprovalActions } from './invoice-approval-section'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { UserAvatar } from '@/components/ui/user-avatar'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/hooks/use-toast'
@@ -71,8 +80,8 @@ import {
 import { cn } from '@/lib/utils'
 import { SupplierLookupDialog, type SupplierData } from './supplier-lookup-dialog'
 
-// MPK options (values from Dataverse option set)
-const MPK_OPTIONS = [
+// MPK options - fallback list (overridden by dynamic data from API)
+const DEFAULT_MPK_OPTIONS = [
   'Consultants',
   'BackOffice',
   'Management',
@@ -83,7 +92,8 @@ const MPK_OPTIONS = [
   'Delivery',
   'Finance',
   'Other',
-]
+] as const
+type MpkCenterOption = { id: string; name: string }
 
 /** Standard Polish VAT rates + special codes */
 const VAT_RATES = [
@@ -153,6 +163,9 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   const { toast } = useToast()
   const t = useTranslations('invoices')
   const isAdmin = useHasRole('Admin')
+  const { data: mpkCentersData } = useContextMpkCenters()
+  const mpkOptions: MpkCenterOption[] = mpkCentersData?.mpkCenters?.map(mc => ({ id: mc.id, name: mc.name }))
+    ?? DEFAULT_MPK_OPTIONS.map(name => ({ id: name, name }))
   const [isDragging, setIsDragging] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   
@@ -250,6 +263,10 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
     queryKey: ['attachments', invoiceId],
     queryFn: () => api.invoices.listAttachments(invoiceId),
   })
+
+  // Fetch approvers for the invoice's MPK center
+  const { data: approversData } = useMpkApprovers(invoice?.mpkCenterId)
+  const approvers = approversData?.approvers ?? []
 
   // Upload mutation
   const uploadMutation = useMutation({
@@ -373,9 +390,11 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   const updateClassificationMutation = useMutation({
     mutationFn: (data: { mpk?: string; category?: string; description?: string }) => 
       api.invoices.update(invoiceId, data),
-    onSuccess: (updatedInvoice) => {
-      queryClient.setQueryData(['invoice', invoiceId], updatedInvoice)
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['approvals'] })
+      queryClient.invalidateQueries({ queryKey: ['budget'] })
       setIsEditingClassification(false)
       toast({
         title: 'Sukces',
@@ -393,7 +412,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
 
   // Start editing classification
   function startEditingClassification() {
-    setEditMpk(invoice?.mpk || '')
+    setEditMpk(invoice?.mpkCenterName || invoice?.mpk || '')
     setEditCategory(invoice?.category || '')
     setEditDescription(invoice?.description || '')
     setIsEditingClassification(true)
@@ -401,8 +420,10 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
 
   // Save classification
   function saveClassification() {
+    // Resolve MPK name to center ID
+    const selectedCenter = mpkOptions.find(o => o.name === editMpk)
     updateClassificationMutation.mutate({
-      mpk: editMpk || undefined,
+      mpkCenterId: selectedCenter?.id || undefined,
       category: editCategory || undefined,
       description: editDescription || undefined,
     })
@@ -695,57 +716,100 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
 
   return (
     <div className="space-y-4">
-      {/* Header - Compact */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Link href="/invoices">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Powrót do listy</span>
-            </Button>
-          </Link>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold truncate">{invoice.invoiceNumber}</h1>
-              {isCorrectiveInvoice && (
-                <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800 shrink-0">
-                  {t('invoiceTypeCorrective')}
-                </Badge>
-              )}
-              {invoice.invoiceType === 'Advance' && (
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 shrink-0">
-                  {t('invoiceTypeAdvance')}
-                </Badge>
-              )}
-            </div>
-            <p className="text-muted-foreground text-sm truncate">{invoice.supplierName}</p>
+      {/* Header */}
+      <div className="flex items-center gap-3 sm:gap-4">
+        <Link href="/invoices">
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Powrót do listy</span>
+          </Button>
+        </Link>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold truncate">{invoice.invoiceNumber}</h1>
+            {isCorrectiveInvoice && (
+              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800 shrink-0">
+                {t('invoiceTypeCorrective')}
+              </Badge>
+            )}
+            {invoice.invoiceType === 'Advance' && (
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 shrink-0">
+                {t('invoiceTypeAdvance')}
+              </Badge>
+            )}
           </div>
+          <p className="text-muted-foreground text-sm truncate">{invoice.supplierName}</p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {isAdmin && invoice.paymentStatus === 'pending' && (
-            <Button
-              onClick={() => markPaidMutation.mutate()}
-              disabled={markPaidMutation.isPending}
-              size="sm"
-            >
-              <Check className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Oznacz opłacone</span>
-            </Button>
-          )}
-          {invoice.paymentStatus === 'paid' ? (
-            <div className="flex items-center gap-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-2 sm:px-3 py-1">
-              <Check className="h-3.5 w-3.5" />
-              <span>Opłacona</span>
-            </div>
-          ) : (
-            <Badge
-              variant={isOverdue ? 'destructive' : 'secondary'}
-              className="text-xs sm:text-sm px-2 sm:px-3 py-1"
-            >
-              {isOverdue ? 'Zaległe' : 'Oczekuje'}
-            </Badge>
-          )}
+      </div>
 
+      {/* Action Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border bg-muted/40 px-4 py-2.5">
+        {/* Approval section */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Akceptacja</span>
+          <ApprovalStatusBadge status={invoice.approvalStatus} />
+          {approvers.length > 0 && (
+            <TooltipProvider>
+              <div className="flex -space-x-2">
+                {approvers.map((a) => (
+                  <Tooltip key={a.id}>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <UserAvatar
+                          userId={a.azureObjectId || undefined}
+                          name={a.fullName}
+                          email={a.email}
+                          size="md"
+                          className="border-2 border-background"
+                          showLoading={false}
+                        />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p className="font-medium text-sm">{a.fullName}</p>
+                      {a.email && <p className="text-xs text-muted-foreground">{a.email}</p>}
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
+              </div>
+            </TooltipProvider>
+          )}
+          <InvoiceApprovalActions invoice={invoice} isAdmin={isAdmin} />
+        </div>
+
+        <Separator orientation="vertical" className="hidden sm:block h-6" />
+        <Separator className="sm:hidden" />
+
+        {/* Payment section */}
+        <div className="flex items-center gap-2 sm:ml-auto">
+          <span className="text-xs font-medium text-muted-foreground">Płatność</span>
+          {invoice.paymentStatus === 'paid' ? (
+            <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
+              <Check className="h-3 w-3 mr-1" />
+              Opłacona
+            </Badge>
+          ) : (
+            <>
+              <Badge
+                variant={isOverdue ? 'destructive' : 'secondary'}
+                className="text-xs"
+              >
+                {isOverdue ? 'Zaległe' : 'Oczekuje'}
+              </Badge>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => markPaidMutation.mutate()}
+                  disabled={markPaidMutation.isPending}
+                >
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  Oznacz opłacone
+                </Button>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -1300,9 +1364,9 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                         <SelectValue placeholder="Wybierz MPK..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {MPK_OPTIONS.map((mpk) => (
-                          <SelectItem key={mpk} value={mpk}>
-                            {mpk}
+                        {mpkOptions.map((option) => (
+                          <SelectItem key={option.id} value={option.name}>
+                            {option.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

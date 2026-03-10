@@ -201,6 +201,85 @@ export const DV = {
     modifiedOn: process.env.DV_FIELD_INVOICE_MODIFIEDON || 'modifiedon',
     createdBy: process.env.DV_FIELD_INVOICE_CREATEDBY || '_createdby_value',
     modifiedBy: process.env.DV_FIELD_INVOICE_MODIFIEDBY || '_modifiedby_value',
+    
+    // MPK Center lookup (new — replaces costCenter OptionSet)
+    mpkCenterLookup: '_dvlp_mpkcenterid_value',
+    mpkCenterBind: 'dvlp_mpkcenterid@odata.bind',
+    
+    // Approval workflow fields
+    approvalStatus: 'dvlp_approvalstatus',
+    approvedBy: 'dvlp_approvedby',
+    approvedByOid: 'dvlp_approvedbyoid',
+    approvedAt: 'dvlp_approvedat',
+    approvalComment: 'dvlp_approvalcomment',
+  },
+
+  // ============================================================
+  // KSeF MPK Center (dvlp_ksefmpkcenter)
+  // ============================================================
+  mpkCenter: {
+    entitySet: 'dvlp_ksefmpkcenters',
+    id: 'dvlp_ksefmpkcenterid',
+    name: 'dvlp_name',
+    description: 'dvlp_description',
+    settingLookup: '_dvlp_settingid_value',
+    settingBind: 'dvlp_settingid@odata.bind',
+    isActive: 'dvlp_isactive',
+    approvalRequired: 'dvlp_approvalrequired',
+    approvalSlaHours: 'dvlp_approvalslahours',
+    budgetAmount: 'dvlp_budgetamount',
+    budgetPeriod: 'dvlp_budgetperiod',
+    budgetStartDate: 'dvlp_budgetstartdate',
+    createdOn: 'createdon',
+    modifiedOn: 'modifiedon',
+  },
+
+  // ============================================================
+  // KSeF MPK Approver (dvlp_ksefmpkapprover)
+  // ============================================================
+  mpkApprover: {
+    entitySet: 'dvlp_ksefmpkapprovers',
+    id: 'dvlp_ksefmpkapproverid',
+    name: 'dvlp_name',
+    mpkCenterLookup: '_dvlp_mpkcenterid_value',
+    mpkCenterBind: 'dvlp_mpkcenterid@odata.bind',
+    systemUserLookup: '_dvlp_systemuserid_value',
+    systemUserBind: 'dvlp_systemuserid@odata.bind',
+  },
+
+  // ============================================================
+  // KSeF Notification (dvlp_ksefnotification)
+  // ============================================================
+  notification: {
+    entitySet: 'dvlp_ksefnotifications',
+    id: 'dvlp_ksefnotificationid',
+    name: 'dvlp_name',
+    recipientLookup: '_dvlp_recipientid_value',
+    recipientBind: 'dvlp_recipientid@odata.bind',
+    settingLookup: '_dvlp_settingid_value',
+    settingBind: 'dvlp_settingid@odata.bind',
+    type: 'dvlp_type',
+    message: 'dvlp_message',
+    isRead: 'dvlp_isread',
+    isDismissed: 'dvlp_isdismissed',
+    invoiceLookup: '_dvlp_invoiceid_value',
+    invoiceBind: 'dvlp_invoiceid@odata.bind',
+    mpkCenterLookup: '_dvlp_mpkcenterid_value',
+    mpkCenterBind: 'dvlp_mpkcenterid@odata.bind',
+    createdOn: 'createdon',
+  },
+
+  // ============================================================
+  // Dataverse System User (systemuser) - read-only
+  // ============================================================
+  systemUser: {
+    entitySet: 'systemusers',
+    id: 'systemuserid',
+    fullName: 'fullname',
+    email: 'internalemailaddress',
+    azureObjectId: 'azureactivedirectoryobjectid',
+    isDisabled: 'isdisabled',
+    accessMode: 'accessmode',
   },
 } as const
 
@@ -301,6 +380,29 @@ export const INVOICE_SOURCE = {
   MANUAL: 100000002,
 } as const
 
+export const APPROVAL_STATUS = {
+  DRAFT: 0,
+  PENDING: 1,
+  APPROVED: 2,
+  REJECTED: 3,
+  CANCELLED: 4,
+} as const
+
+export const BUDGET_PERIOD = {
+  MONTHLY: 0,
+  QUARTERLY: 1,
+  HALF_YEARLY: 2,
+  ANNUAL: 3,
+} as const
+
+export const NOTIFICATION_TYPE = {
+  APPROVAL_REQUESTED: 0,
+  SLA_EXCEEDED: 1,
+  BUDGET_WARNING_80: 2,
+  BUDGET_EXCEEDED: 3,
+  APPROVAL_DECIDED: 4,
+} as const
+
 // Type exports for type-safe usage
 export type KsefEnvironment = typeof KSEF_ENVIRONMENT[keyof typeof KSEF_ENVIRONMENT]
 export type KsefStatus = typeof KSEF_STATUS[keyof typeof KSEF_STATUS]
@@ -314,3 +416,6 @@ export type PaymentStatus = typeof PAYMENT_STATUS[keyof typeof PAYMENT_STATUS]
 export type InvoiceType = typeof INVOICE_TYPE[keyof typeof INVOICE_TYPE]
 export type Currency = typeof CURRENCY[keyof typeof CURRENCY]
 export type CostCategory = typeof COST_CATEGORY[keyof typeof COST_CATEGORY]
+export type ApprovalStatusValue = typeof APPROVAL_STATUS[keyof typeof APPROVAL_STATUS]
+export type BudgetPeriodValue = typeof BUDGET_PERIOD[keyof typeof BUDGET_PERIOD]
+export type NotificationTypeValue = typeof NOTIFICATION_TYPE[keyof typeof NOTIFICATION_TYPE]

@@ -142,6 +142,16 @@ export interface DvInvoice {
   dvlp_doc?: string // File column - contains file name when document exists
   dvlp_doc_name?: string // File name metadata
   
+  // MPK Center lookup (new — replaces dvlp_costcenter OptionSet)
+  _dvlp_mpkcenterid_value?: string
+  
+  // Approval workflow fields
+  dvlp_approvalstatus?: number  // ApprovalStatus Choice
+  dvlp_approvedby?: string
+  dvlp_approvedbyoid?: string
+  dvlp_approvedat?: string
+  dvlp_approvalcomment?: string
+  
   // Standard fields
   statecode: number
   statuscode: number
@@ -156,6 +166,69 @@ export interface DvInvoice {
   'dvlp_currency@OData.Community.Display.V1.FormattedValue'?: string
   'dvlp_ksefstatus@OData.Community.Display.V1.FormattedValue'?: string
   'dvlp_ksefdirection@OData.Community.Display.V1.FormattedValue'?: string
+}
+
+// ============================================================
+// KSeF MPK Center (dvlp_ksefmpkcenter)
+// ============================================================
+
+export interface DvMpkCenter {
+  dvlp_ksefmpkcenterid: string
+  dvlp_name: string
+  dvlp_description?: string
+  '_dvlp_settingid_value': string
+  dvlp_isactive: boolean
+  // Approval
+  dvlp_approvalrequired: boolean
+  dvlp_approvalslahours?: number
+  // Budget
+  dvlp_budgetamount?: number
+  dvlp_budgetperiod?: number // BudgetPeriod choice
+  dvlp_budgetstartdate?: string
+  // Standard fields
+  createdon: string
+  modifiedon: string
+}
+
+// ============================================================
+// KSeF MPK Approver (dvlp_ksefmpkapprover)
+// ============================================================
+
+export interface DvMpkApprover {
+  dvlp_ksefmpkapproverid: string
+  dvlp_name: string
+  '_dvlp_mpkcenterid_value': string
+  '_dvlp_systemuserid_value': string
+}
+
+// ============================================================
+// KSeF Notification (dvlp_ksefnotification)
+// ============================================================
+
+export interface DvNotification {
+  dvlp_ksefnotificationid: string
+  dvlp_name: string
+  '_dvlp_recipientid_value': string
+  '_dvlp_settingid_value': string
+  dvlp_type: number // NotificationType choice
+  dvlp_message?: string
+  dvlp_isread: boolean
+  dvlp_isdismissed: boolean
+  '_dvlp_invoiceid_value'?: string
+  '_dvlp_mpkcenterid_value'?: string
+  createdon: string
+}
+
+// ============================================================
+// Dataverse System User (systemuser) - read-only
+// ============================================================
+
+export interface DvSystemUser {
+  systemuserid: string
+  fullname: string
+  internalemailaddress?: string
+  azureactivedirectoryobjectid?: string
+  isdisabled: boolean
 }
 
 // ============================================================

@@ -5,10 +5,10 @@
  * Uses DV config for field name resolution.
  */
 
-import { DV, KSEF_STATUS, KSEF_DIRECTION, PAYMENT_STATUS, INVOICE_TYPE, CURRENCY, SESSION_STATUS, SESSION_TYPE, SYNC_STATUS, SYNC_DIRECTION, SYNC_OPERATION_TYPE, KSEF_ENVIRONMENT, INVOICE_SOURCE, LAST_SYNC_STATUS } from './config'
+import { DV, KSEF_STATUS, KSEF_DIRECTION, PAYMENT_STATUS, INVOICE_TYPE, CURRENCY, SESSION_STATUS, SESSION_TYPE, SYNC_STATUS, SYNC_DIRECTION, SYNC_OPERATION_TYPE, KSEF_ENVIRONMENT, INVOICE_SOURCE, LAST_SYNC_STATUS, APPROVAL_STATUS, BUDGET_PERIOD } from './config'
 import { logDataverseMapping } from './logger'
 import type { DvInvoice, DvSetting, DvSession, DvSyncLog } from '../../types/dataverse'
-import type { Invoice, PaymentStatus as AppPaymentStatus, MPK, InvoiceSource, Currency, InvoiceTypeEnum } from '../../types/invoice'
+import type { Invoice, PaymentStatus as AppPaymentStatus, MPK, InvoiceSource, Currency, InvoiceTypeEnum, ApprovalStatus } from '../../types/invoice'
 
 // ============================================================
 // Invoice Mappers
@@ -32,7 +32,7 @@ function mapDvCostCenterToMpk(value: number | undefined): MPK | undefined {
 /**
  * Map MPK enum to Dataverse Cost Center (number)
  */
-function mapMpkToDvCostCenter(mpk: MPK | undefined): number | undefined {
+function mapMpkToDvCostCenter(mpk: string | undefined): number | undefined {
   if (mpk === undefined) return undefined
   return MpkValues[mpk as keyof typeof MpkValues] ?? MpkValues.Other
 }
@@ -141,6 +141,17 @@ export function mapDvInvoiceToApp(raw: DvInvoice): Invoice {
     // Document fields (File column)
     hasDocument: !!(raw[s.documentName as keyof DvInvoice]),
     documentFileName: raw[s.documentName as keyof DvInvoice] as string | undefined,
+    // MPK Center lookup (new — replaces legacy costCenter OptionSet)
+    mpkCenterId: raw[s.mpkCenterLookup as keyof DvInvoice] as string | undefined,
+    // Approval workflow fields  
+    approvalStatus: (() => {
+      const v = raw[s.approvalStatus as keyof DvInvoice] as number | undefined
+      return v !== undefined && v !== null ? mapDvApprovalStatusToApp(v) : undefined
+    })(),
+    approvedBy: raw[s.approvedBy as keyof DvInvoice] as string | undefined,
+    approvedByOid: raw[s.approvedByOid as keyof DvInvoice] as string | undefined,
+    approvedAt: raw[s.approvedAt as keyof DvInvoice] as string | undefined,
+    approvalComment: raw[s.approvalComment as keyof DvInvoice] as string | undefined,
   }
   
   logDataverseMapping('mapDvInvoiceToApp', raw, mapped)
@@ -194,6 +205,15 @@ export function mapAppInvoiceToDv(app: Partial<Invoice>): Record<string, unknown
   if (app.aiRationale !== undefined) payload[s.aiRationale] = app.aiRationale
   if (app.aiConfidence !== undefined) payload[s.aiConfidence] = app.aiConfidence
   if (app.aiProcessedAt !== undefined) payload[s.aiProcessedAt] = app.aiProcessedAt
+  
+  // MPK Center lookup (new — replaces legacy costCenter OptionSet)
+  if (app.mpkCenterId !== undefined) {
+    if (app.mpkCenterId === null || app.mpkCenterId === '') {
+      payload[s.mpkCenterBind] = null
+    } else {
+      payload[s.mpkCenterBind] = `/dvlp_ksefmpkcenters(${app.mpkCenterId})`
+    }
+  }
   
   logDataverseMapping('mapAppInvoiceToDv', app, payload)
   return payload
@@ -464,4 +484,129 @@ export function mapDvKsefDirectionToApp(direction: number): AppKsefDirection {
 
 export function mapAppKsefDirectionToDv(direction: AppKsefDirection): number {
   return direction === 'outgoing' ? KSEF_DIRECTION.OUTGOING : KSEF_DIRECTION.INCOMING
+}
+
+// ============================================================
+// MPK Center Mappers
+// ============================================================
+
+import { BudgetPeriodValues } from './entities'
+import type { DvMpkCenter, DvMpkApprover, DvSystemUser } from '../../types/dataverse'
+import type {
+  MpkCenter,
+  MpkApprover,
+  ApprovalStatus as AppApprovalStatus,
+  BudgetPeriod as AppBudgetPeriod,
+  DataverseUser,
+} from '../../types/mpk'
+
+export function mapDvMpkCenterToApp(raw: DvMpkCenter): MpkCenter {
+  const s = DV.mpkCenter
+
+  return {
+    id: raw[s.id as keyof DvMpkCenter] as string,
+    name: raw[s.name as keyof DvMpkCenter] as string,
+    description: raw[s.description as keyof DvMpkCenter] as string | undefined,
+    settingId: raw[s.settingLookup as keyof DvMpkCenter] as string,
+    isActive: (raw[s.isActive as keyof DvMpkCenter] as boolean) ?? true,
+    approvalRequired: (raw[s.approvalRequired as keyof DvMpkCenter] as boolean) ?? false,
+    approvalSlaHours: raw[s.approvalSlaHours as keyof DvMpkCenter] as number | undefined,
+    budgetAmount: raw[s.budgetAmount as keyof DvMpkCenter] as number | undefined,
+    budgetPeriod: mapDvBudgetPeriodToApp(raw[s.budgetPeriod as keyof DvMpkCenter] as number | undefined),
+    budgetStartDate: raw[s.budgetStartDate as keyof DvMpkCenter] as string | undefined,
+    createdOn: raw[s.createdOn as keyof DvMpkCenter] as string,
+    modifiedOn: raw[s.modifiedOn as keyof DvMpkCenter] as string,
+  }
+}
+
+export function mapAppMpkCenterToDv(
+  app: Partial<MpkCenter> & { settingId?: string }
+): Record<string, unknown> {
+  const s = DV.mpkCenter
+  const payload: Record<string, unknown> = {}
+
+  if (app.name !== undefined) payload[s.name] = app.name
+  if (app.description !== undefined) payload[s.description] = app.description ?? null
+  if (app.isActive !== undefined) payload[s.isActive] = app.isActive
+  if (app.approvalRequired !== undefined) payload[s.approvalRequired] = app.approvalRequired
+  if (app.approvalSlaHours !== undefined) payload[s.approvalSlaHours] = app.approvalSlaHours ?? null
+  if (app.budgetAmount !== undefined) payload[s.budgetAmount] = app.budgetAmount ?? null
+  if (app.budgetPeriod !== undefined) payload[s.budgetPeriod] = app.budgetPeriod ? mapAppBudgetPeriodToDv(app.budgetPeriod) : null
+  if (app.budgetStartDate !== undefined) payload[s.budgetStartDate] = app.budgetStartDate ?? null
+
+  // Setting lookup (only on create)
+  if (app.settingId) {
+    payload[`${s.settingBind}`] = `/dvlp_ksefsettings(${app.settingId})`
+  }
+
+  return payload
+}
+
+export function mapDvMpkApproverToApp(raw: DvMpkApprover): MpkApprover {
+  const s = DV.mpkApprover
+
+  return {
+    id: raw[s.id as keyof DvMpkApprover] as string,
+    mpkCenterId: raw[s.mpkCenterLookup as keyof DvMpkApprover] as string,
+    systemUserId: raw[s.systemUserLookup as keyof DvMpkApprover] as string,
+    name: raw[s.name as keyof DvMpkApprover] as string,
+    fullName: '', // Enriched by service layer
+    email: '',    // Enriched by service layer
+    azureObjectId: '', // Enriched by service layer
+  }
+}
+
+export function mapDvSystemUserToApp(raw: DvSystemUser): DataverseUser {
+  return {
+    systemUserId: raw.systemuserid,
+    fullName: raw.fullname,
+    email: raw.internalemailaddress || '',
+    azureObjectId: raw.azureactivedirectoryobjectid,
+    isDisabled: raw.isdisabled,
+  }
+}
+
+// ============================================================
+// Approval Status Mappers
+// ============================================================
+
+export function mapDvApprovalStatusToApp(value: number | undefined): AppApprovalStatus {
+  switch (value) {
+    case APPROVAL_STATUS.PENDING: return 'Pending'
+    case APPROVAL_STATUS.APPROVED: return 'Approved'
+    case APPROVAL_STATUS.REJECTED: return 'Rejected'
+    case APPROVAL_STATUS.CANCELLED: return 'Cancelled'
+    case APPROVAL_STATUS.DRAFT:
+    default: return 'Draft'
+  }
+}
+
+export function mapAppApprovalStatusToDv(status: AppApprovalStatus): number {
+  switch (status) {
+    case 'Pending': return APPROVAL_STATUS.PENDING
+    case 'Approved': return APPROVAL_STATUS.APPROVED
+    case 'Rejected': return APPROVAL_STATUS.REJECTED
+    case 'Cancelled': return APPROVAL_STATUS.CANCELLED
+    case 'Draft':
+    default: return APPROVAL_STATUS.DRAFT
+  }
+}
+
+// ============================================================
+// Budget Period Mappers
+// ============================================================
+
+export function mapDvBudgetPeriodToApp(value: number | undefined): AppBudgetPeriod | undefined {
+  if (value === undefined || value === null) return undefined
+  switch (value) {
+    case BUDGET_PERIOD.MONTHLY: return 'Monthly'
+    case BUDGET_PERIOD.QUARTERLY: return 'Quarterly'
+    case BUDGET_PERIOD.HALF_YEARLY: return 'HalfYearly'
+    case BUDGET_PERIOD.ANNUAL: return 'Annual'
+    default: return undefined
+  }
+}
+
+export function mapAppBudgetPeriodToDv(period: AppBudgetPeriod): number {
+  return BudgetPeriodValues[period as keyof typeof BudgetPeriodValues] ?? BUDGET_PERIOD.MONTHLY
 }

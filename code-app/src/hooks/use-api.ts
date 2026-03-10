@@ -74,6 +74,18 @@ import type {
   KsefCleanupPreviewResponse,
   KsefCleanupRequest,
   KsefCleanupResponse,
+  MpkCenter,
+  MpkCenterCreate,
+  MpkCenterUpdate,
+  MpkApprover,
+  DvSystemUser,
+  BudgetStatus,
+  BudgetUtilizationReport,
+  PendingApproval,
+  ApprovalHistoryReport,
+  ApproverPerformanceReport,
+  ProcessingPipelineReport,
+  AppNotification,
 } from '@/lib/types'
 
 // ─── Health ──────────────────────────────────────────────────────
@@ -1249,6 +1261,365 @@ export function useKsefCleanup(
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['invoices'] })
     },
+    ...options,
+  })
+}
+
+// ─── MPK Centers ─────────────────────────────────────────────────
+
+export function useMpkCenters(
+  settingId: string,
+  options?: Partial<UseQueryOptions<{ mpkCenters: MpkCenter[]; count: number }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.mpkCenters(settingId),
+    queryFn: () => api.mpkCenters.list(settingId),
+    enabled: !!settingId,
+    ...options,
+  })
+}
+
+export function useMpkCenter(
+  id: string,
+  options?: Partial<UseQueryOptions<{ mpkCenter: MpkCenter }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.mpkCenter(id),
+    queryFn: () => api.mpkCenters.get(id),
+    enabled: !!id,
+    ...options,
+  })
+}
+
+export function useCreateMpkCenter(
+  options?: UseMutationOptions<{ mpkCenter: MpkCenter }, Error, MpkCenterCreate>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.mpkCenters.create(data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['mpk-centers'] })
+    },
+    ...options,
+  })
+}
+
+export function useUpdateMpkCenter(
+  options?: UseMutationOptions<
+    { mpkCenter: MpkCenter },
+    Error,
+    { id: string; data: MpkCenterUpdate }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }) => api.mpkCenters.update(id, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['mpk-centers'] })
+    },
+    ...options,
+  })
+}
+
+export function useDeactivateMpkCenter(
+  options?: UseMutationOptions<{ message: string }, Error, string>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => api.mpkCenters.deactivate(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['mpk-centers'] })
+    },
+    ...options,
+  })
+}
+
+export function useMpkApprovers(
+  mpkCenterId: string,
+  options?: Partial<
+    UseQueryOptions<{ approvers: MpkApprover[]; count: number }>
+  >
+) {
+  return useQuery({
+    queryKey: queryKeys.mpkApprovers(mpkCenterId),
+    queryFn: () => api.mpkCenters.getApprovers(mpkCenterId),
+    enabled: !!mpkCenterId,
+    ...options,
+  })
+}
+
+export function useSetMpkApprovers(
+  options?: UseMutationOptions<
+    { approvers: MpkApprover[]; count: number },
+    Error,
+    { id: string; systemUserIds: string[] }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, systemUserIds }) =>
+      api.mpkCenters.setApprovers(id, systemUserIds),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['mpk-centers'] })
+    },
+    ...options,
+  })
+}
+
+export function useMpkBudgetStatus(
+  mpkCenterId: string,
+  options?: Partial<UseQueryOptions<{ data: BudgetStatus }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.mpkBudgetStatus(mpkCenterId),
+    queryFn: () => api.mpkCenters.getBudgetStatus(mpkCenterId),
+    enabled: !!mpkCenterId,
+    ...options,
+  })
+}
+
+// ─── Users ───────────────────────────────────────────────────────
+
+export function useDvUsers(
+  settingId: string,
+  options?: Partial<UseQueryOptions<{ users: DvSystemUser[]; count: number }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.dvUsers(settingId),
+    queryFn: () => api.users.list(settingId),
+    enabled: !!settingId,
+    ...options,
+  })
+}
+
+// ─── Approvals ───────────────────────────────────────────────────
+
+export function usePendingApprovals(
+  settingId: string,
+  options?: Partial<
+    UseQueryOptions<{ approvals: PendingApproval[]; count: number }>
+  >
+) {
+  return useQuery({
+    queryKey: queryKeys.pendingApprovals(settingId),
+    queryFn: () => api.approvals.pending(settingId),
+    enabled: !!settingId,
+    ...options,
+  })
+}
+
+export function useApproveInvoice(
+  options?: UseMutationOptions<
+    { invoice: Invoice },
+    Error,
+    { invoiceId: string; comment?: string }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ invoiceId, comment }) =>
+      api.approvals.approve(invoiceId, comment),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['invoices'] })
+      void qc.invalidateQueries({ queryKey: ['approvals'] })
+      void qc.invalidateQueries({ queryKey: ['notifications'] })
+    },
+    ...options,
+  })
+}
+
+export function useRejectInvoice(
+  options?: UseMutationOptions<
+    { invoice: Invoice },
+    Error,
+    { invoiceId: string; comment?: string }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ invoiceId, comment }) =>
+      api.approvals.reject(invoiceId, comment),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['invoices'] })
+      void qc.invalidateQueries({ queryKey: ['approvals'] })
+      void qc.invalidateQueries({ queryKey: ['notifications'] })
+    },
+    ...options,
+  })
+}
+
+export function useCancelApproval(
+  options?: UseMutationOptions<{ invoice: Invoice }, Error, string>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (invoiceId) => api.approvals.cancelApproval(invoiceId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['invoices'] })
+      void qc.invalidateQueries({ queryKey: ['approvals'] })
+    },
+    ...options,
+  })
+}
+
+export function useBulkApprove(
+  options?: UseMutationOptions<
+    { results: Array<{ invoiceId: string; success: boolean; error?: string }> },
+    Error,
+    { invoiceIds: string[]; comment?: string }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ invoiceIds, comment }) =>
+      api.approvals.bulkApprove(invoiceIds, comment),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['invoices'] })
+      void qc.invalidateQueries({ queryKey: ['approvals'] })
+      void qc.invalidateQueries({ queryKey: ['notifications'] })
+    },
+    ...options,
+  })
+}
+
+export function useRefreshApprovers(
+  options?: UseMutationOptions<{ message: string }, Error, string>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (invoiceId) => api.approvals.refreshApprovers(invoiceId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['invoices'] })
+    },
+    ...options,
+  })
+}
+
+// ─── Budget ──────────────────────────────────────────────────────
+
+export function useBudgetSummary(
+  settingId: string,
+  options?: Partial<
+    UseQueryOptions<{ data: BudgetStatus[]; count: number }>
+  >
+) {
+  return useQuery({
+    queryKey: queryKeys.budgetSummary(settingId),
+    queryFn: () => api.budget.summary(settingId),
+    enabled: !!settingId,
+    ...options,
+  })
+}
+
+// ─── Notifications ───────────────────────────────────────────────
+
+export function useNotifications(
+  settingId: string,
+  options_?: { unreadOnly?: boolean; top?: number },
+  queryOptions?: Partial<
+    UseQueryOptions<{ data: AppNotification[]; count: number }>
+  >
+) {
+  return useQuery({
+    queryKey: queryKeys.notifications(settingId),
+    queryFn: () => api.notifications.list(settingId, options_),
+    enabled: !!settingId,
+    ...queryOptions,
+  })
+}
+
+export function useNotificationsUnreadCount(
+  settingId: string,
+  options?: Partial<UseQueryOptions<{ count: number }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.notificationsUnreadCount(settingId),
+    queryFn: () => api.notifications.unreadCount(settingId),
+    enabled: !!settingId,
+    refetchInterval: 60_000,
+    ...options,
+  })
+}
+
+export function useMarkNotificationRead(
+  options?: UseMutationOptions<{ success: boolean }, Error, string>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => api.notifications.markRead(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['notifications'] })
+    },
+    ...options,
+  })
+}
+
+export function useDismissNotification(
+  options?: UseMutationOptions<{ success: boolean }, Error, string>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => api.notifications.dismiss(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['notifications'] })
+    },
+    ...options,
+  })
+}
+
+// ─── Reports ─────────────────────────────────────────────────────
+
+export function useReportBudgetUtilization(
+  settingId: string,
+  mpkCenterId?: string,
+  options?: Partial<UseQueryOptions<{ data: BudgetUtilizationReport }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.reportBudgetUtilization(settingId, mpkCenterId),
+    queryFn: () => api.reports.budgetUtilization(settingId, mpkCenterId),
+    enabled: !!settingId,
+    ...options,
+  })
+}
+
+export function useReportApprovalHistory(
+  settingId: string,
+  filters?: {
+    dateFrom?: string
+    dateTo?: string
+    mpkCenterId?: string
+    status?: string
+  },
+  options?: Partial<UseQueryOptions<{ data: ApprovalHistoryReport }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.reportApprovalHistory(settingId, filters),
+    queryFn: () => api.reports.approvalHistory(settingId, filters),
+    enabled: !!settingId,
+    ...options,
+  })
+}
+
+export function useReportApproverPerformance(
+  settingId: string,
+  options?: Partial<UseQueryOptions<{ data: ApproverPerformanceReport }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.reportApproverPerformance(settingId),
+    queryFn: () => api.reports.approverPerformance(settingId),
+    enabled: !!settingId,
+    ...options,
+  })
+}
+
+export function useReportInvoiceProcessing(
+  settingId: string,
+  options?: Partial<UseQueryOptions<{ data: ProcessingPipelineReport }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.reportInvoiceProcessing(settingId),
+    queryFn: () => api.reports.invoiceProcessing(settingId),
+    enabled: !!settingId,
     ...options,
   })
 }

@@ -14,9 +14,12 @@ import {
   BarChart3,
   TrendingUp,
   PanelLeftClose,
-  PanelRightClose
+  PanelRightClose,
+  ShieldCheck
 } from 'lucide-react'
 import { useHasRole, type UserRole } from '@/components/auth/auth-provider'
+import { useContextPendingApprovals } from '@/hooks/use-api'
+import { Badge } from '@/components/ui/badge'
 
 interface SidebarProps {
   className?: string
@@ -40,6 +43,11 @@ const navigationItems: NavigationItem[] = [
     nameKey: 'invoices',
     icon: FileText,
     href: '/invoices',
+  },
+  {
+    nameKey: 'approvals',
+    icon: ShieldCheck,
+    href: '/approvals',
   },
   {
     nameKey: 'reports',
@@ -71,6 +79,8 @@ export function Sidebar({ className }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const pathname = usePathname()
   const isAdmin = useHasRole('Admin')
+  const { data: approvalsData } = useContextPendingApprovals()
+  const pendingCount = approvalsData?.count ?? 0
 
   // Filter navigation items by role
   const visibleItems = navigationItems.filter(
@@ -92,7 +102,7 @@ export function Sidebar({ className }: SidebarProps) {
           {visibleItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
-            const name = t(item.nameKey as 'dashboard' | 'invoices' | 'reports' | 'sync' | 'settings')
+            const name = t(item.nameKey as 'dashboard' | 'invoices' | 'approvals' | 'reports' | 'sync' | 'settings')
 
             if (item.disabled) {
               return (
@@ -132,6 +142,16 @@ export function Sidebar({ className }: SidebarProps) {
                   <Link href={item.href}>
                     <Icon className={cn('h-4 w-4', !isCollapsed && 'mr-3')} />
                     {!isCollapsed && <span>{name}</span>}
+                    {!isCollapsed && item.nameKey === 'approvals' && pendingCount > 0 && (
+                      <Badge variant="destructive" className="ml-auto text-[10px] h-5 min-w-5 px-1">
+                        {pendingCount > 99 ? '99+' : pendingCount}
+                      </Badge>
+                    )}
+                    {isCollapsed && item.nameKey === 'approvals' && pendingCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground px-0.5">
+                        {pendingCount > 99 ? '99+' : pendingCount}
+                      </span>
+                    )}
                   </Link>
                 </Button>
               </li>

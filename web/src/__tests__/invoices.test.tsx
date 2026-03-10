@@ -57,6 +57,10 @@ vi.mock('@/hooks/use-api', () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useContextMpkCenters: () => ({
+    data: { data: [], count: 0 },
+    isLoading: false,
+  }),
 }))
 
 vi.mock('@/contexts/company-context', () => ({

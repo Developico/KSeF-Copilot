@@ -75,6 +75,9 @@ graph TB
         AIService["AI Service"]
         VATClient["WL VAT Client<br/>(Biała Lista)"]
         NBP["Kursy walut (NBP)"]
+        MPK["Centra MPK & Akceptacje"]
+        Notifications["Powiadomienia"]
+        Reports["Raporty & Budżet"]
     end
 
     API --> API_Modules
@@ -212,6 +215,12 @@ api/
 │   │   ├── attachments.ts     # Załączniki plików
 │   │   ├── ai-categorize.ts   # Kategoryzacja AI
 │   │   ├── dashboard.ts       # Analityka
+│   │   ├── mpk-centers.ts     # CRUD centrów MPK i akceptantów
+│   │   ├── approvals.ts       # Operacje workflow akceptacji
+│   │   ├── approval-sla-check.ts # Timer: wykrywanie przekroczeń SLA
+│   │   ├── budget.ts          # Podsumowanie i szczegóły budżetu
+│   │   ├── notifications.ts   # Zarządzanie powiadomieniami
+│   │   ├── reports.ts         # Raporty akceptacji i budżetu
 │   │   ├── vat.ts             # Integracja WL VAT (Biała Lista)
 │   │   ├── exchange-rates.ts  # Kursy walut NBP
 │   │   └── documents.ts       # Przetwarzanie dokumentów
@@ -307,11 +316,20 @@ Pełna specyfikacja encji, relacji, OptionSetów i indeksów znajduje się w: [S
 | `dvlp_ksefinvoice` | Faktury KSeF + metadane + kategoryzacja AI |
 | `dvlp_ksefsynclog` | Historia synchronizacji |
 | `dvlp_aifeedback` | Feedback użytkownika dla uczenia AI |
+| `dvlp_ksefmpkcenter` | Centra MPK — konfiguracja, budżety, workflow akceptacji |
+| `dvlp_ksefmpkapprover` | Akceptanci przypisani do centrów MPK |
+| `dvlp_ksefnotification` | Powiadomienia o akceptacjach, SLA, budżetach |
 
 **Relacje**:
 - `SettingEntity 1:N InvoiceEntity` (jedna firma, wiele faktur)
 - `SettingEntity 1:N SyncLogEntity` (jedna firma, wiele operacji sync)
 - `InvoiceEntity 1:N AIFeedbackEntity` (jedna faktura, wiele feedbacków)
+- `SettingEntity 1:N MpkCenterEntity` (jedna firma, wiele centrów MPK)
+- `MpkCenterEntity 1:N MpkApproverEntity` (jedno centrum, wielu akceptantów)
+- `MpkCenterEntity 1:N InvoiceEntity` (jedno centrum, wiele faktur via lookup)
+- `MpkCenterEntity 1:N NotificationEntity` (jedno centrum, wiele powiadomień)
+- `SettingEntity 1:N NotificationEntity` (jedna firma, wiele powiadomień)
+- `InvoiceEntity 1:N NotificationEntity` (jedna faktura, wiele powiadomień)
 
 ---
 

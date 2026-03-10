@@ -49,7 +49,7 @@ import {
   StickyNote,
   CornerDownRight,
 } from 'lucide-react'
-import { useInvoices, useMarkAsPaid, useDeleteInvoice, useUpdateInvoice } from '@/hooks/use-api'
+import { useInvoices, useMarkAsPaid, useDeleteInvoice, useUpdateInvoice, useContextMpkCenters } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
 import { useToast } from '@/hooks/use-toast'
 import { Invoice, InvoiceListParams } from '@/lib/api'
@@ -59,6 +59,7 @@ import { InvoiceMobileCard } from '@/components/invoices/invoice-mobile-card'
 import { InvoiceAmountCell } from '@/components/invoices/currency-amount'
 import { DocumentScannerModal } from '@/components/documents'
 import { useHasRole } from '@/components/auth/auth-provider'
+import { ApprovalStatusBadge } from '@/components/invoices/invoice-approval-section'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import {
   AlertDialog,
@@ -77,7 +78,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 type DescriptionStatus = 'not_described' | 'ai_suggested' | 'described'
 
 function getDescriptionStatus(invoice: Invoice): DescriptionStatus {
-  const hasDescription = !!(invoice.mpk || invoice.category)
+  const hasDescription = !!(invoice.mpkCenterName || invoice.mpkCenterId || invoice.mpk || invoice.category)
   const hasAiSuggestion = !!(invoice.aiMpkSuggestion || invoice.aiCategorySuggestion)
   
   if (hasDescription) {
@@ -323,6 +324,7 @@ export default function InvoicesPage() {
   const markAsPaidMutation = useMarkAsPaid()
   const deleteInvoiceMutation = useDeleteInvoice()
   const updateInvoiceMutation = useUpdateInvoice()
+  const { data: mpkCentersData } = useContextMpkCenters()
 
   // Apply client-side description filter
   const allInvoices = data?.invoices || []
@@ -373,11 +375,16 @@ export default function InvoicesPage() {
   const availableMpks = useMemo(() => {
     const mpks = new Set<string>()
     allInvoices.forEach(inv => {
-      if (inv.mpk) mpks.add(inv.mpk)
+      const name = inv.mpkCenterName || inv.mpk
+      if (name) mpks.add(name)
       if (inv.aiMpkSuggestion) mpks.add(inv.aiMpkSuggestion)
     })
+    // Merge MPK Center names from the API
+    mpkCentersData?.mpkCenters?.forEach(mc => {
+      if (mc.name) mpks.add(mc.name)
+    })
     return Array.from(mpks).sort((a, b) => a.localeCompare(b, 'pl'))
-  }, [allInvoices])
+  }, [allInvoices, mpkCentersData])
 
   const availableCategories = useMemo(() => {
     const categories = new Set<string>()
@@ -457,8 +464,8 @@ export default function InvoicesPage() {
           break
         }
         case 'mpk':
-          key = invoice.mpk || 'brak'
-          label = invoice.mpk || t('noMpk')
+          key = invoice.mpkCenterName || invoice.mpk || 'brak'
+          label = invoice.mpkCenterName || invoice.mpk || t('noMpk')
           break
         case 'category':
           key = invoice.category || 'brak'
@@ -1100,8 +1107,8 @@ export default function InvoicesPage() {
                   </TableHead>
                   <TableHead className="hidden xl:table-cell">{t('mpk')}</TableHead>
                   <TableHead className="hidden xl:table-cell">{t('category')}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t('approvalColumn')}</TableHead>
                   <TableHead className="hidden md:table-cell">{t('descriptionStatus')}</TableHead>
-                  <TableHead className="hidden sm:table-cell w-[70px] text-center">{t('documents')}</TableHead>
                   <TableHead className="w-[100px] lg:w-[120px] text-center">{tCommon('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1199,9 +1206,9 @@ export default function InvoicesPage() {
                       />
                     </TableCell>
                     <TableCell className="hidden xl:table-cell">
-                      {invoice.mpk ? (
+                      {(invoice.mpkCenterName || invoice.mpk) ? (
                         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                          {invoice.mpk}
+                          {invoice.mpkCenterName || invoice.mpk}
                         </Badge>
                       ) : invoice.aiMpkSuggestion ? (
                         <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
@@ -1226,40 +1233,11 @@ export default function InvoicesPage() {
                         <span className="text-muted-foreground text-sm">—</span>
                       )}
                     </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <ApprovalStatusBadge status={invoice.approvalStatus} />
+                    </TableCell>
                     <TableCell className="hidden md:table-cell">
                       {getDescriptionStatusBadgeTranslated(getDescriptionStatus(invoice))}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <div className="flex items-center justify-center gap-1">
-                        {/* Fixed grid: always 3 icon slots for consistent alignment */}
-                        {invoice.hasDocument ? (
-                          <span title={invoice.documentFileName || t('hasDocument')}>
-                            <FileImage className="h-4 w-4 text-purple-500" />
-                          </span>
-                        ) : (
-                          <span className="w-4 h-4 inline-block" />
-                        )}
-                        {invoice.hasAttachments ? (
-                          <div className="flex items-center gap-0.5" title={t('attachmentsCount', { count: invoice.attachmentCount || 0 })}>
-                            <Paperclip className="h-4 w-4 text-blue-500" />
-                            {(invoice.attachmentCount || 0) > 1 && (
-                              <span className="text-xs text-blue-600 w-3">{invoice.attachmentCount}</span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="w-4 h-4 inline-block" />
-                        )}
-                        {invoice.hasNotes ? (
-                          <div className="flex items-center gap-0.5" title={t('notesCount', { count: invoice.noteCount || 0 })}>
-                            <StickyNote className="h-4 w-4 text-amber-500" />
-                            {(invoice.noteCount || 0) > 1 && (
-                              <span className="text-xs text-amber-600 w-3">{invoice.noteCount}</span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="w-4 h-4 inline-block" />
-                        )}
-                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center gap-1">

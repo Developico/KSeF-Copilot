@@ -130,6 +130,10 @@ const mockGenerateMutate = vi.fn()
 const mockCleanupMutate = vi.fn()
 const mockFetchCleanup = vi.fn()
 const mockRefetchHealth = vi.fn()
+const mockCreateMpkMutate = vi.fn()
+const mockUpdateMpkMutate = vi.fn()
+const mockDeactivateMpkMutate = vi.fn()
+const mockSetApproversMutate = vi.fn()
 
 vi.mock('@/hooks/use-api', () => ({
   useCompanies: vi.fn(() => ({
@@ -195,6 +199,38 @@ vi.mock('@/hooks/use-api', () => ({
     isLoading: false,
     refetch: mockRefetchHealth,
   })),
+  useMpkCenters: vi.fn(() => ({
+    data: { mpkCenters: [] },
+    isLoading: false,
+  })),
+  useCreateMpkCenter: vi.fn(() => ({
+    mutate: mockCreateMpkMutate,
+    isPending: false,
+  })),
+  useUpdateMpkCenter: vi.fn(() => ({
+    mutate: mockUpdateMpkMutate,
+    isPending: false,
+  })),
+  useDeactivateMpkCenter: vi.fn(() => ({
+    mutate: mockDeactivateMpkMutate,
+    isPending: false,
+  })),
+  useMpkApprovers: vi.fn(() => ({
+    data: { approvers: [] },
+    isLoading: false,
+  })),
+  useSetMpkApprovers: vi.fn(() => ({
+    mutate: mockSetApproversMutate,
+    isPending: false,
+  })),
+  useMpkBudgetStatus: vi.fn(() => ({
+    data: null,
+    isLoading: false,
+  })),
+  useDvUsers: vi.fn(() => ({
+    data: { users: [] },
+    isLoading: false,
+  })),
 }))
 
 // ── Wrapper ─────────────────────────────────────────────────────
@@ -252,8 +288,7 @@ describe('SettingsPage', () => {
     render(<SettingsPage />, { wrapper: Wrapper })
 
     await user.click(screen.getByText(messages['settings.costCenters']))
-    expect(screen.getByText('CC-001')).toBeInTheDocument()
-    expect(screen.getByText('Marketing')).toBeInTheDocument()
+    expect(screen.getByText(messages['mpkCenters.title'])).toBeInTheDocument()
   })
 
   it('switches to test data tab', async () => {
@@ -407,80 +442,6 @@ describe('SettingsPage – Companies Tab', () => {
 
     expect(mockTestTokenMutate).toHaveBeenCalledTimes(1)
     expect(mockTestTokenMutate).toHaveBeenCalledWith('c1', expect.any(Object))
-  })
-})
-
-// ─────────────────────────────────────────────────────────────────
-//  Cost Centers Tab
-// ─────────────────────────────────────────────────────────────────
-
-describe('SettingsPage – Cost Centers Tab', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  async function openCostCentersTab() {
-    const user = userEvent.setup()
-    render(<SettingsPage />, { wrapper: Wrapper })
-    await user.click(screen.getByText(messages['settings.costCenters']))
-    return user
-  }
-
-  it('renders all cost centers', async () => {
-    await openCostCentersTab()
-    expect(screen.getByText('CC-001')).toBeInTheDocument()
-    expect(screen.getByText('Marketing')).toBeInTheDocument()
-    expect(screen.getByText('CC-002')).toBeInTheDocument()
-    expect(screen.getByText('Engineering')).toBeInTheDocument()
-    expect(screen.getByText('CC-003')).toBeInTheDocument()
-    expect(screen.getByText('Sales')).toBeInTheDocument()
-  })
-
-  it('shows Active/Inactive badges', async () => {
-    await openCostCentersTab()
-    const activeBadges = screen.getAllByText('Active')
-    const inactiveBadges = screen.getAllByText('Inactive')
-    expect(activeBadges.length).toBe(2)
-    expect(inactiveBadges.length).toBe(1)
-  })
-
-  it('shows add cost center form when button is clicked', async () => {
-    const user = await openCostCentersTab()
-    await user.click(screen.getByText(messages['settings.addCostCenter']))
-    expect(screen.getByPlaceholderText('CC-001')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Marketing')).toBeInTheDocument()
-  })
-
-  it('calls createCostCenter when form is submitted', async () => {
-    const user = await openCostCentersTab()
-    await user.click(screen.getByText(messages['settings.addCostCenter']))
-
-    await user.type(screen.getByPlaceholderText('CC-001'), 'CC-NEW')
-    await user.type(screen.getByPlaceholderText('Marketing'), 'New Center')
-
-    const saveButtons = screen.getAllByText(messages['common.save'])
-    await user.click(saveButtons[0])
-
-    expect(mockCreateCcMutate).toHaveBeenCalledTimes(1)
-    expect(mockCreateCcMutate).toHaveBeenCalledWith(
-      { code: 'CC-NEW', name: 'New Center' },
-      expect.any(Object),
-    )
-  })
-
-  it('calls deleteCostCenter when delete button is clicked', async () => {
-    const user = await openCostCentersTab()
-
-    // There should be delete buttons for each cost center
-    // Find all Trash2 icon buttons (destructive style)
-    const deleteButtons = screen.getAllByRole('button').filter(
-      (btn) => btn.classList.contains('text-destructive')
-    )
-    expect(deleteButtons.length).toBe(3)
-
-    await user.click(deleteButtons[0])
-    expect(mockDeleteCcMutate).toHaveBeenCalledTimes(1)
-    expect(mockDeleteCcMutate).toHaveBeenCalledWith('cc1', expect.any(Object))
   })
 })
 

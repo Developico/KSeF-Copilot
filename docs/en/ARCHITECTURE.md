@@ -77,6 +77,9 @@ graph TB
         AIService["AI Service"]
         VATClient["WL VAT Client<br/>(White List)"]
         NBP["Exchange Rates (NBP)"]
+        MPK["MPK Centers & Approvals"]
+        Notifications["Notifications"]
+        Reports["Reports & Budget"]
     end
 
     API --> API_Modules
@@ -124,7 +127,7 @@ graph TB
 │  └──────────────┘  └──────────────┘  └──────────────┘           │
 │                                                                    │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
-│  │   AI         │  │   GUS        │  │  Document    │           │
+│  │   AI         │  │   WL VAT     │  │  Document    │           │
 │  │   Service    │  │   Client     │  │  Parser      │           │
 │  └──────────────┘  └──────────────┘  └──────────────┘           │
 └────────────────────────────────────────────────────────────────────┘
@@ -208,7 +211,16 @@ api/
 │   │   ├── attachments.ts     # File attachments
 │   │   ├── ai-categorize.ts   # AI categorization
 │   │   ├── dashboard.ts       # Analytics
-│   │   ├── gus.ts             # GUS integration
+│   │   ├── mpk-centers.ts     # MPK center CRUD & approvers
+│   │   ├── approvals.ts       # Approval workflow operations
+│   │   ├── approval-sla-check.ts # Timer: SLA breach detection
+│   │   ├── budget.ts          # Budget summary & details
+│   │   ├── notifications.ts   # Notification management
+│   │   ├── reports.ts         # Approval & budget reports
+│   │   ├── vat.ts             # WL VAT (White List) integration
+│   │   ├── exchange-rates.ts  # NBP exchange rates
+│   │   ├── forecast.ts        # Invoice forecasting
+│   │   ├── anomalies.ts       # Anomaly detection
 │   │   └── documents.ts       # Document processing
 │   │
 │   └── lib/                   # Core libraries
@@ -222,7 +234,10 @@ api/
 │       │       ├── invoice.service.ts
 │       │       ├── setting.service.ts
 │       │       ├── session.service.ts
-│       │       └── synclog.service.ts
+│       │       ├── synclog.service.ts
+│       │       ├── mpkcenter.service.ts
+│       │       ├── approver.service.ts
+│       │       └── notification.service.ts
 │       │
 │       ├── ksef/              # KSeF API integration
 │       │   ├── client.ts      # HTTP client
@@ -233,8 +248,8 @@ api/
 │       ├── ai/                # AI services
 │       │   └── categorizer.ts # OpenAI categorization
 │       │
-│       ├── gus/               # GUS API client
-│       │   └── client.ts      # Company lookup
+│       ├── vat/               # WL VAT (White List) API client
+│       │   └── client.ts      # Company lookup (NIP)
 │       │
 │       └── storage/           # Azure Storage
 │           └── blobs.ts       # Blob operations
@@ -398,10 +413,61 @@ AI categorization feedback for model improvement.
 }
 ```
 
+#### MpkCenterEntity (`dvlp_ksefmpkcenter`)
+MPK (Cost Center) configuration per tenant.
+```typescript
+{
+  dvlp_ksefmpkcenterid: string   // Primary key (GUID)
+  dvlp_name: string               // MPK center name
+  dvlp_description: string        // Description
+  dvlp_isactive: boolean          // Active status
+  dvlp_approvalrequired: boolean  // Requires approval workflow
+  dvlp_approvalslahours: Integer  // SLA hours for approval
+  dvlp_budgetamount: Decimal      // Budget amount
+  dvlp_budgetperiod: Choice       // Budget period (monthly/quarterly/half-yearly/annual)
+  dvlp_budgetstartdate: DateTime  // Budget start date
+  _dvlp_settingid_value: Lookup   // Foreign key to SettingEntity
+}
+```
+
+#### MpkApproverEntity (`dvlp_ksefmpkapprover`)
+Approver assignments per MPK center.
+```typescript
+{
+  dvlp_ksefmpkapproverid: string // Primary key (GUID)
+  dvlp_name: string               // Approver display name
+  dvlp_systemuserid: string       // Entra ID object ID
+  _dvlp_mpkcenterid_value: Lookup // Foreign key to MpkCenterEntity
+}
+```
+
+#### NotificationEntity (`dvlp_ksefnotification`)
+User notifications for approval and budget events.
+```typescript
+{
+  dvlp_ksefnotificationid: string // Primary key (GUID)
+  dvlp_name: string                // Notification title
+  dvlp_recipientid: string         // Recipient user OID
+  dvlp_type: Choice                // Type (approval_requested, sla_exceeded, budget_warning, etc.)
+  dvlp_message: string             // Notification message
+  dvlp_isread: boolean             // Read status
+  dvlp_isdismissed: boolean        // Dismissed status
+  _dvlp_settingid_value: Lookup    // Foreign key to SettingEntity
+  _dvlp_invoiceid_value: Lookup    // Foreign key to InvoiceEntity (optional)
+  _dvlp_mpkcenterid_value: Lookup  // Foreign key to MpkCenterEntity (optional)
+}
+```
+
 **Relationships**:
 - `SettingEntity 1:N InvoiceEntity` (one tenant, many invoices)
 - `SettingEntity 1:N SyncLogEntity` (one tenant, many sync logs)
 - `InvoiceEntity 1:N AIFeedbackEntity` (one invoice, multiple feedback entries)
+- `SettingEntity 1:N MpkCenterEntity` (one tenant, many MPK centers)
+- `MpkCenterEntity 1:N MpkApproverEntity` (one center, many approvers)
+- `MpkCenterEntity 1:N InvoiceEntity` (one center, many invoices via lookup)
+- `MpkCenterEntity 1:N NotificationEntity` (one center, many notifications)
+- `SettingEntity 1:N NotificationEntity` (one tenant, many notifications)
+- `InvoiceEntity 1:N NotificationEntity` (one invoice, many notifications)
 
 ---
 
@@ -464,8 +530,8 @@ Return JSON: { "mpk": <value>, "category": "<string>", "confidence": <0-1> }
 - Store suggestion + confidence in invoice record
 - Track user feedback (applied/modified/rejected)
 
-#### GUS API (REGON/NIP Lookup)
-Polish business registry integration for supplier validation.
+#### WL VAT API (White List / NIP Lookup)
+Polish White List VAT API integration for supplier validation.
 
 **Capabilities**:
 - NIP validation and existence check

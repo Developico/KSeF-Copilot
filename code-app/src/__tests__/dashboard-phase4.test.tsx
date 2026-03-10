@@ -426,7 +426,7 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Total gross')).toBeInTheDocument()
     // 'Paid' appears both as a KPI card title and in payment status section
     expect(screen.getAllByText('Paid').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('To pay')).toBeInTheDocument()
+    expect(screen.getAllByText('Pending').length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders Recharts bar chart for monthly expenses', () => {
@@ -452,9 +452,9 @@ describe('DashboardPage', () => {
 
   it('renders payment status cards (paid, pending, overdue)', () => {
     render(<DashboardPage />, { wrapper: Wrapper })
-    // The payment status section has dedicated cards
-    const overdue = screen.getByText('Overdue')
-    expect(overdue).toBeInTheDocument()
+    // "Overdue" appears in KPI card and payment section
+    const overdue = screen.getAllByText('Overdue')
+    expect(overdue.length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders quick action links', () => {
@@ -500,17 +500,16 @@ describe('ForecastPage', () => {
     expect(screen.getByText('12 months')).toBeInTheDocument()
   })
 
-  it('renders animated KPI cards (next month, total, avg)', () => {
+  it('renders animated KPI cards (next month, total, confidence)', () => {
     render(<ForecastPage />, { wrapper: Wrapper })
     expect(screen.getByText('Next month')).toBeInTheDocument()
     expect(screen.getByText('Total forecast')).toBeInTheDocument()
-    expect(screen.getByText('Average monthly')).toBeInTheDocument()
+    expect(screen.getByText('Confidence')).toBeInTheDocument()
   })
 
   it('renders method badge and confidence', () => {
     render(<ForecastPage />, { wrapper: Wrapper })
-    expect(screen.getByText('linear-regression')).toBeInTheDocument()
-    expect(screen.getByText(/Confidence: 85%/)).toBeInTheDocument()
+    expect(screen.getByText(/Method:.*linear-regression/)).toBeInTheDocument()
   })
 
   it('renders tab navigation with all tabs', () => {

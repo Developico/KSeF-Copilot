@@ -6,6 +6,40 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.8.0] - 2026-03-10
+
+### 🏢 Zarządzanie MPK — migracja na encje
+
+- **MPK jako encje Dataverse** — centra kosztowe (MPK) zmigrowane z OptionSet na dedykowaną tabelę `dvlp_ksefmpkcenter` z pełnym CRUD
+- **Akceptanci MPK** — przypisywanie akceptantów do centrów kosztowych z progami kwotowymi
+- **Budżety MPK** — definiowanie miesięcznych/kwartalnych budżetów per MPK, status wykorzystania
+- **Poprawka Select w Dialog** — dropdown MPK działa poprawnie w oknie dialogowym (`modal={false}` na Dialog + `className="w-full"` na SelectTrigger)
+
+### ✅ Strona zatwierdzania faktur
+
+- **Nowa strona `/approvals`** — pełna obsługa workflow zatwierdzania faktur
+- **Zakładka „Oczekujące"** — lista faktur do zatwierdzenia z checkboxami, masowym zatwierdzaniem, oznaczeniem SLA overdue
+- **Zakładka „Historia"** — filtr statusu, podsumowanie badge'ów, tabela historii
+- **Dialog akcji** — zatwierdzanie/odrzucanie z komentarzem
+- **Nawigacja** — nowy element w sidebar (ikona ShieldCheck) ze znacznikiem oczekujących
+- **Kolumna Approval** na liście faktur — badge statusu akceptacji (Approved/Pending/Rejected/N/A)
+
+### 📊 Raporty
+
+- **Wykorzystanie budżetu** — raport per MPK z paskami postępu i alertami przekroczeń
+- **Wydajność akceptantów** — statystyki per akceptant (liczba, średni czas, SLA compliance)
+- **Przetwarzanie faktur** — pipeline faktur z podziałem na statusy
+
+### 🖱️ UX — Podwójne kliknięcie
+
+- **Szybka nawigacja** — podwójne kliknięcie na wiersz faktury otwiera szczegóły (desktop)
+
+### 🔧 Infrastruktura
+
+- **Lokalny proxy API** — Vite proxy `/api` → `http://localhost:7071` dla lokalnego developmentu z Azure Functions
+
+---
+
 ## [0.7.8] - 2026-02-27
 
 ### ✨ Wielowalutowość na liście faktur

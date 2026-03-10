@@ -6,6 +6,36 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.8.0] - 2026-03-10
+
+### 🏢 Zarządzanie MPK — migracja na encje
+
+- **Centra kosztowe jako tabela Dataverse** — MPK zmigrowane z OptionSet (`dvlp_costcenter`) na dedykowaną tabelę `dvlp_ksefmpkcenter` z pełnym CRUD (tworzenie, edycja, dezaktywacja)
+- **Akceptanci MPK** — zarządzanie akceptantami per centrum kosztowe z progami kwotowymi
+- **Budżetowanie MPK** — definiowanie i śledzenie budżetów miesięcznych/kwartalnych per MPK
+
+### ✅ Workflow zatwierdzania faktur
+
+- **Strona zatwierdzania** — `/approvals` z listą oczekujących faktur, filtrowaniem po kwocie/MPK/dostawcy
+- **Szybkie akcje** — zatwierdzanie/odrzucanie z komentarzem, masowe zatwierdzanie
+- **SLA monitoring** — wizualne oznaczenie faktur z przekroczonym SLA
+- **Kolumna statusu akceptacji** na liście faktur
+
+### 🔔 System powiadomień
+
+- **Panel powiadomień** — lista powiadomień użytkownika z oznaczaniem jako przeczytane/odrzucone
+- **Licznik nieprzeczytanych** — badge w nawigacji
+- **Typy powiadomień** — nowa faktura, przekroczenie SLA, przekroczenie budżetu
+
+### 📊 Raporty
+
+- **Wykorzystanie budżetu** — raport per MPK z wykresami i alertami
+- **Historia akceptacji** — z filtrami (data, MPK, status akceptacji)
+- **Wydajność akceptantów** — statystyki per akceptant
+- **Przetwarzanie faktur** — pipeline faktur z podziałem na statusy
+
+---
+
 ## [0.7.8] - 2026-02-27
 
 ### ✨ Wielowalutowość na liście faktur

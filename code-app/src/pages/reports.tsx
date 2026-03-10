@@ -36,6 +36,9 @@ import {
   RefreshCw,
   Tag,
   Calendar,
+  Wallet,
+  Users,
+  Workflow,
 } from 'lucide-react'
 import { useDashboardStats, useInvoices } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
@@ -45,6 +48,9 @@ import {
   AnimatedCardGrid,
   AnimatedCardWrapper,
 } from '@/components/dashboard/animated-kpi-card'
+import { BudgetUtilizationTab } from '@/components/reports/budget-utilization-tab'
+import { ApproverPerformanceTab } from '@/components/reports/approver-performance-tab'
+import { InvoiceProcessingTab } from '@/components/reports/invoice-processing-tab'
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -362,6 +368,18 @@ export function ReportsPage() {
           <TabsTrigger value="categories" className="gap-1.5">
             <Tag className="h-4 w-4" />
             {intl.formatMessage({ id: 'reports.categoriesTab' })}
+          </TabsTrigger>
+          <TabsTrigger value="budget" className="gap-1.5">
+            <Wallet className="h-4 w-4" />
+            {intl.formatMessage({ id: 'reports.budgetTab' })}
+          </TabsTrigger>
+          <TabsTrigger value="approvers" className="gap-1.5">
+            <Users className="h-4 w-4" />
+            {intl.formatMessage({ id: 'reports.approversTab' })}
+          </TabsTrigger>
+          <TabsTrigger value="processing" className="gap-1.5">
+            <Workflow className="h-4 w-4" />
+            {intl.formatMessage({ id: 'reports.processingTab' })}
           </TabsTrigger>
         </TabsList>
 
@@ -718,6 +736,21 @@ export function ReportsPage() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        {/* ── Budget tab ──────────────────────────────────── */}
+        <TabsContent value="budget">
+          <BudgetUtilizationTab />
+        </TabsContent>
+
+        {/* ── Approvers tab ────────────────────────────────── */}
+        <TabsContent value="approvers">
+          <ApproverPerformanceTab />
+        </TabsContent>
+
+        {/* ── Processing tab ───────────────────────────────── */}
+        <TabsContent value="processing">
+          <InvoiceProcessingTab />
         </TabsContent>
       </Tabs>
     </div>

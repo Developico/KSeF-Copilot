@@ -35,6 +35,7 @@ import { api, queryKeys, DashboardStats } from '@/lib/api'
 import { DashboardSkeleton } from '@/components/skeletons'
 import { useCompanyContext } from '@/contexts/company-context'
 import { AnimatedKpiCard, AnimatedCardGrid, AnimatedCardWrapper } from './animated-kpi-card'
+import { BudgetSummaryCards } from './budget-summary-cards'
 
 // Colors for charts
 const COLORS = [
@@ -363,6 +364,9 @@ export function DashboardContent() {
           </Card>
         </AnimatedCardWrapper>
       </div>
+
+      {/* Budget & Approval Summary */}
+      <BudgetSummaryCards />
     </div>
   )
 }

@@ -21,17 +21,28 @@ paths:
     get:
       responses:
         '200':
-          description: Detailed system health status
+          description: Basic system health status
           schema:
-            $ref: '#/definitions/DetailedHealth'
+            type: object
+            properties:
+              status:
+                type: string
+                enum:
+                  - healthy
+                  - degraded
+                  - unhealthy
+              timestamp:
+                type: string
+              version:
+                type: string
         '401':
           description: Unauthorized
         '403':
           description: Forbidden — requires Reader role
-      summary: Health Check (Detailed)
+      summary: Health Check (Basic)
       description: >-
-        Returns detailed system health status including Dataverse connectivity,
-        Key Vault access, and KSeF service availability.
+        Returns basic system health status. For detailed health including
+        service connectivity and response times, use GET /health/detailed.
       operationId: HealthCheck
       parameters:
         - name: environment
@@ -116,9 +127,12 @@ paths:
           description: Invoice details
           schema:
             $ref: '#/definitions/Invoice'
-        default:
-          description: default
-          schema: {}
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Invoice not found
       summary: Get Invoice
       operationId: GetInvoice
       parameters:
@@ -499,8 +513,12 @@ paths:
   /sync:
     post:
       operationId: StartSync
-      summary: Start KSeF Sync
-      description: Start synchronization of invoices from KSeF for a given company setting.
+      summary: '[DEPRECATED] Start KSeF Sync (legacy)'
+      description: >-
+        **DEPRECATED** — use POST /ksef/sync instead.
+        Legacy synchronization endpoint. Will be removed in a future version.
+        For new integrations and Copilot Studio agents, use StartKsefSync.
+      deprecated: true
       parameters:
         - name: body
           in: body
@@ -567,7 +585,7 @@ paths:
               logs:
                 type: array
                 items:
-                  type: object
+                  $ref: '#/definitions/SyncLogEntry'
               count:
                 type: integer
         '401':
@@ -722,11 +740,11 @@ paths:
               rules:
                 type: array
                 items:
-                  type: object
+                  $ref: '#/definitions/AnomalyRuleDescriptor'
               presets:
                 type: array
                 items:
-                  type: object
+                  $ref: '#/definitions/AnomalyPreset'
         '401':
           description: Unauthorized
         '403':
@@ -1327,11 +1345,11 @@ paths:
               algorithms:
                 type: array
                 items:
-                  type: object
+                  $ref: '#/definitions/ForecastAlgorithmDescriptor'
               presets:
                 type: array
                 items:
-                  type: object
+                  $ref: '#/definitions/ForecastPreset'
         '401':
           description: Unauthorized
         '403':
@@ -1480,6 +1498,921 @@ paths:
           description: Validation error
         '401':
           description: Unauthorized
+  /invoices/{id}/attachments:
+    post:
+      operationId: UploadAttachment
+      summary: Upload Invoice Attachment
+      description: >-
+        Upload a file attachment to an invoice (PDF, image, etc.).
+        Content must be Base64-encoded.
+      x-ms-visibility: important
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (GUID)
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - fileName
+              - mimeType
+              - content
+            properties:
+              fileName:
+                type: string
+                description: File name (max 255 characters)
+              mimeType:
+                type: string
+                description: MIME type of the file
+              content:
+                type: string
+                description: Base64-encoded file content
+              description:
+                type: string
+                description: Optional description (max 500 characters)
+      responses:
+        '201':
+          description: Attachment uploaded
+          schema:
+            $ref: '#/definitions/Attachment'
+        '400':
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Invoice not found
+    get:
+      operationId: ListAttachments
+      summary: List Invoice Attachments
+      description: Returns all attachments for a given invoice.
+      x-ms-visibility: important
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (GUID)
+      responses:
+        '200':
+          description: List of attachments
+          schema:
+            type: object
+            properties:
+              attachments:
+                type: array
+                items:
+                  $ref: '#/definitions/Attachment'
+              count:
+                type: integer
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Invoice not found
+  /attachments/{id}/download:
+    get:
+      operationId: DownloadAttachment
+      summary: Download Attachment
+      description: Returns the Base64-encoded content of an attachment.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Attachment ID (GUID)
+      responses:
+        '200':
+          description: Attachment content
+          schema:
+            type: object
+            properties:
+              content:
+                type: string
+                description: Base64-encoded file content
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Attachment not found
+  /attachments/{id}:
+    delete:
+      operationId: DeleteAttachment
+      summary: Delete Attachment
+      description: Permanently delete an attachment by ID.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Attachment ID (GUID)
+      responses:
+        '204':
+          description: Attachment deleted
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Attachment not found
+  /attachments/config:
+    get:
+      operationId: GetAttachmentConfig
+      summary: Get Attachment Configuration
+      description: Returns allowed file types, max size, and other attachment constraints.
+      parameters: []
+      responses:
+        '200':
+          description: Attachment configuration
+          schema:
+            type: object
+            properties:
+              maxSizeBytes:
+                type: integer
+              maxSizeMB:
+                type: number
+              allowedMimeTypes:
+                type: array
+                items:
+                  type: string
+  /health/detailed:
+    get:
+      operationId: HealthCheckDetailed
+      summary: Health Check (Detailed)
+      description: >-
+        Returns detailed system health status including Dataverse connectivity,
+        Key Vault access, KSeF service availability, and response times.
+      parameters:
+        - name: environment
+          in: query
+          type: string
+          required: false
+          description: KSeF environment to check
+          enum:
+            - test
+            - demo
+            - production
+      responses:
+        '200':
+          description: Detailed system health status
+          schema:
+            $ref: '#/definitions/DetailedHealth'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+  /mpk-centers:
+    get:
+      operationId: ListMpkCenters
+      summary: List MPK Centers
+      description: Returns MPK cost centers for a given company setting.
+      x-ms-visibility: important
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: false
+          description: Company setting UUID (filters by company)
+        - name: activeOnly
+          in: query
+          type: string
+          required: false
+          description: Only active centers (default true)
+          enum:
+            - 'true'
+            - 'false'
+      responses:
+        '200':
+          description: MPK centers list
+          schema:
+            type: object
+            properties:
+              mpkCenters:
+                type: array
+                items:
+                  $ref: '#/definitions/MpkCenter'
+              count:
+                type: integer
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+    post:
+      operationId: CreateMpkCenter
+      summary: Create MPK Center
+      description: Creates a new MPK cost center. Requires Admin role.
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/MpkCenterCreate'
+      responses:
+        '201':
+          description: Created MPK center
+          schema:
+            type: object
+            properties:
+              mpkCenter:
+                $ref: '#/definitions/MpkCenter'
+        '400':
+          description: Validation failed
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+  /mpk-centers/{id}:
+    get:
+      operationId: GetMpkCenter
+      summary: Get MPK Center
+      description: Returns a single MPK center by ID.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: MPK center UUID
+      responses:
+        '200':
+          description: MPK center
+          schema:
+            type: object
+            properties:
+              mpkCenter:
+                $ref: '#/definitions/MpkCenter'
+        '401':
+          description: Unauthorized
+        '404':
+          description: MPK center not found
+    patch:
+      operationId: UpdateMpkCenter
+      summary: Update MPK Center
+      description: Updates an existing MPK center. Requires Admin role.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: MPK center UUID
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/MpkCenterUpdate'
+      responses:
+        '200':
+          description: Updated MPK center
+          schema:
+            type: object
+            properties:
+              mpkCenter:
+                $ref: '#/definitions/MpkCenter'
+        '400':
+          description: Validation failed
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: MPK center not found
+    delete:
+      operationId: DeactivateMpkCenter
+      summary: Deactivate MPK Center
+      description: Soft-deletes an MPK center (sets isActive to false). Requires Admin role.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: MPK center UUID
+      responses:
+        '200':
+          description: MPK center deactivated
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: MPK center not found
+  /mpk-centers/{id}/approvers:
+    get:
+      operationId: ListMpkApprovers
+      summary: List MPK Center Approvers
+      description: Returns the list of approvers assigned to an MPK center.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: MPK center UUID
+      responses:
+        '200':
+          description: Approvers list
+          schema:
+            type: object
+            properties:
+              approvers:
+                type: array
+                items:
+                  $ref: '#/definitions/MpkApprover'
+              count:
+                type: integer
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+    put:
+      operationId: SetMpkApprovers
+      summary: Set MPK Center Approvers
+      description: >-
+        Full-replace the approvers list for an MPK center.
+        Requires Admin role.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: MPK center UUID
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - systemUserIds
+            properties:
+              systemUserIds:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                description: Array of Dataverse system-user UUIDs
+      responses:
+        '200':
+          description: Updated approvers list
+          schema:
+            type: object
+            properties:
+              approvers:
+                type: array
+                items:
+                  $ref: '#/definitions/MpkApprover'
+              count:
+                type: integer
+        '400':
+          description: Validation failed
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: MPK center not found
+  /users:
+    get:
+      operationId: ListSystemUsers
+      summary: List System Users
+      description: >-
+        Returns active Dataverse system users for approver assignment.
+        Requires Admin role.
+      x-ms-visibility: important
+      parameters: []
+      responses:
+        '200':
+          description: System users list
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/SystemUser'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+  /invoices/{id}/approve:
+    post:
+      operationId: ApproveInvoice
+      summary: Approve Invoice
+      description: >-
+        Approve a pending invoice. User must be an authorized approver
+        for the invoice's MPK center, or have Admin role (D2 fallback).
+      x-ms-visibility: important
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice UUID
+        - name: body
+          in: body
+          required: false
+          schema:
+            type: object
+            properties:
+              comment:
+                type: string
+                description: Optional approval comment
+      responses:
+        '200':
+          description: Invoice approved
+          schema:
+            $ref: '#/definitions/ApprovalActionResult'
+        '400':
+          description: Invoice is not in Pending status or has no MPK
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — user is not an authorized approver
+        '404':
+          description: Invoice not found
+  /invoices/{id}/reject:
+    post:
+      operationId: RejectInvoice
+      summary: Reject Invoice
+      description: >-
+        Reject a pending invoice. Comment is required.
+        User must be an authorized approver for the invoice's MPK center.
+      x-ms-visibility: important
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice UUID
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - comment
+            properties:
+              comment:
+                type: string
+                description: Rejection reason (required)
+      responses:
+        '200':
+          description: Invoice rejected
+          schema:
+            $ref: '#/definitions/ApprovalActionResult'
+        '400':
+          description: Invoice is not in Pending status, no MPK, or missing comment
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — user is not an authorized approver
+        '404':
+          description: Invoice not found
+  /invoices/{id}/cancel-approval:
+    post:
+      operationId: CancelApproval
+      summary: Cancel Approval
+      description: >-
+        Cancel a pending approval. Only Admin role can cancel (D16).
+        Transitions from Pending → Cancelled.
+      x-ms-visibility: important
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice UUID
+        - name: body
+          in: body
+          required: false
+          schema:
+            type: object
+            properties:
+              comment:
+                type: string
+                description: Optional cancellation reason
+      responses:
+        '200':
+          description: Approval cancelled
+          schema:
+            $ref: '#/definitions/ApprovalActionResult'
+        '400':
+          description: Invoice is not in Pending status
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Invoice not found
+  /invoices/{id}/refresh-approvers:
+    post:
+      operationId: RefreshApprovers
+      summary: Refresh Invoice Approvers
+      description: >-
+        Refresh the approvers for an invoice's MPK center (D20).
+        Returns the current number of approvers.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice UUID
+      responses:
+        '200':
+          description: Approvers refreshed
+          schema:
+            type: object
+            properties:
+              mpkCenterId:
+                type: string
+                format: uuid
+              approverCount:
+                type: integer
+        '400':
+          description: Invoice has no MPK center
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — user is not authorized for this MPK
+        '404':
+          description: Invoice not found
+  /invoices/bulk-approve:
+    post:
+      operationId: BulkApproveInvoices
+      summary: Bulk Approve Invoices
+      description: >-
+        Approve multiple pending invoices at once (D17).
+        Processes each invoice independently — partial success is possible.
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - invoiceIds
+            properties:
+              invoiceIds:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                description: Array of invoice UUIDs to approve
+              comment:
+                type: string
+                description: Optional approval comment applied to all invoices
+      responses:
+        '200':
+          description: Bulk approval result
+          schema:
+            $ref: '#/definitions/BulkApproveResult'
+        '400':
+          description: Validation failed
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role or higher
+  /approvals/pending:
+    get:
+      operationId: ListPendingApprovals
+      summary: List Pending Approvals
+      description: >-
+        List invoices pending approval for the current user.
+        Admin sees all pending invoices; non-Admin sees only invoices
+        for MPK centers where they are an assigned approver.
+      x-ms-visibility: important
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Setting/company UUID to scope the query
+      responses:
+        '200':
+          description: Pending invoices list
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/PendingInvoice'
+              count:
+                type: integer
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+
+  /mpk-centers/{id}/budget-status:
+    get:
+      operationId: GetMpkBudgetStatus
+      summary: Get MPK Budget Status
+      description: >-
+        Get budget utilization status for a specific MPK center.
+        Returns current period utilization, remaining budget, and warning flags.
+        Returns null data if no budget is configured for the MPK.
+      x-ms-visibility: important
+      parameters:
+        - name: id
+          in: path
+          type: string
+          format: uuid
+          required: true
+          description: MPK center UUID
+      responses:
+        '200':
+          description: Budget status (or null if no budget configured)
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/definitions/BudgetStatus'
+              message:
+                type: string
+        '400':
+          description: MPK center ID required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+
+  /budget/summary:
+    get:
+      operationId: GetBudgetSummary
+      summary: Get Budget Summary
+      description: >-
+        Get budget utilization summary for all MPK centers with budget
+        configured in a given setting. Returns only MPKs that have
+        budgetAmount, budgetPeriod, and budgetStartDate set.
+      x-ms-visibility: important
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Setting/company UUID to scope the query
+      responses:
+        '200':
+          description: Budget summary for all configured MPKs
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/BudgetStatus'
+              count:
+                type: integer
+        '400':
+          description: settingId query parameter is required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+
+  /notifications:
+    get:
+      operationId: GetNotifications
+      summary: List Notifications
+      description: >-
+        List in-app notifications for the current user. Supports unreadOnly
+        and top filters. The user is resolved from the Bearer token OID.
+      x-ms-visibility: important
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Setting/company UUID to scope the query
+        - name: unreadOnly
+          in: query
+          type: boolean
+          required: false
+          description: If true, return only unread notifications
+        - name: top
+          in: query
+          type: integer
+          required: false
+          description: Maximum number of notifications to return (default 50)
+      responses:
+        '200':
+          description: Notification list
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/Notification'
+              count:
+                type: integer
+        '400':
+          description: settingId query parameter is required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+
+  /notifications/{id}/read:
+    patch:
+      operationId: MarkNotificationRead
+      summary: Mark Notification as Read
+      description: Marks a single notification as read.
+      x-ms-visibility: advanced
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Notification UUID
+      responses:
+        '200':
+          description: Notification marked as read
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+        '400':
+          description: Notification ID required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+
+  /notifications/{id}/dismiss:
+    post:
+      operationId: DismissNotification
+      summary: Dismiss Notification
+      description: Dismisses (soft-deletes) a notification so it no longer appears.
+      x-ms-visibility: advanced
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Notification UUID
+      responses:
+        '200':
+          description: Notification dismissed
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+        '400':
+          description: Notification ID required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+
+  /notifications/unread-count:
+    get:
+      operationId: GetUnreadNotificationCount
+      summary: Get Unread Notification Count
+      description: >-
+        Returns the count of unread notifications for the current user.
+        Useful for notification badge display.
+      x-ms-visibility: important
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Setting/company UUID to scope the query
+      responses:
+        '200':
+          description: Unread count
+          schema:
+            type: object
+            properties:
+              count:
+                type: integer
+        '400':
+          description: settingId query parameter is required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+
+  /reports/budget-utilization:
+    get:
+      operationId: GetBudgetUtilizationReport
+      summary: Budget Utilization Report
+      description: >-
+        Generates a budget utilization report across all MPK centers (or a
+        single MPK) for the current budget period. Includes totals rollup.
+      x-ms-visibility: important
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Setting/company UUID
+        - name: mpkCenterId
+          in: query
+          type: string
+          required: false
+          description: Optional MPK center UUID to narrow the report
+          x-ms-dynamic-values:
+            operationId: ListMpkCenters
+            value-collection: mpkCenters
+            value-path: id
+            value-title: name
+            parameters:
+              settingId:
+                parameter: settingId
+      responses:
+        '200':
+          description: Budget utilization report
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/definitions/BudgetUtilizationReport'
+        '400':
+          description: settingId query parameter is required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+
+  /reports/approval-history:
+    get:
+      operationId: GetApprovalHistoryReport
+      summary: Approval History Report
+      description: >-
+        Returns approval history for invoices that have been through the
+        workflow (non-Draft). Supports date range, MPK, and status filters.
+      x-ms-visibility: important
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Setting/company UUID
+        - name: dateFrom
+          in: query
+          type: string
+          required: false
+          description: Start date filter (ISO 8601)
+        - name: dateTo
+          in: query
+          type: string
+          required: false
+          description: End date filter (ISO 8601)
+        - name: mpkCenterId
+          in: query
+          type: string
+          required: false
+          description: Optional MPK center UUID
+          x-ms-dynamic-values:
+            operationId: ListMpkCenters
+            value-collection: mpkCenters
+            value-path: id
+            value-title: name
+            parameters:
+              settingId:
+                parameter: settingId
+        - name: status
+          in: query
+          type: string
+          required: false
+          description: Approval status filter
+          enum:
+            - Pending
+            - Approved
+            - Rejected
+            - Cancelled
+      responses:
+        '200':
+          description: Approval history report
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/definitions/ApprovalHistoryReport'
+        '400':
+          description: settingId query parameter is required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+
 definitions:
   VatLookupResult:
     type: object
@@ -2476,6 +3409,512 @@ definitions:
               type: string
             error:
               type: string
+  Attachment:
+    type: object
+    properties:
+      id:
+        type: string
+        description: Attachment ID (GUID)
+      invoiceId:
+        type: string
+        description: Related invoice ID
+      fileName:
+        type: string
+        description: Original file name
+      mimeType:
+        type: string
+        description: MIME type
+      sizeBytes:
+        type: integer
+        description: File size in bytes
+      description:
+        type: string
+        description: Optional description
+      createdAt:
+        type: string
+        format: date-time
+      createdBy:
+        type: string
+        description: Display name of uploader
+  SyncLogEntry:
+    type: object
+    properties:
+      id:
+        type: string
+        description: Sync log ID (GUID)
+      settingId:
+        type: string
+        description: Company setting ID
+      status:
+        type: string
+        enum:
+          - in-progress
+          - completed
+          - failed
+      direction:
+        type: string
+        enum:
+          - incoming
+          - outgoing
+          - both
+      total:
+        type: integer
+      created:
+        type: integer
+      updated:
+        type: integer
+      failed:
+        type: integer
+      startedAt:
+        type: string
+        format: date-time
+      completedAt:
+        type: string
+        format: date-time
+      triggeredBy:
+        type: string
+  ForecastAlgorithmDescriptor:
+    type: object
+    properties:
+      id:
+        type: string
+        description: Algorithm identifier
+      name:
+        type: string
+        description: Human-readable name
+      description:
+        type: string
+      parameters:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            type:
+              type: string
+            default:
+              type: number
+            min:
+              type: number
+            max:
+              type: number
+  ForecastPreset:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      algorithm:
+        type: string
+      parameters:
+        type: object
+  AnomalyRuleDescriptor:
+    type: object
+    properties:
+      id:
+        type: string
+        description: Rule identifier
+      name:
+        type: string
+        description: Human-readable name
+      description:
+        type: string
+      parameters:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            type:
+              type: string
+            default:
+              type: number
+  AnomalyPreset:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      enabledRules:
+        type: array
+        items:
+          type: string
+      sensitivity:
+        type: number
+  MpkCenter:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      name:
+        type: string
+      description:
+        type: string
+      settingId:
+        type: string
+        format: uuid
+      isActive:
+        type: boolean
+      approvalRequired:
+        type: boolean
+      approvalSlaHours:
+        type: integer
+      budgetAmount:
+        type: number
+      budgetPeriod:
+        type: string
+        enum:
+          - Monthly
+          - Quarterly
+          - Yearly
+      budgetStartDate:
+        type: string
+        format: date
+      createdOn:
+        type: string
+        format: date-time
+      modifiedOn:
+        type: string
+        format: date-time
+  MpkCenterCreate:
+    type: object
+    required:
+      - name
+      - settingId
+    properties:
+      name:
+        type: string
+        minLength: 1
+        maxLength: 100
+      settingId:
+        type: string
+        format: uuid
+      description:
+        type: string
+        maxLength: 500
+      approvalRequired:
+        type: boolean
+      approvalSlaHours:
+        type: integer
+        minimum: 1
+        maximum: 720
+      budgetAmount:
+        type: number
+        minimum: 0
+      budgetPeriod:
+        type: string
+        enum:
+          - Monthly
+          - Quarterly
+          - Yearly
+      budgetStartDate:
+        type: string
+        format: date
+  MpkCenterUpdate:
+    type: object
+    properties:
+      name:
+        type: string
+        minLength: 1
+        maxLength: 100
+      description:
+        type: string
+        maxLength: 500
+      isActive:
+        type: boolean
+      approvalRequired:
+        type: boolean
+      approvalSlaHours:
+        type: integer
+        minimum: 1
+        maximum: 720
+      budgetAmount:
+        type: number
+        minimum: 0
+      budgetPeriod:
+        type: string
+        enum:
+          - Monthly
+          - Quarterly
+          - Yearly
+      budgetStartDate:
+        type: string
+        format: date
+  MpkApprover:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      mpkCenterId:
+        type: string
+        format: uuid
+      systemUserId:
+        type: string
+        format: uuid
+      name:
+        type: string
+  SystemUser:
+    type: object
+    properties:
+      systemUserId:
+        type: string
+        format: uuid
+      fullName:
+        type: string
+      email:
+        type: string
+      isDisabled:
+        type: boolean
+  ApprovalActionResult:
+    type: object
+    properties:
+      invoiceId:
+        type: string
+        format: uuid
+      approvalStatus:
+        type: string
+        enum:
+          - Draft
+          - Pending
+          - Approved
+          - Rejected
+          - Cancelled
+      approvedBy:
+        type: string
+      approvedAt:
+        type: string
+        format: date-time
+      approvalComment:
+        type: string
+  BulkApproveResult:
+    type: object
+    properties:
+      approved:
+        type: integer
+        description: Number of successfully approved invoices
+      failed:
+        type: integer
+        description: Number of failed approvals
+      errors:
+        type: array
+        items:
+          type: object
+          properties:
+            invoiceId:
+              type: string
+              format: uuid
+            error:
+              type: string
+  PendingInvoice:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      invoiceNumber:
+        type: string
+      supplierName:
+        type: string
+      invoiceDate:
+        type: string
+        format: date
+      grossAmount:
+        type: number
+      grossAmountPln:
+        type: number
+      currency:
+        type: string
+      mpkCenterId:
+        type: string
+        format: uuid
+      mpkCenterName:
+        type: string
+      approvalStatus:
+        type: string
+        enum:
+          - Draft
+          - Pending
+          - Approved
+          - Rejected
+          - Cancelled
+      pendingSince:
+        type: string
+        format: date-time
+      approvalSlaHours:
+        type: number
+  BudgetStatus:
+    type: object
+    properties:
+      mpkCenterId:
+        type: string
+        format: uuid
+      mpkCenterName:
+        type: string
+      budgetAmount:
+        type: number
+        description: Total budget amount in PLN
+      budgetPeriod:
+        type: string
+        enum:
+          - Monthly
+          - Quarterly
+          - HalfYearly
+          - Annual
+      budgetStartDate:
+        type: string
+        format: date
+      periodStart:
+        type: string
+        format: date
+        description: Current period start date
+      periodEnd:
+        type: string
+        format: date
+        description: Current period end date
+      utilized:
+        type: number
+        description: Total amount utilized in current period (PLN)
+      remaining:
+        type: number
+        description: Remaining budget in current period (PLN)
+      utilizationPercent:
+        type: number
+        description: Utilization percentage (80+ = warning, 100+ = exceeded)
+      isWarning:
+        type: boolean
+        description: True when utilization >= 80%
+      isExceeded:
+        type: boolean
+        description: True when utilization >= 100%
+      invoiceCount:
+        type: integer
+        description: Number of approved invoices in current period
+
+  Notification:
+    type: object
+    properties:
+      id:
+        type: string
+        description: Notification UUID
+      name:
+        type: string
+        description: Auto-generated name (type + truncated message)
+      recipientId:
+        type: string
+        description: Dataverse system user ID of the recipient
+      settingId:
+        type: string
+        description: Setting/company UUID
+      type:
+        type: string
+        description: Notification type
+        enum:
+          - ApprovalRequested
+          - SlaExceeded
+          - BudgetWarning80
+          - BudgetExceeded
+          - ApprovalDecided
+      message:
+        type: string
+        description: Human-readable notification message
+      isRead:
+        type: boolean
+      isDismissed:
+        type: boolean
+      invoiceId:
+        type: string
+        description: Related invoice UUID (optional)
+      mpkCenterId:
+        type: string
+        description: Related MPK center UUID (optional)
+      createdOn:
+        type: string
+        description: ISO 8601 timestamp
+
+  BudgetUtilizationReport:
+    type: object
+    properties:
+      period:
+        type: object
+        properties:
+          from:
+            type: string
+          to:
+            type: string
+      mpkCenters:
+        type: array
+        items:
+          $ref: '#/definitions/BudgetStatus'
+      totals:
+        type: object
+        properties:
+          totalBudget:
+            type: number
+          totalUtilized:
+            type: number
+          totalRemaining:
+            type: number
+          overallUtilizationPercent:
+            type: number
+
+  ApprovalHistoryReport:
+    type: object
+    properties:
+      entries:
+        type: array
+        items:
+          $ref: '#/definitions/ApprovalHistoryEntry'
+      count:
+        type: integer
+      summary:
+        type: object
+        properties:
+          approved:
+            type: integer
+          rejected:
+            type: integer
+          cancelled:
+            type: integer
+          pending:
+            type: integer
+
+  ApprovalHistoryEntry:
+    type: object
+    properties:
+      invoiceId:
+        type: string
+      invoiceNumber:
+        type: string
+      supplierName:
+        type: string
+      grossAmount:
+        type: number
+      currency:
+        type: string
+      mpkCenterId:
+        type: string
+      mpkCenterName:
+        type: string
+      approvalStatus:
+        type: string
+        enum:
+          - Pending
+          - Approved
+          - Rejected
+          - Cancelled
+      approvedBy:
+        type: string
+      approvedAt:
+        type: string
+      approvalComment:
+        type: string
+
 parameters: {}
 responses: {}
 security:

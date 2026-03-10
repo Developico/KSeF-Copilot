@@ -102,6 +102,46 @@ Before creating the connector, ensure your Azure AD app registration has:
 | `CategorizeInvoice` | AI categorize single invoice | Admin |
 | `BatchCategorizeInvoices` | AI categorize multiple (max 50) | Admin |
 
+### MPK Cost Centers & Budget
+
+| Action | Description | Role Required |
+|--------|-------------|---------------|
+| `ListMpkCenters` | List cost centers (MPK) | Reader |
+| `CreateMpkCenter` | Create new cost center | Admin |
+| `GetMpkCenter` | Get cost center details | Reader |
+| `UpdateMpkCenter` | Update cost center | Admin |
+| `DeactivateMpkCenter` | Deactivate cost center | Admin |
+| `ListMpkApprovers` | List approvers for MPK | Reader |
+| `SetMpkApprovers` | Set approvers for MPK | Admin |
+| `GetMpkBudgetStatus` | Get budget status for MPK | Reader |
+| `GetBudgetSummary` | Get budget summary across MPKs | Reader |
+
+### Approvals
+
+| Action | Description | Role Required |
+|--------|-------------|---------------|
+| `ApproveInvoice` | Approve invoice | Admin |
+| `RejectInvoice` | Reject invoice with reason | Admin |
+| `CancelApproval` | Cancel existing approval | Admin |
+| `RefreshApprovers` | Refresh approver list for invoice | Admin |
+| `BulkApproveInvoices` | Approve multiple invoices | Admin |
+| `ListPendingApprovals` | List invoices pending approval | Reader |
+
+### Notifications
+
+| Action | Description | Role Required |
+|--------|-------------|---------------|
+| `GetNotifications` | Get user notifications | Reader |
+| `MarkNotificationRead` | Mark notification as read | Reader |
+| `DismissNotification` | Dismiss notification | Reader |
+
+### Reports
+
+| Action | Description | Role Required |
+|--------|-------------|---------------|
+| `GetBudgetUtilizationReport` | Budget utilization report by MPK | Reader |
+| `GetApprovalHistoryReport` | Approval history report by MPK | Reader |
+
 ### Dashboard & Lookup
 
 | Action | Description | Role Required |
@@ -220,6 +260,180 @@ Actions:
   4. Send email with attachment
 ```
 
+### 6. Invoice Approval Workflow
+
+```yaml
+Trigger: When invoice is created / imported (Dataverse dvlp_ksefinvoice)
+
+Actions:
+  1. GetMpkBudgetStatus (settingId, mpkCenterId: invoice.dvlp_mpk)
+     - Check if budget allows the expense
+  2. Condition: If budgetUtilization > 90%
+     Yes:
+       - ListMpkApprovers (settingId, mpkCenterId)
+       - Start and wait for an approval (
+           Title: "Budget exceed — invoice {invoiceNumber}",
+           Assigned to: approvers from previous step,
+           Details: "MPK: {mpkName}, Amount: {grossAmount}, Budget used: {utilization}%"
+         )
+       - Condition: outcome = "Approve"
+         Yes: ApproveInvoice (invoiceId, comment: approval.responseComments)
+         No:  RejectInvoice (invoiceId, reason: approval.responseComments)
+     No:
+       - ApproveInvoice (invoiceId, comment: "Auto-approved — within budget")
+```
+
+### 7. Pending Approval Reminder
+
+```yaml
+Trigger: Recurrence (daily at 9:00 AM)
+
+Actions:
+  1. ListPendingApprovals (settingId)
+  2. Condition: If count > 0
+     Yes:
+       - For each pending invoice:
+         - GetInvoice (invoiceId)
+         - Calculate days pending
+       - Filter: daysPending > 3
+       - Condition: If overdue approvals exist
+         Yes:
+           - Create adaptive card with overdue list
+           - Post to Teams channel "Finance Approvals"
+           - Send email reminder to approvers
+```
+
+### 8. Budget Utilization Report (Monthly)
+
+```yaml
+Trigger: Recurrence (1st of each month at 7:00 AM)
+
+Actions:
+  1. ListMpkCenters (settingId, activeOnly: true)
+  2. For each MPK center:
+     - GetBudgetUtilizationReport (settingId, mpkCenterId)
+  3. GetBudgetSummary (settingId)
+  4. Create HTML report with charts
+  5. Upload to SharePoint "Finance Reports" library
+  6. Send email to finance team with summary
+  7. Condition: If any MPK > 100% utilization
+     Yes: Send Teams alert to management channel
+```
+
+### 9. Approval Escalation
+
+```yaml
+Trigger: Recurrence (every 4 hours)
+
+Actions:
+  1. ListPendingApprovals (settingId)
+  2. Filter: createdAt < addHours(utcNow(), -48)
+  3. For each overdue approval:
+     - RefreshApprovers (invoiceId)
+       → Adds next-level manager if primary approver hasn't acted
+     - GetNotifications (userId: escalationTarget)
+     - Condition: If not already notified
+       Yes: Send escalation email + Teams message
+```
+
+---
+
+## Copilot Studio Integration
+
+The Custom Connector can be used by Microsoft Copilot Studio to enable natural language interactions with the KSeF system.
+
+### Setup Guide
+
+1. **Open Copilot Studio** → [copilotstudio.microsoft.com](https://copilotstudio.microsoft.com)
+2. **Create or open Copilot** → Create a new Copilot in the same environment as the connector
+3. **Add connector as action**:
+   - Go to **Actions** → **+ Add an action**
+   - Select **Custom connector** → **KSeF Integration**
+   - Authenticate with your Azure AD connection
+
+### Recommended Topics
+
+Create the following topics for your KSeF Copilot:
+
+| Topic | Trigger Phrases | Connector Actions |
+|-------|----------------|-------------------|
+| Invoice Lookup | "find invoice", "show invoice", "search invoices" | `ListInvoices`, `GetInvoice` |
+| Invoice Status | "what invoices are overdue", "pending payments" | `ListInvoices` (filter: overdue/pending) |
+| KSeF Sync | "sync invoices", "import from KSeF" | `StartKsefSession`, `GetSyncPreview`, `ImportSync` |
+| Budget Check | "check budget", "MPK budget status" | `GetMpkBudgetStatus`, `GetBudgetSummary` |
+| Approve Invoice | "approve invoice", "reject invoice" | `ApproveInvoice`, `RejectInvoice` |
+| Pending Approvals | "what needs approval", "pending approvals" | `ListPendingApprovals` |
+| Dashboard | "show stats", "dashboard summary" | `GetDashboardStats` |
+| Company Lookup | "check NIP", "find company" | `VatLookup`, `VatValidate` |
+| Notifications | "show my notifications" | `GetNotifications`, `MarkNotificationRead` |
+| Reports | "budget report", "approval history" | `GetBudgetUtilizationReport`, `GetApprovalHistoryReport` |
+
+### Example Topic: Invoice Lookup
+
+```
+Trigger phrases:
+  - "Find invoice"
+  - "Show invoice {invoiceNumber}"
+  - "Search invoices from {sellerName}"
+
+Message: "What would you like to search for? You can provide an invoice number, seller name, or date range."
+
+Question: Ask for search criteria (invoiceNumber, sellerName, fromDate, toDate)
+
+Action: ListInvoices (
+  settingId: {user's default setting},
+  invoiceNumber: {invoiceNumber},
+  sellerName: {sellerName},
+  fromDate: {fromDate},
+  toDate: {toDate}
+)
+
+Condition: If results count > 0
+  Yes: Display adaptive card with invoice list
+    - For each invoice: number, seller, amount, status, payment due
+    - Button: "Show details" → calls GetInvoice
+  No: "No invoices found matching your criteria."
+```
+
+### Example Topic: Approve Invoice
+
+```
+Trigger phrases:
+  - "Approve invoice"
+  - "I want to approve {invoiceNumber}"
+
+Action: ListPendingApprovals (settingId)
+
+Condition: If count = 0
+  → "You have no pending approvals."
+Else:
+  Message: Show adaptive card with pending invoices
+
+Question: "Which invoice would you like to approve?" (choice from list)
+
+Question: "Any comments for this approval?" (optional, free text)
+
+Action: ApproveInvoice (
+  invoiceId: {selectedInvoice.id},
+  comment: {approvalComment}
+)
+
+Message: "Invoice {invoiceNumber} has been approved. ✅"
+```
+
+### x-ms-dynamic-values for Dropdowns
+
+The connector includes `x-ms-dynamic-values` annotations for MPK Center ID parameters in report endpoints. This enables:
+- Dynamic dropdown lists in Copilot Studio action configuration
+- Power Automate designer shows MPK names instead of raw IDs
+- Populated from `ListMpkCenters` operation automatically
+
+### Authentication in Copilot Studio
+
+- Copilot uses the connection owner's identity (delegated OAuth 2.0)
+- For multi-user scenarios, configure **user authentication** in Copilot settings
+- The connector's RBAC (Admin/Reader) applies based on the authenticated user's Entra ID role
+
 ## Connection Setup
 
 1. Add the connector to your flow
@@ -300,3 +514,4 @@ For issues with this connector, contact: support@dvlp.pl
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2026-02-02 | Initial release |
+| 2.0.0 | 2026-02-21 | Added MPK, Approvals, Budget, Notifications, Reports endpoints; x-ms-dynamic-values for MPK dropdowns; Copilot Studio integration guide; Power Automate templates for approval workflows |

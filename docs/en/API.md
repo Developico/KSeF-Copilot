@@ -16,7 +16,12 @@
   - [Dashboard & Analytics](#dashboard--analytics)
   - [Expense Forecast](#expense-forecast)
   - [Anomaly Detection](#anomaly-detection)
-  - [GUS Integration](#gus-integration)
+  - [MPK Centers](#mpk-centers)
+  - [Approvals](#approvals)
+  - [Budget](#budget)
+  - [Notifications](#notifications)
+  - [Reports](#reports)
+  - [VAT White List Integration](#vat-white-list-integration)
   - [Document Processing](#document-processing)
 - [Error Handling](#error-handling)
 - [Rate Limits](#rate-limits)
@@ -180,7 +185,9 @@ Soft-delete setting (sets isActive=false).
 **Response** (204): No content
 
 #### GET /api/settings/costcenters
-List all cost centers (MPK values).
+> **Deprecated** — Returns legacy OptionSet-based cost centers. Use [GET /api/mpk-centers](#get-apimpk-centers) instead.
+
+List all cost centers (MPK values) from the OptionSet model.
 
 **Auth**: User
 
@@ -884,10 +891,520 @@ Returns a list of available anomaly detection rules and their parameters.
 
 ---
 
-### GUS Integration
+### MPK Centers
 
-#### POST /api/gus/lookup
-Look up company by NIP in GUS (Polish business registry).
+#### GET /api/mpk-centers
+List cost centers (MPK).
+
+**Auth**: Reader
+
+**Query Parameters**:
+- `settingId` (uuid, optional): Filter by setting/tenant
+- `activeOnly` (boolean, default: true): Show only active centers
+
+**Response** (200):
+```json
+{
+  "mpkCenters": [
+    {
+      "id": "uuid",
+      "name": "IT & Software",
+      "code": "MPK-IT",
+      "monthlyBudget": 50000,
+      "quarterlyBudget": 150000,
+      "slaHours": 48,
+      "isActive": true,
+      "settingId": "uuid"
+    }
+  ],
+  "count": 5
+}
+```
+
+#### POST /api/mpk-centers
+Create new cost center.
+
+**Auth**: Admin
+
+**Request Body**:
+```json
+{
+  "name": "IT & Software",
+  "code": "MPK-IT",
+  "monthlyBudget": 50000,
+  "quarterlyBudget": 150000,
+  "slaHours": 48,
+  "settingId": "uuid"
+}
+```
+
+**Response** (201):
+```json
+{
+  "mpkCenter": { "id": "uuid", "name": "IT & Software", ... }
+}
+```
+
+#### GET /api/mpk-centers/{id}
+Get single cost center.
+
+**Auth**: Reader
+
+**Response** (200):
+```json
+{
+  "mpkCenter": { "id": "uuid", "name": "IT & Software", ... }
+}
+```
+
+#### PATCH /api/mpk-centers/{id}
+Update cost center.
+
+**Auth**: Admin
+
+**Request Body**:
+```json
+{
+  "name": "IT & Software (updated)",
+  "monthlyBudget": 60000
+}
+```
+
+**Response** (200): Updated mpkCenter object
+
+#### DELETE /api/mpk-centers/{id}
+Deactivate cost center (soft delete).
+
+**Auth**: Admin
+
+**Response** (200):
+```json
+{
+  "mpkCenter": { "id": "uuid", "isActive": false, ... }
+}
+```
+
+#### GET /api/mpk-centers/{id}/approvers
+List approvers for a cost center.
+
+**Auth**: Reader
+
+**Response** (200):
+```json
+{
+  "approvers": [
+    {
+      "id": "uuid",
+      "systemUserId": "uuid",
+      "displayName": "John Doe",
+      "email": "john@company.com",
+      "maxAmount": 50000
+    }
+  ]
+}
+```
+
+#### PUT /api/mpk-centers/{id}/approvers
+Set approvers for a cost center (replaces existing list).
+
+**Auth**: Admin
+
+**Request Body**:
+```json
+{
+  "approvers": [
+    { "systemUserId": "uuid", "maxAmount": 50000 },
+    { "systemUserId": "uuid", "maxAmount": 100000 }
+  ]
+}
+```
+
+**Response** (200):
+```json
+{
+  "approvers": [ ... ],
+  "count": 2
+}
+```
+
+---
+
+### Approvals
+
+#### POST /api/invoices/{id}/approve
+Approve an invoice.
+
+**Auth**: Reader (must be assigned approver for the invoice's MPK)
+
+**Request Body**:
+```json
+{
+  "comment": "Approved — correct allocation."
+}
+```
+
+**Response** (200):
+```json
+{
+  "invoiceId": "uuid",
+  "status": "approved",
+  "approvedBy": "user-oid",
+  "approvedAt": "2026-03-10T10:00:00.000Z"
+}
+```
+
+#### POST /api/invoices/{id}/reject
+Reject an invoice (comment required).
+
+**Auth**: Reader (must be assigned approver)
+
+**Request Body**:
+```json
+{
+  "comment": "Wrong MPK assignment — should be Marketing."
+}
+```
+
+**Response** (200):
+```json
+{
+  "invoiceId": "uuid",
+  "status": "rejected",
+  "rejectedBy": "user-oid",
+  "rejectedAt": "2026-03-10T10:00:00.000Z"
+}
+```
+
+#### POST /api/invoices/{id}/cancel-approval
+Cancel a pending approval (Admin only).
+
+**Auth**: Admin
+
+**Request Body**:
+```json
+{
+  "comment": "Reassigning to different MPK."
+}
+```
+
+**Response** (200):
+```json
+{
+  "invoiceId": "uuid",
+  "status": "new"
+}
+```
+
+#### POST /api/invoices/{id}/refresh-approvers
+Refresh the approver list for an invoice based on its MPK assignment.
+
+**Auth**: Reader
+
+**Response** (200):
+```json
+{
+  "invoiceId": "uuid",
+  "approvers": [ ... ]
+}
+```
+
+#### POST /api/invoices/bulk-approve
+Bulk approve multiple invoices at once.
+
+**Auth**: Reader (must be approver for each invoice's MPK)
+
+**Request Body**:
+```json
+{
+  "invoiceIds": ["uuid1", "uuid2", "uuid3"],
+  "comment": "Monthly batch approval."
+}
+```
+
+**Response** (200):
+```json
+{
+  "total": 3,
+  "approved": 2,
+  "failed": 1,
+  "results": [
+    { "invoiceId": "uuid1", "status": "approved" },
+    { "invoiceId": "uuid2", "status": "approved" },
+    { "invoiceId": "uuid3", "error": "Not an authorized approver" }
+  ]
+}
+```
+
+#### GET /api/approvals/pending
+List invoices pending approval for the current user.
+
+**Auth**: Reader
+
+**Query Parameters**:
+- `settingId` (uuid, optional): Filter by setting/tenant
+
+**Response** (200):
+```json
+{
+  "invoices": [
+    {
+      "id": "uuid",
+      "invoiceNumber": "FV/2026/001",
+      "supplierName": "Supplier Co.",
+      "grossAmount": 5000.00,
+      "mpkCenterId": "uuid",
+      "mpkCenterName": "IT & Software",
+      "submittedForApprovalAt": "2026-03-09T08:00:00.000Z"
+    }
+  ],
+  "count": 5
+}
+```
+
+---
+
+### Budget
+
+#### GET /api/mpk-centers/{id}/budget-status
+Get budget status for a single MPK center.
+
+**Auth**: Reader
+
+**Response** (200):
+```json
+{
+  "data": {
+    "mpkCenterId": "uuid",
+    "mpkCenterName": "IT & Software",
+    "monthlyBudget": 50000,
+    "monthlySpent": 32000,
+    "monthlyUtilization": 0.64,
+    "quarterlyBudget": 150000,
+    "quarterlySpent": 98000,
+    "quarterlyUtilization": 0.653
+  }
+}
+```
+
+#### GET /api/budget/summary
+Get budget summary across all MPK centers.
+
+**Auth**: Reader
+
+**Query Parameters**:
+- `settingId` (uuid, required): Setting/tenant identifier
+
+**Response** (200):
+```json
+{
+  "data": [
+    {
+      "mpkCenterId": "uuid",
+      "mpkCenterName": "IT & Software",
+      "monthlyBudget": 50000,
+      "monthlySpent": 32000,
+      "monthlyUtilization": 0.64
+    }
+  ],
+  "count": 5
+}
+```
+
+---
+
+### Notifications
+
+#### GET /api/notifications
+List notifications for the current user.
+
+**Auth**: Reader
+
+**Query Parameters**:
+- `settingId` (uuid, required): Setting/tenant identifier
+- `unreadOnly` (boolean, optional): Filter to unread only
+- `top` (number, optional): Max results
+
+**Response** (200):
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "type": "SLA_EXCEEDED",
+      "title": "Approval SLA exceeded",
+      "message": "Invoice FV/2026/001 has been pending for 72 hours",
+      "invoiceId": "uuid",
+      "isRead": false,
+      "createdAt": "2026-03-10T08:00:00.000Z"
+    }
+  ],
+  "count": 3
+}
+```
+
+#### PATCH /api/notifications/{id}/read
+Mark notification as read.
+
+**Auth**: Reader
+
+**Response** (200):
+```json
+{
+  "success": true
+}
+```
+
+#### POST /api/notifications/{id}/dismiss
+Dismiss notification.
+
+**Auth**: Reader
+
+**Response** (200):
+```json
+{
+  "success": true
+}
+```
+
+#### GET /api/notifications/unread-count
+Get unread notification count for the current user.
+
+**Auth**: Reader
+
+**Query Parameters**:
+- `settingId` (uuid, required): Setting/tenant identifier
+
+**Response** (200):
+```json
+{
+  "count": 5
+}
+```
+
+---
+
+### Reports
+
+#### GET /api/reports/budget-utilization
+Budget utilization report per MPK.
+
+**Auth**: Reader
+
+**Query Parameters**:
+- `settingId` (uuid, required): Setting/tenant identifier
+- `mpkCenterId` (uuid, optional): Filter to single MPK
+
+**Response** (200):
+```json
+{
+  "data": {
+    "centers": [
+      {
+        "mpkCenterId": "uuid",
+        "name": "IT & Software",
+        "monthlyBudget": 50000,
+        "spent": 32000,
+        "utilization": 0.64,
+        "overBudget": false
+      }
+    ],
+    "totalBudget": 250000,
+    "totalSpent": 180000
+  }
+}
+```
+
+#### GET /api/reports/approval-history
+Approval history report.
+
+**Auth**: Reader
+
+**Query Parameters**:
+- `settingId` (uuid, required): Setting/tenant identifier
+- `dateFrom` (date, optional): Start date
+- `dateTo` (date, optional): End date
+- `mpkCenterId` (uuid, optional): Filter by MPK
+- `status` (string, optional): Filter by approval status
+
+**Response** (200):
+```json
+{
+  "data": {
+    "items": [
+      {
+        "invoiceId": "uuid",
+        "invoiceNumber": "FV/2026/001",
+        "approvalStatus": "approved",
+        "approvedBy": "John Doe",
+        "approvedAt": "2026-03-10T10:00:00.000Z",
+        "mpkCenterName": "IT & Software"
+      }
+    ],
+    "summary": {
+      "total": 100,
+      "approved": 80,
+      "rejected": 15,
+      "pending": 5
+    }
+  }
+}
+```
+
+#### GET /api/reports/approver-performance
+Approver performance statistics.
+
+**Auth**: Reader
+
+**Query Parameters**:
+- `settingId` (uuid, required): Setting/tenant identifier
+
+**Response** (200):
+```json
+{
+  "data": [
+    {
+      "approverName": "John Doe",
+      "totalProcessed": 50,
+      "approved": 45,
+      "rejected": 5,
+      "avgProcessingHours": 12.5,
+      "slaComplianceRate": 0.92
+    }
+  ]
+}
+```
+
+#### GET /api/reports/invoice-processing
+Invoice processing pipeline report.
+
+**Auth**: Reader
+
+**Query Parameters**:
+- `settingId` (uuid, required): Setting/tenant identifier
+
+**Response** (200):
+```json
+{
+  "data": {
+    "total": 500,
+    "byStatus": {
+      "new": 50,
+      "pending_approval": 30,
+      "approved": 350,
+      "rejected": 20,
+      "paid": 300
+    },
+    "avgProcessingDays": 3.2
+  }
+}
+```
+
+---
+
+### VAT White List Integration
+
+#### POST /api/vat/lookup
+Look up company by NIP in the White List VAT registry (KAS).
 
 **Auth**: User
 
@@ -905,36 +1422,11 @@ Look up company by NIP in GUS (Polish business registry).
   "name": "Company Name Sp. z o.o.",
   "address": "ul. Example 1, 00-000 Warsaw",
   "status": "active",
-  "regon": "123456789"
+  "bankAccounts": ["PL12345678901234567890123456"]
 }
 ```
 
-#### POST /api/gus/search
-Search companies by name.
-
-**Auth**: User
-
-**Request Body**:
-```json
-{
-  "query": "Microsoft"
-}
-```
-
-**Response** (200):
-```json
-{
-  "results": [
-    {
-      "nip": "1234567890",
-      "name": "Microsoft Sp. z o.o.",
-      "regon": "123456789"
-    }
-  ]
-}
-```
-
-#### GET /api/gus/validate/{nip}
+#### GET /api/vat/validate/{nip}
 Validate NIP format and existence.
 
 **Auth**: User
@@ -945,6 +1437,27 @@ Validate NIP format and existence.
   "nip": "1234567890",
   "valid": true,
   "exists": true
+}
+```
+
+#### POST /api/vat/check-account
+Check if bank account belongs to an active VAT payer.
+
+**Auth**: User
+
+**Request Body**:
+```json
+{
+  "nip": "1234567890",
+  "bankAccount": "PL12345678901234567890123456"
+}
+```
+
+**Response** (200):
+```json
+{
+  "nip": "1234567890",
+  "accountAssigned": true
 }
 ```
 

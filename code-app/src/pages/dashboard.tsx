@@ -39,6 +39,7 @@ import {
   DollarSign,
 } from 'lucide-react'
 import { useDashboardStats } from '@/hooks/use-api'
+import { BudgetSummaryCards } from '@/components/dashboard/budget-summary-cards'
 import { useCompanyContext } from '@/contexts/company-context'
 import { formatCurrencyCompact } from '@/lib/format'
 import {
@@ -500,6 +501,11 @@ export function DashboardPage() {
             </Card>
           </AnimatedCardWrapper>
         </div>
+      )}
+
+      {/* ── Budget summary ────────────────────────────────────── */}
+      {selectedCompany?.id && (
+        <BudgetSummaryCards settingId={selectedCompany.id} />
       )}
 
       {/* ── Quick actions ─────────────────────────────────────── */}

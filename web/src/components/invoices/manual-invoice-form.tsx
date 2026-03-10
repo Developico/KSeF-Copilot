@@ -22,6 +22,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useToast } from '@/hooks/use-toast'
 import { api, queryKeys, ManualInvoiceCreate } from '@/lib/api'
 import { useSelectedCompany } from '@/contexts/company-context'
+import { useContextMpkCenters } from '@/hooks/use-api'
 import { generatePdfThumbnail, isPdfFile } from '@/lib/pdf-thumbnail'
 import { useVatLookup, validateNipChecksum, formatNipDisplay } from '@/hooks/use-vat-lookup'
 import { SupplierLookupDialog, SupplierData } from './supplier-lookup-dialog'
@@ -45,8 +46,8 @@ import {
   Plus,
 } from 'lucide-react'
 
-// MPK options (values from Dataverse option set)
-const MPK_OPTIONS = [
+// MPK options — fallback when API is unavailable; overridden by useContextMpkCenters
+const DEFAULT_MPK_OPTIONS = [
   'Consultants',
   'BackOffice',
   'Management',
@@ -105,7 +106,7 @@ interface FormData {
   exchangeRate: string
   exchangeDate: string
   description: string
-  mpk: string
+  mpkCenterId: string
   category: string
 }
 
@@ -126,7 +127,7 @@ const initialFormData: FormData = {
   exchangeRate: '',
   exchangeDate: '',
   description: '',
-  mpk: '',
+  mpkCenterId: '',
   category: '',
 }
 
@@ -136,6 +137,9 @@ export function ManualInvoiceForm() {
   const { toast } = useToast()
   const { selectedCompany, isLoading: isLoadingCompany } = useSelectedCompany()
   const t = useTranslations('invoices')
+  const { data: mpkCentersData } = useContextMpkCenters()
+  const mpkOptions = mpkCentersData?.mpkCenters?.map(mc => ({ id: mc.id, name: mc.name }))
+    ?? DEFAULT_MPK_OPTIONS.map(name => ({ id: name, name }))
   
   const [formData, setFormData] = useState<FormData>(initialFormData)
   const [attachments, setAttachments] = useState<FileAttachment[]>([])
@@ -604,7 +608,7 @@ export function ManualInvoiceForm() {
       vatAmount: parseFloat(formData.vatAmount),
       grossAmount: grossAmount,
       description: formData.description || undefined,
-      mpk: formData.mpk || undefined,
+      mpkCenterId: formData.mpkCenterId || undefined,
       category: formData.category || undefined,
       // Currency fields
       currency: formData.currency,
@@ -915,14 +919,14 @@ export function ManualInvoiceForm() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">{t('manualForm.mpkLabel')}</label>
-              <Select value={formData.mpk} onValueChange={(v) => handleChange('mpk', v)}>
+              <Select value={formData.mpkCenterId} onValueChange={(v) => handleChange('mpkCenterId', v)}>
                 <SelectTrigger className="h-8 text-sm">
                   <SelectValue placeholder={t('manualForm.mpkPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {MPK_OPTIONS.map((mpk) => (
-                    <SelectItem key={mpk} value={mpk}>
-                      {mpk}
+                  {mpkOptions.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {option.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

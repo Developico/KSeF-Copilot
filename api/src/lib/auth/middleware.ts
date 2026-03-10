@@ -52,9 +52,9 @@ export async function verifyAuth(request: HttpRequest): Promise<AuthResult> {
     return {
       success: true,
       user: {
-        id: 'dev-user',
-        email: 'dev@localhost',
-        name: 'Dev User',
+        id: process.env.DEV_USER_OID || 'dev-user',
+        email: process.env.DEV_USER_EMAIL || 'dev@localhost',
+        name: process.env.DEV_USER_NAME || 'Dev User',
         roles: ['Admin'],
       },
     }

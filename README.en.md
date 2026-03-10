@@ -13,20 +13,45 @@
 ## 🎯 Features
 
 ### Basic
-- ✅ Synchronize purchase invoices from KSeF
-- ✅ Manual categorization (MPK, category, project)
-- ✅ Payment status tracking (pending/paid)
-- ✅ Web dashboard UI
+- ✅ Synchronize purchase invoices from KSeF (session + selective import)
+- ✅ Manual and automatic categorization (MPK, category, project)
+- ✅ Payment status tracking (pending/paid/overdue)
+- ✅ Web dashboard with interactive analytics
 - ✅ RBAC: Admin + Reader roles
 - ✅ Secure token storage (Azure Key Vault)
+- ✅ Multi-currency support (PLN/EUR/USD) with NBP exchange rates
+- ✅ Corrective invoices — full support with parent linkage
+
+### MPK Management & Budgets
+- 🏢 **Cost Centers (MPK)** — full CRUD, dedicated Dataverse table instead of OptionSet
+- 💰 **MPK Budgeting** — monthly/quarterly budgets, utilization status, threshold alerts
+- 👥 **MPK Approvers** — assign approvers to cost centers
+
+### Invoice Approval Workflow
+- ✅ **Approve/reject** invoices with comments
+- ✅ **Bulk approve** multiple invoices at once
+- ✅ **Approval SLA** — hourly timer trigger, overdue notifications
+- ✅ **Cancel approval** (Admin only)
+- ✅ **Refresh approver list** per invoice
+
+### Notifications
+- 🔔 **Notification system** — list, mark as read, dismiss
+- 🔔 **Unread counter** — per user
+
+### Reports
+- 📊 **Budget utilization** — report per MPK
+- 📊 **Approval history** — with filters (date, MPK, status)
+- 📊 **Approver performance** — stats per approver
+- 📊 **Invoice processing** — invoice pipeline
 
 ### Extended
-- 🤖 AI-powered automatic categorization (Azure OpenAI)
+- 🤖 AI-powered automatic categorization (Azure OpenAI) with auto-apply after sync
 - 🏢 Multi-tenant support (multiple companies)
 - 📊 Export to CSV/Excel
-- 📧 Email notifications
-- 🔗 API webhooks
-- ⏰ Automatic scheduled sync
+- 🔍 Expense forecasting (5 algorithms)
+- ⚠️ Anomaly detection (5 detection rules)
+- 📄 AI document scanning (OCR)
+- 🔗 Supplier verification — White List VAT (replaced GUS)
 
 ## 🏗️ Architecture
 

@@ -183,7 +183,7 @@ export async function deleteNote(noteId: string): Promise<void> {
  * Count notes for an invoice
  */
 export async function countNotes(invoiceId: string): Promise<number> {
-  const path = `annotations?$filter=_objectid_value eq ${invoiceId} and isdocument eq false&$count=true&$top=0`
+  const path = `annotations?$filter=_objectid_value eq ${invoiceId} and isdocument eq false&$count=true&$top=1&$select=annotationid`
 
   const response = await dataverseRequest<{
     '@odata.count': number

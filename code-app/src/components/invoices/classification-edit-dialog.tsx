@@ -8,8 +8,13 @@ import { Button } from '@/components/ui'
 import { Input } from '@/components/ui'
 import { Label } from '@/components/ui'
 import { Textarea } from '@/components/ui'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui'
 import { Pencil, Sparkles } from 'lucide-react'
 import { useUpdateInvoice } from '@/hooks/use-api'
+import { useMpkCenters } from '@/hooks/use-api'
+import { useCompanyContext } from '@/contexts/company-context'
 import { toast } from 'sonner'
 import type { Invoice } from '@/lib/types'
 
@@ -20,16 +25,20 @@ interface ClassificationEditDialogProps {
 export function ClassificationEditDialog({ invoice }: ClassificationEditDialogProps) {
   const intl = useIntl()
   const [open, setOpen] = useState(false)
-  const [mpk, setMpk] = useState(invoice.mpk ?? '')
+  const [mpk, setMpk] = useState((invoice.mpkCenterName || invoice.mpk) ?? '')
   const [category, setCategory] = useState(invoice.category ?? '')
   const [description, setDescription] = useState(invoice.description ?? '')
   const [project, setProject] = useState(invoice.project ?? '')
+
+  const { selectedCompany } = useCompanyContext()
+  const { data: mpkCentersData } = useMpkCenters(selectedCompany?.id ?? '')
+  const mpkOptions = mpkCentersData?.mpkCenters?.map(mc => ({ id: mc.id, name: mc.name })) ?? []
 
   const updateInvoice = useUpdateInvoice()
 
   useEffect(() => {
     if (open) {
-      setMpk(invoice.mpk ?? '')
+      setMpk((invoice.mpkCenterName || invoice.mpk) ?? '')
       setCategory(invoice.category ?? '')
       setDescription(invoice.description ?? '')
       setProject(invoice.project ?? '')
@@ -37,8 +46,10 @@ export function ClassificationEditDialog({ invoice }: ClassificationEditDialogPr
   }, [open, invoice])
 
   function handleSave() {
+    // Resolve MPK name to center ID
+    const selectedCenter = mpkOptions.find(o => o.name === mpk)
     updateInvoice.mutate(
-      { id: invoice.id, data: { mpk, category, description, project } },
+      { id: invoice.id, data: { mpkCenterId: selectedCenter?.id || undefined, category, description, project } },
       {
         onSuccess: () => {
           toast.success(intl.formatMessage({ id: 'invoices.classificationUpdated' }))
@@ -60,7 +71,7 @@ export function ClassificationEditDialog({ invoice }: ClassificationEditDialogPr
   const hasAiSuggestion = invoice.aiMpkSuggestion || invoice.aiCategorySuggestion || invoice.aiDescription
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} modal={false}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" className="h-6 px-2">
           <Pencil className="h-3 w-3" />
@@ -74,7 +85,18 @@ export function ClassificationEditDialog({ invoice }: ClassificationEditDialogPr
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="mpk">{intl.formatMessage({ id: 'invoices.mpk' })}</Label>
-            <Input id="mpk" value={mpk} onChange={(e) => setMpk(e.target.value)} />
+            <Select value={mpk} onValueChange={setMpk}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={intl.formatMessage({ id: 'invoices.mpk' })} />
+              </SelectTrigger>
+              <SelectContent>
+                {mpkOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.name}>
+                    {option.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="category">{intl.formatMessage({ id: 'invoices.category' })}</Label>

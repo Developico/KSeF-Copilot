@@ -64,6 +64,15 @@ export const InvoiceEntity = {
     parentInvoiceIdBind: 'dvlp_parentinvoiceid@odata.bind',
     correctedInvoiceNumber: 'dvlp_correctedinvoicenumber',
     correctionReason: 'dvlp_correctionreason',
+    // MPK Center lookup (new — replaces dvlp_costcenter OptionSet)
+    mpkCenterId: '_dvlp_mpkcenterid_value',
+    mpkCenterIdBind: 'dvlp_mpkcenterid@odata.bind',
+    // Approval workflow fields
+    approvalStatus: 'dvlp_approvalstatus',
+    approvedBy: 'dvlp_approvedby',
+    approvedByOid: 'dvlp_approvedbyoid',
+    approvedAt: 'dvlp_approvedat',
+    approvalComment: 'dvlp_approvalcomment',
   },
 }
 
@@ -196,3 +205,56 @@ export function getInvoiceTypeKey(value: number | null | undefined): 'VAT' | 'Co
   const found = entries.find(([, v]) => v === value)
   return (found?.[0] as 'VAT' | 'Corrective' | 'Advance') || 'VAT'
 }
+
+/**
+ * Approval status choice values
+ * Must match Dataverse dvlp_approvalstatus OptionSet
+ */
+export const ApprovalStatusValues = {
+  Draft: 0,
+  Pending: 1,
+  Approved: 2,
+  Rejected: 3,
+  Cancelled: 4,
+} as const
+
+export function getApprovalStatusKey(
+  value: number | null | undefined
+): 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Cancelled' {
+  if (value === null || value === undefined) return 'Draft'
+  const entries = Object.entries(ApprovalStatusValues)
+  const found = entries.find(([, v]) => v === value)
+  return (found?.[0] as 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Cancelled') || 'Draft'
+}
+
+/**
+ * Budget period choice values
+ * Must match Dataverse dvlp_budgetperiod OptionSet
+ */
+export const BudgetPeriodValues = {
+  Monthly: 0,
+  Quarterly: 1,
+  HalfYearly: 2,
+  Annual: 3,
+} as const
+
+export function getBudgetPeriodKey(
+  value: number | null | undefined
+): 'Monthly' | 'Quarterly' | 'HalfYearly' | 'Annual' | undefined {
+  if (value === null || value === undefined) return undefined
+  const entries = Object.entries(BudgetPeriodValues)
+  const found = entries.find(([, v]) => v === value)
+  return found?.[0] as 'Monthly' | 'Quarterly' | 'HalfYearly' | 'Annual' | undefined
+}
+
+/**
+ * Notification type choice values
+ * Must match Dataverse dvlp_notificationtype OptionSet
+ */
+export const NotificationTypeValues = {
+  ApprovalRequested: 0,
+  SlaExceeded: 1,
+  BudgetWarning80: 2,
+  BudgetExceeded: 3,
+  ApprovalDecided: 4,
+} as const

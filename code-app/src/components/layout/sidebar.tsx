@@ -3,6 +3,8 @@ import { useLocation, Link } from 'react-router-dom'
 import { useIntl } from 'react-intl'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/components/auth/auth-provider'
+import { usePendingApprovals } from '@/hooks/use-api'
+import { useCompanyContext } from '@/contexts/company-context'
 import {
   FileText,
   RefreshCw,
@@ -12,6 +14,7 @@ import {
   TrendingUp,
   PanelLeftClose,
   PanelRightClose,
+  ShieldCheck,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -36,6 +39,11 @@ const navigationItems: NavigationItem[] = [
     nameKey: 'navigation.invoices',
     icon: FileText,
     href: '/invoices',
+  },
+  {
+    nameKey: 'navigation.approvals',
+    icon: ShieldCheck,
+    href: '/approvals',
   },
   {
     nameKey: 'navigation.reports',
@@ -67,6 +75,8 @@ export function Sidebar({ className }: SidebarProps) {
   const { pathname } = useLocation()
 
   const { isAdmin } = useAuth()
+  const { selectedCompany } = useCompanyContext()
+  const { data: pendingApprovals } = usePendingApprovals(selectedCompany?.id ?? '')
 
   // Filter admin-only items based on user role
   const visibleItems = navigationItems.filter(
@@ -134,6 +144,14 @@ export function Sidebar({ className }: SidebarProps) {
                 >
                   <Icon className={cn('h-4 w-4', !isCollapsed && 'mr-3')} />
                   {!isCollapsed && <span>{name}</span>}
+                  {item.href === '/approvals' && (pendingApprovals?.approvals?.length ?? 0) > 0 && (
+                    <span className={cn(
+                      'ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white',
+                      isCollapsed && 'absolute -top-1 -right-1 h-4 min-w-4 text-[9px]'
+                    )}>
+                      {pendingApprovals!.approvals.length}
+                    </span>
+                  )}
                 </Link>
               </li>
             )

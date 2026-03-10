@@ -134,6 +134,11 @@ vi.mock('@/hooks/use-api', () => ({
   useDeleteInvoice: vi.fn(() => mockMutation),
   useExtractDocument: vi.fn(() => mockMutation),
   useCreateManualInvoice: vi.fn(() => mockMutation),
+  useMpkCenters: vi.fn(() => ({
+    data: { mpkCenters: [{ id: 'mc-1', name: 'MPK-100' }, { id: 'mc-2', name: 'MPK-200' }], count: 2 },
+    isLoading: false,
+    error: null,
+  })),
 }))
 
 vi.mock('sonner', () => ({

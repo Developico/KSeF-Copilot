@@ -10,9 +10,11 @@ Instrukcja uruchomienia projektu KSeF na lokalnym komputerze — od klonowania r
 4. [Konfiguracja zmiennych środowiskowych](#konfiguracja-zmiennych-środowiskowych)
 5. [Uruchomienie API (Azure Functions)](#uruchomienie-api)
 6. [Uruchomienie Web (Next.js)](#uruchomienie-web)
-7. [Testy](#testy)
-8. [Codzienne workflow](#codzienne-workflow)
-9. [Częste problemy](#częste-problemy)
+7. [Code App (Vite + React SPA)](#code-app-vite--react-spa)
+8. [Pełny stos lokalny](#pełny-stos-lokalny)
+9. [Testy](#testy)
+10. [Codzienne workflow](#codzienne-workflow)
+11. [Częste problemy](#częste-problemy)
 
 ---
 
@@ -65,6 +67,10 @@ dvlp-ksef/
 ├── web/                  # Next.js 15 (App Router, React 19)
 │   ├── package.json
 │   ├── .env.local        # ← zmienne lokalne (nie commitowane)
+│   └── src/              # Kod źródłowy
+├── code-app/             # Vite + React SPA (Power Platform Code App)
+│   ├── package.json
+│   ├── vite.config.ts    # Port 3002 + proxy /api → 7071
 │   └── src/              # Kod źródłowy
 ├── deployment/           # Skrypty i szablony wdrożeniowe
 └── docs/                 # Dokumentacja
@@ -274,6 +280,69 @@ Dzięki temu frontend i API działają jako jeden serwis.
 
 ---
 
+## Code App (Vite + React SPA)
+
+Code App to lekka aplikacja SPA przeznaczona do osadzenia w Power Platform jako Code Component.
+
+```bash
+cd code-app
+pnpm install
+pnpm dev
+```
+
+Dostępna pod: `http://localhost:3002`
+
+> **Uwaga:** Code App wymaga oddzielnej konfiguracji Entra ID dla flow autentykacji Power Platform, chociaż korzysta z tego samego API.
+
+### Proxy Vite
+
+Code App posiada wbudowany proxy Vite, który przekierowuje żądania `/api` na lokalną instancję Azure Functions. Konfiguracja w `code-app/vite.config.ts`:
+
+```typescript
+server: {
+  port: 3002,
+  proxy: {
+    '/api': {
+      target: 'http://localhost:7071',
+      changeOrigin: true,
+    },
+  },
+}
+```
+
+Dzięki temu wywołania API z Code App (np. `fetch('/api/invoices')`) są transparentnie przekierowywane na `http://localhost:7071/api/invoices` podczas lokalnego developmentu. Nie jest wymagana osobna zmienna `VITE_API_URL`.
+
+---
+
+## Pełny stos lokalny
+
+Aby uruchomić całą aplikację lokalnie:
+
+### Terminal 1 — API
+```bash
+cd api && npm start
+```
+
+### Terminal 2 — Web
+```bash
+cd web && npm run dev
+```
+
+### Terminal 3 — Code App (opcjonalnie)
+```bash
+cd code-app && pnpm dev
+```
+
+### Dostępne porty
+
+| Serwis | Port | URL |
+|--------|------|-----|
+| API (Azure Functions) | 7071 | `http://localhost:7071/api` |
+| Web (Next.js) | 3001 | `http://localhost:3001` |
+| Code App (Vite) | 3002 | `http://localhost:3002` |
+
+---
+
 ## Testy
 
 ### API (vitest)
@@ -392,6 +461,6 @@ az account set --subscription "your-azure-subscription-id"
 
 ---
 
-**Ostatnia aktualizacja:** 2026-02-11  
-**Wersja:** 1.0  
+**Ostatnia aktualizacja:** 2026-03-10  
+**Wersja:** 1.1  
 **Opiekun:** dvlp-dev team

@@ -12,6 +12,7 @@ on:
 
 env:
   AZURE_WEBAPP_NAME: dvlp-ksef
+  AZURE_FUNCTIONAPP_NAME: dvlp-ksef-func
   NODE_VERSION: '20.x'
 
 permissions:
@@ -45,16 +46,25 @@ jobs:
       - name: Test (web)
         run: npm test --workspace=web
 
-      - name: Build deploy artifact
-        working-directory: web
-        run: node scripts/build-deploy.mjs
-
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve API URL
+        id: api-url
+        run: |
+          HOSTNAME=$(az functionapp show --name ${{ env.AZURE_FUNCTIONAPP_NAME }} --resource-group rg-ksef --query properties.defaultHostName -o tsv)
+          echo "value=https://${HOSTNAME}" >> "$GITHUB_OUTPUT"
+          echo "Resolved API_URL: https://${HOSTNAME}"
+
+      - name: Build deploy artifact
+        working-directory: web
+        run: node scripts/build-deploy.mjs
+        env:
+          API_URL: ${{ steps.api-url.outputs.value }}
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3

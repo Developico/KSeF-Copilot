@@ -1358,6 +1358,12 @@ Jeśli Custom Connector nie został zaimportowany z solucją:
 | KSeF Sync | Synchronizacja faktur z KSeF | Harmonogram / Manual |
 | KSeF AI Categorize | Kategoryzacja AI | Przy imporcie faktury |
 | KSeF Alert | Powiadomienia | Błąd synchronizacji |
+| KSeF Approval | Workflow akceptacji faktur (MPK budget check → approval) | Tworzenie/import faktury |
+| KSeF Approval Reminder | Przypomnienia o oczekujących akceptacjach | Codziennie o 9:00 |
+| KSeF Budget Report | Raport wykorzystania budżetu MPK | 1. dnia miesiąca |
+| KSeF Approval Escalation | Eskalacja nieobsłużonych akceptacji | Co 4 godziny |
+
+> Szablony flow opisane szczegółowo w [`connector/README.md`](connector/README.md#example-power-automate-flows).
 
 ### Walidacja
 

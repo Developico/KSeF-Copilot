@@ -29,17 +29,14 @@ import {
   useDeleteCompany,
   useUpdateCompany,
   useTestToken,
-  useCostCenters,
-  useCreateCostCenter,
-  useUpdateCostCenter,
-  useDeleteCostCenter,
   useGenerateTestData,
   useKsefCleanupPreview,
   useKsefCleanup,
   useHealthDetailed,
 } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
-import type { KsefSetting, CostCenter, ServiceStatus } from '@/lib/types'
+import { MpkCentersTab } from '@/components/settings/mpk-centers-tab'
+import type { KsefSetting, ServiceStatus } from '@/lib/types'
 
 // ── Token status badge ───────────────────────────────────────────
 
@@ -108,7 +105,7 @@ export function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="costCenters" className="mt-4">
-          <CostCentersTab />
+          <MpkCentersTab />
         </TabsContent>
 
         <TabsContent value="testData" className="mt-4">
@@ -467,213 +464,7 @@ function CompaniesTab() {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// TAB 2: Cost Centers
-// ══════════════════════════════════════════════════════════════════
-
-function CostCentersTab() {
-  const intl = useIntl()
-  const { data: costCentersData, isLoading } = useCostCenters()
-  const createCostCenter = useCreateCostCenter()
-  const updateCostCenter = useUpdateCostCenter()
-  const deleteCostCenter = useDeleteCostCenter()
-
-  const costCenters = costCentersData?.costCenters ?? []
-
-  // New cost center form
-  const [showForm, setShowForm] = useState(false)
-  const [formCode, setFormCode] = useState('')
-  const [formCcName, setFormCcName] = useState('')
-
-  // Edit mode
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editCode, setEditCode] = useState('')
-  const [editCcName, setEditCcName] = useState('')
-
-  function handleCreate() {
-    if (!formCode.trim() || !formCcName.trim()) return
-    createCostCenter.mutate(
-      { code: formCode.trim(), name: formCcName.trim() },
-      {
-        onSuccess: () => {
-          setShowForm(false)
-          setFormCode('')
-          setFormCcName('')
-        },
-      }
-    )
-  }
-
-  function startCcEdit(cc: CostCenter) {
-    setEditingId(cc.id)
-    setEditCode(cc.code)
-    setEditCcName(cc.name)
-  }
-
-  function cancelCcEdit() {
-    setEditingId(null)
-    setEditCode('')
-    setEditCcName('')
-  }
-
-  function saveCcEdit(id: string) {
-    updateCostCenter.mutate(
-      { id, data: { code: editCode, name: editCcName } },
-      { onSuccess: () => cancelCcEdit() }
-    )
-  }
-
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  function handleDeleteCc(id: string) {
-    setDeletingId(id)
-    deleteCostCenter.mutate(id, { onSettled: () => setDeletingId(null) })
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <CircleDot className="h-5 w-5" />
-            {intl.formatMessage({ id: 'settings.costCenters' })}
-          </CardTitle>
-          <Button onClick={() => setShowForm((v) => !v)} size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            {intl.formatMessage({ id: 'settings.addCostCenter' })}
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {/* Add cost center form */}
-        {showForm && (
-          <div className="mb-4 rounded-md border p-4 space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="text-sm font-medium mb-1 block">
-                  {intl.formatMessage({ id: 'settings.costCenterCode' })}
-                </label>
-                <input
-                  type="text"
-                  value={formCode}
-                  onChange={(e) => setFormCode(e.target.value)}
-                  placeholder="CC-001"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">
-                  {intl.formatMessage({ id: 'settings.costCenterName' })}
-                </label>
-                <input
-                  type="text"
-                  value={formCcName}
-                  onChange={(e) => setFormCcName(e.target.value)}
-                  placeholder="Marketing"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={handleCreate}
-                disabled={createCostCenter.isPending || !formCode.trim() || !formCcName.trim()}
-              >
-                {createCostCenter.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {intl.formatMessage({ id: 'common.save' })}
-              </Button>
-              <Button variant="outline" onClick={() => setShowForm(false)}>
-                {intl.formatMessage({ id: 'common.cancel' })}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Cost center list */}
-        {isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full" />
-            ))}
-          </div>
-        ) : costCenters.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            {intl.formatMessage({ id: 'common.none' })}
-          </p>
-        ) : (
-          <div className="space-y-1">
-            {costCenters.map((cc) => (
-              <div key={cc.id} className="flex items-center justify-between rounded-md border px-3 py-2">
-                {editingId === cc.id ? (
-                  <div className="flex-1 flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={editCode}
-                      onChange={(e) => setEditCode(e.target.value)}
-                      className="w-24 rounded-md border border-input bg-background px-2 py-1 text-sm font-mono"
-                    />
-                    <input
-                      type="text"
-                      value={editCcName}
-                      onChange={(e) => setEditCcName(e.target.value)}
-                      className="flex-1 rounded-md border border-input bg-background px-2 py-1 text-sm"
-                    />
-                    <Button
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => saveCcEdit(cc.id)}
-                      disabled={updateCostCenter.isPending}
-                    >
-                      {updateCostCenter.isPending
-                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        : <Save className="h-3.5 w-3.5" />}
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelCcEdit}>
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs">{cc.code}</span>
-                      <Separator orientation="vertical" className="h-4" />
-                      <span className="text-sm">{cc.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={cc.isActive ? 'default' : 'secondary'} className="text-xs">
-                        {cc.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => startCcEdit(cc)}
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive"
-                        onClick={() => handleDeleteCc(cc.id)}
-                        disabled={deletingId === cc.id}
-                      >
-                        {deletingId === cc.id
-                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          : <Trash2 className="h-3.5 w-3.5" />}
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-// ══════════════════════════════════════════════════════════════════
-// TAB 3: Test Data Generator
+// TAB 2: Test Data Generator
 // ══════════════════════════════════════════════════════════════════
 
 function TestDataTab({ nip, companyId }: { nip?: string; companyId?: string }) {

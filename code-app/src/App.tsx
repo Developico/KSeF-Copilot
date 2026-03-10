@@ -12,6 +12,7 @@ import { ForecastPage } from './pages/forecast'
 import { SyncPage } from './pages/sync'
 import { SettingsPage } from './pages/settings'
 import { ManualInvoicePage } from './pages/manual-invoice'
+import { ApprovalsPage } from './pages/approvals'
 
 // ── Error Boundary ───────────────────────────────────────────────
 
@@ -92,6 +93,7 @@ export function App() {
               <Route path="/invoices/new" element={<ManualInvoicePage />} />
               <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
               <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/approvals" element={<ApprovalsPage />} />
               <Route path="/forecast" element={<ForecastPage />} />
               <Route path="/sync" element={<SyncPage />} />
               <Route path="/settings" element={<SettingsPage />} />

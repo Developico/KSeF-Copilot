@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useIntl } from 'react-intl'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Card, CardContent, CardHeader, CardTitle,
   Badge, Skeleton, Button,
@@ -28,6 +28,7 @@ import {
   DEFAULT_FILTERS,
 } from '@/components/invoices/invoice-filters'
 import { DocumentScannerModal } from '@/components/invoices/document-scanner-modal'
+import { ApprovalStatusBadge } from '@/components/invoices/approval-status-badge'
 import { InvoicePagination } from '@/components/invoices/invoice-pagination'
 import { toast } from 'sonner'
 import type { Invoice, InvoiceListParams } from '@/lib/types'
@@ -132,7 +133,7 @@ function groupInvoices(
     if (groupBy === 'date') {
       key = inv.invoiceDate ? inv.invoiceDate.slice(0, 7) : '__none'
     } else if (groupBy === 'mpk') {
-      key = inv.mpk ?? '__none'
+      key = inv.mpkCenterName || inv.mpk || '__none'
     } else {
       key = inv.category ?? '__none'
     }
@@ -164,10 +165,10 @@ function groupInvoices(
 /** Client-side description status filter. */
 function matchesDescriptionStatus(inv: Invoice, status: InvoiceFilterValues['descriptionStatus']): boolean {
   if (status === 'all') return true
-  if (status === 'notDescribed') return !inv.description && !inv.mpk && !inv.category
+  if (status === 'notDescribed') return !inv.description && !inv.mpkCenterName && !inv.mpk && !inv.category
   if (status === 'aiSuggestion') return Boolean(inv.aiMpkSuggestion || inv.aiCategorySuggestion)
   // described
-  return Boolean(inv.description || inv.mpk || inv.category)
+  return Boolean(inv.description || inv.mpkCenterName || inv.mpk || inv.category)
 }
 
 /** Client-side supplier search filter. */
@@ -182,6 +183,7 @@ function matchesSupplierSearch(inv: Invoice, query: string): boolean {
 
 export function InvoicesPage() {
   const intl = useIntl()
+  const navigate = useNavigate()
   const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
 
   const [filters, setFilters] = useState<InvoiceFilterValues>(DEFAULT_FILTERS)
@@ -221,6 +223,7 @@ export function InvoicesPage() {
     if (filters.mpk) p.mpk = filters.mpk
     if (filters.category) p.category = filters.category
     if (filters.source !== 'all') p.source = filters.source
+    if (filters.approvalStatus !== 'all') p.approvalStatus = filters.approvalStatus
     return p
   }, [selectedCompany?.id, filters])
 
@@ -290,7 +293,7 @@ export function InvoicesPage() {
 
   // Derive unique MPK/Category values for filter dropdowns
   const mpkOptions = useMemo(
-    () => [...new Set(allInvoices.map((i) => i.mpk).filter(Boolean) as string[])].sort(),
+    () => [...new Set(allInvoices.map((i) => i.mpkCenterName || i.mpk).filter(Boolean) as string[])].sort(),
     [allInvoices]
   )
   const categoryOptions = useMemo(
@@ -508,6 +511,9 @@ export function InvoicesPage() {
                       <th className="text-left p-3 font-medium">
                         {intl.formatMessage({ id: 'invoices.category' })}
                       </th>
+                      <th className="text-left p-3 font-medium">
+                        {intl.formatMessage({ id: 'invoices.approvalColumn' })}
+                      </th>
                       <th className="text-center p-3 font-medium">
                         {intl.formatMessage({ id: 'invoices.paymentStatus' })}
                       </th>
@@ -518,7 +524,7 @@ export function InvoicesPage() {
                   </thead>
                   <tbody>
                     {nestCorrections(group.invoices).map(({ invoice: inv, isCorrection }) => (
-                      <tr key={inv.id} className={`border-b hover:bg-muted/30 transition-colors ${isCorrection ? 'bg-orange-50/40 dark:bg-orange-950/20 border-l-2 border-l-orange-300 dark:border-l-orange-700' : ''}`}>
+                      <tr key={inv.id} className={`border-b hover:bg-muted/30 transition-colors cursor-pointer ${isCorrection ? 'bg-orange-50/40 dark:bg-orange-950/20 border-l-2 border-l-orange-300 dark:border-l-orange-700' : ''}`} onDoubleClick={() => navigate(`/invoices/${inv.id}`)}>
                         <td className="p-3 whitespace-nowrap">{formatDate(inv.invoiceDate)}</td>
                         <td className="p-3 font-mono text-xs">
                           <div className="flex items-center gap-1.5">
@@ -567,8 +573,11 @@ export function InvoicesPage() {
                             </TooltipProvider>
                           ) : formatCurrency(inv.grossAmount, inv.currency)}
                         </td>
-                        <td className="p-3 text-muted-foreground">{inv.mpk ?? '—'}</td>
+                        <td className="p-3 text-muted-foreground">{inv.mpkCenterName || inv.mpk || '—'}</td>
                         <td className="p-3 text-muted-foreground">{inv.category ?? '—'}</td>
+                        <td className="p-3">
+                          <ApprovalStatusBadge status={inv.approvalStatus} />
+                        </td>
                         <td className="p-3 text-center">
                           <PaymentBadge status={inv.paymentStatus} dueDate={inv.dueDate} />
                         </td>
@@ -647,10 +656,10 @@ export function InvoicesPage() {
                           />
                         </div>
                       </div>
-                      {(inv.mpk || inv.category) && (
+                      {(inv.mpkCenterName || inv.mpk || inv.category) && (
                         <div className="flex gap-2 mt-2">
-                          {inv.mpk && (
-                            <Badge variant="outline" className="text-xs">{inv.mpk}</Badge>
+                          {(inv.mpkCenterName || inv.mpk) && (
+                            <Badge variant="outline" className="text-xs">{inv.mpkCenterName || inv.mpk}</Badge>
                           )}
                           {inv.category && (
                             <Badge variant="outline" className="text-xs">{inv.category}</Badge>

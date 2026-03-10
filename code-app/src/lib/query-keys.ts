@@ -95,4 +95,38 @@ export const queryKeys = {
     ['ksef', 'testdata', 'permissions', nip] as const,
   ksefTestdataCleanupPreview: (nip: string) =>
     ['ksef', 'testdata', 'cleanup', 'preview', nip] as const,
+
+  // MPK Centers
+  mpkCenters: (settingId: string) => ['mpk-centers', settingId] as const,
+  mpkCenter: (id: string) => ['mpk-centers', 'detail', id] as const,
+  mpkApprovers: (id: string) => ['mpk-centers', id, 'approvers'] as const,
+  mpkBudgetStatus: (id: string) =>
+    ['mpk-centers', id, 'budget-status'] as const,
+  dvUsers: (settingId: string) => ['users', settingId] as const,
+
+  // Approvals
+  pendingApprovals: (settingId: string) =>
+    ['approvals', 'pending', settingId] as const,
+
+  // Budget
+  budgetSummary: (settingId: string) =>
+    ['budget', 'summary', settingId] as const,
+
+  // Notifications
+  notifications: (settingId: string) =>
+    ['notifications', settingId] as const,
+  notificationsUnreadCount: (settingId: string) =>
+    ['notifications', 'unread-count', settingId] as const,
+
+  // Reports
+  reportBudgetUtilization: (settingId: string, mpkCenterId?: string) =>
+    ['reports', 'budget-utilization', settingId, mpkCenterId] as const,
+  reportApprovalHistory: (
+    settingId: string,
+    filters?: Record<string, string | undefined>
+  ) => ['reports', 'approval-history', settingId, filters] as const,
+  reportApproverPerformance: (settingId: string) =>
+    ['reports', 'approver-performance', settingId] as const,
+  reportInvoiceProcessing: (settingId: string) =>
+    ['reports', 'invoice-processing', settingId] as const,
 }

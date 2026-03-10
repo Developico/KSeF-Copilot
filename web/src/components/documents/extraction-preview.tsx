@@ -37,10 +37,11 @@ import { cn } from '@/lib/utils'
 import { api, queryKeys, type ExtractedInvoiceData, type ManualInvoiceCreate } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 import { useSelectedCompany } from '@/contexts/company-context'
+import { useContextMpkCenters } from '@/hooks/use-api'
 import { generatePdfThumbnail, isPdfMimeType } from '@/lib/pdf-thumbnail'
 
-// MPK options (values from Dataverse option set)
-const MPK_OPTIONS = [
+// MPK options — fallback when API is unavailable; overridden by useContextMpkCenters
+const DEFAULT_MPK_OPTIONS = [
   'Consultants',
   'BackOffice',
   'Management',
@@ -88,6 +89,8 @@ export function ExtractionPreview({
   const { selectedCompany } = useSelectedCompany()
   const t = useTranslations('invoices')
   const tCommon = useTranslations('common')
+  const { data: mpkCentersData } = useContextMpkCenters()
+  const mpkOptions = mpkCentersData?.mpkCenters?.map(mc => mc.name) ?? DEFAULT_MPK_OPTIONS
 
   // Editable form state (initialized from extracted data)
   const [formData, setFormData] = useState({
@@ -451,7 +454,7 @@ export function ExtractionPreview({
                         <SelectValue placeholder={t('scanner.selectMpk')} />
                       </SelectTrigger>
                       <SelectContent>
-                        {MPK_OPTIONS.map(mpk => (
+                        {mpkOptions.map(mpk => (
                           <SelectItem key={mpk} value={mpk}>
                             {mpk}
                           </SelectItem>

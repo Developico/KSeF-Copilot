@@ -17,6 +17,8 @@
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "seed:testdata": "tsx scripts/seed-testdata.ts",
+    "seed:mpk": "tsx scripts/seed-mpk-centers.ts",
+    "migrate:mpk": "tsx scripts/migrate-invoices-to-mpk-centers.ts",
     "seed:corrections": "tsx scripts/seed-corrective-invoices.ts",
     "cleanup:testdata": "tsx scripts/cleanup-testdata.ts"
   },

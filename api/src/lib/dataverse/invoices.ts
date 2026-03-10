@@ -2,8 +2,24 @@ import { dataverseRequest, dataverseClient } from './client'
 import { InvoiceEntity, PaymentStatusValues, MpkValues, InvoiceSourceValues, InvoiceTypeValues, getPaymentStatusKey, getMpkKey, getInvoiceSourceKey, getInvoiceTypeKey } from './entities'
 import { escapeOData } from './odata-utils'
 import { mapDvCurrencyToApp, mapAppCurrencyToDv } from './mappers'
-import { Invoice, InvoiceCreate, InvoiceUpdate, InvoiceListParams, ManualInvoiceCreate, InvoiceSource } from '../../types/invoice'
+import { Invoice, InvoiceCreate, InvoiceUpdate, InvoiceListParams, ManualInvoiceCreate, InvoiceSource, ApprovalStatus } from '../../types/invoice'
+import { APPROVAL_STATUS } from './config'
 import { logDataverseInfo } from './logger'
+
+/**
+ * Map Dataverse approval status (number) to app ApprovalStatus
+ */
+function mapDvApprovalStatusToApp(value: number | undefined): ApprovalStatus | undefined {
+  if (value === undefined || value === null) return undefined
+  switch (value) {
+    case APPROVAL_STATUS.DRAFT: return 'Draft'
+    case APPROVAL_STATUS.PENDING: return 'Pending'
+    case APPROVAL_STATUS.APPROVED: return 'Approved'
+    case APPROVAL_STATUS.REJECTED: return 'Rejected'
+    case APPROVAL_STATUS.CANCELLED: return 'Cancelled'
+    default: return 'Draft'
+  }
+}
 
 /**
  * Build OData filter string from params
@@ -15,6 +31,9 @@ function buildInvoiceFilter(params: InvoiceListParams): string[] {
     paymentStatus, 
     mpk,
     mpkList,
+    mpkCenterId,
+    mpkCenterIds,
+    approvalStatus,
     category, 
     fromDate, 
     toDate,
@@ -58,6 +77,31 @@ function buildInvoiceFilter(params: InvoiceListParams): string[] {
       .map(m => `${InvoiceEntity.fields.mpk} eq ${MpkValues[m as keyof typeof MpkValues]}`)
     if (mpkFilters.length > 0) {
       filters.push(`(${mpkFilters.join(' or ')})`)
+    }
+  }
+
+  // MPK Center lookup filter (single GUID)
+  if (mpkCenterId) {
+    filters.push(`${InvoiceEntity.fields.mpkCenterId} eq ${mpkCenterId}`)
+  }
+
+  // MPK Center lookup filter (multiple GUIDs — OR condition)
+  if (mpkCenterIds && mpkCenterIds.length > 0) {
+    const mpkCenterFilters = mpkCenterIds.map(id => `${InvoiceEntity.fields.mpkCenterId} eq ${id}`)
+    filters.push(`(${mpkCenterFilters.join(' or ')})`)
+  }
+
+  // Approval status filter
+  if (approvalStatus) {
+    const statusMap: Record<string, number> = {
+      Draft: APPROVAL_STATUS.DRAFT,
+      Pending: APPROVAL_STATUS.PENDING,
+      Approved: APPROVAL_STATUS.APPROVED,
+      Rejected: APPROVAL_STATUS.REJECTED,
+      Cancelled: APPROVAL_STATUS.CANCELLED,
+    }
+    if (approvalStatus in statusMap) {
+      filters.push(`${InvoiceEntity.fields.approvalStatus} eq ${statusMap[approvalStatus]}`)
     }
   }
 
@@ -319,6 +363,16 @@ export async function updateInvoice(id: string, data: InvoiceUpdate): Promise<In
       : null
   }
 
+  // New: MPK Center lookup (GUID) — replaces legacy mpk enum
+  if (data.mpkCenterId !== undefined) {
+    if (data.mpkCenterId === null) {
+      // Disassociate MPK Center
+      body[InvoiceEntity.fields.mpkCenterIdBind] = null
+    } else {
+      body[InvoiceEntity.fields.mpkCenterIdBind] = `/dvlp_ksefmpkcenters(${data.mpkCenterId})`
+    }
+  }
+
   if (data.category !== undefined) {
     body[InvoiceEntity.fields.category] = data.category
   }
@@ -548,6 +602,17 @@ function mapFromDataverse(record: DataverseInvoice): Invoice {
     parentInvoiceId: record[f.parentInvoiceId] as string | undefined,
     correctedInvoiceNumber: record[f.correctedInvoiceNumber] as string | undefined,
     correctionReason: record[f.correctionReason] as string | undefined,
+    // MPK Center lookup (new — replaces legacy costCenter OptionSet)
+    mpkCenterId: record[f.mpkCenterId] as string | undefined,
+    mpkCenterName: (record[`${f.mpkCenterId}@OData.Community.Display.V1.FormattedValue`] as string | undefined)
+      // Fallback: try to resolve from legacy mpk name if no lookup set yet
+      || (getMpkKey(record[f.mpk] as number) as string | undefined),
+    // Approval workflow fields
+    approvalStatus: mapDvApprovalStatusToApp(record[f.approvalStatus] as number | undefined),
+    approvedBy: record[f.approvedBy] as string | undefined,
+    approvedByOid: record[f.approvedByOid] as string | undefined,
+    approvedAt: record[f.approvedAt] as string | undefined,
+    approvalComment: record[f.approvalComment] as string | undefined,
   }
 }
 
@@ -607,6 +672,11 @@ function mapToDataverse(data: InvoiceCreate): Record<string, unknown> {
   // Add settingId lookup binding if provided
   if (data.settingId) {
     result['dvlp_settingid@odata.bind'] = `/dvlp_ksefsettings(${data.settingId})`
+  }
+
+  // MPK Center lookup binding (new entity — preferred over legacy OptionSet)
+  if (data.mpkCenterId) {
+    result[InvoiceEntity.fields.mpkCenterIdBind] = `/dvlp_ksefmpkcenters(${data.mpkCenterId})`
   }
 
   // Invoice type

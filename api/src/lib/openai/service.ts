@@ -122,10 +122,14 @@ async function getOpenAIClient(): Promise<OpenAI> {
 /**
  * Build categorization prompt for invoice with optional learning context
  * Uses external prompt template from prompts/categorization.prompt.md
+ *
+ * @param mpkNames - Dynamic MPK center names from Dataverse.
+ *                   Falls back to static MPK enum during transition.
  */
 function buildCategorizationPrompt(
   request: AiCategorizationRequest,
-  learningContext?: { supplierHint?: string; examples?: string }
+  learningContext?: { supplierHint?: string; examples?: string },
+  mpkNames?: string[]
 ): string {
   const itemsList = request.items?.length 
     ? `\n- Pozycje: ${request.items.join(', ')}`
@@ -144,11 +148,16 @@ function buildCategorizationPrompt(
     ? `\n\nPrzykłady kategoryzacji z historii firmy:\n${learningContext.examples}`
     : ''
 
+  // Use dynamic MPK center names if available, fallback to static enum
+  const mpkValues = mpkNames && mpkNames.length > 0
+    ? mpkNames.join(', ')
+    : Object.values(MPK).join(', ')
+
   // Load prompt template from external file
   const promptTemplate = loadPrompt('categorization')
   
   return fillPromptTemplate(promptTemplate, {
-    mpkValues: Object.values(MPK).join(', '),
+    mpkValues,
     supplierName: request.supplierName,
     supplierNip: request.supplierNip,
     itemsList,
@@ -178,10 +187,13 @@ function parseCategorizationResponse(content: string): AICategorization {
 
 /**
  * Categorize single invoice using AI with learning from feedback
+ *
+ * @param mpkNames - Dynamic MPK center names. Falls back to static enum if empty/undefined.
  */
 export async function categorizeInvoice(
   request: AiCategorizationRequest,
-  tenantNip?: string
+  tenantNip?: string,
+  mpkNames?: string[]
 ): Promise<AICategorization> {
   const client = await getOpenAIClient()
   
@@ -215,7 +227,7 @@ export async function categorizeInvoice(
     }
   }
 
-  const prompt = buildCategorizationPrompt(request, learningContext)
+  const prompt = buildCategorizationPrompt(request, learningContext, mpkNames)
 
   const response = await client.chat.completions.create({
     model: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini',
@@ -254,7 +266,8 @@ export async function categorizeInvoice(
  */
 export async function categorizeInvoicesBatch(
   requests: AiCategorizationRequest[],
-  onProgress?: (completed: number, total: number) => void
+  onProgress?: (completed: number, total: number) => void,
+  mpkNames?: string[]
 ): Promise<Map<string, AICategorization | Error>> {
   const results = new Map<string, AICategorization | Error>()
 
@@ -262,7 +275,7 @@ export async function categorizeInvoicesBatch(
     const request = requests[i]
     
     try {
-      const categorization = await categorizeInvoice(request)
+      const categorization = await categorizeInvoice(request, undefined, mpkNames)
       results.set(request.invoiceId, categorization)
     } catch (error) {
       results.set(request.invoiceId, error instanceof Error ? error : new Error(String(error)))

@@ -21,6 +21,7 @@ import { KsefSyncButton } from './ksef-sync-button'
 import { useAuth } from '@/components/auth/auth-provider'
 import { SystemStatusBadge } from '@/components/health/system-status-badge'
 import { CompanySelector } from './company-selector'
+import { NotificationBell } from './notification-bell'
 
 export function Header() {
   const t = useTranslations('header')
@@ -129,6 +130,9 @@ export function Header() {
             {/* System Status Badge */}
             {mounted && isAuthenticated && <SystemStatusBadge />}
             
+            {/* Notification Bell */}
+            {mounted && isAuthenticated && <NotificationBell />}
+
             {/* Language Switcher */}
             {mounted && <LanguageSwitcher />}
 

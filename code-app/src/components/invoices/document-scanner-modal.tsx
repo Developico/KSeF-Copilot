@@ -13,7 +13,10 @@ import {
   DialogFooter,
 } from '@/components/ui'
 import { Button, Input, Label, Separator, ScrollArea, Badge } from '@/components/ui'
-import { useExtractDocument, useCreateManualInvoice } from '@/hooks/use-api'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui'
+import { useExtractDocument, useCreateManualInvoice, useMpkCenters } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
@@ -37,6 +40,8 @@ export function DocumentScannerModal({ open, onOpenChange }: DocumentScannerModa
   const intl = useIntl()
   const navigate = useNavigate()
   const { selectedCompany } = useCompanyContext()
+  const { data: mpkCentersData } = useMpkCenters(selectedCompany?.id ?? '')
+  const mpkOptions = mpkCentersData?.mpkCenters?.map(mc => ({ id: mc.id, name: mc.name })) ?? []
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [step, setStep] = useState<Step>('upload')
@@ -207,6 +212,7 @@ export function DocumentScannerModal({ open, onOpenChange }: DocumentScannerModa
       grossAmount: editedData.grossAmount ?? 0,
       currency: (editedData.currency as 'PLN' | 'EUR' | 'USD') ?? 'PLN',
       mpk: editedData.suggestedMpk,
+      mpkCenterId: mpkOptions.find(o => o.name === editedData.suggestedMpk)?.id || undefined,
       category: editedData.suggestedCategory,
       description: editedData.suggestedDescription,
       // AI suggestion fields - original values from extraction
@@ -445,10 +451,21 @@ export function DocumentScannerModal({ open, onOpenChange }: DocumentScannerModa
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <Label className="text-xs">{intl.formatMessage({ id: 'invoices.mpk' })}</Label>
-                    <Input
+                    <Select
                       value={editedData.suggestedMpk ?? ''}
-                      onChange={(e) => updateField('suggestedMpk', e.target.value)}
-                    />
+                      onValueChange={(v) => updateField('suggestedMpk', v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={intl.formatMessage({ id: 'invoices.mpk' })} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {mpkOptions.map((option) => (
+                          <SelectItem key={option.id} value={option.name}>
+                            {option.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label className="text-xs">{intl.formatMessage({ id: 'invoices.category' })}</Label>

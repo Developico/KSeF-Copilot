@@ -203,9 +203,27 @@ pnpm install
 pnpm dev
 ```
 
-Available at: `http://localhost:5173`
+Available at: `http://localhost:3002`
 
 > **Note:** Code App uses the same API but may require separate Entra ID configuration for Power Platform auth flow.
+
+### Vite Proxy
+
+The Code App includes a built-in Vite proxy that forwards `/api` requests to the local Azure Functions instance. This is configured in `code-app/vite.config.ts`:
+
+```typescript
+server: {
+  port: 3002,
+  proxy: {
+    '/api': {
+      target: 'http://localhost:7071',
+      changeOrigin: true,
+    },
+  },
+}
+```
+
+This means API calls from the Code App (e.g., `fetch('/api/invoices')`) are transparently proxied to `http://localhost:7071/api/invoices` during local development. No separate `VITE_API_URL` configuration is required.
 
 ---
 
@@ -237,7 +255,7 @@ pnpm dev
 |---------|------|-----|
 | API (Azure Functions) | 7071 | `http://localhost:7071/api` |
 | Web (Next.js) | 3000 | `http://localhost:3000` |
-| Code App (Vite) | 5173 | `http://localhost:5173` |
+| Code App (Vite) | 3002 | `http://localhost:3002` |
 
 ---
 
@@ -354,6 +372,6 @@ Azure Functions automatically allows `localhost` origins in development mode. If
 
 ---
 
-**Last updated:** 2026-02-11  
-**Version:** 1.0  
+**Last updated:** 2026-03-10  
+**Version:** 1.1  
 **Maintainer:** dvlp-dev team

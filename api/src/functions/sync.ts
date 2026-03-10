@@ -1,5 +1,9 @@
 /**
- * Sync API Endpoints
+ * Sync API Endpoints (LEGACY — DEPRECATED)
+ * 
+ * @deprecated Use /api/ksef/sync (ksef-sync.ts) instead.
+ * This module is kept for backward compatibility with existing integrations.
+ * New consumers (including Copilot Studio agents) should use ksef-sync.ts.
  * 
  * Handles synchronization of invoices with KSeF.
  * Uses new Dataverse services with proper logging.

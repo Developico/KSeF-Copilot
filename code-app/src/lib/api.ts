@@ -90,6 +90,19 @@ import type {
   KsefCleanupPreviewResponse,
   KsefCleanupRequest,
   KsefCleanupResponse,
+  // MPK / Budget / Approval / Notifications
+  MpkCenter,
+  MpkCenterCreate,
+  MpkCenterUpdate,
+  MpkApprover,
+  DvSystemUser,
+  BudgetStatus,
+  BudgetUtilizationReport,
+  PendingApproval,
+  ApprovalHistoryReport,
+  ApproverPerformanceReport,
+  ProcessingPipelineReport,
+  AppNotification,
 } from './types'
 
 // Re-export all types so consumers can import from '@/lib/api'
@@ -683,6 +696,177 @@ const _directApi = {
         method: 'POST',
         body: JSON.stringify({ amount, currency, date }),
       }),
+  },
+
+  // ── MPK Centers ──
+  mpkCenters: {
+    list: (settingId: string) =>
+      apiFetch<{ mpkCenters: MpkCenter[]; count: number }>(
+        `/api/mpk-centers?settingId=${settingId}`
+      ),
+
+    get: (id: string) =>
+      apiFetch<{ mpkCenter: MpkCenter }>(`/api/mpk-centers/${id}`),
+
+    create: (data: MpkCenterCreate) =>
+      apiFetch<{ mpkCenter: MpkCenter }>('/api/mpk-centers', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    update: (id: string, data: MpkCenterUpdate) =>
+      apiFetch<{ mpkCenter: MpkCenter }>(`/api/mpk-centers/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    deactivate: (id: string) =>
+      apiFetch<{ message: string }>(`/api/mpk-centers/${id}`, {
+        method: 'DELETE',
+      }),
+
+    getApprovers: (id: string) =>
+      apiFetch<{ approvers: MpkApprover[]; count: number }>(
+        `/api/mpk-centers/${id}/approvers`
+      ),
+
+    setApprovers: (id: string, systemUserIds: string[]) =>
+      apiFetch<{ approvers: MpkApprover[]; count: number }>(
+        `/api/mpk-centers/${id}/approvers`,
+        { method: 'PUT', body: JSON.stringify({ systemUserIds }) }
+      ),
+
+    getBudgetStatus: (id: string) =>
+      apiFetch<{ data: BudgetStatus }>(`/api/mpk-centers/${id}/budget-status`),
+  },
+
+  // ── Users ──
+  users: {
+    list: (settingId: string) =>
+      apiFetch<{ users: DvSystemUser[]; count: number }>(
+        `/api/users?settingId=${settingId}`
+      ),
+  },
+
+  // ── Approvals ──
+  approvals: {
+    pending: (settingId: string) => {
+      const params = new URLSearchParams({ settingId })
+      return apiFetch<{ approvals: PendingApproval[]; count: number }>(
+        `/api/approvals/pending?${params}`
+      )
+    },
+
+    approve: (invoiceId: string, comment?: string) =>
+      apiFetch<{ invoice: Invoice }>(`/api/invoices/${invoiceId}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({ comment }),
+      }),
+
+    reject: (invoiceId: string, comment?: string) =>
+      apiFetch<{ invoice: Invoice }>(`/api/invoices/${invoiceId}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ comment }),
+      }),
+
+    cancelApproval: (invoiceId: string) =>
+      apiFetch<{ invoice: Invoice }>(
+        `/api/invoices/${invoiceId}/cancel-approval`,
+        { method: 'POST' }
+      ),
+
+    bulkApprove: (invoiceIds: string[], comment?: string) =>
+      apiFetch<{
+        results: Array<{ invoiceId: string; success: boolean; error?: string }>
+      }>('/api/invoices/bulk-approve', {
+        method: 'POST',
+        body: JSON.stringify({ invoiceIds, comment }),
+      }),
+
+    refreshApprovers: (invoiceId: string) =>
+      apiFetch<{ message: string }>(
+        `/api/invoices/${invoiceId}/refresh-approvers`,
+        { method: 'POST' }
+      ),
+  },
+
+  // ── Budget ──
+  budget: {
+    summary: (settingId: string) =>
+      apiFetch<{ data: BudgetStatus[]; count: number }>(
+        `/api/budget/summary?settingId=${settingId}`
+      ),
+  },
+
+  // ── Notifications ──
+  notifications: {
+    list: (
+      settingId: string,
+      options?: { unreadOnly?: boolean; top?: number }
+    ) => {
+      const params = new URLSearchParams({ settingId })
+      if (options?.unreadOnly) params.append('unreadOnly', 'true')
+      if (options?.top) params.append('top', String(options.top))
+      return apiFetch<{ data: AppNotification[]; count: number }>(
+        `/api/notifications?${params}`
+      )
+    },
+
+    markRead: (id: string) =>
+      apiFetch<{ success: boolean }>(`/api/notifications/${id}/read`, {
+        method: 'PATCH',
+      }),
+
+    dismiss: (id: string) =>
+      apiFetch<{ success: boolean }>(`/api/notifications/${id}/dismiss`, {
+        method: 'POST',
+      }),
+
+    unreadCount: (settingId: string) =>
+      apiFetch<{ count: number }>(
+        `/api/notifications/unread-count?settingId=${settingId}`
+      ),
+  },
+
+  // ── Reports ──
+  reports: {
+    budgetUtilization: (settingId: string, mpkCenterId?: string) => {
+      const params = new URLSearchParams({ settingId })
+      if (mpkCenterId) params.append('mpkCenterId', mpkCenterId)
+      return apiFetch<{ data: BudgetUtilizationReport }>(
+        `/api/reports/budget-utilization?${params}`
+      )
+    },
+
+    approvalHistory: (
+      settingId: string,
+      filters?: {
+        dateFrom?: string
+        dateTo?: string
+        mpkCenterId?: string
+        status?: string
+      }
+    ) => {
+      const params = new URLSearchParams({ settingId })
+      if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom)
+      if (filters?.dateTo) params.append('dateTo', filters.dateTo)
+      if (filters?.mpkCenterId)
+        params.append('mpkCenterId', filters.mpkCenterId)
+      if (filters?.status) params.append('status', filters.status)
+      return apiFetch<{ data: ApprovalHistoryReport }>(
+        `/api/reports/approval-history?${params}`
+      )
+    },
+
+    approverPerformance: (settingId: string) =>
+      apiFetch<{ data: ApproverPerformanceReport }>(
+        `/api/reports/approver-performance?settingId=${settingId}`
+      ),
+
+    invoiceProcessing: (settingId: string) =>
+      apiFetch<{ data: ProcessingPipelineReport }>(
+        `/api/reports/invoice-processing?settingId=${settingId}`
+      ),
   },
 }
 

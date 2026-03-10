@@ -16,6 +16,48 @@ Projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.0] — 2026-03-10
+
+### Dodane — Centra kosztowe (MPK)
+- `GET /mpk-centers` — lista centrów kosztowych (z filtrowaniem po settingId, activeOnly)
+- `POST /mpk-centers` — tworzenie centrum kosztowego (Admin)
+- `GET /mpk-centers/{id}` — szczegóły centrum kosztowego
+- `PATCH /mpk-centers/{id}` — aktualizacja centrum kosztowego (Admin)
+- `DELETE /mpk-centers/{id}` — dezaktywacja centrum kosztowego (Admin, soft delete)
+- `GET /mpk-centers/{id}/approvers` — lista akceptantów centrum kosztowego
+- `PUT /mpk-centers/{id}/approvers` — ustawienie akceptantów (Admin)
+- Nowa tabela Dataverse: `dvlp_ksefmpkcenter` (name, code, budget, SLA, settingId)
+- Nowa tabela Dataverse: `dvlp_ksefmpkapprover` (link MPK↔SystemUser, thresholds)
+
+### Dodane — Workflow zatwierdzania faktur
+- `POST /invoices/{id}/approve` — zatwierdzenie faktury z opcjonalnym komentarzem
+- `POST /invoices/{id}/reject` — odrzucenie faktury (komentarz wymagany)
+- `POST /invoices/{id}/cancel-approval` — anulowanie zatwierdzenia (Admin)
+- `POST /invoices/{id}/refresh-approvers` — odświeżenie listy akceptantów
+- `POST /invoices/bulk-approve` — masowe zatwierdzanie (do 100 faktur)
+- `GET /approvals/pending` — lista faktur oczekujących na zatwierdzenie
+- Timer trigger `approval-sla-check` — co godzinę sprawdza przekroczenia SLA
+- Nowe pola na fakturze: `approvalStatus`, `mpkCenterId`, `approvedBy`, `approvedAt`, `approvalComment`, `submittedForApprovalAt`
+
+### Dodane — Budżetowanie
+- `GET /mpk-centers/{id}/budget-status` — status budżetu dla pojedynczego MPK
+- `GET /budget/summary` — podsumowanie budżetów dla wszystkich MPK
+
+### Dodane — Powiadomienia
+- `GET /notifications` — lista powiadomień użytkownika
+- `PATCH /notifications/{id}/read` — oznaczenie jako przeczytane
+- `POST /notifications/{id}/dismiss` — odrzucenie powiadomienia
+- `GET /notifications/unread-count` — licznik nieprzeczytanych
+- Nowa tabela Dataverse: `dvlp_ksefnotification` (type, recipientId, invoiceId, read, dismissed)
+
+### Dodane — Raporty
+- `GET /reports/budget-utilization` — raport wykorzystania budżetu per MPK
+- `GET /reports/approval-history` — historia akceptacji z filtrami (data, MPK, status)
+- `GET /reports/approver-performance` — statystyki wydajności akceptantów
+- `GET /reports/invoice-processing` — raport przetwarzania faktur
+
+---
+
 ## [0.2.0] — 2026-03-01
 
 ### Dodane
@@ -51,6 +93,7 @@ Projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Middleware uwierzytelniania Entra ID (Azure AD) OAuth2
 - Obsługa wielu firm (`settingId` / `tenantNip`)
 
-[Nieudostępnione]: https://github.com/Developico/KSeF-Copilot/compare/v0.2.0...HEAD
+[Nieudostępnione]: https://github.com/Developico/KSeF-Copilot/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Developico/KSeF-Copilot/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Developico/KSeF-Copilot/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Developico/KSeF-Copilot/releases/tag/v0.1.0

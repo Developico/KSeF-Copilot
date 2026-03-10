@@ -11,6 +11,16 @@ import {
   type AnomalyRulesResponse,
   type ForecastResult,
   type ForecastParams,
+  type MpkCenter,
+  type MpkCenterCreate,
+  type MpkCenterUpdate,
+  type MpkApprover,
+  type DvSystemUser,
+  type BudgetStatus,
+  type AppNotification,
+  type PendingApproval,
+  type BudgetUtilizationReport,
+  type ApprovalHistoryReport,
 } from '../lib/api'
 import { FALLBACK_FORECAST_META, FALLBACK_ANOMALY_META } from '../lib/forecast-metadata'
 import { useCompanyContext } from '@/contexts/company-context'
@@ -169,6 +179,7 @@ export function useUpdateInvoice() {
       id: string
       data: {
         mpk?: string
+        mpkCenterId?: string
         category?: string
         project?: string
         tags?: string[]
@@ -886,4 +897,340 @@ export function useCleanupTestData() {
       queryClient.invalidateQueries({ queryKey: ['testdata'] })
     },
   })
+}
+
+// ============================================================================
+// MPK Centers
+// ============================================================================
+
+export function useMpkCenters(settingId?: string) {
+  return useQuery({
+    queryKey: queryKeys.mpkCenters(settingId!),
+    queryFn: () => api.mpkCenters.list(settingId!),
+    enabled: Boolean(settingId),
+  })
+}
+
+export function useContextMpkCenters() {
+  const { selectedCompany } = useCompanyContext()
+  return useMpkCenters(selectedCompany?.id)
+}
+
+export function useMpkCenter(id?: string) {
+  return useQuery({
+    queryKey: queryKeys.mpkCenter(id!),
+    queryFn: () => api.mpkCenters.get(id!),
+    enabled: Boolean(id),
+  })
+}
+
+export function useCreateMpkCenter() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: MpkCenterCreate) => api.mpkCenters.create(data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.mpkCenters(variables.settingId) })
+    },
+  })
+}
+
+export function useUpdateMpkCenter() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: MpkCenterUpdate }) =>
+      api.mpkCenters.update(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['mpk-centers'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.mpkCenter(variables.id) })
+    },
+  })
+}
+
+export function useDeactivateMpkCenter() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => api.mpkCenters.deactivate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mpk-centers'] })
+    },
+  })
+}
+
+// ============================================================================
+// MPK Approvers
+// ============================================================================
+
+export function useMpkApprovers(mpkId?: string) {
+  return useQuery({
+    queryKey: queryKeys.mpkApprovers(mpkId!),
+    queryFn: () => api.mpkCenters.getApprovers(mpkId!),
+    enabled: Boolean(mpkId),
+  })
+}
+
+export function useSetMpkApprovers() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ mpkId, systemUserIds }: { mpkId: string; systemUserIds: string[] }) =>
+      api.mpkCenters.setApprovers(mpkId, systemUserIds),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.mpkApprovers(variables.mpkId) })
+    },
+  })
+}
+
+// ============================================================================
+// MPK Budget Status
+// ============================================================================
+
+export function useMpkBudgetStatus(mpkId?: string) {
+  return useQuery({
+    queryKey: queryKeys.mpkBudgetStatus(mpkId!),
+    queryFn: () => api.mpkCenters.getBudgetStatus(mpkId!),
+    enabled: Boolean(mpkId),
+  })
+}
+
+// ============================================================================
+// Dataverse System Users
+// ============================================================================
+
+export function useDvUsers(settingId?: string) {
+  return useQuery({
+    queryKey: queryKeys.dvUsers(settingId!),
+    queryFn: () => api.users.list(settingId!),
+    enabled: Boolean(settingId),
+  })
+}
+
+export function useContextDvUsers() {
+  const { selectedCompany } = useCompanyContext()
+  return useDvUsers(selectedCompany?.id)
+}
+
+// ============================================================================
+// Approvals
+// ============================================================================
+
+export function usePendingApprovals(settingId?: string) {
+  return useQuery({
+    queryKey: queryKeys.pendingApprovals(settingId!),
+    queryFn: () => api.approvals.pending(settingId!),
+    enabled: Boolean(settingId),
+  })
+}
+
+export function useContextPendingApprovals() {
+  const { selectedCompany } = useCompanyContext()
+  return usePendingApprovals(selectedCompany?.id)
+}
+
+export function useApproveInvoice() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ invoiceId, comment }: { invoiceId: string; comment?: string }) =>
+      api.approvals.approve(invoiceId, comment),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['approvals'] })
+      queryClient.invalidateQueries({ queryKey: ['budget'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['reports'] })
+    },
+  })
+}
+
+export function useRejectInvoice() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ invoiceId, comment }: { invoiceId: string; comment?: string }) =>
+      api.approvals.reject(invoiceId, comment),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['approvals'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['reports'] })
+    },
+  })
+}
+
+export function useCancelApproval() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (invoiceId: string) => api.approvals.cancelApproval(invoiceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['approvals'] })
+    },
+  })
+}
+
+export function useBulkApprove() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ invoiceIds, comment }: { invoiceIds: string[]; comment?: string }) =>
+      api.approvals.bulkApprove(invoiceIds, comment),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['approvals'] })
+      queryClient.invalidateQueries({ queryKey: ['budget'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['reports'] })
+    },
+  })
+}
+
+export function useRefreshApprovers() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (invoiceId: string) => api.approvals.refreshApprovers(invoiceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+  })
+}
+
+// ============================================================================
+// Budget
+// ============================================================================
+
+export function useBudgetSummary(settingId?: string) {
+  return useQuery({
+    queryKey: queryKeys.budgetSummary(settingId!),
+    queryFn: () => api.budget.summary(settingId!),
+    enabled: Boolean(settingId),
+  })
+}
+
+export function useContextBudgetSummary() {
+  const { selectedCompany } = useCompanyContext()
+  return useBudgetSummary(selectedCompany?.id)
+}
+
+// ============================================================================
+// Notifications
+// ============================================================================
+
+export function useNotifications(settingId?: string, options?: { unreadOnly?: boolean; top?: number }) {
+  return useQuery({
+    queryKey: queryKeys.notifications(settingId!),
+    queryFn: () => api.notifications.list(settingId!, options),
+    enabled: Boolean(settingId),
+    refetchInterval: 60_000,
+  })
+}
+
+export function useContextNotifications(options?: { unreadOnly?: boolean; top?: number }) {
+  const { selectedCompany } = useCompanyContext()
+  return useNotifications(selectedCompany?.id, options)
+}
+
+export function useNotificationUnreadCount(settingId?: string) {
+  return useQuery({
+    queryKey: queryKeys.notificationsUnreadCount(settingId!),
+    queryFn: () => api.notifications.unreadCount(settingId!),
+    enabled: Boolean(settingId),
+    refetchInterval: 30_000,
+  })
+}
+
+export function useContextNotificationUnreadCount() {
+  const { selectedCompany } = useCompanyContext()
+  return useNotificationUnreadCount(selectedCompany?.id)
+}
+
+export function useMarkNotificationRead() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => api.notifications.markRead(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    },
+  })
+}
+
+export function useDismissNotification() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => api.notifications.dismiss(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    },
+  })
+}
+
+// ============================================================================
+// Reports
+// ============================================================================
+
+export function useBudgetUtilizationReport(settingId?: string, mpkCenterId?: string) {
+  return useQuery({
+    queryKey: queryKeys.reportBudgetUtilization(settingId!, mpkCenterId),
+    queryFn: () => api.reports.budgetUtilization(settingId!, mpkCenterId),
+    enabled: Boolean(settingId),
+  })
+}
+
+export function useContextBudgetUtilizationReport(mpkCenterId?: string) {
+  const { selectedCompany } = useCompanyContext()
+  return useBudgetUtilizationReport(selectedCompany?.id, mpkCenterId)
+}
+
+export function useApprovalHistoryReport(
+  settingId?: string,
+  filters?: { dateFrom?: string; dateTo?: string; mpkCenterId?: string; status?: string }
+) {
+  return useQuery({
+    queryKey: queryKeys.reportApprovalHistory(settingId!, filters),
+    queryFn: () => api.reports.approvalHistory(settingId!, filters),
+    enabled: Boolean(settingId),
+  })
+}
+
+export function useContextApprovalHistoryReport(
+  filters?: { dateFrom?: string; dateTo?: string; mpkCenterId?: string; status?: string }
+) {
+  const { selectedCompany } = useCompanyContext()
+  return useApprovalHistoryReport(selectedCompany?.id, filters)
+}
+
+// ── Approver Performance ──
+
+export function useApproverPerformanceReport(settingId?: string) {
+  return useQuery({
+    queryKey: queryKeys.reportApproverPerformance(settingId!),
+    queryFn: () => api.reports.approverPerformance(settingId!),
+    enabled: Boolean(settingId),
+  })
+}
+
+export function useContextApproverPerformanceReport() {
+  const { selectedCompany } = useCompanyContext()
+  return useApproverPerformanceReport(selectedCompany?.id)
+}
+
+// ── Invoice Processing Pipeline ──
+
+export function useInvoiceProcessingReport(settingId?: string) {
+  return useQuery({
+    queryKey: queryKeys.reportInvoiceProcessing(settingId!),
+    queryFn: () => api.reports.invoiceProcessing(settingId!),
+    enabled: Boolean(settingId),
+  })
+}
+
+export function useContextInvoiceProcessingReport() {
+  const { selectedCompany } = useCompanyContext()
+  return useInvoiceProcessingReport(selectedCompany?.id)
 }

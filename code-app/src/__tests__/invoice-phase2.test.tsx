@@ -136,6 +136,11 @@ vi.mock('@/hooks/use-api', async (importOriginal) => {
     data: null,
     isLoading: false,
   })),
+  useMpkCenters: vi.fn(() => ({
+    data: { mpkCenters: [{ id: 'mc-1', name: 'MPK-100' }, { id: 'mc-2', name: 'MPK-200' }], count: 2 },
+    isLoading: false,
+    error: null,
+  })),
   }
 })
 
@@ -217,11 +222,11 @@ describe('InvoiceDetailPage', () => {
 
     expect(screen.getByText('MPK-100')).toBeDefined()
     expect(screen.getByText('Office')).toBeDefined()
-    // Both invoice edit and classification dialog edit buttons are rendered
-    const editButtons = screen.getAllByText('Edit')
-    expect(editButtons.length).toBeGreaterThanOrEqual(1)
-    const dialogTrigger = editButtons.find((el) => el.hasAttribute('data-slot'))
-    expect(dialogTrigger).toBeDefined()
+    // Edit buttons are now icon-only (Pencil SVG, no text)
+    // Just verify that Pencil icon buttons exist
+    const allButtons = screen.getAllByRole('button')
+    const pencilButtons = allButtons.filter((btn) => btn.querySelector('svg'))
+    expect(pencilButtons.length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders AI suggestion section', async () => {
@@ -259,6 +264,7 @@ describe('InvoiceDetailPage', () => {
   })
 
   it('renders notes section', async () => {
+    const user = userEvent.setup()
     const { InvoiceDetailPage } = await import('@/pages/invoice-detail')
     const { AuthProvider } = await import('@/components/auth/auth-provider')
     const Wrapper = createWrapper()
@@ -271,9 +277,14 @@ describe('InvoiceDetailPage', () => {
       </Wrapper>,
     )
 
+    // Notes section header is visible
     expect(screen.getByText('Notes')).toBeDefined()
-    expect(screen.getByText('Payment info')).toBeDefined()
-    expect(screen.getByText('Will pay next week')).toBeDefined()
+    // Notes section starts collapsed, click to expand
+    await user.click(screen.getByText('Notes'))
+    await waitFor(() => {
+      expect(screen.getByText('Payment info')).toBeDefined()
+      expect(screen.getByText('Will pay next week')).toBeDefined()
+    })
   })
 })
 
@@ -305,13 +316,15 @@ describe('ClassificationEditDialog', () => {
       </Wrapper>,
     )
 
-    // Click the edit button
-    await user.click(screen.getByText('Edit'))
+    // Dialog trigger is now icon-only (Pencil icon)
+    const pencilBtn = screen.getAllByRole('button').find((btn) => btn.querySelector('svg'))
+    if (!pencilBtn) throw new Error('Dialog trigger not found')
+    await user.click(pencilBtn)
 
     // Dialog should show current values
     await waitFor(() => {
-      const mpkInput = screen.getByLabelText('Cost center') as HTMLInputElement
-      expect(mpkInput.value).toBe('MPK-100')
+      // MPK is now a Select — verify the displayed value text
+      expect(screen.getByText('MPK-100')).toBeDefined()
     })
   })
 
@@ -339,7 +352,10 @@ describe('ClassificationEditDialog', () => {
       </Wrapper>,
     )
 
-    await user.click(screen.getByText('Edit'))
+    // Dialog trigger is now icon-only (Pencil icon)
+    const pencilBtn = screen.getAllByRole('button').find((btn) => btn.querySelector('svg'))
+    if (!pencilBtn) throw new Error('Dialog trigger not found')
+    await user.click(pencilBtn)
 
     await waitFor(() => {
       expect(screen.getByText('Apply AI suggestion')).toBeDefined()
@@ -397,6 +413,7 @@ describe('NotesSection', () => {
   })
 
   it('renders existing notes', async () => {
+    const user = userEvent.setup()
     const { NotesSection } = await import('@/components/invoices/notes-section')
     const { AuthProvider } = await import('@/components/auth/auth-provider')
     const Wrapper = createWrapper()
@@ -409,8 +426,14 @@ describe('NotesSection', () => {
       </Wrapper>,
     )
 
-    expect(screen.getByText('Payment info')).toBeDefined()
-    expect(screen.getByText('Will pay next week')).toBeDefined()
+    // Notes section starts collapsed by default, click to expand
+    const header = screen.getByText('Notes')
+    await user.click(header)
+
+    await waitFor(() => {
+      expect(screen.getByText('Payment info')).toBeDefined()
+      expect(screen.getByText('Will pay next week')).toBeDefined()
+    })
   })
 
   it('opens add note dialog', async () => {
@@ -427,11 +450,19 @@ describe('NotesSection', () => {
       </Wrapper>,
     )
 
+    // Notes section starts collapsed by default, click to expand
+    const header = screen.getByText('Notes')
+    await user.click(header)
+
+    await waitFor(() => {
+      expect(screen.getByText('Add note')).toBeDefined()
+    })
+
     await user.click(screen.getByText('Add note'))
 
     await waitFor(() => {
       expect(screen.getByLabelText('Subject')).toBeDefined()
-      expect(screen.getByLabelText('Note text')).toBeDefined()
+      expect(screen.getByLabelText(/^Note/)).toBeDefined()
     })
   })
 })
@@ -491,8 +522,8 @@ describe('ManualInvoicePage', () => {
 
     // The select trigger should show PLN
     // PLN appears in the select trigger value
-    const selectTrigger = screen.getByRole('combobox')
-    expect(selectTrigger).toBeDefined()
+    const selectTriggers = screen.getAllByRole('combobox')
+    expect(selectTriggers.length).toBeGreaterThanOrEqual(1)
   })
 })
 

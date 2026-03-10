@@ -12,6 +12,7 @@ import {
 import {
   Filter, ChevronDown, ChevronUp, X, CornerDownRight,
 } from 'lucide-react'
+import type { ApprovalStatus } from '@/lib/types'
 
 export type GroupBy = 'none' | 'date' | 'mpk' | 'category'
 export type SortColumn = 'invoiceDate' | 'grossAmount' | 'supplierName' | 'dueDate' | 'invoiceNumber'
@@ -36,6 +37,7 @@ export interface InvoiceFilterValues {
   sortColumn: SortColumn
   sortDirection: SortDirection
   correctionsOnly: boolean
+  approvalStatus: 'all' | ApprovalStatus
 }
 
 export const DEFAULT_FILTERS: InvoiceFilterValues = {
@@ -56,6 +58,7 @@ export const DEFAULT_FILTERS: InvoiceFilterValues = {
   sortColumn: 'invoiceDate',
   sortDirection: 'desc',
   correctionsOnly: false,
+  approvalStatus: 'all',
 }
 
 interface InvoiceFiltersProps {
@@ -92,6 +95,7 @@ export function InvoiceFilters({
     filters.mpk !== '',
     filters.category !== '',
     filters.source !== 'all',
+    filters.approvalStatus !== 'all',
   ].filter(Boolean).length
 
   const clearAll = () => {
@@ -250,8 +254,8 @@ export function InvoiceFilters({
             </div>
           </div>
 
-          {/* Row 3: MPK + Category + Source + Description status */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {/* Row 3: MPK + Category + Source + Description status + Approval status */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div className="space-y-2">
               <Label className="text-xs font-medium">
                 {intl.formatMessage({ id: 'invoices.mpk' })}
@@ -312,6 +316,24 @@ export function InvoiceFilters({
                   <SelectItem value="notDescribed">{intl.formatMessage({ id: 'invoices.notDescribed' })}</SelectItem>
                   <SelectItem value="aiSuggestion">{intl.formatMessage({ id: 'invoices.aiSuggestion' })}</SelectItem>
                   <SelectItem value="described">{intl.formatMessage({ id: 'invoices.described' })}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">
+                {intl.formatMessage({ id: 'approval.title' })}
+              </Label>
+              <Select value={filters.approvalStatus} onValueChange={(v) => update({ approvalStatus: v as InvoiceFilterValues['approvalStatus'] })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{intl.formatMessage({ id: 'common.all' })}</SelectItem>
+                  <SelectItem value="Pending">{intl.formatMessage({ id: 'approval.status.Pending' })}</SelectItem>
+                  <SelectItem value="Approved">{intl.formatMessage({ id: 'approval.status.Approved' })}</SelectItem>
+                  <SelectItem value="Rejected">{intl.formatMessage({ id: 'approval.status.Rejected' })}</SelectItem>
+                  <SelectItem value="Cancelled">{intl.formatMessage({ id: 'approval.status.Cancelled' })}</SelectItem>
+                  <SelectItem value="Draft">{intl.formatMessage({ id: 'approval.status.Draft' })}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

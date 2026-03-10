@@ -61,6 +61,19 @@ export const Currency = {
 export type Currency = (typeof Currency)[keyof typeof Currency]
 
 /**
+ * Approval status enum
+ */
+export const ApprovalStatus = {
+  Draft: 'Draft',
+  Pending: 'Pending',
+  Approved: 'Approved',
+  Rejected: 'Rejected',
+  Cancelled: 'Cancelled',
+} as const
+
+export type ApprovalStatus = (typeof ApprovalStatus)[keyof typeof ApprovalStatus]
+
+/**
  * Invoice entity from Dataverse
  */
 export interface Invoice {
@@ -92,7 +105,12 @@ export interface Invoice {
   grossAmountPln?: number         // Gross amount in PLN (for EUR/USD invoices)
   paymentStatus: PaymentStatus
   paymentDate?: string
+  /** @deprecated Use mpkCenterId instead. Kept for backward compatibility during transition. */
   mpk?: MPK
+  /** MPK Center entity ID (GUID) — replaces legacy mpk enum */
+  mpkCenterId?: string
+  /** MPK Center name — resolved from lookup for display */
+  mpkCenterName?: string
   category?: string
   description?: string
   project?: string
@@ -106,7 +124,8 @@ export interface Invoice {
   correctedInvoiceNumber?: string
   correctionReason?: string
   // Extended (AI Categorization)
-  aiMpkSuggestion?: MPK
+  /** @deprecated AI now stores mpkCenterId. Kept for reading legacy data. */
+  aiMpkSuggestion?: MPK | string
   aiCategorySuggestion?: string
   aiDescription?: string
   aiRationale?: string
@@ -118,6 +137,12 @@ export interface Invoice {
   // Attachment summary
   hasAttachments?: boolean
   attachmentCount?: number
+  // Approval workflow
+  approvalStatus?: ApprovalStatus
+  approvedBy?: string
+  approvedByOid?: string
+  approvedAt?: string
+  approvalComment?: string
 }
 
 /**
@@ -141,7 +166,10 @@ export interface KsefInvoice {
  * Zod schema for invoice update
  */
 export const InvoiceUpdateSchema = z.object({
-  mpk: z.nativeEnum(MPK).optional(),
+  /** @deprecated Use mpkCenterId instead */
+  mpk: z.string().max(50).optional(),
+  /** MPK Center entity ID (GUID) — replaces legacy mpk enum */
+  mpkCenterId: z.string().uuid().nullable().optional(),
   category: z.string().max(50).optional(),
   description: z.string().max(500).optional(),
   project: z.string().max(100).optional(),
@@ -168,7 +196,7 @@ export const InvoiceUpdateSchema = z.object({
   exchangeSource: z.string().max(50).optional(),
   grossAmountPln: z.number().optional(), // Allow negative for corrective invoices
   // AI Categorization fields
-  aiMpkSuggestion: z.nativeEnum(MPK).optional(),
+  aiMpkSuggestion: z.string().max(50).optional(),
   aiCategorySuggestion: z.string().max(100).optional(),
   aiDescription: z.string().max(500).optional(),
   aiConfidence: z.number().min(0).max(1).optional(),
@@ -217,6 +245,7 @@ export interface InvoiceCreate {
   // Manual entry fields
   description?: string
   mpk?: string
+  mpkCenterId?: string
   category?: string
   // AI suggestion fields (from document extraction)
   aiMpkSuggestion?: string
@@ -245,10 +274,13 @@ export const ManualInvoiceCreateSchema = z.object({
   vatAmount: z.number(), // Allow negative for corrective invoices
   grossAmount: z.number(), // Allow negative for corrective invoices
   description: z.string().max(500).optional(),
-  mpk: z.nativeEnum(MPK).optional(),
+  /** @deprecated Use mpkCenterId instead */
+  mpk: z.string().max(50).optional(),
+  /** MPK Center entity ID (GUID) — preferred over legacy mpk */
+  mpkCenterId: z.string().uuid().optional(),
   category: z.string().max(50).optional(),
   // AI suggestion fields (populated from document extraction)
-  aiMpkSuggestion: z.nativeEnum(MPK).optional(),
+  aiMpkSuggestion: z.string().max(50).optional(),
   aiCategorySuggestion: z.string().max(50).optional(),
   aiDescription: z.string().max(500).optional(),
   aiConfidence: z.number().min(0).max(1).optional(),
@@ -263,8 +295,16 @@ export interface InvoiceListParams {
   tenantNip?: string
   settingId?: string // Filter by KSeF setting ID (for multi-environment support)
   paymentStatus?: PaymentStatus
+  /** @deprecated Use mpkCenterId/mpkCenterIds instead */
   mpk?: string
+  /** @deprecated Use mpkCenterId/mpkCenterIds instead */
   mpkList?: string[] // Multiple MPKs
+  /** Filter by MPK Center entity ID (GUID) */
+  mpkCenterId?: string
+  /** Filter by multiple MPK Center entity IDs (GUIDs) */
+  mpkCenterIds?: string[]
+  /** Filter by approval status */
+  approvalStatus?: ApprovalStatus
   category?: string
   fromDate?: string
   toDate?: string
@@ -289,7 +329,7 @@ export interface InvoiceListParams {
  * AI Categorization response from OpenAI
  */
 export interface AICategorization {
-  mpk: MPK
+  mpk: MPK | string  // Accept dynamic MPK names during transition
   category: string
   description: string
   confidence: number
@@ -299,7 +339,7 @@ export interface AICategorization {
  * Zod schema for AI categorization response
  */
 export const AiCategorizationSchema = z.object({
-  mpk: z.nativeEnum(MPK),
+  mpk: z.string().max(100),  // Accept dynamic MPK names (no longer enum-only)
   category: z.string().max(100),
   description: z.string().max(500),
   confidence: z.number().min(0).max(1),

@@ -32,12 +32,18 @@ import {
   FileText,
   CreditCard,
   Folder,
+  Wallet,
+  Users,
+  Workflow,
 } from 'lucide-react'
 import { useContextInvoices } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
 import { Invoice } from '@/lib/api'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AnimatedKpiCard, AnimatedCardGrid } from '@/components/dashboard/animated-kpi-card'
+import { BudgetUtilizationTab } from '@/components/reports/budget-utilization-tab'
+import { ApproverPerformanceTab } from '@/components/reports/approver-performance-tab'
+import { InvoiceProcessingTab } from '@/components/reports/invoice-processing-tab'
 
 interface MonthlyData {
   month: string
@@ -430,6 +436,18 @@ export default function ReportsPage() {
             <PieChart className="mr-2 h-4 w-4" />
             {t('tabs.categories')}
           </TabsTrigger>
+          <TabsTrigger value="budget">
+            <Wallet className="mr-2 h-4 w-4" />
+            {t('tabs.budget')}
+          </TabsTrigger>
+          <TabsTrigger value="approvers">
+            <Users className="mr-2 h-4 w-4" />
+            {t('tabs.approvers')}
+          </TabsTrigger>
+          <TabsTrigger value="processing">
+            <Workflow className="mr-2 h-4 w-4" />
+            {t('tabs.processing')}
+          </TabsTrigger>
         </TabsList>
 
         {/* Monthly Chart */}
@@ -659,6 +677,21 @@ export default function ReportsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Budget Utilization Tab */}
+        <TabsContent value="budget" className="mt-4 md:mt-6">
+          <BudgetUtilizationTab />
+        </TabsContent>
+
+        {/* Approver Performance Tab */}
+        <TabsContent value="approvers" className="mt-4 md:mt-6">
+          <ApproverPerformanceTab />
+        </TabsContent>
+
+        {/* Invoice Processing Tab */}
+        <TabsContent value="processing" className="mt-4 md:mt-6">
+          <InvoiceProcessingTab />
         </TabsContent>
 
         {/* Categories Tab */}

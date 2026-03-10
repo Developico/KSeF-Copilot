@@ -12,6 +12,9 @@
   - [dvlp_ksefsynclog](#dvlp_ksefsynclog)
   - [dvlp_ksefinvoice](#dvlp_ksefinvoice)
   - [dvlp_aifeedback](#dvlp_aifeedback)
+  - [dvlp_ksefmpkcenter](#dvlp_ksefmpkcenter)
+  - [dvlp_ksefmpkapprover](#dvlp_ksefmpkapprover)
+  - [dvlp_ksefnotification](#dvlp_ksefnotification)
 - [Option Sets (Choices)](#option-sets-choices)
 - [Relationships](#relationships)
 - [Security Roles](#security-roles)
@@ -33,7 +36,7 @@ This document describes the complete Dataverse schema for the dvlp-ksef solution
 1. **Dedicated tables** — a separate `dvlp_ksefinvoice` table instead of extending standard Invoice
 2. **Simplicity** — ~22 columns per table instead of 50+
 3. **Decimal instead of Currency** — simpler for single-currency scenarios (PLN)
-4. **MPK and Category as OptionSets** — consistency, easy filtering, localized labels
+4. **MPK and Category as OptionSets** — consistency, easy filtering, localized labels (legacy; new MPK centers use dedicated `dvlp_ksefmpkcenter` table)
 5. **AI fields read-only** — AI suggestions are locked, users can only accept/modify/reject
 
 ### Entity-Relationship Summary
@@ -41,7 +44,11 @@ This document describes the complete Dataverse schema for the dvlp-ksef solution
 ```
 dvlp_ksefsetting (1) ──┬──► (N) dvlp_ksefsession
                         ├──► (N) dvlp_ksefsynclog
-                        └──► (N) dvlp_ksefinvoice ──► (N) dvlp_aifeedback
+                        ├──► (N) dvlp_ksefinvoice ──┬──► (N) dvlp_aifeedback
+                        │                           └──► (N) dvlp_ksefnotification
+                        └──► (N) dvlp_ksefmpkcenter (1) ──┬──► (N) dvlp_ksefmpkapprover
+                                                          ├──► (N) dvlp_ksefinvoice
+                                                          └──► (N) dvlp_ksefnotification
 ```
 
 ---
@@ -247,7 +254,18 @@ dvlp_ksefsetting (1) ──┬──► (N) dvlp_ksefsession
 | Logical Name | Display Name | Type | Required | Description |
 |-------------|-------------|------|----------|-------------|
 | `dvlp_category` | Category | String(100) | ❌ | Cost category (text) |
-| `dvlp_costcenter` | Cost Center (MPK) | OptionSet (dvlp_costcenter) | ❌ | Cost Center |
+| `dvlp_costcenter` | Cost Center (MPK) | OptionSet (dvlp_costcenter) | ❌ | Cost Center (legacy OptionSet) |
+| `dvlp_mpkcenterid` | MPK Center | Lookup (dvlp_ksefmpkcenter) | ❌ | Cost center entity (replaces OptionSet) |
+
+#### Attributes — Approval Workflow
+
+| Logical Name | Display Name | Type | Required | Description |
+|-------------|-------------|------|----------|-------------|
+| `dvlp_approvalstatus` | Approval Status | OptionSet (dvlp_approvalstatus) | ❌ | draft/pending/approved/rejected/cancelled |
+| `dvlp_approvedby` | Approved By | String(200) | ❌ | Display name of approver |
+| `dvlp_approvedbyoid` | Approved By OID | String(50) | ❌ | Azure AD Object ID of approver |
+| `dvlp_approvedat` | Approved At | DateTime | ❌ | When the approval decision was made |
+| `dvlp_approvalcomment` | Approval Comment | String(500) | ❌ | Comment from approver |
 
 #### Attributes — AI Categorization
 
@@ -594,6 +612,103 @@ This data is used to build context in AI prompts (few-shot learning).
 
 ---
 
+### dvlp_ksefmpkcenter
+
+**Display Name:** KSeF MPK Center / Centrum kosztów MPK  
+**Logical Name:** `dvlp_ksefmpkcenter`  
+**Collection Name:** `dvlp_ksefmpkcenters`  
+**Ownership Type:** Organization  
+**Description:** Cost centers (MPK) as dedicated entities with budget and approval configuration
+
+#### Attributes
+
+| Logical Name | Display Name | Type | Required | Description |
+|-------------|-------------|------|----------|-------------|
+| `dvlp_ksefmpkcenterid` | ID | Uniqueidentifier | Auto | Primary key |
+| `dvlp_name` | Name | String(100) | ✅ | MPK center name (Primary Name), e.g. "IT & Software" |
+| `dvlp_description` | Description | Memo | ❌ | Additional description |
+| `dvlp_settingid` | KSeF Setting | Lookup (dvlp_ksefsetting) | ✅ | Company/tenant configuration |
+| `dvlp_isactive` | Active | Boolean | ✅ | Whether the center is active |
+| `dvlp_approvalrequired` | Approval Required | Boolean | ✅ | Whether invoices assigned to this MPK require approval |
+| `dvlp_approvalslahours` | Approval SLA (hours) | Integer | ❌ | Maximum hours allowed for approval before SLA alert |
+| `dvlp_budgetamount` | Budget Amount | Decimal(12,2) | ❌ | Budget limit amount |
+| `dvlp_budgetperiod` | Budget Period | OptionSet (dvlp_budgetperiod) | ❌ | Budget period type: monthly/quarterly/half-yearly/annual |
+| `dvlp_budgetstartdate` | Budget Start Date | Date | ❌ | Budget period start date |
+| `createdon` | Created On | DateTime | Auto | Record creation date |
+| `modifiedon` | Modified On | DateTime | Auto | Last modification date |
+
+#### Relationships
+
+| Type | Related Table | Relationship Name |
+|------|---------------|-------------------|
+| N:1 | dvlp_ksefsetting | `dvlp_ksefsetting_mpkcenters` |
+| 1:N | dvlp_ksefmpkapprover | `dvlp_mpkcenter_approvers` |
+| 1:N | dvlp_ksefinvoice | `dvlp_mpkcenter_invoices` |
+| 1:N | dvlp_ksefnotification | `dvlp_mpkcenter_notifications` |
+
+---
+
+### dvlp_ksefmpkapprover
+
+**Display Name:** KSeF MPK Approver / Zatwierdzający MPK  
+**Logical Name:** `dvlp_ksefmpkapprover`  
+**Collection Name:** `dvlp_ksefmpkapprovers`  
+**Ownership Type:** Organization  
+**Description:** Approvers assigned to specific cost centers — links system users to MPK centers
+
+#### Attributes
+
+| Logical Name | Display Name | Type | Required | Description |
+|-------------|-------------|------|----------|-------------|
+| `dvlp_ksefmpkapproverid` | ID | Uniqueidentifier | Auto | Primary key |
+| `dvlp_name` | Name | String(100) | Auto | Auto: "{UserName} – {MPK Name}" |
+| `dvlp_mpkcenterid` | MPK Center | Lookup (dvlp_ksefmpkcenter) | ✅ | Link to cost center |
+| `dvlp_systemuserid` | System User | Lookup (systemuser) | ✅ | Dataverse system user assigned as approver |
+
+#### Relationships
+
+| Type | Related Table | Relationship Name |
+|------|---------------|-------------------|
+| N:1 | dvlp_ksefmpkcenter | `dvlp_mpkcenter_approvers` |
+| N:1 | systemuser | `dvlp_systemuser_approvers` |
+
+---
+
+### dvlp_ksefnotification
+
+**Display Name:** KSeF Notification / Powiadomienie KSeF  
+**Logical Name:** `dvlp_ksefnotification`  
+**Collection Name:** `dvlp_ksefnotifications`  
+**Ownership Type:** Organization  
+**Description:** In-app notifications for approval SLA alerts, budget warnings, and approval decisions
+
+#### Attributes
+
+| Logical Name | Display Name | Type | Required | Description |
+|-------------|-------------|------|----------|-------------|
+| `dvlp_ksefnotificationid` | ID | Uniqueidentifier | Auto | Primary key |
+| `dvlp_name` | Title | String(200) | ✅ | Notification title (Primary Name) |
+| `dvlp_recipientid` | Recipient | Lookup (systemuser) | ✅ | System user who receives the notification |
+| `dvlp_settingid` | KSeF Setting | Lookup (dvlp_ksefsetting) | ✅ | Company/tenant configuration |
+| `dvlp_type` | Notification Type | OptionSet (dvlp_notificationtype) | ✅ | Type of notification |
+| `dvlp_message` | Message | String(1000) | ❌ | Detailed notification message |
+| `dvlp_isread` | Is Read | Boolean | ✅ | Whether the user has read the notification |
+| `dvlp_isdismissed` | Is Dismissed | Boolean | ✅ | Whether the user has dismissed the notification |
+| `dvlp_invoiceid` | Invoice | Lookup (dvlp_ksefinvoice) | ❌ | Related invoice (if applicable) |
+| `dvlp_mpkcenterid` | MPK Center | Lookup (dvlp_ksefmpkcenter) | ❌ | Related MPK center (if applicable) |
+| `createdon` | Created On | DateTime | Auto | Record creation date |
+
+#### Relationships
+
+| Type | Related Table | Relationship Name |
+|------|---------------|-------------------|
+| N:1 | systemuser | `dvlp_recipient_notifications` |
+| N:1 | dvlp_ksefsetting | `dvlp_ksefsetting_notifications` |
+| N:1 | dvlp_ksefinvoice | `dvlp_invoice_notifications` |
+| N:1 | dvlp_ksefmpkcenter | `dvlp_mpkcenter_notifications` |
+
+---
+
 ## Option Sets (Choices)
 
 ### dvlp_ksefenvironment
@@ -799,6 +914,50 @@ This data is used to build context in AI prompts (few-shot learning).
 
 ---
 
+### dvlp_approvalstatus
+
+**Display Name:** Approval Status  
+**Type:** Global OptionSet
+
+| Value | Label (EN) | Label (PL) | Color | Description |
+|-------|-----------|-----------|-------|-------------|
+| 0 | Draft | Szkic | Gray | Invoice not yet submitted for approval |
+| 1 | Pending | Oczekuje | Yellow | Awaiting approver decision |
+| 2 | Approved | Zatwierdzono | Green | Approved by approver |
+| 3 | Rejected | Odrzucono | Red | Rejected by approver |
+| 4 | Cancelled | Anulowano | Gray | Approval request cancelled |
+
+---
+
+### dvlp_budgetperiod
+
+**Display Name:** Budget Period  
+**Type:** Global OptionSet
+
+| Value | Label (EN) | Label (PL) | Description |
+|-------|-----------|-----------|-------------|
+| 0 | Monthly | Miesięczny | Budget resets every month |
+| 1 | Quarterly | Kwartalny | Budget resets every quarter |
+| 2 | Half-yearly | Półroczny | Budget resets every 6 months |
+| 3 | Annual | Roczny | Budget resets every year |
+
+---
+
+### dvlp_notificationtype
+
+**Display Name:** Notification Type  
+**Type:** Global OptionSet
+
+| Value | Label (EN) | Label (PL) | Description |
+|-------|-----------|-----------|-------------|
+| 0 | Approval Requested | Prośba o zatwierdzenie | New invoice submitted for approval |
+| 1 | SLA Exceeded | Przekroczono SLA | Approval SLA time exceeded |
+| 2 | Budget Warning 80% | Ostrzeżenie budżetowe 80% | MPK budget reached 80% utilization |
+| 3 | Budget Exceeded | Przekroczono budżet | MPK budget exceeded |
+| 4 | Approval Decided | Decyzja zatwierdzenia | Approval decision made (approved/rejected) |
+
+---
+
 ### dvlp_invoicesource
 
 **Display Name:** Invoice Source  
@@ -821,8 +980,16 @@ graph TD
     Setting["dvlp_ksefsetting (1)"] -->|1:N| Session["dvlp_ksefsession"]
     Setting -->|1:N| SyncLog["dvlp_ksefsynclog"]
     Setting -->|1:N| Invoice1["dvlp_ksefinvoice<br/>(via dvlp_ksefsettingid)"]
+    Setting -->|1:N| MpkCenter["dvlp_ksefmpkcenter"]
+    Setting -->|1:N| Notification["dvlp_ksefnotification"]
     Session -->|1:N| Invoice2["dvlp_ksefinvoice<br/>(via dvlp_ksefsessionid)"]
     Invoice1 -->|1:N| Feedback["dvlp_aifeedback<br/>(via dvlp_invoiceid)"]
+    Invoice1 -->|1:N| Notification
+    MpkCenter -->|1:N| Approver["dvlp_ksefmpkapprover"]
+    MpkCenter -->|1:N| Invoice1
+    MpkCenter -->|1:N| Notification
+    SystemUser["systemuser"] -->|1:N| Approver
+    SystemUser -->|1:N| Notification
 ```
 
 <details>
@@ -837,9 +1004,17 @@ dvlp_ksefsetting (1)
     │
     ├──── (N) dvlp_ksefsynclog
     │
+    ├──── (N) dvlp_ksefmpkcenter (1)
+    │           ├──── (N) dvlp_ksefmpkapprover
+    │           ├──── (N) dvlp_ksefinvoice (via dvlp_mpkcenterid)
+    │           └──── (N) dvlp_ksefnotification
+    │
+    ├──── (N) dvlp_ksefnotification
+    │
     └──── (N) dvlp_ksefinvoice (via dvlp_ksefsettingid)
                     │
-                    └──── (N) dvlp_aifeedback (via dvlp_invoiceid)
+                    ├──── (N) dvlp_aifeedback (via dvlp_invoiceid)
+                    └──── (N) dvlp_ksefnotification
 ```
 
 </details>
@@ -855,6 +1030,14 @@ dvlp_ksefsetting (1)
 | `dvlp_ksefsession_invoices` | 1:N | dvlp_ksefsession | dvlp_ksefinvoice | Delete: RemoveLink |
 | `dvlp_ksefinvoice_parent` | 1:N | dvlp_ksefinvoice | dvlp_ksefinvoice | Delete: RemoveLink |
 | `dvlp_ksefinvoice_feedbacks` | 1:N | dvlp_ksefinvoice | dvlp_aifeedback | Delete: Cascade |
+| `dvlp_ksefsetting_mpkcenters` | 1:N | dvlp_ksefsetting | dvlp_ksefmpkcenter | Delete: Restrict |
+| `dvlp_mpkcenter_approvers` | 1:N | dvlp_ksefmpkcenter | dvlp_ksefmpkapprover | Delete: Cascade |
+| `dvlp_mpkcenter_invoices` | 1:N | dvlp_ksefmpkcenter | dvlp_ksefinvoice | Delete: RemoveLink |
+| `dvlp_mpkcenter_notifications` | 1:N | dvlp_ksefmpkcenter | dvlp_ksefnotification | Delete: RemoveLink |
+| `dvlp_ksefsetting_notifications` | 1:N | dvlp_ksefsetting | dvlp_ksefnotification | Delete: Cascade |
+| `dvlp_invoice_notifications` | 1:N | dvlp_ksefinvoice | dvlp_ksefnotification | Delete: RemoveLink |
+| `dvlp_recipient_notifications` | 1:N | systemuser | dvlp_ksefnotification | Delete: RemoveLink |
+| `dvlp_systemuser_approvers` | 1:N | systemuser | dvlp_ksefmpkapprover | Delete: Cascade |
 
 ---
 
@@ -871,6 +1054,9 @@ Full access to all KSeF operations.
 | dvlp_ksefsynclog | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org |
 | dvlp_ksefinvoice | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org |
 | dvlp_aifeedback | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org |
+| dvlp_ksefmpkcenter | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org |
+| dvlp_ksefmpkapprover | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org |
+| dvlp_ksefnotification | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org | ✅ Org |
 
 ### KSeF Reader
 
@@ -883,6 +1069,9 @@ Read-only access.
 | dvlp_ksefsynclog | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
 | dvlp_ksefinvoice | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
 | dvlp_aifeedback | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
+| dvlp_ksefmpkcenter | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
+| dvlp_ksefmpkapprover | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
+| dvlp_ksefnotification | ❌ | ✅ Org | ✅ Org | ❌ | ❌ | ❌ |
 
 ### KSeF Operator
 
@@ -895,6 +1084,9 @@ Can perform synchronization and manage invoices, but cannot change configuration
 | dvlp_ksefsynclog | ✅ Org | ✅ Org | ✅ Org | ❌ | ✅ Org | ✅ Org |
 | dvlp_ksefinvoice | ✅ Org | ✅ Org | ✅ Org | ❌ | ✅ Org | ✅ Org |
 | dvlp_aifeedback | ✅ Org | ✅ Org | ❌ | ❌ | ✅ Org | ✅ Org |
+| dvlp_ksefmpkcenter | ❌ | ✅ Org | ❌ | ❌ | ❌ | ✅ Org |
+| dvlp_ksefmpkapprover | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
+| dvlp_ksefnotification | ❌ | ✅ Org | ✅ Org | ❌ | ❌ | ❌ |
 
 ### KSeF Approver
 
@@ -907,6 +1099,9 @@ Can approve invoices for payment.
 | dvlp_ksefsynclog | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
 | dvlp_ksefinvoice | ❌ | ✅ Org | ✅ Org | ❌ | ❌ | ❌ |
 | dvlp_aifeedback | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
+| dvlp_ksefmpkcenter | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
+| dvlp_ksefmpkapprover | ❌ | ✅ Org | ❌ | ❌ | ❌ | ❌ |
+| dvlp_ksefnotification | ❌ | ✅ Org | ✅ Org | ❌ | ❌ | ❌ |
 
 ---
 
@@ -1195,14 +1390,21 @@ Create all global option sets first:
 11. `dvlp_category` — Cost Category
 12. `dvlp_costcenter` — Cost Center (MPK)
 13. `dvlp_feedbacktype` — AI Feedback Type
+14. `dvlp_approvalstatus` — Approval Status
+15. `dvlp_budgetperiod` — Budget Period
+16. `dvlp_notificationtype` — Notification Type
+17. `dvlp_invoicesource` — Invoice Source
 
 ### 2. Create Tables in Order
 
 1. `dvlp_ksefsetting` — KSeF Settings (no relationships)
 2. `dvlp_ksefsession` — KSeF Sessions (with relationship to dvlp_ksefsetting)
-3. `dvlp_ksefinvoice` — KSeF Invoices (with relationship to dvlp_ksefsetting + AI fields)
+3. `dvlp_ksefinvoice` — KSeF Invoices (with relationship to dvlp_ksefsetting + AI fields + approval fields)
 4. `dvlp_ksefsynclog` — Sync Logs (with relationships to the above)
 5. `dvlp_aifeedback` — AI Feedback (with relationship to dvlp_ksefinvoice)
+6. `dvlp_ksefmpkcenter` — MPK Centers (with relationship to dvlp_ksefsetting)
+7. `dvlp_ksefmpkapprover` — MPK Approvers (with relationships to dvlp_ksefmpkcenter + systemuser)
+8. `dvlp_ksefnotification` — Notifications (with relationships to systemuser, dvlp_ksefsetting, dvlp_ksefinvoice, dvlp_ksefmpkcenter)
 
 ### 3. Create Alternate Keys
 
@@ -1223,6 +1425,7 @@ As specified for each table.
 | 1.1.0 | 2026-01 | Changed from Invoice extension to new table dvlp_ksefinvoice |
 | 1.2.0 | 2026-01 | Simplified structure: 22 columns instead of 50+, Decimal instead of Currency, MPK/Category as OptionSet |
 | 1.3.0 | 2026-02 | Merged AI field specification: dvlp_aimpksuggestion, dvlp_aicategorysuggestion, dvlp_aidescription, dvlp_airationale, dvlp_aiconfidence, dvlp_aiprocessedat + dvlp_aifeedback table + detailed dvlp_costcenter + deployment instructions |
+| 1.4.0 | 2026-03 | Added MPK Center entity (dvlp_ksefmpkcenter), MPK Approver (dvlp_ksefmpkapprover), Notification (dvlp_ksefnotification). Invoice approval workflow fields (dvlp_approvalstatus, dvlp_approvedby, dvlp_approvedbyoid, dvlp_approvedat, dvlp_approvalcomment, dvlp_mpkcenterid). New OptionSets: dvlp_approvalstatus, dvlp_budgetperiod, dvlp_notificationtype |
 
 ---
 
@@ -1235,6 +1438,6 @@ As specified for each table.
 
 ---
 
-**Last updated:** 2026-02-11  
-**Version:** 1.3  
+**Last updated:** 2026-03-10  
+**Version:** 1.4  
 **Maintainer:** dvlp-dev team

@@ -314,6 +314,14 @@ export interface Invoice {
   attachmentCount?: number
   hasNotes?: boolean
   noteCount?: number
+  // Approval fields
+  mpkCenterId?: string
+  mpkCenterName?: string
+  approvalStatus?: ApprovalStatus
+  approvedBy?: string
+  approvedByOid?: string
+  approvedAt?: string
+  approvalComment?: string
   // Invoice type & correction fields
   invoiceType?: 'VAT' | 'Corrective' | 'Advance'
   parentInvoiceId?: string
@@ -350,10 +358,14 @@ export interface InvoiceListParams {
   skip?: number
   orderBy?: 'invoiceDate' | 'grossAmount' | 'supplierName' | 'dueDate'
   orderDirection?: 'asc' | 'desc'
+  approvalStatus?: ApprovalStatus
+  mpkCenterId?: string
+  mpkCenterIds?: string[]
 }
 
 export interface InvoiceUpdateData {
   mpk?: string
+  mpkCenterId?: string
   category?: string
   description?: string
   project?: string
@@ -397,6 +409,7 @@ export interface ManualInvoiceCreate {
   grossAmount: number
   description?: string
   mpk?: string
+  mpkCenterId?: string
   category?: string
   currency?: 'PLN' | 'EUR' | 'USD'
   exchangeRate?: number
@@ -945,6 +958,200 @@ export interface KsefGenerateTestDataResponse {
     dateRange: { from: string; to: string }
   }
   error?: string
+}
+
+// ─── MPK / Budget / Approval / Notification types ────────────────
+
+export type BudgetPeriod = 'Monthly' | 'Quarterly' | 'HalfYearly' | 'Annual'
+export type ApprovalStatus = 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Cancelled'
+
+export interface MpkCenter {
+  id: string
+  name: string
+  description?: string
+  settingId: string
+  isActive: boolean
+  approvalRequired: boolean
+  approvalSlaHours?: number
+  budgetAmount?: number
+  budgetPeriod?: BudgetPeriod
+  budgetStartDate?: string
+  createdOn: string
+  modifiedOn: string
+}
+
+export interface MpkCenterCreate {
+  name: string
+  settingId: string
+  description?: string
+  approvalRequired?: boolean
+  approvalSlaHours?: number
+  budgetAmount?: number
+  budgetPeriod?: BudgetPeriod
+  budgetStartDate?: string
+}
+
+export interface MpkCenterUpdate {
+  name?: string
+  description?: string
+  approvalRequired?: boolean
+  approvalSlaHours?: number
+  budgetAmount?: number
+  budgetPeriod?: BudgetPeriod
+  budgetStartDate?: string
+}
+
+export interface MpkApprover {
+  id: string
+  systemUserId: string
+  fullName: string
+  email: string
+}
+
+export interface DvSystemUser {
+  systemUserId: string
+  fullName: string
+  email: string
+}
+
+export interface BudgetStatus {
+  mpkCenterId: string
+  mpkCenterName: string
+  budgetAmount: number
+  budgetPeriod: BudgetPeriod
+  budgetStartDate: string
+  periodStart: string
+  periodEnd: string
+  utilized: number
+  remaining: number
+  utilizationPercent: number
+  isWarning: boolean
+  isExceeded: boolean
+  invoiceCount: number
+}
+
+export interface BudgetUtilizationReport {
+  period: { from: string; to: string }
+  mpkCenters: BudgetStatus[]
+  totals: {
+    totalBudget: number
+    totalUtilized: number
+    totalRemaining: number
+    overallUtilizationPercent: number
+  }
+}
+
+export interface PendingApproval {
+  invoiceId: string
+  invoiceNumber: string
+  supplierName: string
+  grossAmount: number
+  currency: string
+  mpkCenterId: string
+  mpkCenterName: string
+  submittedAt: string
+  slaDeadline?: string
+  isOverdue: boolean
+}
+
+export interface ApprovalHistoryEntry {
+  invoiceId: string
+  invoiceNumber: string
+  supplierName: string
+  grossAmount: number
+  currency: string
+  mpkCenterId?: string
+  mpkCenterName?: string
+  approvalStatus: string
+  approvedBy?: string
+  approvedAt?: string
+  approvalComment?: string
+}
+
+export interface ApprovalHistoryReport {
+  entries: ApprovalHistoryEntry[]
+  count: number
+  summary: {
+    approved: number
+    rejected: number
+    cancelled: number
+    pending: number
+  }
+}
+
+export interface ApproverPerformanceEntry {
+  approverName: string
+  approverOid: string
+  totalDecisions: number
+  approvedCount: number
+  rejectedCount: number
+  approvalRate: number
+  avgResponseHours: number | null
+  minResponseHours: number | null
+  maxResponseHours: number | null
+  withinSlaCount: number
+  overSlaCount: number
+  slaComplianceRate: number
+}
+
+export interface ApproverPerformanceReport {
+  approvers: ApproverPerformanceEntry[]
+  totals: {
+    totalDecisions: number
+    avgResponseHours: number | null
+    overallSlaCompliance: number
+  }
+}
+
+export interface ProcessingPipelineEntry {
+  month: string
+  totalReceived: number
+  fromKsef: number
+  fromManual: number
+  classified: number
+  approved: number
+  rejected: number
+  pending: number
+  avgClassifyDays: number | null
+  avgApproveDays: number | null
+  avgTotalDays: number | null
+}
+
+export interface ProcessingPipelineReport {
+  months: ProcessingPipelineEntry[]
+  totals: {
+    totalReceived: number
+    fromKsef: number
+    fromManual: number
+    classified: number
+    approved: number
+    rejected: number
+    pending: number
+    avgClassifyDays: number | null
+    avgApproveDays: number | null
+    avgTotalDays: number | null
+  }
+}
+
+export type NotificationType =
+  | 'ApprovalRequested'
+  | 'SlaExceeded'
+  | 'BudgetWarning80'
+  | 'BudgetExceeded'
+  | 'ApprovalDecided'
+
+export interface AppNotification {
+  id: string
+  name: string
+  recipientId: string
+  settingId: string
+  type: NotificationType
+  message: string
+  isRead: boolean
+  isDismissed: boolean
+  invoiceId?: string
+  mpkCenterId?: string
+  createdOn: string
 }
 
 export interface KsefCleanupPreviewResponse {

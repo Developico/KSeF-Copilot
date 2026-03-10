@@ -97,6 +97,38 @@ vi.mock('@/hooks/use-api', () => ({
     data: null,
     isLoading: false,
   }),
+  useContextMpkCenters: () => ({
+    data: { data: [], count: 0 },
+    isLoading: false,
+  }),
+  useCreateMpkCenter: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useUpdateMpkCenter: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useDeactivateMpkCenter: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useMpkApprovers: () => ({
+    data: { data: [] },
+    isLoading: false,
+  }),
+  useSetMpkApprovers: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useMpkBudgetStatus: () => ({
+    data: null,
+    isLoading: false,
+  }),
+  useContextDvUsers: () => ({
+    data: { data: [], count: 0 },
+    isLoading: false,
+  }),
 }))
 
 vi.mock('@/hooks/use-toast', () => ({

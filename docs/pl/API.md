@@ -14,6 +14,11 @@
   - [Dashboard i analityka](#dashboard-i-analityka)
   - [Prognoza wydatków](#prognoza-wydatków)
   - [Wykrywanie anomalii](#wykrywanie-anomalii)
+  - [Centra kosztów MPK](#centra-kosztów-mpk)
+  - [Zatwierdzanie faktur](#zatwierdzanie-faktur)
+  - [Budżet](#budżet)
+  - [Powiadomienia](#powiadomienia)
+  - [Raporty](#raporty)
   - [Wyszukiwanie WL VAT (Biała Lista)](#wyszukiwanie-wl-vat-biała-lista)
   - [Przetwarzanie dokumentów](#przetwarzanie-dokumentów)
 - [Obsługa błędów](#obsługa-błędów)
@@ -178,7 +183,9 @@ Miękkie usunięcie ustawienia (ustawia isActive=false).
 **Odpowiedź** (204): Brak treści
 
 #### GET /api/settings/costcenters
-Lista wszystkich centrów kosztów (wartości MPK).
+> **Przestarzałe** — Zwraca starsze, oparte na OptionSet centra kosztów. Użyj [GET /api/mpk-centers](#get-apimpk-centers) zamiast tego.
+
+Lista wszystkich centrów kosztów (wartości MPK) z modelu OptionSet.
 
 **Autentykacja**: User
 
@@ -894,6 +901,516 @@ Zwraca listę dostępnych reguł wykrywania anomalii i ich parametry.
     "parameters": [ ... ]
   }, ...
 ]
+```
+
+---
+
+### Centra kosztów MPK
+
+#### GET /api/mpk-centers
+Lista centrów kosztów (MPK).
+
+**Autentykacja**: Reader
+
+**Parametry zapytania**:
+- `settingId` (uuid, opcjonalny): Filtr po ustawieniu/tenancie
+- `activeOnly` (boolean, domyślnie: true): Pokaż tylko aktywne centra
+
+**Odpowiedź** (200):
+```json
+{
+  "mpkCenters": [
+    {
+      "id": "uuid",
+      "name": "IT & Software",
+      "code": "MPK-IT",
+      "monthlyBudget": 50000,
+      "quarterlyBudget": 150000,
+      "slaHours": 48,
+      "isActive": true,
+      "settingId": "uuid"
+    }
+  ],
+  "count": 5
+}
+```
+
+#### POST /api/mpk-centers
+Utworzenie nowego centrum kosztów.
+
+**Autentykacja**: Admin
+
+**Treść żądania**:
+```json
+{
+  "name": "IT & Software",
+  "code": "MPK-IT",
+  "monthlyBudget": 50000,
+  "quarterlyBudget": 150000,
+  "slaHours": 48,
+  "settingId": "uuid"
+}
+```
+
+**Odpowiedź** (201):
+```json
+{
+  "mpkCenter": { "id": "uuid", "name": "IT & Software", ... }
+}
+```
+
+#### GET /api/mpk-centers/{id}
+Pobranie pojedynczego centrum kosztów.
+
+**Autentykacja**: Reader
+
+**Odpowiedź** (200):
+```json
+{
+  "mpkCenter": { "id": "uuid", "name": "IT & Software", ... }
+}
+```
+
+#### PATCH /api/mpk-centers/{id}
+Aktualizacja centrum kosztów.
+
+**Autentykacja**: Admin
+
+**Treść żądania**:
+```json
+{
+  "name": "IT & Software (zaktualizowane)",
+  "monthlyBudget": 60000
+}
+```
+
+**Odpowiedź** (200): Zaktualizowany obiekt mpkCenter
+
+#### DELETE /api/mpk-centers/{id}
+Dezaktywacja centrum kosztów (miękkie usunięcie).
+
+**Autentykacja**: Admin
+
+**Odpowiedź** (200):
+```json
+{
+  "mpkCenter": { "id": "uuid", "isActive": false, ... }
+}
+```
+
+#### GET /api/mpk-centers/{id}/approvers
+Lista zatwierdzających dla centrum kosztów.
+
+**Autentykacja**: Reader
+
+**Odpowiedź** (200):
+```json
+{
+  "approvers": [
+    {
+      "id": "uuid",
+      "systemUserId": "uuid",
+      "displayName": "Jan Kowalski",
+      "email": "jan@firma.com",
+      "maxAmount": 50000
+    }
+  ]
+}
+```
+
+#### PUT /api/mpk-centers/{id}/approvers
+Ustawienie zatwierdzających dla centrum kosztów (zastępuje istniejącą listę).
+
+**Autentykacja**: Admin
+
+**Treść żądania**:
+```json
+{
+  "approvers": [
+    { "systemUserId": "uuid", "maxAmount": 50000 },
+    { "systemUserId": "uuid", "maxAmount": 100000 }
+  ]
+}
+```
+
+**Odpowiedź** (200):
+```json
+{
+  "approvers": [ ... ],
+  "count": 2
+}
+```
+
+---
+
+### Zatwierdzanie faktur
+
+#### POST /api/invoices/{id}/approve
+Zatwierdzenie faktury.
+
+**Autentykacja**: Reader (musi być przypisanym zatwierdzającym dla MPK faktury)
+
+**Treść żądania**:
+```json
+{
+  "comment": "Zatwierdzono — prawidłowe przypisanie."
+}
+```
+
+**Odpowiedź** (200):
+```json
+{
+  "invoiceId": "uuid",
+  "status": "approved",
+  "approvedBy": "user-oid",
+  "approvedAt": "2026-03-10T10:00:00.000Z"
+}
+```
+
+#### POST /api/invoices/{id}/reject
+Odrzucenie faktury (komentarz wymagany).
+
+**Autentykacja**: Reader (musi być przypisanym zatwierdzającym)
+
+**Treść żądania**:
+```json
+{
+  "comment": "Błędne przypisanie MPK — powinno być Marketing."
+}
+```
+
+**Odpowiedź** (200):
+```json
+{
+  "invoiceId": "uuid",
+  "status": "rejected",
+  "rejectedBy": "user-oid",
+  "rejectedAt": "2026-03-10T10:00:00.000Z"
+}
+```
+
+#### POST /api/invoices/{id}/cancel-approval
+Anulowanie oczekującego zatwierdzenia (tylko Admin).
+
+**Autentykacja**: Admin
+
+**Treść żądania**:
+```json
+{
+  "comment": "Zmiana przypisania do innego MPK."
+}
+```
+
+**Odpowiedź** (200):
+```json
+{
+  "invoiceId": "uuid",
+  "status": "new"
+}
+```
+
+#### POST /api/invoices/{id}/refresh-approvers
+Odświeżenie listy zatwierdzających dla faktury na podstawie przypisania MPK.
+
+**Autentykacja**: Reader
+
+**Odpowiedź** (200):
+```json
+{
+  "invoiceId": "uuid",
+  "approvers": [ ... ]
+}
+```
+
+#### POST /api/invoices/bulk-approve
+Masowe zatwierdzanie wielu faktur jednocześnie.
+
+**Autentykacja**: Reader (musi być zatwierdzającym dla MPK każdej faktury)
+
+**Treść żądania**:
+```json
+{
+  "invoiceIds": ["uuid1", "uuid2", "uuid3"],
+  "comment": "Miesięczne zatwierdzenie zbiorcze."
+}
+```
+
+**Odpowiedź** (200):
+```json
+{
+  "total": 3,
+  "approved": 2,
+  "failed": 1,
+  "results": [
+    { "invoiceId": "uuid1", "status": "approved" },
+    { "invoiceId": "uuid2", "status": "approved" },
+    { "invoiceId": "uuid3", "error": "Nie jest autoryzowanym zatwierdzającym" }
+  ]
+}
+```
+
+#### GET /api/approvals/pending
+Lista faktur oczekujących na zatwierdzenie przez bieżącego użytkownika.
+
+**Autentykacja**: Reader
+
+**Parametry zapytania**:
+- `settingId` (uuid, opcjonalny): Filtr po ustawieniu/tenancie
+
+**Odpowiedź** (200):
+```json
+{
+  "invoices": [
+    {
+      "id": "uuid",
+      "invoiceNumber": "FV/2026/001",
+      "supplierName": "Dostawca Sp. z o.o.",
+      "grossAmount": 5000.00,
+      "mpkCenterId": "uuid",
+      "mpkCenterName": "IT & Software",
+      "submittedForApprovalAt": "2026-03-09T08:00:00.000Z"
+    }
+  ],
+  "count": 5
+}
+```
+
+---
+
+### Budżet
+
+#### GET /api/mpk-centers/{id}/budget-status
+Status budżetu dla pojedynczego centrum kosztów MPK.
+
+**Autentykacja**: Reader
+
+**Odpowiedź** (200):
+```json
+{
+  "data": {
+    "mpkCenterId": "uuid",
+    "mpkCenterName": "IT & Software",
+    "monthlyBudget": 50000,
+    "monthlySpent": 32000,
+    "monthlyUtilization": 0.64,
+    "quarterlyBudget": 150000,
+    "quarterlySpent": 98000,
+    "quarterlyUtilization": 0.653
+  }
+}
+```
+
+#### GET /api/budget/summary
+Podsumowanie budżetu dla wszystkich centrów kosztów.
+
+**Autentykacja**: Reader
+
+**Parametry zapytania**:
+- `settingId` (uuid, wymagany): Identyfikator ustawienia/tenanta
+
+**Odpowiedź** (200):
+```json
+{
+  "data": [
+    {
+      "mpkCenterId": "uuid",
+      "mpkCenterName": "IT & Software",
+      "monthlyBudget": 50000,
+      "monthlySpent": 32000,
+      "monthlyUtilization": 0.64
+    }
+  ],
+  "count": 5
+}
+```
+
+---
+
+### Powiadomienia
+
+#### GET /api/notifications
+Lista powiadomień dla bieżącego użytkownika.
+
+**Autentykacja**: Reader
+
+**Parametry zapytania**:
+- `settingId` (uuid, wymagany): Identyfikator ustawienia/tenanta
+- `unreadOnly` (boolean, opcjonalny): Filtr tylko nieprzeczytane
+- `top` (number, opcjonalny): Maks. wyników
+
+**Odpowiedź** (200):
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "type": "SLA_EXCEEDED",
+      "title": "Przekroczono SLA zatwierdzania",
+      "message": "Faktura FV/2026/001 oczekuje od 72 godzin",
+      "invoiceId": "uuid",
+      "isRead": false,
+      "createdAt": "2026-03-10T08:00:00.000Z"
+    }
+  ],
+  "count": 3
+}
+```
+
+#### PATCH /api/notifications/{id}/read
+Oznaczenie powiadomienia jako przeczytanego.
+
+**Autentykacja**: Reader
+
+**Odpowiedź** (200):
+```json
+{
+  "success": true
+}
+```
+
+#### POST /api/notifications/{id}/dismiss
+Odrzucenie powiadomienia.
+
+**Autentykacja**: Reader
+
+**Odpowiedź** (200):
+```json
+{
+  "success": true
+}
+```
+
+#### GET /api/notifications/unread-count
+Liczba nieprzeczytanych powiadomień bieżącego użytkownika.
+
+**Autentykacja**: Reader
+
+**Parametry zapytania**:
+- `settingId` (uuid, wymagany): Identyfikator ustawienia/tenanta
+
+**Odpowiedź** (200):
+```json
+{
+  "count": 5
+}
+```
+
+---
+
+### Raporty
+
+#### GET /api/reports/budget-utilization
+Raport wykorzystania budżetu per MPK.
+
+**Autentykacja**: Reader
+
+**Parametry zapytania**:
+- `settingId` (uuid, wymagany): Identyfikator ustawienia/tenanta
+- `mpkCenterId` (uuid, opcjonalny): Filtr do pojedynczego MPK
+
+**Odpowiedź** (200):
+```json
+{
+  "data": {
+    "centers": [
+      {
+        "mpkCenterId": "uuid",
+        "name": "IT & Software",
+        "monthlyBudget": 50000,
+        "spent": 32000,
+        "utilization": 0.64,
+        "overBudget": false
+      }
+    ],
+    "totalBudget": 250000,
+    "totalSpent": 180000
+  }
+}
+```
+
+#### GET /api/reports/approval-history
+Raport historii zatwierdzeń.
+
+**Autentykacja**: Reader
+
+**Parametry zapytania**:
+- `settingId` (uuid, wymagany): Identyfikator ustawienia/tenanta
+- `dateFrom` (data, opcjonalny): Data początkowa
+- `dateTo` (data, opcjonalny): Data końcowa
+- `mpkCenterId` (uuid, opcjonalny): Filtr po MPK
+- `status` (string, opcjonalny): Filtr po statusie zatwierdzenia
+
+**Odpowiedź** (200):
+```json
+{
+  "data": {
+    "items": [
+      {
+        "invoiceId": "uuid",
+        "invoiceNumber": "FV/2026/001",
+        "approvalStatus": "approved",
+        "approvedBy": "Jan Kowalski",
+        "approvedAt": "2026-03-10T10:00:00.000Z",
+        "mpkCenterName": "IT & Software"
+      }
+    ],
+    "summary": {
+      "total": 100,
+      "approved": 80,
+      "rejected": 15,
+      "pending": 5
+    }
+  }
+}
+```
+
+#### GET /api/reports/approver-performance
+Statystyki wydajności zatwierdzających.
+
+**Autentykacja**: Reader
+
+**Parametry zapytania**:
+- `settingId` (uuid, wymagany): Identyfikator ustawienia/tenanta
+
+**Odpowiedź** (200):
+```json
+{
+  "data": [
+    {
+      "approverName": "Jan Kowalski",
+      "totalProcessed": 50,
+      "approved": 45,
+      "rejected": 5,
+      "avgProcessingHours": 12.5,
+      "slaComplianceRate": 0.92
+    }
+  ]
+}
+```
+
+#### GET /api/reports/invoice-processing
+Raport pipeline przetwarzania faktur.
+
+**Autentykacja**: Reader
+
+**Parametry zapytania**:
+- `settingId` (uuid, wymagany): Identyfikator ustawienia/tenanta
+
+**Odpowiedź** (200):
+```json
+{
+  "data": {
+    "total": 500,
+    "byStatus": {
+      "new": 50,
+      "pending_approval": 30,
+      "approved": 350,
+      "rejected": 20,
+      "paid": 300
+    },
+    "avgProcessingDays": 3.2
+  }
+}
 ```
 
 ---

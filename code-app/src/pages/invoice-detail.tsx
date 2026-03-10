@@ -31,6 +31,8 @@ import { ClassificationEditDialog } from '@/components/invoices/classification-e
 import { AttachmentsSection } from '@/components/invoices/attachments-section'
 import { NotesSection } from '@/components/invoices/notes-section'
 import { InvoiceDocumentSidebar } from '@/components/invoices/invoice-document-sidebar'
+import { InvoiceApprovalSection } from '@/components/invoices/invoice-approval-section'
+import { ApprovalStatusBadge } from '@/components/invoices/approval-status-badge'
 import { SupplierLookupDialog } from '@/components/invoices/supplier-lookup-dialog'
 import type { SupplierData } from '@/components/invoices/supplier-lookup-dialog'
 import { useCompanyContext } from '@/contexts/company-context'
@@ -356,6 +358,7 @@ export function InvoiceDetailPage() {
         </div>
         <div className="flex items-center gap-3">
           <PaymentBadge status={invoice.paymentStatus} dueDate={invoice.dueDate} />
+          <ApprovalStatusBadge status={invoice.approvalStatus} />
           {invoice.source && (
             <Badge variant="outline" className="text-xs">
               {invoice.source === 'KSeF' ? 'KSeF' : intl.formatMessage({ id: 'invoices.manual' })}
@@ -994,6 +997,13 @@ export function InvoiceDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Approval section */}
+      <InvoiceApprovalSection
+        invoice={invoice}
+        isAdmin={isAdmin}
+        onRefresh={() => void refetch()}
+      />
 
       {/* Attachments */}
       <AttachmentsSection invoiceId={invoice.id} />

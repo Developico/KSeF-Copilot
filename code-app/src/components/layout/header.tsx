@@ -9,6 +9,7 @@ import { useAuth } from '@/components/auth/auth-provider'
 import { MobileSidebar } from './mobile-sidebar'
 import { KsefSyncButton } from './ksef-sync-button'
 import { SystemStatusBadge } from '@/components/health/system-status-badge'
+import { NotificationBell } from './notification-bell'
 import { ChangelogModal, useTripleClick } from './changelog-modal'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
@@ -113,6 +114,9 @@ export function Header() {
 
             {/* System status badge */}
             <SystemStatusBadge />
+
+            {/* Notification bell */}
+            <NotificationBell />
           </TooltipProvider>
 
           {/* Company selector */}

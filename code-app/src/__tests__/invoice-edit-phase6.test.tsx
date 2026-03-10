@@ -177,12 +177,14 @@ function createWrapper() {
 //  Invoice Detail – Invoice Edit Mode
 // ─────────────────────────────────────────────────────────────────
 
-/** Find the invoice edit button (the one that is NOT a dialog trigger). */
+/** Find the invoice edit button (icon-only Pencil, not inside a dialog trigger). */
 function getEditButton(): HTMLElement {
-  const editButtons = screen.getAllByText(messages['common.edit'])
-  const btn = editButtons.find((el) => !el.hasAttribute('data-slot'))
-  if (!btn) throw new Error('Edit button not found')
-  return btn
+  const buttons = screen.getAllByRole('button')
+  const pencilButtons = buttons.filter(
+    (btn) => btn.querySelector('svg.lucide-pencil, svg[class*="h-3"]') && !btn.hasAttribute('data-slot'),
+  )
+  if (pencilButtons.length === 0) throw new Error('Edit button not found')
+  return pencilButtons[0]
 }
 
 describe('InvoiceDetailPage – Invoice Edit', () => {

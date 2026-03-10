@@ -39,7 +39,7 @@ import {
   Edit, 
   AlertCircle,
   CheckCircle,
-  Folder,
+  DollarSign,
   RefreshCw,
   Save,
   Settings,
@@ -53,20 +53,17 @@ import {
   useCreateCompany, 
   useUpdateCompany,
   useDeleteCompany,
-  useCostCenters,
-  useCreateCostCenter,
-  useUpdateCostCenter,
-  useDeleteCostCenter,
   useGenerateTestData,
   useCleanupTestData,
   useCleanupTestDataPreview,
 } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
-import { KsefSetting, CostCenter } from '@/lib/api'
+import { KsefSetting } from '@/lib/api'
 import { HealthStatusPanel } from '@/components/health/health-status-panel'
 import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
 import { RequireRole } from '@/components/auth/auth-provider'
+import { MpkCentersTab } from '@/components/settings/mpk-centers-tab'
 
 type TokenStatus = 'valid' | 'expiring' | 'expired' | 'missing'
 type Environment = 'production' | 'test' | 'demo'
@@ -122,24 +119,15 @@ export default function SettingsPage() {
   
   // API hooks
   const { data: companiesData, isLoading: companiesLoading, error: companiesError } = useCompanies()
-  const { data: costCentersData, isLoading: costCentersLoading, error: costCentersError } = useCostCenters()
   const createCompanyMutation = useCreateCompany()
   const updateCompanyMutation = useUpdateCompany()
   const deleteCompanyMutation = useDeleteCompany()
-  const createCostCenterMutation = useCreateCostCenter()
-  const updateCostCenterMutation = useUpdateCostCenter()
-  const deleteCostCenterMutation = useDeleteCostCenter()
   
   // Use API data (no mock fallback)
   const companies = companiesData ?? []
-  const costCenters = costCentersData ?? []
-  const isLoading = companiesLoading || costCentersLoading
+  const isLoading = companiesLoading
   
   const [isAddCompanyOpen, setIsAddCompanyOpen] = useState(false)
-  const [isAddCostCenterOpen, setIsAddCostCenterOpen] = useState(false)
-  const [editingCostCenter, setEditingCostCenter] = useState<CostCenter | null>(null)
-  const [editCostCenterCode, setEditCostCenterCode] = useState('')
-  const [editCostCenterName, setEditCostCenterName] = useState('')
   
   // Edit company state
   const [editingCompany, setEditingCompany] = useState<KsefSetting | null>(null)
@@ -156,10 +144,6 @@ export default function SettingsPage() {
   const [newCompanyPrefix, setNewCompanyPrefix] = useState('')
   const [newCompanyAutoSync, setNewCompanyAutoSync] = useState(false)
   
-  // New cost center form
-  const [newCostCenterCode, setNewCostCenterCode] = useState('')
-  const [newCostCenterName, setNewCostCenterName] = useState('')
-
   // Test data generator state
   const [testDataCompany, setTestDataCompany] = useState<KsefSetting | null>(null)
   const [testDataCount, setTestDataCount] = useState(10)
@@ -227,32 +211,6 @@ export default function SettingsPage() {
     }
   }
 
-  async function addCostCenter() {
-    if (!newCostCenterCode || !newCostCenterName) return
-    
-    try {
-      await createCostCenterMutation.mutateAsync({
-        code: newCostCenterCode.toUpperCase(),
-        name: newCostCenterName,
-        isActive: true,
-      })
-      toast({
-        variant: 'success',
-        title: t('costCenterAdded'),
-        description: `${newCostCenterCode.toUpperCase()} - ${newCostCenterName}`,
-      })
-      setNewCostCenterCode('')
-      setNewCostCenterName('')
-      setIsAddCostCenterOpen(false)
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: tCommon('error'),
-        description: t('addCostCenterError'),
-      })
-    }
-  }
-
   async function deleteCompany(id: string, name: string) {
     try {
       await deleteCompanyMutation.mutateAsync(id)
@@ -302,55 +260,6 @@ export default function SettingsPage() {
         variant: 'destructive',
         title: tCommon('error'),
         description: error instanceof Error ? error.message : t('updateCompanyError'),
-      })
-    }
-  }
-
-  async function deleteCostCenter(id: string, code: string) {
-    try {
-      await deleteCostCenterMutation.mutateAsync(id)
-      toast({
-        variant: 'success',
-        title: t('costCenterDeleted'),
-        description: t('costCenterDeletedDesc', { code }),
-      })
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: tCommon('error'),
-        description: t('deleteCostCenterError'),
-      })
-    }
-  }
-
-  function openEditCostCenter(cc: CostCenter) {
-    setEditingCostCenter(cc)
-    setEditCostCenterCode(cc.code)
-    setEditCostCenterName(cc.name)
-  }
-
-  async function saveCostCenter() {
-    if (!editingCostCenter || !editCostCenterCode || !editCostCenterName) return
-    
-    try {
-      await updateCostCenterMutation.mutateAsync({
-        id: editingCostCenter.id,
-        data: {
-          code: editCostCenterCode,
-          name: editCostCenterName,
-        },
-      })
-      toast({
-        variant: 'success',
-        title: t('costCenterUpdated'),
-        description: `${editCostCenterCode} - ${editCostCenterName}`,
-      })
-      setEditingCostCenter(null)
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: tCommon('error'),
-        description: t('updateCostCenterError'),
       })
     }
   }
@@ -491,7 +400,7 @@ export default function SettingsPage() {
             {t('companies')}
           </TabsTrigger>
           <TabsTrigger value="costcenters">
-            <Folder className="mr-2 h-4 w-4" />
+            <DollarSign className="mr-2 h-4 w-4" />
             {t('costCenters')}
           </TabsTrigger>
           <TabsTrigger value="testdata">
@@ -811,61 +720,9 @@ export default function SettingsPage() {
           </Dialog>
         </TabsContent>
 
-        {/* Cost Centers Tab */}
+        {/* Cost Centers Tab (MPK Centers content) */}
         <TabsContent value="costcenters" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
-          {/* Info about read-only cost centers */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4 flex items-start gap-2 md:gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div className="text-xs md:text-sm text-blue-800">
-              <p className="font-medium mb-1">{t('costCentersInfoTitle')}</p>
-              <p className="text-blue-700">
-                {t('costCentersInfoDesc')}
-              </p>
-            </div>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle className="text-lg md:text-xl">{t('costCentersTitle')}</CardTitle>
-                <CardDescription className="text-sm">
-                  {t('costCentersDesc')}
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('table.value')}</TableHead>
-                    <TableHead>{t('table.status')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {costCenters.map((cc) => (
-                    <TableRow key={cc.id}>
-                      <TableCell>
-                        <Badge variant="outline" className="font-mono">
-                          {cc.code}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {cc.isActive ? (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            {t('active')}
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">{t('inactive')}</Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+          <MpkCentersTab />
         </TabsContent>
 
         {/* System Status Tab */}

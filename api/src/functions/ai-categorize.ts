@@ -12,9 +12,8 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { categorizeInvoice, categorizeInvoicesBatch, testConnection } from '../lib/openai'
-import { invoiceService } from '../lib/dataverse'
+import { invoiceService, mpkCenterService } from '../lib/dataverse'
 import { z } from 'zod'
-import { MPK } from '../types/invoice'
 
 // Validation schemas
 const CategorizeRequestSchema = z.object({
@@ -30,6 +29,29 @@ const BatchCategorizeRequestSchema = z.object({
   invoiceIds: z.array(z.string().uuid()).min(1).max(50),
   autoApply: z.boolean().optional().default(false),
 })
+
+/**
+ * Fetch active MPK centers for AI prompt and name→ID resolution.
+ * Returns map of name→id and names list. Falls back gracefully on failure.
+ */
+async function getActiveMpkCenters(context: InvocationContext): Promise<{
+  names: string[] | undefined
+  nameToId: Map<string, string>
+}> {
+  try {
+    const centers = await mpkCenterService.getAll({ activeOnly: true })
+    if (centers.length > 0) {
+      const nameToId = new Map<string, string>()
+      for (const c of centers) {
+        nameToId.set(c.name, c.id)
+      }
+      return { names: centers.map(c => c.name), nameToId }
+    }
+  } catch (err) {
+    context.warn('[AI] Failed to fetch MPK centers, falling back to static enum:', err)
+  }
+  return { names: undefined, nameToId: new Map() }
+}
 
 /**
  * POST /api/ai/categorize - Categorize single invoice
@@ -78,12 +100,20 @@ export async function categorizeHandler(
       grossAmount: grossAmount || invoice.grossAmount,
     }
 
+    // Fetch dynamic MPK centers for AI prompt and name→ID resolution
+    const { names: mpkNames, nameToId: mpkNameToId } = await getActiveMpkCenters(context)
+
     // Categorize with AI
-    const categorization = await categorizeInvoice(categorizationRequest)
+    const categorization = await categorizeInvoice(categorizationRequest, undefined, mpkNames)
+
+    // Resolve AI MPK name → mpkCenterId
+    const resolvedMpkCenterId = categorization.mpk
+      ? mpkNameToId.get(categorization.mpk) ?? undefined
+      : undefined
 
     // Save AI results to Dataverse
     await invoiceService.update(invoiceId, {
-      aiMpkSuggestion: categorization.mpk as MPK,
+      aiMpkSuggestion: categorization.mpk,
       aiCategorySuggestion: categorization.category,
       aiDescription: categorization.description,
       aiConfidence: categorization.confidence,
@@ -160,10 +190,13 @@ export async function batchCategorizeHandler(
       return { status: 404, jsonBody: { error: 'No valid invoices found' } }
     }
 
+    // Fetch dynamic MPK centers for AI prompt and name→ID resolution
+    const { names: mpkNames, nameToId: mpkNameToId } = await getActiveMpkCenters(context)
+
     // Categorize all invoices
     const results = await categorizeInvoicesBatch(requests, (completed, total) => {
       context.log(`[AI] Batch progress: ${completed}/${total}`)
-    })
+    }, mpkNames)
 
     // Update invoices with results
     const updatePromises: Promise<unknown>[] = []
@@ -177,7 +210,7 @@ export async function batchCategorizeHandler(
         summary.success++
         // Save AI results to Dataverse
         const updateData: Record<string, unknown> = {
-          aiMpkSuggestion: result.mpk as MPK,
+          aiMpkSuggestion: result.mpk,
           aiCategorySuggestion: result.category,
           aiDescription: result.description,
           aiConfidence: result.confidence,
@@ -185,8 +218,9 @@ export async function batchCategorizeHandler(
         }
         // When autoApply is enabled, also write to actual invoice fields
         if (autoApply) {
+          const resolvedId = result.mpk ? mpkNameToId.get(result.mpk) ?? undefined : undefined
           Object.assign(updateData, {
-            mpk: result.mpk as MPK,
+            mpkCenterId: resolvedId,
             category: result.category,
             description: result.description,
           })

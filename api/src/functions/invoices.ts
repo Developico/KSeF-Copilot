@@ -3,6 +3,8 @@ import { listAllInvoices, getInvoiceById, updateInvoice, deleteInvoice } from '.
 import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { InvoiceUpdateSchema, InvoiceSource } from '../types/invoice'
 import { recordAIFeedback, determineFeedbackType } from '../lib/ai/feedback'
+import { approvalService } from '../lib/dataverse/services'
+import { budgetService } from '../lib/dataverse/services'
 
 /**
  * GET /api/invoices - List all invoices with advanced filtering
@@ -30,12 +32,19 @@ export async function listInvoicesHandler(
     const mpkListParam = url.searchParams.get('mpkList')
     const mpkList = mpkListParam ? mpkListParam.split(',').filter(Boolean) : undefined
 
+    // MPK Center IDs (new lookup-based filter)
+    const mpkCenterIdsParam = url.searchParams.get('mpkCenterIds')
+    const mpkCenterIds = mpkCenterIdsParam ? mpkCenterIdsParam.split(',').filter(Boolean) : undefined
+
     const params = {
       tenantNip: url.searchParams.get('tenantNip') || undefined,
       settingId: url.searchParams.get('settingId') || undefined,
       paymentStatus: url.searchParams.get('paymentStatus') as 'pending' | 'paid' | undefined,
       mpk: url.searchParams.get('mpk') || undefined,
       mpkList,
+      mpkCenterId: url.searchParams.get('mpkCenterId') || undefined,
+      mpkCenterIds,
+      approvalStatus: url.searchParams.get('approvalStatus') as 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Cancelled' | undefined,
       category: url.searchParams.get('category') || undefined,
       fromDate: url.searchParams.get('fromDate') || undefined,
       toDate: url.searchParams.get('toDate') || undefined,
@@ -151,7 +160,43 @@ export async function updateInvoiceHandler(
     context.log(`[updateInvoice] Parsed data keys: ${Object.keys(parseResult.data).join(', ')}`)
     context.log(`[updateInvoice] currency=${parseResult.data.currency}, exchangeRate=${parseResult.data.exchangeRate}, grossAmountPln=${parseResult.data.grossAmountPln}`)
 
+    // D18: Capture old MPK before update for budget recalculation
+    let oldMpkCenterId: string | undefined
+    if (parseResult.data.mpkCenterId !== undefined) {
+      try {
+        const original = await getInvoiceById(id)
+        if (original?.mpkCenterId) {
+          oldMpkCenterId = original.mpkCenterId
+        }
+      } catch {
+        // Non-blocking
+      }
+    }
+
     const updated = await updateInvoice(id, parseResult.data)
+
+    // D15: Auto-trigger approval workflow when mpkCenterId is changed
+    if (parseResult.data.mpkCenterId !== undefined) {
+      try {
+        const triggerResult = await approvalService.autoTrigger(id)
+        if (triggerResult) {
+          context.log(`[updateInvoice] Approval auto-trigger: ${triggerResult.approvalStatus} for invoice ${id}`)
+        }
+      } catch (triggerError) {
+        context.warn(`[updateInvoice] Approval auto-trigger failed for invoice ${id}:`, triggerError)
+        // Non-blocking: invoice update succeeded, approval trigger is best-effort
+      }
+
+      // D18: Recalculate budgets when MPK changes
+      if (oldMpkCenterId && parseResult.data.mpkCenterId && parseResult.data.mpkCenterId !== oldMpkCenterId) {
+        try {
+          await budgetService.handleMpkChange(oldMpkCenterId, parseResult.data.mpkCenterId)
+          context.log(`[updateInvoice] Budget recalculated after MPK change: ${oldMpkCenterId} → ${parseResult.data.mpkCenterId}`)
+        } catch (budgetError) {
+          context.warn(`[updateInvoice] Budget recalc failed for invoice ${id}:`, budgetError)
+        }
+      }
+    }
 
     // Record AI feedback if user is setting mpk/category and there was an AI suggestion
     if (parseResult.data.mpk || parseResult.data.category) {
@@ -177,9 +222,12 @@ export async function updateInvoiceHandler(
       }
     }
 
+    // Re-fetch to include any changes from auto-trigger (e.g. approval status)
+    const fresh = await getInvoiceById(id)
+
     return {
       status: 200,
-      jsonBody: updated,
+      jsonBody: fresh ?? updated,
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)

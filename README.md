@@ -19,17 +19,45 @@ EN [English version](README.en.md)
 ## 🎯 Funkcje
 
 ### Podstawowe
-- ✅ Synchronizacja faktur zakupowych z KSeF
-- ✅ Ręczna kategoryzacja (MPK, kategoria, projekt)
-- ✅ Śledzenie statusu płatności (oczekująca/zapłacona)
-- ✅ Dashboard webowy
+- ✅ Synchronizacja faktur zakupowych z KSeF (sesja + import selektywny)
+- ✅ Ręczna i automatyczna kategoryzacja (MPK, kategoria, projekt)
+- ✅ Śledzenie statusu płatności (oczekująca/zapłacona/przeterminowana)
+- ✅ Dashboard webowy z interaktywną analityką
 - ✅ RBAC: role Administrator + Czytelnik
 - ✅ Bezpieczne przechowywanie tokenów (Azure Key Vault)
+- ✅ Wielowalutowość (PLN/EUR/USD) z kursami NBP
+- ✅ Faktury korygujące — pełna obsługa z powiązaniami
+
+### Zarządzanie MPK i budżety
+- 🏢 **Centra kosztowe (MPK)** — pełne CRUD, dedykowana tabela Dataverse zamiast OptionSet
+- 💰 **Budżetowanie MPK** — miesięczne/kwartalne budżety, status wykorzystania, alerty przekroczeń
+- 👥 **Akceptanci MPK** — przypisywanie akceptantów do centrów kosztowych
+
+### Workflow zatwierdzania faktur
+- ✅ **Zatwierdzanie/odrzucanie** faktur z komentarzem
+- ✅ **Masowe zatwierdzanie** (bulk approve)
+- ✅ **SLA akceptacji** — Timer trigger co godzinę, powiadomienia o przekroczeniach
+- ✅ **Anulowanie akceptacji** (Admin)
+- ✅ **Odświeżanie listy akceptantów** per faktura
+
+### Powiadomienia
+- 🔔 **System powiadomień** — lista, oznaczanie jako przeczytane, odrzucanie
+- 🔔 **Licznik nieprzeczytanych** — per użytkownik
+
+### Raporty
+- 📊 **Wykorzystanie budżetu** — raport per MPK
+- 📊 **Historia akceptacji** — z filtrami (data, MPK, status)
+- 📊 **Wydajność akceptantów** — statystyki per akceptant
+- 📊 **Przetwarzanie faktur** — pipeline faktur
 
 ### Rozszerzone
-- 🤖 Automatyczna kategoryzacja AI (Azure OpenAI)
+- 🤖 Automatyczna kategoryzacja AI (Azure OpenAI) z auto-apply po synchronizacji
 - 🏢 Obsługa wielu firm (multi-tenant)
 - 📊 Eksport do CSV/Excel
+- 🔍 Prognozowanie wydatków (5 algorytmów)
+- ⚠️ Wykrywanie anomalii (5 reguł detekcji)
+- 📄 Skanowanie dokumentów AI (OCR)
+- 🔗 Weryfikacja dostawców — Biała Lista VAT (zastąpiło GUS)
 
 
 ## 🏗️ Architektura

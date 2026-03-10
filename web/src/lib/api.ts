@@ -288,9 +288,17 @@ export interface Invoice {
   paymentStatus: 'pending' | 'paid'
   paymentDate?: string
   mpk?: string
+  mpkCenterId?: string
+  mpkCenterName?: string
   category?: string
   project?: string
   tags?: string[]
+  // Approval fields
+  approvalStatus?: ApprovalStatus
+  approvedBy?: string
+  approvedByOid?: string
+  approvedAt?: string
+  approvalComment?: string
   importedAt: string
   ksefAcceptedAt?: string
   xmlContent?: string
@@ -421,6 +429,203 @@ export interface CostCenter {
   isActive: boolean
 }
 
+// MPK Center Types (Phase 5)
+export type BudgetPeriod = 'Monthly' | 'Quarterly' | 'HalfYearly' | 'Annual'
+export type ApprovalStatus = 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Cancelled'
+
+export interface MpkCenter {
+  id: string
+  name: string
+  description?: string
+  settingId: string
+  isActive: boolean
+  approvalRequired: boolean
+  approvalSlaHours?: number
+  budgetAmount?: number
+  budgetPeriod?: BudgetPeriod
+  budgetStartDate?: string
+  createdOn: string
+  modifiedOn: string
+}
+
+export interface MpkCenterCreate {
+  name: string
+  settingId: string
+  description?: string
+  approvalRequired?: boolean
+  approvalSlaHours?: number
+  budgetAmount?: number
+  budgetPeriod?: BudgetPeriod
+  budgetStartDate?: string
+}
+
+export interface MpkCenterUpdate {
+  name?: string
+  description?: string
+  approvalRequired?: boolean
+  approvalSlaHours?: number
+  budgetAmount?: number
+  budgetPeriod?: BudgetPeriod
+  budgetStartDate?: string
+}
+
+export interface MpkApprover {
+  id: string
+  systemUserId: string
+  fullName: string
+  email: string
+  azureObjectId: string
+}
+
+export interface DvSystemUser {
+  systemUserId: string
+  fullName: string
+  email: string
+}
+
+// Budget Types
+export interface BudgetStatus {
+  mpkCenterId: string
+  mpkCenterName: string
+  budgetAmount: number
+  budgetPeriod: BudgetPeriod
+  budgetStartDate: string
+  periodStart: string
+  periodEnd: string
+  utilized: number
+  remaining: number
+  utilizationPercent: number
+  isWarning: boolean
+  isExceeded: boolean
+  invoiceCount: number
+}
+
+export interface BudgetUtilizationReport {
+  period: { from: string; to: string }
+  mpkCenters: BudgetStatus[]
+  totals: {
+    totalBudget: number
+    totalUtilized: number
+    totalRemaining: number
+    overallUtilizationPercent: number
+  }
+}
+
+// Approval Types
+export interface PendingApproval {
+  id: string
+  invoiceNumber: string
+  supplierName: string
+  invoiceDate: string
+  grossAmount: number
+  grossAmountPln?: number
+  currency: string
+  mpkCenterId?: string
+  mpkCenterName?: string
+  approvalStatus: string
+  pendingSince: string
+  approvalSlaHours?: number
+}
+
+export interface ApprovalHistoryEntry {
+  invoiceId: string
+  invoiceNumber: string
+  supplierName: string
+  grossAmount: number
+  currency: string
+  mpkCenterId?: string
+  mpkCenterName?: string
+  approvalStatus: string
+  approvedBy?: string
+  approvedAt?: string
+  approvalComment?: string
+}
+
+export interface ApprovalHistoryReport {
+  entries: ApprovalHistoryEntry[]
+  count: number
+  summary: {
+    approved: number
+    rejected: number
+    cancelled: number
+    pending: number
+  }
+}
+
+// Approver Performance Types
+export interface ApproverPerformanceEntry {
+  approverName: string
+  approverOid: string
+  totalDecisions: number
+  approvedCount: number
+  rejectedCount: number
+  approvalRate: number
+  avgResponseHours: number | null
+  minResponseHours: number | null
+  maxResponseHours: number | null
+  withinSlaCount: number
+  overSlaCount: number
+  slaComplianceRate: number
+}
+
+export interface ApproverPerformanceReport {
+  approvers: ApproverPerformanceEntry[]
+  totals: {
+    totalDecisions: number
+    avgResponseHours: number | null
+    overallSlaComplianceRate: number
+  }
+}
+
+// Invoice Processing Pipeline Types
+export interface ProcessingPipelineEntry {
+  month: string
+  totalReceived: number
+  fromKsef: number
+  fromManual: number
+  classified: number
+  approved: number
+  rejected: number
+  pending: number
+  avgClassifyDays: number | null
+  avgApproveDays: number | null
+  avgTotalDays: number | null
+}
+
+export interface ProcessingPipelineReport {
+  months: ProcessingPipelineEntry[]
+  totals: {
+    totalReceived: number
+    fromKsef: number
+    fromManual: number
+    avgClassifyDays: number | null
+    avgApproveDays: number | null
+    avgTotalDays: number | null
+  }
+}
+
+// Notification Types
+export type NotificationType =
+  | 'ApprovalRequested'
+  | 'SlaExceeded'
+  | 'BudgetWarning80'
+  | 'BudgetExceeded'
+  | 'ApprovalDecided'
+
+export interface AppNotification {
+  id: string
+  name: string
+  recipientId: string
+  settingId: string
+  type: NotificationType
+  message: string
+  isRead: boolean
+  isDismissed: boolean
+  invoiceId?: string
+  mpkCenterId?: string
+  createdOn: string
+}
+
 export interface TokenTestResult {
   success: boolean
   secretName: string
@@ -478,6 +683,9 @@ export interface InvoiceListParams {
   skip?: number
   orderBy?: 'invoiceDate' | 'grossAmount' | 'supplierName' | 'dueDate'
   orderDirection?: 'asc' | 'desc'
+  approvalStatus?: ApprovalStatus
+  mpkCenterId?: string
+  mpkCenterIds?: string[]
 }
 
 export interface ManualInvoiceCreate {
@@ -498,6 +706,7 @@ export interface ManualInvoiceCreate {
   grossAmount: number
   description?: string
   mpk?: string
+  mpkCenterId?: string
   category?: string
   // Currency fields
   currency?: 'PLN' | 'EUR' | 'USD'
@@ -1239,6 +1448,159 @@ export const api = {
         body: JSON.stringify({ amount, currency, date }),
       }),
   },
+
+  // ============================================================================
+  // MPK Centers
+  // ============================================================================
+
+  mpkCenters: {
+    list: (settingId: string) =>
+      apiFetch<{ mpkCenters: MpkCenter[]; count: number }>(`/api/mpk-centers?settingId=${settingId}`),
+
+    get: (id: string) =>
+      apiFetch<{ mpkCenter: MpkCenter }>(`/api/mpk-centers/${id}`),
+
+    create: (data: MpkCenterCreate) =>
+      apiFetch<{ mpkCenter: MpkCenter }>('/api/mpk-centers', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    update: (id: string, data: MpkCenterUpdate) =>
+      apiFetch<{ mpkCenter: MpkCenter }>(`/api/mpk-centers/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    deactivate: (id: string) =>
+      apiFetch<{ message: string }>(`/api/mpk-centers/${id}`, {
+        method: 'DELETE',
+      }),
+
+    getApprovers: (id: string) =>
+      apiFetch<{ approvers: MpkApprover[]; count: number }>(`/api/mpk-centers/${id}/approvers`),
+
+    setApprovers: (id: string, systemUserIds: string[]) =>
+      apiFetch<{ approvers: MpkApprover[]; count: number }>(`/api/mpk-centers/${id}/approvers`, {
+        method: 'PUT',
+        body: JSON.stringify({ systemUserIds }),
+      }),
+
+    getBudgetStatus: (id: string) =>
+      apiFetch<{ data: BudgetStatus }>(`/api/mpk-centers/${id}/budget-status`),
+  },
+
+  // ============================================================================
+  // Users (Dataverse system users)
+  // ============================================================================
+
+  users: {
+    list: (settingId: string) =>
+      apiFetch<{ users: DvSystemUser[]; count: number }>(`/api/users?settingId=${settingId}`),
+  },
+
+  // ============================================================================
+  // Approvals
+  // ============================================================================
+
+  approvals: {
+    pending: (settingId: string) => {
+      const params = new URLSearchParams({ settingId })
+      return apiFetch<{ approvals: PendingApproval[]; count: number }>(`/api/approvals/pending?${params}`)
+    },
+
+    approve: (invoiceId: string, comment?: string) =>
+      apiFetch<{ invoice: Invoice }>(`/api/invoices/${invoiceId}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({ comment }),
+      }),
+
+    reject: (invoiceId: string, comment?: string) =>
+      apiFetch<{ invoice: Invoice }>(`/api/invoices/${invoiceId}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ comment }),
+      }),
+
+    cancelApproval: (invoiceId: string) =>
+      apiFetch<{ invoice: Invoice }>(`/api/invoices/${invoiceId}/cancel-approval`, {
+        method: 'POST',
+      }),
+
+    bulkApprove: (invoiceIds: string[], comment?: string) =>
+      apiFetch<{ results: Array<{ invoiceId: string; success: boolean; error?: string }> }>(
+        '/api/invoices/bulk-approve',
+        { method: 'POST', body: JSON.stringify({ invoiceIds, comment }) }
+      ),
+
+    refreshApprovers: (invoiceId: string) =>
+      apiFetch<{ message: string }>(`/api/invoices/${invoiceId}/refresh-approvers`, {
+        method: 'POST',
+      }),
+  },
+
+  // ============================================================================
+  // Budget
+  // ============================================================================
+
+  budget: {
+    summary: (settingId: string) =>
+      apiFetch<{ data: BudgetStatus[]; count: number }>(`/api/budget/summary?settingId=${settingId}`),
+  },
+
+  // ============================================================================
+  // Notifications
+  // ============================================================================
+
+  notifications: {
+    list: (settingId: string, options?: { unreadOnly?: boolean; top?: number }) => {
+      const params = new URLSearchParams({ settingId })
+      if (options?.unreadOnly) params.append('unreadOnly', 'true')
+      if (options?.top) params.append('top', String(options.top))
+      return apiFetch<{ data: AppNotification[]; count: number }>(`/api/notifications?${params}`)
+    },
+
+    markRead: (id: string) =>
+      apiFetch<{ success: boolean }>(`/api/notifications/${id}/read`, {
+        method: 'PATCH',
+      }),
+
+    dismiss: (id: string) =>
+      apiFetch<{ success: boolean }>(`/api/notifications/${id}/dismiss`, {
+        method: 'POST',
+      }),
+
+    unreadCount: (settingId: string) =>
+      apiFetch<{ count: number }>(`/api/notifications/unread-count?settingId=${settingId}`),
+  },
+
+  // ============================================================================
+  // Reports
+  // ============================================================================
+
+  reports: {
+    budgetUtilization: (settingId: string, mpkCenterId?: string) => {
+      const params = new URLSearchParams({ settingId })
+      if (mpkCenterId) params.append('mpkCenterId', mpkCenterId)
+      return apiFetch<{ data: BudgetUtilizationReport }>(`/api/reports/budget-utilization?${params}`)
+    },
+
+    approvalHistory: (settingId: string, filters?: {
+      dateFrom?: string; dateTo?: string; mpkCenterId?: string; status?: string
+    }) => {
+      const params = new URLSearchParams({ settingId })
+      if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom)
+      if (filters?.dateTo) params.append('dateTo', filters.dateTo)
+      if (filters?.mpkCenterId) params.append('mpkCenterId', filters.mpkCenterId)
+      if (filters?.status) params.append('status', filters.status)
+      return apiFetch<{ data: ApprovalHistoryReport }>(`/api/reports/approval-history?${params}`)
+    },
+
+    approverPerformance: (settingId: string) =>
+      apiFetch<{ data: ApproverPerformanceReport }>(`/api/reports/approver-performance?settingId=${encodeURIComponent(settingId)}`),
+
+    invoiceProcessing: (settingId: string) =>
+      apiFetch<{ data: ProcessingPipelineReport }>(`/api/reports/invoice-processing?settingId=${encodeURIComponent(settingId)}`),
+  },
 }
 
 // ============================================================================
@@ -1419,6 +1781,33 @@ export const queryKeys = {
     ['dv', 'sync', 'logs', { settingId, limit }] as const,
   dvSyncLog: (id: string) => ['dv', 'sync', 'logs', id] as const,
   dvSyncStats: (settingId: string) => ['dv', 'sync', 'stats', settingId] as const,
+
+  // MPK Centers
+  mpkCenters: (settingId: string) => ['mpk-centers', settingId] as const,
+  mpkCenter: (id: string) => ['mpk-centers', 'detail', id] as const,
+  mpkApprovers: (id: string) => ['mpk-centers', id, 'approvers'] as const,
+  mpkBudgetStatus: (id: string) => ['mpk-centers', id, 'budget-status'] as const,
+  dvUsers: (settingId: string) => ['users', settingId] as const,
+
+  // Approvals
+  pendingApprovals: (settingId: string) => ['approvals', 'pending', settingId] as const,
+
+  // Budget
+  budgetSummary: (settingId: string) => ['budget', 'summary', settingId] as const,
+
+  // Notifications
+  notifications: (settingId: string) => ['notifications', settingId] as const,
+  notificationsUnreadCount: (settingId: string) => ['notifications', 'unread-count', settingId] as const,
+
+  // Reports
+  reportBudgetUtilization: (settingId: string, mpkCenterId?: string) =>
+    ['reports', 'budget-utilization', settingId, mpkCenterId] as const,
+  reportApprovalHistory: (settingId: string, filters?: Record<string, string | undefined>) =>
+    ['reports', 'approval-history', settingId, filters] as const,
+  reportApproverPerformance: (settingId: string) =>
+    ['reports', 'approver-performance', settingId] as const,
+  reportInvoiceProcessing: (settingId: string) =>
+    ['reports', 'invoice-processing', settingId] as const,
 }
 
 // ============================================================================

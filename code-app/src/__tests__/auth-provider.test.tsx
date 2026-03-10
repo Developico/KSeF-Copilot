@@ -33,6 +33,7 @@ vi.mock('@/contexts/company-context', () => ({
 const messages: Record<string, string> = {
   'navigation.dashboard': 'Dashboard',
   'navigation.invoices': 'Invoices',
+  'navigation.approvals': 'Approvals',
   'navigation.reports': 'Reports',
   'navigation.forecast': 'Forecast',
   'navigation.sync': 'Synchronization',
@@ -170,9 +171,10 @@ describe('sidebar admin filtering', () => {
       </Wrapper>
     )
 
-    // All 6 items should be visible (admin in dev mode)
+    // All 7 items should be visible (admin in dev mode)
     expect(screen.getByText('Dashboard')).toBeDefined()
     expect(screen.getByText('Invoices')).toBeDefined()
+    expect(screen.getByText('Approvals')).toBeDefined()
     expect(screen.getByText('Reports')).toBeDefined()
     expect(screen.getByText('Forecast')).toBeDefined()
     expect(screen.getByText('Synchronization')).toBeDefined()
