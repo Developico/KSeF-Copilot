@@ -95,7 +95,7 @@ app.http('sync-start', {
       if (!validation.success) {
         return {
           status: 400,
-          jsonBody: { error: 'Validation failed', details: validation.error.errors },
+          jsonBody: { error: 'Validation failed', details: validation.error.issues },
         }
       }
 

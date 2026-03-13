@@ -265,8 +265,8 @@ function ForecastChart({
               tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
             />
             <Tooltip
-              formatter={(value: number | undefined) => [formatAmount(value ?? 0, locale), '']}
-              labelFormatter={(label) => label}
+              formatter={(value) => [formatAmount(Number(value) || 0, locale), '']}
+              labelFormatter={(label) => String(label)}
             />
             <Legend />
             {/* Confidence interval band (lower transparent + ciBand colored, stacked) */}
@@ -411,7 +411,7 @@ function GroupedForecastView({
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" tick={{ fontSize: 11 }} />
               <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip formatter={(value: number | undefined) => [formatAmount(value ?? 0, locale), '']} />
+              <Tooltip formatter={(value) => [formatAmount(Number(value) || 0, locale), '']} />
               <Legend />
               <Bar dataKey="current" name={t('currentAvg')} fill="#10b981" radius={[4, 4, 0, 0]} />
               <Bar dataKey="forecast" name={t('predicted')} fill="#3b82f6" radius={[4, 4, 0, 0]} />

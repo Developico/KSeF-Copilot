@@ -358,7 +358,7 @@ app.http('settings-create', {
       if (!validation.success) {
         return {
           status: 400,
-          jsonBody: { error: 'Validation failed', details: validation.error.errors },
+          jsonBody: { error: 'Validation failed', details: validation.error.issues },
         }
       }
 
@@ -433,7 +433,7 @@ app.http('settings-update', {
       if (!validation.success) {
         return {
           status: 400,
-          jsonBody: { error: 'Validation failed', details: validation.error.errors },
+          jsonBody: { error: 'Validation failed', details: validation.error.issues },
         }
       }
 
