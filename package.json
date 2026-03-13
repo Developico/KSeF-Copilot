@@ -1,6 +1,6 @@
 {
   "name": "dvlp-ksef",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Open-source KSeF (Polish National e-Invoice System) integration module with Dataverse backend and AI categorization",
   "private": true,
   "license": "MIT",
@@ -26,7 +26,8 @@
   },
   "workspaces": [
     "api",
-    "web"
+    "web",
+    "code-app"
   ],
   "scripts": {
     "dev": "npm run dev --workspaces --if-present",

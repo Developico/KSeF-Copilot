@@ -388,7 +388,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
 
   // Update classification mutation
   const updateClassificationMutation = useMutation({
-    mutationFn: (data: { mpk?: string; category?: string; description?: string }) => 
+    mutationFn: (data: { mpkCenterId?: string; category?: string; description?: string }) => 
       api.invoices.update(invoiceId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })

@@ -9,17 +9,20 @@ Ten katalog zawiera wszystkie komponenty Power Platform wymagane do wdrożenia r
 ```
 powerplatform/
 ├── README.md                              ← Ten plik
-├── DevelopicoKSeF_1_0_0_6.zip             # Solucja — unmanaged (dev)
-├── DevelopicoKSeF_1_0_0_6_managed.zip     # Solucja — managed (produkcja/UAT)
-├── Solution DevelopicoKSeF_1_0_0_6/       # Rozpakowana solucja (referencja)
+├── DevelopicoKSeF_0_2_0.zip               # Solucja — unmanaged
+├── DevelopicoKSeF_CustomConnector_0_2_0.zip # Custom Connector — unmanaged
+├── Provision-FullEnvironment.ps1          # Skrypt provisioningu środowiska
+├── Provision-MpkSchema.ps1                # Skrypt provisioningu schematu MPK
 ├── CODE_APPS_DEPLOYMENT.md                # Plan wdrożenia Code Apps
-├── CODE_APPS_WDROZENIE.md                # Instrukcja wdrożenia Code Apps (pac code push)
+├── CODE_APPS_WDROZENIE.md                 # Instrukcja wdrożenia Code Apps (pac code push)
 ├── welcome.html                           # Strona powitalna Code App
 └── connector/                             # Custom Connector
     ├── README.md                          # Dokumentacja konektora
     ├── swagger.yaml                       # Definicja OpenAPI (produkcja)
-    └── swagger.local.yaml                # Definicja OpenAPI (dev)
+    └── swagger.local.yaml                 # Definicja OpenAPI (dev)
 ```
+
+> **Historia wersji solucji:** Wewnętrzna numeracja Power Platform (1.0.0.6, 1.1.0.1) została zsynchronizowana z wersją projektu od v0.2.0.
 
 ---
 
@@ -29,7 +32,7 @@ Plik solucji (`.zip`) zawiera:
 
 | Komponent | Opis |
 |-----------|------|
-| **Tabele Dataverse** | 4 tabele z prefixem `dvlp_ksef` |
+| **Tabele Dataverse** | 7 tabel z prefixem `dvlp_ksef` (w tym MPK, approvers, notifications) |
 | **Model-Driven App (MDA)** | Aplikacja administracyjna do zarządzania fakturami i ustawieniami |
 | **Code Component (PCF)** | Aplikacja frontendowa (React/Vite) osadzona w Power Apps |
 | **Custom Connector** | Konektor do API Azure Functions (KSeF Integration) |
@@ -104,12 +107,10 @@ Plik solucji (`.zip`) zawiera:
 
 ## Wersje solucji
 
-| Typ | Zastosowanie | Plik |
-|-----|-------------|------|
-| **Managed** | Środowiska produkcyjne i UAT | `*_managed.zip` |
-| **Unmanaged** | Środowiska deweloperskie | `*.zip` (bez suffiksu `_managed`) |
-
-> **Uwaga:** Na produkcji zawsze używaj wersji **managed**. Unmanaged solution służy wyłącznie do dalszego rozwoju.
+| Plik | Typ | Wersja projektu |
+|------|-----|----------------|
+| `DevelopicoKSeF_0_2_0.zip` | Solucja Dataverse (unmanaged) | v0.2.0 |
+| `DevelopicoKSeF_CustomConnector_0_2_0.zip` | Custom Connector (unmanaged) | v0.2.0 |
 
 ---
 
@@ -118,14 +119,13 @@ Plik solucji (`.zip`) zawiera:
 ### Opcja A — Power Platform CLI
 
 ```powershell
-# Managed (produkcja)
+# Solucja Dataverse
 pac solution import `
-    --path "deployment\powerplatform\DevelopicoKSeF_1_0_0_6_managed.zip" `
-    --activate-plugins
+    --path "deployment\powerplatform\DevelopicoKSeF_0_2_0.zip"
 
-# Unmanaged (dev)
+# Custom Connector
 pac solution import `
-    --path "deployment\powerplatform\DevelopicoKSeF_1_0_0_6.zip"
+    --path "deployment\powerplatform\DevelopicoKSeF_CustomConnector_0_2_0.zip"
 
 # Sprawdź
 pac solution list

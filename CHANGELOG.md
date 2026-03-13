@@ -16,7 +16,7 @@ Projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [0.3.0] — 2026-03-10
+## [0.2.0] — 2026-03-10
 
 ### Dodane — Centra kosztowe (MPK)
 - `GET /mpk-centers` — lista centrów kosztowych (z filtrowaniem po settingId, activeOnly)
@@ -58,29 +58,10 @@ Projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [0.2.0] — 2026-03-01
+## [0.1.0] — 2026-02-09
 
 ### Dodane
-- **Power Platform Custom Connector** — pełna definicja OpenAPI konektora do KSeF Copilot API (`deployment/powerplatform/connector/`)
-- **Copilot Studio Agent** — przykładowy agent dla Microsoft Teams z 14 narzędziami konektora (wyszukiwanie faktur, raporty wydatków, wykrywanie anomalii, prognozy, weryfikacja VAT)
-- `POST /ksef/sync` (`StartKsefSync`) — endpoint natywnej synchronizacji faktur z KSeF przez sesję
-- `POST /invoices/{id}/notes` (`CreateInvoiceNote`) — dodawanie notatek wewnętrznych do faktur
-- `GET /invoices/{id}/notes` (`ListInvoiceNotes`) — pobieranie notatek przypisanych do faktury
-- Nowe schematy odpowiedzi: `InvoiceListResponse`, `Note`, `KsefSyncResult`
-
-### Poprawki
-- `GET /invoices` — pusty schemat odpowiedzi (`schema: {}`) zastąpiony przez `InvoiceListResponse` z metadanymi paginacji
-- Custom Connector swagger: poprawiona trasa synchronizacji z przestarzałej `/sync` na `/ksef/sync`
-
-### Zmiany
-- Zaktualizowano `.gitignore` — wewnętrzne dokumenty architektoniczne i audytowe wykluczone z publicznego repozytorium
-
----
-
-## [0.1.0] — 2026-01-15
-
-### Dodane
-- Pierwsze wydanie KSeF Copilot API
+- Pierwsze publiczne wydanie KSeF Copilot API
 - Azure Functions v4 (Node.js/TypeScript) — rdzeń REST API
 - Integracja z Microsoft Dataverse
 - Synchronizacja faktur zakupowych z KSeF przez sesję
@@ -92,8 +73,13 @@ Projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Integracja z kursami walut NBP (PLN/EUR/USD)
 - Middleware uwierzytelniania Entra ID (Azure AD) OAuth2
 - Obsługa wielu firm (`settingId` / `tenantNip`)
+- **Power Platform Custom Connector** — pełna definicja OpenAPI konektora do KSeF Copilot API (`deployment/powerplatform/connector/`)
+- **Copilot Studio Agent** — przykładowy agent dla Microsoft Teams z 14 narzędziami konektora (wyszukiwanie faktur, raporty wydatków, wykrywanie anomalii, prognozy, weryfikacja VAT)
+- `POST /ksef/sync` (`StartKsefSync`) — endpoint natywnej synchronizacji faktur z KSeF przez sesję
+- `POST /invoices/{id}/notes` (`CreateInvoiceNote`) — dodawanie notatek wewnętrznych do faktur
+- `GET /invoices/{id}/notes` (`ListInvoiceNotes`) — pobieranie notatek przypisanych do faktury
+- Nowe schematy odpowiedzi: `InvoiceListResponse`, `Note`, `KsefSyncResult`
 
-[Nieudostępnione]: https://github.com/Developico/KSeF-Copilot/compare/v0.3.0...HEAD
-[0.3.0]: https://github.com/Developico/KSeF-Copilot/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/Developico/KSeF-Copilot/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/Developico/KSeF-Copilot/releases/tag/v0.1.0
+[Nieudostępnione]: https://github.com/Developico/KSeFCopilot/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Developico/KSeFCopilot/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/Developico/KSeFCopilot/releases/tag/v0.1.0

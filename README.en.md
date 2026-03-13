@@ -122,12 +122,90 @@ KSeFCopilot/
 │   ├── app/             # App router pages
 │   ├── components/      # React components
 │   └── lib/             # Client utilities
-├── code-app/            # Reference implementation: React SPA (Power Platform)
+├── code-app/            # Reference implementation: React SPA (Power Platform, npm workspace)
 ├── docs/                # Documentation
 └── deployment/          # IaC (Bicep)
 ```
 
-## 🚀 Quick Start
+## � Demo
+
+> Screenshots coming soon. Watch the [webinar (Polish)](https://youtu.be/MDGhP9tcLQk) to see the system in action.
+
+<!-- TODO: Add screenshots from docs/screenshots/ -->
+
+## 🤖 Copilot Studio Agent
+
+KSeF Copilot includes a ready-to-use agent for **Microsoft Copilot Studio**, running in Microsoft Teams. The agent uses the Custom Connector and exposes **14 tools**:
+
+| Tool | Description |
+|------|-------------|
+| Search Invoices | Filter by date, vendor, NIP, status |
+| Invoice Details | Full invoice data from KSeF |
+| Expense Reports | Summaries by MPK, category, vendor |
+| Anomaly Detection | Identify suspicious amounts and duplicates |
+| Expense Forecasts | Predicted costs for next months |
+| VAT Verification | Check vendors against the VAT Whitelist |
+| Payment Status | Overview of pending/overdue invoices |
+| Dashboard Stats | Company KPIs in a single query |
+| KSeF Sync | Trigger invoice synchronization |
+| Invoice Notes | Add and read internal notes |
+| Cost Centers | MPK management |
+| Invoice Approval | Approve / reject with comments |
+| MPK Budgets | Budget utilization status |
+| Notifications | View alerts and notifications |
+
+More: [Agent documentation](docs/en/COPILOT_AGENT.md)
+
+## 🔄 KSeF Synchronization Flow
+
+```mermaid
+sequenceDiagram
+    participant UI as Frontend (Web/Code App)
+    participant API as Azure Functions API
+    participant KV as Azure Key Vault
+    participant KSeF as KSeF API (MF)
+    participant AI as Azure OpenAI
+    participant DV as Microsoft Dataverse
+
+    UI->>API: POST /ksef/sync
+    API->>KV: Fetch KSeF token
+    KV-->>API: Token
+    API->>KSeF: Open session (InitSigned)
+    KSeF-->>API: SessionToken
+    API->>KSeF: Fetch invoices (GetInvoices)
+    KSeF-->>API: XML Invoices
+    API->>API: Parse FA(3) → JSON
+    API->>DV: Save invoices
+    API->>AI: Categorize (MPK, category)
+    AI-->>API: AI suggestions
+    API->>DV: Update categorization
+    API-->>UI: Sync result
+    UI->>API: GET /invoices
+    API->>DV: Fetch list
+    DV-->>API: Invoices
+    API-->>UI: Invoice list with AI suggestions
+```
+
+## 💼 Use Cases
+
+| Scenario | Description |
+|----------|-------------|
+| **Software House** | Automatic categorization of cost invoices (hosting, licenses, subcontractors) via AI. Expense dashboard per project. |
+| **Corporate Group** | Central invoice approval across subsidiaries. Approval workflow with amount thresholds per MPK. Consolidated reports. |
+| **Accounting Firm** | Multi-tenant: manage multiple clients from a single panel. Copilot Agent for quick invoice status checks per client. |
+| **Mid-size Company with Multiple MPKs** | Monthly/quarterly budgeting per cost center. Budget overflow alerts. Approver performance reports. |
+| **Sole Proprietorship** | Simple KSeF sync + dashboard with anomaly detection and forecasting. No workflow — direct invoice view. |
+
+## 📦 Power Platform Artifacts
+
+| Artifact | Description | Version | Path |
+|----------|-------------|---------|------|
+| **Dataverse Solution** | Tables, Model-Driven App, Code Component, Security Roles, Option Sets | 0.2.0 | [`deployment/powerplatform/`](deployment/powerplatform/) |
+| **Custom Connector** | OpenAPI connector to REST API | 0.2.0 | [`deployment/powerplatform/`](deployment/powerplatform/) |
+| **Swagger (OpenAPI)** | API endpoint definitions | 1.0 | [`deployment/powerplatform/connector/`](deployment/powerplatform/connector/) |
+
+> Import guide: [Power Platform README](deployment/powerplatform/README.md)
+
 
 ### Prerequisites
 

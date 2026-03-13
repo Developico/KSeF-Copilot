@@ -127,12 +127,90 @@ KSeFCopilot/
 │   ├── app/             # App router (strony)
 │   ├── components/      # Komponenty React
 │   └── lib/             # Narzędzia klienckie
-├── code-app/            # Implementacja referencyjna: React SPA (Power Platform)
+├── code-app/            # Implementacja referencyjna: React SPA (Power Platform, npm workspace)
 ├── docs/                # Dokumentacja
 └── deployment/          # IaC (Bicep)
 ```
 
-## 🚀 Szybki start
+## � Demo
+
+> Zrzuty ekranu zostaną dodane wkrótce. Obejrzyj [webinar](https://youtu.be/MDGhP9tcLQk) aby zobaczyć system w akcji.
+
+<!-- TODO: Dodać screenshoty z docs/screenshots/ -->
+
+## 🤖 Copilot Studio Agent
+
+KSeF Copilot zawiera gotowego agenta dla **Microsoft Copilot Studio**, działającego w Microsoft Teams. Agent korzysta z Custom Connector i udostępnia **14 narzędzi**:
+
+| Narzędzie | Opis |
+|-----------|------|
+| Wyszukiwanie faktur | Filtrowanie po dacie, dostawcy, NIP, statusie |
+| Szczegóły faktury | Pełne dane faktury z KSeF |
+| Raporty wydatków | Podsumowania per MPK, kategoria, dostawca |
+| Wykrywanie anomalii | Identyfikacja podejrzanych kwot i duplikatów |
+| Prognozy wydatków | Przewidywane koszty na następne miesiące |
+| Weryfikacja VAT | Sprawdzanie dostawców na białej liście |
+| Status płatności | Przegląd faktur oczekujących/przeterminowanych |
+| Statystyki dashboard | KPI firmy w jednym zapytaniu |
+| Synchronizacja KSeF | Uruchamianie pobierania faktur |
+| Notatki do faktur | Dodawanie i odczyt notatek wewnętrznych |
+| Centra kosztowe | Zarządzanie MPK |
+| Zatwierdzanie faktur | Akceptacja / odrzucenie z komentarzem |
+| Budżety MPK | Status wykorzystania budżetu |
+| Powiadomienia | Przegląd alertów i powiadomień |
+
+Więcej: [Dokumentacja agenta](docs/pl/COPILOT_AGENT.md)
+
+## 🔄 Przepływ synchronizacji KSeF
+
+```mermaid
+sequenceDiagram
+    participant UI as Frontend (Web/Code App)
+    participant API as Azure Functions API
+    participant KV as Azure Key Vault
+    participant KSeF as KSeF API (MF)
+    participant AI as Azure OpenAI
+    participant DV as Microsoft Dataverse
+
+    UI->>API: POST /ksef/sync
+    API->>KV: Pobierz token KSeF
+    KV-->>API: Token
+    API->>KSeF: Otwórz sesję (InitSigned)
+    KSeF-->>API: SessionToken
+    API->>KSeF: Pobierz faktury (GetInvoices)
+    KSeF-->>API: Faktury XML
+    API->>API: Parsowanie FA(3) → JSON
+    API->>DV: Zapisz faktury
+    API->>AI: Kategoryzuj (MPK, kategoria)
+    AI-->>API: Sugestie AI
+    API->>DV: Zaktualizuj kategoryzację
+    API-->>UI: Wynik synchronizacji
+    UI->>API: GET /invoices
+    API->>DV: Pobierz listę
+    DV-->>API: Faktury
+    API-->>UI: Lista faktur z AI sugestiami
+```
+
+## 💼 Scenariusze użycia
+
+| Scenariusz | Opis |
+|------------|------|
+| **Software house** | Automatyczna kategoryzacja faktur kosztowych (hosting, licencje, podwykonawcy) przez AI. Dashboard wydatków per projekt. |
+| **Grupa kapitałowa** | Centralna akceptacja faktur z wielu spółek-córek. Workflow zatwierdzania z progami kwotowymi per MPK. Skonsolidowane raporty. |
+| **Biuro rachunkowe** | Multi-tenant: obsługa wielu klientów z jednego panelu. Copilot Agent dla szybkiego wglądu w status faktur każdego klienta. |
+| **Średnia firma z wieloma MPK** | Budżetowanie miesięczne/kwartalne per centrum kosztowe. Alerty przekroczenia budżetu. Raporty wydajności akceptantów. |
+| **Jednoosobowa firma** | Prosta synchronizacja KSeF + dashboard z wykrywaniem anomalii i prognozami. Bez workflow — bezpośredni podgląd faktur. |
+
+## 📦 Artefakty Power Platform
+
+| Artefakt | Opis | Wersja | Ścieżka |
+|----------|------|--------|---------|
+| **Solucja Dataverse** | Tabele, Model-Driven App, Code Component, Security Roles, Option Sets | 0.2.0 | [`deployment/powerplatform/`](deployment/powerplatform/) |
+| **Custom Connector** | Konektor OpenAPI do REST API | 0.2.0 | [`deployment/powerplatform/`](deployment/powerplatform/) |
+| **Swagger (OpenAPI)** | Definicja endpointów API | 1.0 | [`deployment/powerplatform/connector/`](deployment/powerplatform/connector/) |
+
+> Instrukcja importu: [Power Platform README](deployment/powerplatform/README.md)
+
 
 ### Wymagania wstępne
 
