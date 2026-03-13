@@ -9,8 +9,10 @@ Ten katalog zawiera wszystkie komponenty Power Platform wymagane do wdrożenia r
 ```
 powerplatform/
 ├── README.md                              ← Ten plik
-├── DevelopicoKSeF_0_2_0.zip               # Solucja — unmanaged
-├── DevelopicoKSeF_CustomConnector_0_2_0.zip # Custom Connector — unmanaged
+├── DevelopicoKSeF_0_1_0_0.zip                          # Solucja v0.1.0 — unmanaged
+├── DevelopicoKSeF_0_2_0_0.zip                          # Solucja v0.2.0 — unmanaged
+├── KSeFCopilotCustomConnectorbyDevelopico_0_1_0_0.zip  # Custom Connector v0.1.0 — unmanaged
+├── KSeFCopilotCustomConnectorbyDevelopico_0_2_0_0.zip  # Custom Connector v0.2.0 — unmanaged
 ├── Provision-FullEnvironment.ps1          # Skrypt provisioningu środowiska
 ├── Provision-MpkSchema.ps1                # Skrypt provisioningu schematu MPK
 ├── CODE_APPS_DEPLOYMENT.md                # Plan wdrożenia Code Apps
@@ -109,8 +111,10 @@ Plik solucji (`.zip`) zawiera:
 
 | Plik | Typ | Wersja projektu |
 |------|-----|----------------|
-| `DevelopicoKSeF_0_2_0.zip` | Solucja Dataverse (unmanaged) | v0.2.0 |
-| `DevelopicoKSeF_CustomConnector_0_2_0.zip` | Custom Connector (unmanaged) | v0.2.0 |
+| `DevelopicoKSeF_0_1_0_0.zip` | Solucja Dataverse (unmanaged) | v0.1.0 |
+| `KSeFCopilotCustomConnectorbyDevelopico_0_1_0_0.zip` | Custom Connector (unmanaged) | v0.1.0 |
+| `DevelopicoKSeF_0_2_0_0.zip` | Solucja Dataverse (unmanaged) | v0.2.0 |
+| `KSeFCopilotCustomConnectorbyDevelopico_0_2_0_0.zip` | Custom Connector (unmanaged) | v0.2.0 |
 
 ---
 
@@ -121,11 +125,11 @@ Plik solucji (`.zip`) zawiera:
 ```powershell
 # Solucja Dataverse
 pac solution import `
-    --path "deployment\powerplatform\DevelopicoKSeF_0_2_0.zip"
+    --path "deployment\powerplatform\DevelopicoKSeF_0_2_0_0.zip"
 
 # Custom Connector
 pac solution import `
-    --path "deployment\powerplatform\DevelopicoKSeF_CustomConnector_0_2_0.zip"
+    --path "deployment\powerplatform\KSeFCopilotCustomConnectorbyDevelopico_0_2_0_0.zip"
 
 # Sprawdź
 pac solution list
