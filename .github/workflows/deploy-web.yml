@@ -65,6 +65,11 @@ jobs:
         run: node scripts/build-deploy.mjs
         env:
           API_URL: ${{ steps.api-url.outputs.value }}
+          NEXT_PUBLIC_AZURE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_AZURE_CLIENT_ID }}
+          NEXT_PUBLIC_AZURE_TENANT_ID: ${{ secrets.NEXT_PUBLIC_AZURE_TENANT_ID }}
+          NEXT_PUBLIC_API_SCOPE: ${{ secrets.NEXT_PUBLIC_API_SCOPE }}
+          NEXT_PUBLIC_ADMIN_GROUP: ${{ secrets.NEXT_PUBLIC_ADMIN_GROUP }}
+          NEXT_PUBLIC_USER_GROUP: ${{ secrets.NEXT_PUBLIC_USER_GROUP }}
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
