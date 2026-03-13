@@ -76,12 +76,17 @@ jobs:
 
       - name: Deploy to Azure Functions
         run: |
-          az functionapp deploy \
-            --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
-            --resource-group rg-ksef \
-            --src-path deploy-package.zip \
-            --type zip \
-            --async false
+          # Flex Consumption SCM can return 502 during cold start — retry with backoff
+          for attempt in 1 2 3; do
+            echo "Deploy attempt $attempt..."
+            az functionapp deployment source config-zip \
+              --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+              --resource-group rg-ksef \
+              --src deploy-package.zip \
+              --timeout 300 && break
+            echo "Attempt $attempt failed, waiting 30s before retry..."
+            sleep 30
+          done
 
       - name: Smoke test
         continue-on-error: true
