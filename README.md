@@ -12,6 +12,10 @@ EN [English version](README.en.md)
 
 [![KSeF Copilot — demonstracja webinaru](https://img.youtube.com/vi/MDGhP9tcLQk/maxresdefault.jpg)](https://youtu.be/MDGhP9tcLQk)
 
+## 🎬 Co nowego w v0.2.0
+
+[![KSeF Copilot v0.2.0 — wideo promocyjne](https://img.youtube.com/vi/dzGFUU8Y_JE/maxresdefault.jpg)](https://youtu.be/dzGFUU8Y_JE)
+
 ---
 
 > Otwarte rozwiązanie do integracji z Krajowym Systemem e-Faktur (KSeF), zbudowane w filozofii **API-First**. REST API (Azure Functions) stanowi rdzeń produktu — każdy klient HTTP może z niego korzystać. Repozytorium zawiera referencyjne implementacje frontendowe (Next.js, React SPA, Model-Driven App), ale prawdziwym produktem jest API. Priorytetem architektonicznym jest wykorzystanie **Power Platform i Microsoft Dataverse** jako backendu. Gotowe do wdrożenia w chmurze Azure.
@@ -58,6 +62,15 @@ EN [English version](README.en.md)
 - ⚠️ Wykrywanie anomalii (5 reguł detekcji)
 - 📄 Skanowanie dokumentów AI (OCR)
 - 🔗 Weryfikacja dostawców — Biała Lista VAT (zastąpiło GUS)
+
+### Samofakturowanie (Self-Billing)
+- 🧾 **Zarządzanie dostawcami** — lista, szczegóły, dodawanie z rejestru VAT, statystyki
+- 📝 **Umowy SB** — pełne CRUD, terminacja, powiązanie z dostawcą
+- 📋 **Szablony SB** — CRUD, duplikowanie
+- 🧾 **Faktury samofakturowania** — generowanie, podgląd, zatwierdzanie, odrzucanie z powodem
+- 📤 **Wysyłka do KSeF** — integracja ze statusami KSeF
+- 📥 **Import faktur** — import z CSV/Excel z walidacją i podglądem
+- 🔄 **Workflow statusów** — Draft → PendingSeller → SellerApproved → SentToKsef
 
 
 ## 🏗️ Architektura
