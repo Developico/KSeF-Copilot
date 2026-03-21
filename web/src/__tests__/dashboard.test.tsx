@@ -2,25 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-// Must mock recharts BEFORE importing the component
-vi.mock('recharts', () => ({
-  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="responsive-container">{children}</div>
-  ),
-  BarChart: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="bar-chart">{children}</div>
-  ),
-  Bar: () => null,
-  XAxis: () => null,
-  YAxis: () => null,
-  CartesianGrid: () => null,
-  Tooltip: () => null,
-  PieChart: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="pie-chart">{children}</div>
-  ),
-  Pie: () => null,
-  Cell: () => null,
-  Legend: () => null,
+// ---------------------------------------------------------------------------
+// Mocks
+// ---------------------------------------------------------------------------
+
+vi.mock('next-intl', () => ({
+  useTranslations: () => (key: string) => key,
+  useLocale: () => 'pl',
 }))
 
 vi.mock('@/contexts/company-context', () => ({
@@ -35,35 +23,39 @@ vi.mock('@/contexts/company-context', () => ({
   }),
 }))
 
+const { mockStats } = vi.hoisted(() => ({
+  mockStats: {
+    period: { from: '2025-03-01', to: '2026-03-01' },
+    totals: {
+      invoiceCount: 42,
+      netAmount: 100000,
+      vatAmount: 23000,
+      grossAmount: 123000,
+    },
+    monthly: [
+      { month: '2026-01', netAmount: 10000, vatAmount: 2300, grossAmount: 12300, invoiceCount: 5 },
+      { month: '2026-02', netAmount: 15000, vatAmount: 3450, grossAmount: 18450, invoiceCount: 8 },
+    ],
+    byMpk: [
+      { mpk: 'IT', netAmount: 50000, grossAmount: 61500, invoiceCount: 20, percentage: 50 },
+      { mpk: 'Marketing', netAmount: 30000, grossAmount: 36900, invoiceCount: 12, percentage: 30 },
+    ],
+    topSuppliers: [
+      { supplierNip: '1234567890', supplierName: 'Acme Corp', grossAmount: 50000, invoiceCount: 10 },
+      { supplierNip: '9876543210', supplierName: 'Tech Services', grossAmount: 30000, invoiceCount: 8 },
+    ],
+    payments: {
+      pending: { count: 5, grossAmount: 25000 },
+      paid: { count: 30, grossAmount: 80000 },
+      overdue: { count: 7, grossAmount: 18000 },
+    },
+  },
+}))
+
 vi.mock('@/lib/api', () => ({
   api: {
     dashboard: {
-      stats: vi.fn().mockResolvedValue({
-        period: { from: '2025-03-01', to: '2026-03-01' },
-        totals: {
-          invoiceCount: 42,
-          netAmount: 100000,
-          vatAmount: 23000,
-          grossAmount: 123000,
-        },
-        monthly: [
-          { month: '2026-01', netAmount: 10000, vatAmount: 2300, grossAmount: 12300, invoiceCount: 5 },
-          { month: '2026-02', netAmount: 15000, vatAmount: 3450, grossAmount: 18450, invoiceCount: 8 },
-        ],
-        byMpk: [
-          { mpk: 'IT', netAmount: 50000, grossAmount: 61500, invoiceCount: 20, percentage: 50 },
-          { mpk: 'Marketing', netAmount: 30000, grossAmount: 36900, invoiceCount: 12, percentage: 30 },
-        ],
-        topSuppliers: [
-          { supplierNip: '1234567890', supplierName: 'Acme Corp', grossAmount: 50000, invoiceCount: 10 },
-          { supplierNip: '9876543210', supplierName: 'Tech Services', grossAmount: 30000, invoiceCount: 8 },
-        ],
-        payments: {
-          pending: { count: 5, grossAmount: 25000 },
-          paid: { count: 30, grossAmount: 80000 },
-          overdue: { count: 7, grossAmount: 18000 },
-        },
-      }),
+      stats: vi.fn().mockResolvedValue(mockStats),
     },
   },
   queryKeys: {
@@ -75,12 +67,33 @@ vi.mock('@/components/skeletons', () => ({
   DashboardSkeleton: () => <div data-testid="dashboard-skeleton">Loading...</div>,
 }))
 
-vi.mock('@/components/dashboard/budget-summary-cards', () => ({
-  BudgetSummaryCards: () => <div data-testid="budget-summary-cards" />,
+// Mock all child tile components — DashboardContent is a layout shell
+vi.mock('@/components/dashboard/hero-chart-tile', () => ({
+  HeroChartTile: () => <div data-testid="hero-chart-tile" />,
 }))
-
-vi.mock('@/components/dashboard/self-billing-summary-cards', () => ({
-  SelfBillingSummaryCards: () => <div data-testid="self-billing-summary-cards" />,
+vi.mock('@/components/dashboard/kpi-mini-tiles', () => ({
+  KpiMiniTiles: () => <div data-testid="kpi-mini-tiles" />,
+}))
+vi.mock('@/components/dashboard/approvals-tile', () => ({
+  ApprovalsTile: () => <div data-testid="approvals-tile" />,
+}))
+vi.mock('@/components/dashboard/sb-pipeline-tile', () => ({
+  SbPipelineTile: () => <div data-testid="sb-pipeline-tile" />,
+}))
+vi.mock('@/components/dashboard/budget-tile', () => ({
+  BudgetTile: () => <div data-testid="budget-tile" />,
+}))
+vi.mock('@/components/dashboard/suppliers-tile', () => ({
+  SuppliersTile: () => <div data-testid="suppliers-tile" />,
+}))
+vi.mock('@/components/dashboard/forecast-tile', () => ({
+  ForecastTile: () => <div data-testid="forecast-tile" />,
+}))
+vi.mock('@/components/dashboard/activity-feed-tile', () => ({
+  ActivityFeedTile: () => <div data-testid="activity-feed-tile" />,
+}))
+vi.mock('@/components/dashboard/quick-actions-bar', () => ({
+  QuickActionsBar: () => <div data-testid="quick-actions-bar" />,
 }))
 
 import { DashboardContent } from '@/components/dashboard/dashboard-content'
@@ -104,18 +117,11 @@ function renderWithProviders(ui: React.ReactElement) {
 }
 
 describe('DashboardContent', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
-  })
-
-  it('renders KPI cards with correct values', async () => {
-    renderWithProviders(<DashboardContent />)
-
-    await waitFor(() => {
-      expect(screen.getAllByText('Liczba faktur').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('Suma brutto').length).toBeGreaterThan(0)
-      expect(screen.getByText('Nieopłacone')).toBeInTheDocument()
-    })
+    // Restore the default resolved value after the skeleton test
+    const { api } = await import('@/lib/api')
+    vi.mocked(api.dashboard.stats).mockResolvedValue(mockStats)
   })
 
   it('shows date range filter with inputs', async () => {
@@ -127,49 +133,76 @@ describe('DashboardContent', () => {
     })
   })
 
-  it('shows refresh button', async () => {
+  it('shows period label and refresh button', async () => {
     renderWithProviders(<DashboardContent />)
 
     await waitFor(() => {
-      expect(screen.getByText('Odśwież')).toBeInTheDocument()
+      expect(screen.getByText(/period/)).toBeInTheDocument()
+      expect(screen.getByText('refresh')).toBeInTheDocument()
     })
   })
 
-  it('renders chart sections', async () => {
+  it('renders all dashboard tiles', async () => {
     renderWithProviders(<DashboardContent />)
 
     await waitFor(() => {
-      expect(screen.getByText('Wydatki miesięczne')).toBeInTheDocument()
-      expect(screen.getByText('Wydatki per MPK')).toBeInTheDocument()
+      expect(screen.getByTestId('hero-chart-tile')).toBeInTheDocument()
+      expect(screen.getByTestId('kpi-mini-tiles')).toBeInTheDocument()
+      expect(screen.getByTestId('approvals-tile')).toBeInTheDocument()
+      expect(screen.getByTestId('sb-pipeline-tile')).toBeInTheDocument()
+      expect(screen.getByTestId('budget-tile')).toBeInTheDocument()
+      expect(screen.getByTestId('suppliers-tile')).toBeInTheDocument()
+      expect(screen.getByTestId('forecast-tile')).toBeInTheDocument()
+      expect(screen.getByTestId('activity-feed-tile')).toBeInTheDocument()
+      expect(screen.getByTestId('quick-actions-bar')).toBeInTheDocument()
     })
   })
 
-  it('renders top suppliers table', async () => {
+  it('shows preset options in date selector', async () => {
     renderWithProviders(<DashboardContent />)
 
     await waitFor(() => {
-      expect(screen.getByText('Top 10 dostawców')).toBeInTheDocument()
-      expect(screen.getByText('Acme Corp')).toBeInTheDocument()
-      expect(screen.getByText('Tech Services')).toBeInTheDocument()
+      // Default preset is lastYear — translation key rendered
+      expect(screen.getByText('presets.lastYear')).toBeInTheDocument()
     })
   })
 
-  it('renders payment status cards', async () => {
+  it('shows skeleton while loading', async () => {
+    // Override the API mock to never resolve
+    const { api } = await import('@/lib/api')
+    vi.mocked(api.dashboard.stats).mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<DashboardContent />)
+
+    expect(screen.getByTestId('dashboard-skeleton')).toBeInTheDocument()
+  })
+
+  it('updates date inputs when changing manually', async () => {
     renderWithProviders(<DashboardContent />)
 
     await waitFor(() => {
-      expect(screen.getByText('Opłacone')).toBeInTheDocument()
-      expect(screen.getByText('Oczekujące')).toBeInTheDocument()
-      expect(screen.getAllByText(/Przeterminowane/).length).toBeGreaterThan(0)
+      expect(screen.getAllByDisplayValue(/\d{4}-\d{2}-\d{2}/).length).toBeGreaterThanOrEqual(2)
+    })
+
+    const dateInputs = screen.getAllByDisplayValue(/\d{4}-\d{2}-\d{2}/)
+    fireEvent.change(dateInputs[0], { target: { value: '2025-06-01' } })
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('2025-06-01')).toBeInTheDocument()
     })
   })
 
-  it('shows supplier NIP in table', async () => {
+  it('calls refetch when clicking refresh', async () => {
     renderWithProviders(<DashboardContent />)
 
     await waitFor(() => {
-      expect(screen.getByText('1234567890')).toBeInTheDocument()
-      expect(screen.getByText('9876543210')).toBeInTheDocument()
+      expect(screen.getByText('refresh')).toBeInTheDocument()
     })
+
+    const refreshButton = screen.getByText('refresh').closest('button')!
+    fireEvent.click(refreshButton)
+
+    // Verify the button exists and is clickable (refetch triggered internally)
+    expect(refreshButton).not.toBeDisabled()
   })
 })

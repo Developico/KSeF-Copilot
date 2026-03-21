@@ -52,6 +52,10 @@ vi.mock('@/hooks/use-api', () => ({
     mutate: mockMarkRead,
     isPending: false,
   }),
+  useMarkAllNotificationsRead: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
   useDismissNotification: () => ({
     mutate: mockDismiss,
     isPending: false,
