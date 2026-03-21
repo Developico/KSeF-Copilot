@@ -61,6 +61,26 @@ vi.mock('@/hooks/use-api', () => ({
     data: { data: [], count: 0 },
     isLoading: false,
   }),
+  useBatchMarkPaidInvoices: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useBatchMarkUnpaidInvoices: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useBatchApproveInvoices: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useBatchRejectInvoices: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useBatchDeleteInvoices: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/contexts/company-context', () => ({
