@@ -72,6 +72,7 @@ export const apiScopes = {
 export const groupConfig = {
   admin: process.env.NEXT_PUBLIC_ADMIN_GROUP || '',
   user: process.env.NEXT_PUBLIC_USER_GROUP || '',
+  approver: process.env.NEXT_PUBLIC_APPROVER_GROUP || '',
 }
 
 /**

@@ -10,9 +10,10 @@ Instrukcja uruchomienia projektu KSeF na lokalnym komputerze — od klonowania r
 4. [Konfiguracja zmiennych środowiskowych](#konfiguracja-zmiennych-środowiskowych)
 5. [Uruchomienie API (Azure Functions)](#uruchomienie-api)
 6. [Uruchomienie Web (Next.js)](#uruchomienie-web)
-7. [Testy](#testy)
-8. [Codzienne workflow](#codzienne-workflow)
-9. [Częste problemy](#częste-problemy)
+7. [Uruchomienie Code App (Vite + React)](#uruchomienie-code-app-vite--react)
+8. [Testy](#testy)
+9. [Codzienne workflow](#codzienne-workflow)
+10. [Częste problemy](#częste-problemy)
 
 ---
 
@@ -66,11 +67,15 @@ KSeF-Copilot/
 │   ├── package.json
 │   ├── .env.local        # ← zmienne lokalne (nie commitowane)
 │   └── src/              # Kod źródłowy
+├── code-app/             # Vite + React (PCF Code Component)
+│   ├── package.json
+│   ├── .env.local        # ← zmienne lokalne (nie commitowane)
+│   └── src/              # Kod źródłowy
 ├── deployment/           # Skrypty i szablony wdrożeniowe
 └── docs/                 # Dokumentacja
 ```
 
-> Projekt używa **npm workspaces** — `api/` i `web/` to osobne workspace'y.
+> Projekt używa **npm workspaces** — `api/`, `web/` i `code-app/` to osobne workspace'y.
 
 ---
 
@@ -130,6 +135,7 @@ cp api/local.settings.json.example api/local.settings.json
     "DV_ENTITY_SETTING": "dvlp_ksefsettings",
     "DV_ENTITY_SESSION": "dvlp_ksefsessions",
     "DV_ENTITY_SYNCLOG": "dvlp_ksefsynclogs",
+    "DV_ENTITY_FEEDBACK": "dvlp_ksefaifeedbacks",
 
     "DV_LOG_LEVEL": "info",
     "DV_LOG_TRAFFIC": "false",
@@ -141,6 +147,7 @@ cp api/local.settings.json.example api/local.settings.json
 
     "ADMIN_GROUP_ID": "<admin-group-object-id>",
     "USER_GROUP_ID": "<user-group-object-id>",
+    "APPROVER_GROUP_ID": "<approver-group-object-id>",
 
     "FEATURE_AI_CATEGORIZATION": "true",
     "AZURE_OPENAI_DEPLOYMENT": "gpt-4o-mini",
@@ -176,6 +183,7 @@ NEXT_PUBLIC_API_URL=http://localhost:7071/api
 # Grupy bezpieczeństwa
 NEXT_PUBLIC_ADMIN_GROUP=<admin-group-object-id>
 NEXT_PUBLIC_USER_GROUP=<user-group-object-id>
+NEXT_PUBLIC_APPROVER_GROUP=<approver-group-object-id>
 
 # Feature flags (opcjonalnie)
 FEATURE_AI_CATEGORIZATION=false
@@ -222,7 +230,7 @@ Functions:
   healthDetailed:  http://localhost:7071/api/health/detailed
   settings:        http://localhost:7071/api/settings
   invoices:        http://localhost:7071/api/invoices
-  ... (62 endpointy)
+  ... (178 endpointów)
 ```
 
 ### Weryfikacja
@@ -271,6 +279,62 @@ http://localhost:3001/api/* → http://localhost:7071/api/*
 ```
 
 Dzięki temu frontend i API działają jako jeden serwis.
+
+---
+
+## Uruchomienie Code App (Vite + React)
+
+Code App to aplikacja frontendowa osadzona jako PCF (Power Apps Component Framework) w Model-Driven App. Lokalnie działa jako samodzielna aplikacja Vite.
+
+### Konfiguracja: `code-app/.env.local`
+
+Skopiuj z szablonu:
+
+```bash
+cp code-app/.env.example code-app/.env.local
+```
+
+Kluczowe zmienne:
+
+```bash
+# Zostaw puste dla dev-mode (mock user, brak autentykacji)
+VITE_AZURE_CLIENT_ID=
+VITE_AZURE_TENANT_ID=
+VITE_ADMIN_GROUP=
+VITE_USER_GROUP=
+VITE_APPROVER_GROUP=
+
+# API — proxy automatyczny (Vite dev server)
+# /api/* → http://localhost:7071
+```
+
+> W trybie dev (puste `VITE_AZURE_CLIENT_ID`) Code App używa mock usera — nie wymaga konfiguracji Entra ID.
+
+### Uruchomienie
+
+```bash
+cd code-app
+npm run dev
+```
+
+### Oczekiwany output
+
+```
+VITE v6.x.x  ready in Xms
+➜  Local:   http://localhost:3002/
+➜  Network: http://192.168.x.x:3002/
+```
+
+Otwórz http://localhost:3002 w przeglądarce.
+
+> **Port:** Code App startuje na porcie 3002 — nie koliduje z API (7071) ani Web (3001).
+
+### Proxy do API
+
+Vite konfiguruje proxy w `vite.config.ts`:
+```
+http://localhost:3002/api/* → http://localhost:7071/api/*
+```
 
 ---
 
@@ -392,6 +456,6 @@ az account set --subscription "your-azure-subscription-id"
 
 ---
 
-**Ostatnia aktualizacja:** 2026-02-11  
-**Wersja:** 1.0  
+**Ostatnia aktualizacja:** 2026-03-20  
+**Wersja:** 1.1  
 **Opiekun:** dvlp-dev team

@@ -5,6 +5,7 @@ import CountUp from 'react-countup'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LucideIcon } from 'lucide-react'
+import { formatCurrencyCompact as formatCurrency, formatNumber } from '@/lib/format'
 
 type AnimatedKpiCardProps = {
   title: string
@@ -24,14 +25,7 @@ type AnimatedKpiCardProps = {
   isLoading?: boolean
 }
 
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('pl-PL', {
-    style: 'currency',
-    currency: 'PLN',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
+
 
 export function AnimatedKpiCard({
   title,
@@ -55,7 +49,7 @@ export function AnimatedKpiCard({
       case 'percent':
         return `${val.toFixed(1)}%`
       default:
-        return val.toLocaleString()
+        return formatNumber(val)
     }
   }
 

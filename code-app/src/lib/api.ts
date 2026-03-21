@@ -103,6 +103,30 @@ import type {
   ApproverPerformanceReport,
   ProcessingPipelineReport,
   AppNotification,
+  // Self-Billing
+  Supplier,
+  SupplierListParams,
+  SupplierListResponse,
+  SupplierDetailStats,
+  SbAgreement,
+  SbAgreementListResponse,
+  SbTemplate,
+  SbTemplateListResponse,
+  SelfBillingInvoice,
+  SelfBillingInvoiceListParams,
+  SelfBillingInvoiceListResponse,
+  SelfBillingGenerateRequest,
+  SelfBillingGeneratePreview,
+  SelfBillingGenerateResponse,
+  SelfBillingConfirmRequest,
+  SelfBillingBatchResult,
+  BatchActionResult,
+  SelfBillingImportResult,
+  SelfBillingImportConfirmResult,
+  SbImportEnrichedRow,
+  SupplierImportResult,
+  SupplierImportConfirmResult,
+  SupplierImportEnrichedRow,
 } from './types'
 
 // Re-export all types so consumers can import from '@/lib/api'
@@ -485,6 +509,31 @@ const _directApi = {
         method: 'POST',
         body: JSON.stringify({ invoiceIds, autoApply }),
       }),
+    batchMarkPaid: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/invoice-batch/mark-paid', {
+        method: 'POST',
+        body: JSON.stringify({ invoiceIds }),
+      }),
+    batchMarkUnpaid: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/invoice-batch/mark-unpaid', {
+        method: 'POST',
+        body: JSON.stringify({ invoiceIds }),
+      }),
+    batchApprove: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/invoice-batch/approve', {
+        method: 'POST',
+        body: JSON.stringify({ invoiceIds }),
+      }),
+    batchReject: (invoiceIds: string[], comment: string) =>
+      apiFetch<BatchActionResult>('/api/invoice-batch/reject', {
+        method: 'POST',
+        body: JSON.stringify({ invoiceIds, comment }),
+      }),
+    batchDelete: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/invoice-batch/delete', {
+        method: 'POST',
+        body: JSON.stringify({ invoiceIds }),
+      }),
   },
 
   // ── Settings ──
@@ -738,6 +787,18 @@ const _directApi = {
 
     getBudgetStatus: (id: string) =>
       apiFetch<{ data: BudgetStatus }>(`/api/mpk-centers/${id}/budget-status`),
+
+    applyApproval: (id: string, scope: 'unprocessed' | 'decided' | 'all', dryRun?: boolean) =>
+      apiFetch<{ updated: number; skipped: number; autoApproved: number; total: number; dryRun: boolean }>(
+        `/api/mpk-centers/${id}/apply-approval`,
+        { method: 'POST', body: JSON.stringify({ scope, dryRun }) }
+      ),
+
+    revokeApproval: (id: string, scope: 'pending' | 'decided' | 'all', dryRun?: boolean) =>
+      apiFetch<{ updated: number; skipped: number; autoApproved: number; total: number; dryRun: boolean }>(
+        `/api/mpk-centers/${id}/revoke-approval`,
+        { method: 'POST', body: JSON.stringify({ scope, dryRun }) }
+      ),
   },
 
   // ── Users ──
@@ -746,6 +807,23 @@ const _directApi = {
       apiFetch<{ users: DvSystemUser[]; count: number }>(
         `/api/users?settingId=${settingId}`
       ),
+  },
+
+  // ── Approver Overview ──
+  approverOverview: {
+    get: (settingId: string) =>
+      apiFetch<{
+        members: Array<{
+          id: string
+          displayName: string
+          email: string
+          hasDataverseAccount: boolean
+          mpkCenterNames: string[]
+          supplierCount: number
+        }>
+        configured: boolean
+        count: number
+      }>(`/api/approvers/overview?settingId=${settingId}`),
   },
 
   // ── Approvals ──
@@ -822,6 +900,12 @@ const _directApi = {
         method: 'POST',
       }),
 
+    markAllRead: (settingId: string) =>
+      apiFetch<{ success: boolean; marked: number }>(
+        `/api/notifications/mark-all-read?settingId=${encodeURIComponent(settingId)}`,
+        { method: 'POST' }
+      ),
+
     unreadCount: (settingId: string) =>
       apiFetch<{ count: number }>(
         `/api/notifications/unread-count?settingId=${settingId}`
@@ -868,6 +952,367 @@ const _directApi = {
         `/api/reports/invoice-processing?settingId=${settingId}`
       ),
   },
+
+  // ── Suppliers ──
+  suppliers: {
+    list: (params?: SupplierListParams) => {
+      const qs = new URLSearchParams()
+      if (params?.settingId) qs.append('settingId', params.settingId)
+      if (params?.status) qs.append('status', params.status)
+      if (params?.search) qs.append('search', params.search)
+      if (params?.top) qs.append('top', String(params.top))
+      if (params?.skip) qs.append('skip', String(params.skip))
+      return apiFetch<SupplierListResponse>(`/api/suppliers?${qs}`)
+    },
+
+    get: (id: string) => apiFetch<{ supplier: Supplier }>(`/api/suppliers/${id}`),
+
+    create: (data: Partial<Supplier>) =>
+      apiFetch<{ supplier: Supplier }>('/api/suppliers', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    update: (id: string, data: Partial<Supplier>) =>
+      apiFetch<{ supplier: Supplier }>(`/api/suppliers/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    delete: (id: string) =>
+      apiFetch<{ message: string }>(`/api/suppliers/${id}`, {
+        method: 'DELETE',
+      }),
+
+    stats: (id: string) =>
+      apiFetch<{ stats: SupplierDetailStats }>(`/api/suppliers/${id}/stats`),
+
+    refreshStats: (id: string) =>
+      apiFetch<{ message: string }>(
+        `/api/suppliers/${id}/stats/refresh`,
+        { method: 'POST' }
+      ),
+
+    invoices: (id: string) =>
+      apiFetch<{ invoices: SelfBillingInvoice[]; count: number }>(
+        `/api/suppliers/${id}/invoices`
+      ),
+
+    refreshVat: (id: string) =>
+      apiFetch<{ supplier: Supplier; vatStatus?: string }>(`/api/suppliers/${id}/refresh-vat`, {
+        method: 'POST',
+      }),
+
+    createFromVat: (nip: string) =>
+      apiFetch<{ supplier: Supplier }>('/api/suppliers/from-vat', {
+        method: 'POST',
+        body: JSON.stringify({ nip }),
+      }),
+
+    // Supplier bulk import
+    import: (file: File, settingId: string) => {
+      const contentType = file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
+        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : 'text/csv'
+      return apiFetch<SupplierImportResult>(
+        `/api/suppliers/import?settingId=${encodeURIComponent(settingId)}`,
+        { method: 'POST', body: file, headers: { 'Content-Type': contentType } },
+      )
+    },
+
+    confirmImport: (settingId: string, rows: SupplierImportEnrichedRow[]) =>
+      apiFetch<SupplierImportConfirmResult>('/api/suppliers/import/confirm', {
+        method: 'POST',
+        body: JSON.stringify({ settingId, rows }),
+      }),
+
+    // ── Supplier Notes ──
+    listNotes: (supplierId: string) =>
+      apiFetch<{ notes: Note[]; count: number }>(
+        `/api/suppliers/${supplierId}/notes`
+      ),
+
+    createNote: (supplierId: string, data: NoteCreate) =>
+      apiFetch<Note>(`/api/suppliers/${supplierId}/notes`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    updateNote: (noteId: string, data: NoteUpdate) =>
+      apiFetch<Note>(`/api/notes/${noteId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    deleteNote: (noteId: string) =>
+      apiFetch<{ success: boolean }>(`/api/notes/${noteId}`, {
+        method: 'DELETE',
+      }),
+
+    // ── Supplier Attachments ──
+    listAttachments: (supplierId: string) =>
+      apiFetch<{ attachments: Attachment[]; count: number }>(
+        `/api/suppliers/${supplierId}/attachments`
+      ),
+
+    uploadAttachment: (supplierId: string, data: AttachmentUpload) =>
+      apiFetch<Attachment>(`/api/suppliers/${supplierId}/attachments`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    deleteAttachment: (attachmentId: string) =>
+      apiFetch<{ success: boolean }>(`/api/attachments/${attachmentId}`, {
+        method: 'DELETE',
+      }),
+    batchDeactivate: (supplierIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/supplier-batch/deactivate', {
+        method: 'POST',
+        body: JSON.stringify({ supplierIds }),
+      }),
+    batchReactivate: (supplierIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/supplier-batch/reactivate', {
+        method: 'POST',
+        body: JSON.stringify({ supplierIds }),
+      }),
+  },
+
+  // ── Self-Billing Agreements ──
+  sbAgreements: {
+    list: (params?: { settingId?: string; supplierId?: string; status?: string }) => {
+      const qs = new URLSearchParams()
+      if (params?.settingId) qs.append('settingId', params.settingId)
+      if (params?.supplierId) qs.append('supplierId', params.supplierId)
+      if (params?.status) qs.append('status', params.status)
+      return apiFetch<SbAgreementListResponse>(`/api/sb-agreements?${qs}`)
+    },
+
+    get: (id: string) =>
+      apiFetch<{ data: SbAgreement }>(`/api/sb-agreements/${id}`),
+
+    create: (data: Partial<SbAgreement>) =>
+      apiFetch<{ data: SbAgreement }>('/api/sb-agreements', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    update: (id: string, data: Partial<SbAgreement>) =>
+      apiFetch<{ data: SbAgreement }>(`/api/sb-agreements/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    terminate: (id: string) =>
+      apiFetch<{ data: SbAgreement }>(`/api/sb-agreements/${id}/terminate`, {
+        method: 'POST',
+      }),
+
+    listAttachments: (id: string) =>
+      apiFetch<{ data: Attachment[] }>(
+        `/api/sb-agreements/${id}/attachments`
+      ),
+
+    uploadAttachment: (id: string, data: { fileName: string; content: string; contentType: string }) =>
+      apiFetch<{ data: Attachment }>(
+        `/api/sb-agreements/${id}/attachments`,
+        { method: 'POST', body: JSON.stringify(data) }
+      ),
+  },
+
+  // ── Self-Billing Templates ──
+  sbTemplates: {
+    list: (params?: { settingId?: string; agreementId?: string }) => {
+      const qs = new URLSearchParams()
+      if (params?.settingId) qs.append('settingId', params.settingId)
+      if (params?.agreementId) qs.append('agreementId', params.agreementId)
+      return apiFetch<SbTemplateListResponse>(`/api/sb-templates?${qs}`)
+    },
+
+    get: (id: string) =>
+      apiFetch<{ data: SbTemplate }>(`/api/sb-templates/${id}`),
+
+    create: (data: Partial<SbTemplate>) =>
+      apiFetch<{ data: SbTemplate }>('/api/sb-templates', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    update: (id: string, data: Partial<SbTemplate>) =>
+      apiFetch<{ data: SbTemplate }>(`/api/sb-templates/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    delete: (id: string) =>
+      apiFetch<{ success: boolean }>(`/api/sb-templates/${id}`, {
+        method: 'DELETE',
+      }),
+
+    duplicate: (id: string) =>
+      apiFetch<{ data: SbTemplate }>(`/api/sb-templates/${id}/duplicate`, {
+        method: 'POST',
+      }),
+  },
+
+  // ── Self-Billing Invoices ──
+  selfBillingInvoices: {
+    list: (params?: SelfBillingInvoiceListParams) => {
+      const qs = new URLSearchParams()
+      if (params?.settingId) qs.append('settingId', params.settingId)
+      if (params?.supplierId) qs.append('supplierId', params.supplierId)
+      if (params?.status) qs.append('selfBillingStatus', params.status)
+      if (params?.dateFrom) qs.append('dateFrom', params.dateFrom)
+      if (params?.dateTo) qs.append('dateTo', params.dateTo)
+      if (params?.top) qs.append('top', String(params.top))
+      if (params?.skip) qs.append('skip', String(params.skip))
+      return apiFetch<SelfBillingInvoiceListResponse>(
+        `/api/self-billing/invoices?${qs}`
+      )
+    },
+
+    get: (id: string) =>
+      apiFetch<{ data: SelfBillingInvoice }>(
+        `/api/self-billing/invoices/${id}`
+      ),
+
+    create: (data: Partial<SelfBillingInvoice>) =>
+      apiFetch<{ data: SelfBillingInvoice }>('/api/self-billing/invoices', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    preview: (data: Partial<SelfBillingInvoice>) =>
+      apiFetch<{ data: SelfBillingGeneratePreview }>(
+        '/api/self-billing/invoices/preview',
+        { method: 'POST', body: JSON.stringify(data) }
+      ),
+
+    generate: (request: SelfBillingGenerateRequest) =>
+      apiFetch<{ data: SelfBillingGenerateResponse }>(
+        '/api/self-billing/invoices/generate',
+        { method: 'POST', body: JSON.stringify(request) }
+      ),
+
+    confirmGenerated: (request: SelfBillingConfirmRequest) =>
+      apiFetch<{ data: SelfBillingBatchResult }>(
+        '/api/self-billing/invoices/generate/confirm',
+        { method: 'POST', body: JSON.stringify(request) }
+      ),
+
+    batch: (invoiceIds: string[]) =>
+      apiFetch<{ data: SelfBillingBatchResult }>(
+        '/api/self-billing/invoices/batch',
+        { method: 'POST', body: JSON.stringify({ invoiceIds }) }
+      ),
+
+    batchSubmit: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>(
+        '/api/self-billing/batch/submit',
+        { method: 'POST', body: JSON.stringify({ invoiceIds }) }
+      ),
+
+    batchApprove: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>(
+        '/api/self-billing/batch/approve',
+        { method: 'POST', body: JSON.stringify({ invoiceIds }) }
+      ),
+
+    batchReject: (invoiceIds: string[], reason: string) =>
+      apiFetch<BatchActionResult>(
+        '/api/self-billing/batch/reject',
+        { method: 'POST', body: JSON.stringify({ invoiceIds, reason }) }
+      ),
+
+    batchSendToKsef: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>(
+        '/api/self-billing/batch/send-ksef',
+        { method: 'POST', body: JSON.stringify({ invoiceIds }) }
+      ),
+
+    batchDelete: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>(
+        '/api/self-billing/batch/delete',
+        { method: 'POST', body: JSON.stringify({ invoiceIds }) }
+      ),
+
+    updateStatus: (id: string, status: string, reason?: string) =>
+      apiFetch<{ data: SelfBillingInvoice }>(
+        `/api/self-billing/invoices/${id}/status`,
+        { method: 'POST', body: JSON.stringify({ status, reason }) }
+      ),
+
+    submit: (id: string) =>
+      apiFetch<{ data: SelfBillingInvoice }>(
+        `/api/self-billing/invoices/${id}/submit`,
+        { method: 'POST' }
+      ),
+
+    approve: (id: string, comment?: string, invoiceNumber?: string) =>
+      apiFetch<{ data: SelfBillingInvoice }>(
+        `/api/self-billing/invoices/${id}/approve`,
+        { method: 'POST', body: JSON.stringify({ comment, invoiceNumber }) }
+      ),
+
+    reject: (id: string, reason: string) =>
+      apiFetch<{ data: SelfBillingInvoice }>(
+        `/api/self-billing/invoices/${id}/reject`,
+        { method: 'POST', body: JSON.stringify({ reason }) }
+      ),
+
+    sendToKsef: (id: string) =>
+      apiFetch<{ data: SelfBillingInvoice }>(
+        `/api/self-billing/invoices/${id}/send-to-ksef`,
+        { method: 'POST' }
+      ),
+
+    revertToDraft: (id: string, reason: string) =>
+      apiFetch<{ data: SelfBillingInvoice }>(
+        `/api/self-billing/invoices/${id}/revert`,
+        { method: 'POST', body: JSON.stringify({ reason }) }
+      ),
+
+    // ── SB Invoice Notes ──
+    listNotes: (sbInvoiceId: string) =>
+      apiFetch<{ notes: Note[]; count: number }>(
+        `/api/self-billing/invoices/${sbInvoiceId}/notes`
+      ),
+
+    createNote: (sbInvoiceId: string, data: NoteCreate) =>
+      apiFetch<Note>(`/api/self-billing/invoices/${sbInvoiceId}/notes`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    updateNote: (noteId: string, data: NoteUpdate) =>
+      apiFetch<Note>(`/api/notes/${noteId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    deleteNote: (noteId: string) =>
+      apiFetch<{ success: boolean }>(`/api/notes/${noteId}`, {
+        method: 'DELETE',
+      }),
+  },
+
+  // ── Self-Billing Import ──
+  sbImport: {
+    import: (file: File, settingId: string) => {
+      const contentType = file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
+        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : 'text/csv'
+      return apiFetch<SelfBillingImportResult>(
+        `/api/self-billing/invoices/import?settingId=${encodeURIComponent(settingId)}`,
+        { method: 'POST', body: file, headers: { 'Content-Type': contentType } },
+      )
+    },
+
+    confirm: (settingId: string, rows: SbImportEnrichedRow[]) =>
+      apiFetch<SelfBillingImportConfirmResult>(
+        '/api/self-billing/invoices/import/confirm',
+        { method: 'POST', body: JSON.stringify({ settingId, rows }) },
+      ),
+  },
 }
 
 /**
@@ -875,7 +1320,7 @@ const _directApi = {
  * - Power Apps host  → connector-based API (Power Platform SDK)
  * - Standalone mode  → direct fetch API (MSAL + HTTP)
  *
- * The connector API covers ~15 core operations (dashboard, invoices,
+ * The connector API covers ~45 core operations (dashboard, invoices,
  * settings, sync, exchange rates, AI, test data). Missing operations
  * throw descriptive errors — those features need connector expansion
  * or standalone deployment.

@@ -6,6 +6,65 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.2] - 2026-03-21
+
+### 🌐 i18n — wybór miesiąca
+
+- **Komponent `MonthPicker`** — natywny `<input type="month">` w dialogu generowania samofaktur zastąpiony własnym komponentem z pełną lokalizacją (nazwy miesięcy, przyciski „Wyczyść" / „Bieżący miesiąc" w języku aplikacji)
+- **Nowe klucze i18n** — `common.monthPicker.*` (placeholder, clear, thisMonth, nazwy miesięcy) w `pl.json` i `en.json`
+
+### 🐛 Poprawki
+
+- **Zakładka Akceptujący** — nazwy i adresy e-mail członków grupy Entra ID wyświetlane poprawnie (fallback na dane Dataverse gdy Graph API zwraca puste pola)
+
+---
+
+## [0.9.1] - 2026-03-19
+
+### 📋 Samofakturowanie — ulepszenia akceptacji
+
+- **Edycja numeru faktury przy akceptacji SB** — dialog akceptacji z polem numeru faktury i komentarzem
+- **Auto-przełączanie na zakładkę SB** — gdy brak zwykłych faktur oczekujących na stronie `/approvals`, automatyczne otwarcie zakładki samofakturowania
+
+### 🔔 Powiadomienia — nowe funkcje
+
+- **Filtrowanie powiadomień** — przyciski „Wszystkie" / „Nowe" z badge liczbą nieprzeczytanych
+- **Oznacz wszystkie jako przeczytane** — przycisk z ikoną CheckCheck + nowy hook `useMarkAllNotificationsRead`
+- **Typy powiadomień SB** — obsługa `SbApprovalRequested` i `SbApprovalDecided`
+
+### 🐛 Poprawki
+
+- **Sygnatura `RowActions`** — komponent przyjmuje obiekt faktury zamiast samego ID
+
+---
+
+## [0.9.0] - 2026-03-24
+
+### 📋 Samofakturowanie (Self-Billing)
+
+#### Dostawcy
+- **Strona dostawców** — lista dostawców z filtrowaniem po statusie, wyszukiwaniem i tworzeniem z NIP (Biała Lista)
+- **Szczegóły dostawcy** — dane kontaktowe, statystyki, karta aktywnej umowy SB, odświeżanie danych VAT
+- **Szablony SB per dostawca** — komponent `SupplierSbTemplates` z dialogiem CRUD (nazwa, opis pozycji, ilość, jednostka, cena, stawka VAT, waluta)
+
+#### Umowy samofakturowania
+- **Karta umowy** na stronie dostawcy — aktywna umowa z datami obowiązywania, statusem i ikoną ShieldCheck
+- **Lista umów** — hooki do zarządzania umowami i załącznikami (`useListSbAgreementAttachments`, `useUploadSbAgreementAttachment`)
+
+#### Faktury samofakturowania
+- **Strona samofakturowania** — lista faktur SB z filtrami statusu i wyszukiwaniem
+- **Generowanie faktur** — dialog z wyborem okresu, podglądem i potwierdzeniem
+- **Import z pliku** — dialog importu z pobieraniem szablonu CSV/XLSX (`useDownloadSbImportTemplate`), przesyłaniem pliku i dwuetapową walidacją
+- **Workflow statusów** — Draft → PendingSeller → SellerApproved → SentToKsef (+ SellerRejected)
+
+#### Dashboard
+- **Kafelki KPI samofakturowania** — nowe karty: wysłane w bieżącym miesiącu (Receipt), wygasające umowy ≤30 dni (AlertTriangle)
+
+#### Hooki
+- **Nowe hooki** — `useRefreshSupplierStats`, `useListSbAgreementAttachments`, `useUploadSbAgreementAttachment`, `useDownloadSbImportTemplate`
+
+---
+
 ## [0.8.0] - 2026-03-10
 
 ### 🏢 Zarządzanie MPK — migracja na encje

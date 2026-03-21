@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { formatCurrency as formatCurrencyUtil } from '@/lib/format'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -110,8 +111,7 @@ export default function SyncPage() {
 
   // Locale-aware formatting
   const formatTime = () => new Date().toLocaleTimeString(locale)
-  const formatCurrency = (amount: number) => 
-    new Intl.NumberFormat(locale, { style: 'currency', currency: 'PLN' }).format(amount)
+  const formatCurrency = (amount: number) => formatCurrencyUtil(amount, 'PLN', locale)
   const formatDate = (date: string) => 
     new Date(date).toLocaleDateString(locale)
 

@@ -159,6 +159,9 @@ export async function updateInvoiceHandler(
 
     context.log(`[updateInvoice] Parsed data keys: ${Object.keys(parseResult.data).join(', ')}`)
     context.log(`[updateInvoice] currency=${parseResult.data.currency}, exchangeRate=${parseResult.data.exchangeRate}, grossAmountPln=${parseResult.data.grossAmountPln}`)
+    if (parseResult.data.parentInvoiceId !== undefined) {
+      context.log(`[updateInvoice] parentInvoiceId=${parseResult.data.parentInvoiceId}`)
+    }
 
     // D18: Capture old MPK before update for budget recalculation
     let oldMpkCenterId: string | undefined
@@ -224,6 +227,10 @@ export async function updateInvoiceHandler(
 
     // Re-fetch to include any changes from auto-trigger (e.g. approval status)
     const fresh = await getInvoiceById(id)
+
+    if (parseResult.data.parentInvoiceId !== undefined) {
+      context.log(`[updateInvoice] After refetch: parentInvoiceId=${fresh?.parentInvoiceId ?? 'null/undefined'}`)
+    }
 
     return {
       status: 200,

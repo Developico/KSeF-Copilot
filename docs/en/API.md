@@ -23,6 +23,12 @@
   - [Reports](#reports)
   - [VAT White List Integration](#vat-white-list-integration)
   - [Document Processing](#document-processing)
+  - [Suppliers](#suppliers)
+  - [Self-Billing Agreements](#self-billing-agreements)
+  - [Self-Billing Templates](#self-billing-templates)
+  - [Self-Billing Invoices](#self-billing-invoices)
+  - [Self-Billing Approvals](#self-billing-approvals)
+  - [Self-Billing Import](#self-billing-import)
 - [Error Handling](#error-handling)
 - [Rate Limits](#rate-limits)
 
@@ -1486,6 +1492,783 @@ Extract data from invoice document using OCR/AI.
   "confidence": 0.92
 }
 ```
+
+---
+
+### Suppliers
+
+#### GET /api/suppliers
+List suppliers.
+
+**Auth**: Reader
+
+**Query Parameters**:
+- `settingId` (string, required): Company setting ID
+- `status` (string): Filter by status (`Active`, `Inactive`, `Blocked`)
+- `search` (string): Search by name or NIP
+- `hasSelfBillingAgreement` (boolean): Filter suppliers with active SB agreements
+- `top` (number): Max results (default 100)
+- `skip` (number): Offset for pagination
+
+**Response** (200):
+```json
+{
+  "suppliers": [
+    {
+      "id": "uuid",
+      "settingId": "uuid",
+      "name": "Supplier Name",
+      "nip": "1234567890",
+      "street": "ul. Example 1",
+      "city": "Warsaw",
+      "postalCode": "00-001",
+      "email": "contact@supplier.pl",
+      "phone": "+48 111 222 333",
+      "status": "Active",
+      "source": "VAT",
+      "hasSelfBillingAgreement": true,
+      "createdAt": "2024-01-15T10:00:00.000Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+#### POST /api/suppliers
+Create a new supplier.
+
+**Auth**: Admin
+
+**Request Body**:
+```json
+{
+  "settingId": "uuid",
+  "name": "Supplier Name",
+  "nip": "1234567890",
+  "street": "ul. Example 1",
+  "city": "Warsaw",
+  "postalCode": "00-001",
+  "email": "contact@supplier.pl",
+  "phone": "+48 111 222 333"
+}
+```
+
+**Response** (201):
+```json
+{
+  "id": "uuid",
+  "name": "Supplier Name",
+  "nip": "1234567890",
+  "status": "Active"
+}
+```
+
+Returns `409 Conflict` if a supplier with the same NIP already exists.
+
+#### GET /api/suppliers/{id}
+Get a single supplier by ID.
+
+**Auth**: Reader
+
+**Response** (200): Full supplier object (same shape as list item).
+
+#### PATCH /api/suppliers/{id}
+Update supplier fields.
+
+**Auth**: Admin
+
+**Request Body**: Partial supplier object (only fields to update).
+
+**Response** (200): Updated supplier object.
+
+#### DELETE /api/suppliers/{id}
+Deactivate (soft-delete) a supplier.
+
+**Auth**: Admin
+
+**Response** (200):
+```json
+{ "success": true }
+```
+
+#### GET /api/suppliers/{id}/stats
+Get supplier statistics.
+
+**Auth**: Reader
+
+**Response** (200):
+```json
+{
+  "invoiceCount": 42,
+  "totalGross": 125000.00,
+  "avgInvoiceAmount": 2976.19,
+  "pendingPayments": 3,
+  "selfBillingInvoiceCount": 15
+}
+```
+
+#### POST /api/suppliers/{id}/stats/refresh
+Refresh cached supplier statistics.
+
+**Auth**: Admin
+
+**Response** (200): Updated stats object.
+
+#### GET /api/suppliers/{id}/invoices
+Get invoices for a specific supplier.
+
+**Auth**: Reader
+
+**Response** (200):
+```json
+{
+  "invoices": [
+    {
+      "id": "uuid",
+      "invoiceNumber": "SF/2024/01/001",
+      "invoiceDate": "2024-01-15",
+      "grossAmount": 1230.00,
+      "status": "SentToKsef"
+    }
+  ]
+}
+```
+
+#### POST /api/suppliers/from-vat
+Create a supplier from VAT registry lookup.
+
+**Auth**: Admin
+
+**Request Body**:
+```json
+{
+  "settingId": "uuid",
+  "nip": "1234567890"
+}
+```
+
+**Response** (201): Created supplier object with data from VAT registry.
+
+#### POST /api/suppliers/{id}/refresh-vat
+Refresh supplier data from VAT registry.
+
+**Auth**: Admin
+
+**Response** (200): Updated supplier object.
+
+---
+
+### Self-Billing Agreements
+
+#### GET /api/sb-agreements
+List self-billing agreements.
+
+**Auth**: Reader
+
+**Query Parameters**:
+- `settingId` (string, required): Company setting ID
+- `supplierId` (string): Filter by supplier
+- `status` (string): Filter by status (`Active`, `Terminated`, `Expired`)
+
+**Response** (200):
+```json
+{
+  "agreements": [
+    {
+      "id": "uuid",
+      "settingId": "uuid",
+      "supplierId": "uuid",
+      "supplierName": "Supplier Name",
+      "status": "Active",
+      "validFrom": "2024-01-01",
+      "validTo": "2025-12-31",
+      "createdAt": "2024-01-15T10:00:00.000Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+#### POST /api/sb-agreements
+Create a new self-billing agreement.
+
+**Auth**: Admin
+
+**Request Body**:
+```json
+{
+  "settingId": "uuid",
+  "supplierId": "uuid",
+  "validFrom": "2024-01-01",
+  "validTo": "2025-12-31"
+}
+```
+
+Validates that the supplier has `Active` status. Sets the supplier's `hasSelfBillingAgreement` flag.
+
+**Response** (201): Created agreement object.
+
+#### GET /api/sb-agreements/{id}
+Get a single agreement by ID.
+
+**Auth**: Reader
+
+**Response** (200): Full agreement object.
+
+#### PATCH /api/sb-agreements/{id}
+Update agreement fields.
+
+**Auth**: Admin
+
+**Request Body**: Partial agreement object.
+
+**Response** (200): Updated agreement object.
+
+#### POST /api/sb-agreements/{id}/terminate
+Terminate an active agreement.
+
+**Auth**: Admin
+
+**Response** (200):
+```json
+{
+  "id": "uuid",
+  "status": "Terminated"
+}
+```
+
+#### GET /api/sb-agreements/{id}/attachments
+List attachments for an agreement.
+
+**Auth**: Reader
+
+**Response** (200):
+```json
+{
+  "attachments": [
+    {
+      "id": "uuid",
+      "fileName": "agreement-scan.pdf",
+      "mimeType": "application/pdf",
+      "size": 125000,
+      "createdAt": "2024-01-15T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### POST /api/sb-agreements/{id}/attachments
+Upload an attachment for an agreement.
+
+**Auth**: Admin
+
+**Request Body**:
+```json
+{
+  "fileName": "agreement-scan.pdf",
+  "mimeType": "application/pdf",
+  "content": "base64-encoded-content",
+  "description": "Signed agreement scan"
+}
+```
+
+Validates file type and size limits.
+
+**Response** (201):
+```json
+{
+  "id": "uuid",
+  "fileName": "agreement-scan.pdf"
+}
+```
+
+---
+
+### Self-Billing Templates
+
+#### GET /api/sb-templates
+List invoice templates.
+
+**Auth**: Reader
+
+**Query Parameters**:
+- `settingId` (string, required): Company setting ID
+- `supplierId` (string): Filter by supplier
+- `activeOnly` (boolean): Only active templates (default: `true`)
+
+**Response** (200):
+```json
+{
+  "templates": [
+    {
+      "id": "uuid",
+      "settingId": "uuid",
+      "supplierId": "uuid",
+      "name": "Monthly Service",
+      "itemDescription": "IT consulting services",
+      "quantity": 1,
+      "unit": "szt.",
+      "unitPrice": 5000.00,
+      "vatRate": 23,
+      "currency": "PLN",
+      "isActive": true,
+      "createdAt": "2024-01-15T10:00:00.000Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+#### POST /api/sb-templates
+Create a new template.
+
+**Auth**: Admin
+
+**Request Body**:
+```json
+{
+  "settingId": "uuid",
+  "supplierId": "uuid",
+  "name": "Monthly Service",
+  "itemDescription": "IT consulting services",
+  "quantity": 1,
+  "unit": "szt.",
+  "unitPrice": 5000.00,
+  "vatRate": 23,
+  "currency": "PLN"
+}
+```
+
+**Response** (201): Created template object.
+
+#### GET /api/sb-templates/{id}
+Get a single template by ID.
+
+**Auth**: Reader
+
+**Response** (200): Full template object.
+
+#### PATCH /api/sb-templates/{id}
+Update template fields.
+
+**Auth**: Admin
+
+**Request Body**: Partial template object.
+
+**Response** (200): Updated template object.
+
+#### DELETE /api/sb-templates/{id}
+Deactivate (soft-delete) a template.
+
+**Auth**: Admin
+
+**Response** (200):
+```json
+{ "success": true }
+```
+
+#### POST /api/sb-templates/duplicate
+Duplicate all templates from one supplier to another.
+
+**Auth**: Admin
+
+**Request Body**:
+```json
+{
+  "fromSupplierId": "uuid",
+  "toSupplierId": "uuid",
+  "settingId": "uuid"
+}
+```
+
+**Response** (200):
+```json
+{
+  "duplicated": 3
+}
+```
+
+---
+
+### Self-Billing Invoices
+
+#### POST /api/invoices/self-billing
+Create a single self-billing invoice.
+
+**Auth**: Admin
+
+**Request Body**:
+```json
+{
+  "settingId": "uuid",
+  "supplierId": "uuid",
+  "invoiceDate": "2024-01-31",
+  "items": [
+    {
+      "description": "IT consulting services",
+      "quantity": 1,
+      "unit": "szt.",
+      "unitPrice": 5000.00,
+      "vatRate": 23
+    }
+  ]
+}
+```
+
+Resolves agreement from `agreementId` or `supplierId`. Generates invoice number in format `SF/{YYYY}/{MM}/{NNN}`.
+
+**Response** (201):
+```json
+{
+  "id": "uuid",
+  "invoiceNumber": "SF/2024/01/001",
+  "status": "Draft",
+  "grossAmount": 6150.00
+}
+```
+
+#### GET /api/invoices/self-billing
+List self-billing invoices.
+
+**Auth**: Reader
+
+**Query Parameters**:
+- `settingId` (string): Company setting ID
+- `supplierId` (string): Filter by supplier
+- `selfBillingStatus` (string): Filter by status (`Draft`, `PendingSeller`, `SellerApproved`, `SellerRejected`, `SentToKsef`)
+- `top` (number): Max results
+
+**Response** (200):
+```json
+{
+  "invoices": [
+    {
+      "id": "uuid",
+      "invoiceNumber": "SF/2024/01/001",
+      "supplierId": "uuid",
+      "supplierName": "Supplier Name",
+      "invoiceDate": "2024-01-31",
+      "grossAmount": 6150.00,
+      "status": "Draft",
+      "createdAt": "2024-01-31T10:00:00.000Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+#### POST /api/invoices/self-billing/preview
+Preview invoice generation for a period.
+
+**Auth**: Reader
+
+**Request Body**:
+```json
+{
+  "settingId": "uuid",
+  "period": { "month": 1, "year": 2024 },
+  "supplierIds": ["uuid"]
+}
+```
+
+`supplierIds` is optional — omit to include all suppliers with active agreements.
+
+**Response** (200):
+```json
+{
+  "previews": [
+    {
+      "supplierId": "uuid",
+      "supplierName": "Supplier Name",
+      "items": [{ "description": "...", "quantity": 1, "unitPrice": 5000.00, "vatRate": 23 }],
+      "totals": { "net": 5000.00, "vat": 1150.00, "gross": 6150.00 }
+    }
+  ],
+  "totals": { "invoiceCount": 1, "totalGross": 6150.00 }
+}
+```
+
+#### POST /api/invoices/self-billing/generate
+Generate invoices for a period. Uses the same request body as preview.
+
+**Auth**: Admin
+
+**Response** (200):
+```json
+{
+  "created": 3,
+  "invoiceIds": ["uuid", "uuid", "uuid"]
+}
+```
+
+#### POST /api/invoices/self-billing/generate/confirm
+Confirm generated invoices — transitions them from Draft to PendingSeller.
+
+**Auth**: Admin
+
+**Request Body**:
+```json
+{
+  "invoiceIds": ["uuid", "uuid"]
+}
+```
+
+**Response** (200):
+```json
+{
+  "confirmed": 2
+}
+```
+
+#### POST /api/invoices/self-billing/{id}/submit
+Submit invoice for seller review.
+
+**Auth**: Admin
+
+Resolves current user's Dataverse identity. Verifies the supplier has a designated SB contact user (`sbContactUserId`). Records `submittedByUserId` and `submittedAt`. Sends an `SbApprovalRequested` notification to the supplier's SB contact user.
+
+Transitions: `Draft` → `PendingSeller`
+
+**Response** (200):
+```json
+{
+  "invoice": {
+    "id": "uuid",
+    "status": "PendingSeller",
+    "submittedByUserId": "uuid",
+    "submittedAt": "2026-03-15T14:30:00.000Z"
+  }
+}
+```
+
+**Errors**:
+- `400` — Supplier has no SB contact user assigned
+- `400` — Invoice status is not Draft
+- `403` — Could not resolve Dataverse user account
+- `404` — Invoice or supplier not found
+
+#### POST /api/invoices/self-billing/{id}/approve
+Seller approves the invoice.
+
+**Auth**: Reader (minimum) — authorized for supplier's designated SB contact user or Admin
+
+Resolves caller's Dataverse identity and checks authorization: either the caller matches the supplier's `sbContactUserId` or the caller has Admin role. Records `approvedByUserId` and `approvedAt`.
+
+Transitions: `PendingSeller` → `SellerApproved`
+
+**Response** (200):
+```json
+{
+  "invoice": {
+    "id": "uuid",
+    "status": "SellerApproved",
+    "approvedByUserId": "uuid",
+    "approvedAt": "2026-03-15T15:00:00.000Z"
+  }
+}
+```
+
+**Errors**:
+- `400` — Invoice status is not PendingSeller
+- `403` — Only the designated supplier contact or Admin can approve
+
+#### POST /api/invoices/self-billing/{id}/reject
+Seller rejects the invoice.
+
+**Auth**: Reader (minimum) — authorized for supplier's designated SB contact user or Admin
+
+Same authorization model as approve. Records rejection reason, `approvedByUserId`, and `approvedAt`.
+
+**Request Body**:
+```json
+{
+  "reason": "Incorrect amounts"
+}
+```
+
+Transitions: `PendingSeller` → `SellerRejected`
+
+**Response** (200):
+```json
+{
+  "invoice": {
+    "id": "uuid",
+    "status": "SellerRejected",
+    "sellerRejectionReason": "Incorrect amounts",
+    "approvedByUserId": "uuid",
+    "approvedAt": "2026-03-15T15:00:00.000Z"
+  }
+}
+```
+
+**Errors**:
+- `400` — Rejection reason is required
+- `400` — Invoice status is not PendingSeller
+- `403` — Only the designated supplier contact or Admin can reject
+
+#### POST /api/invoices/self-billing/{id}/send-ksef
+Send approved invoice to KSeF.
+
+**Auth**: Admin
+
+Builds KSeF XML with `isSelfBilling: true` (sets P_17=1, includes Podmiot3 issuer). Must be `SellerApproved`.
+
+Transitions: `SellerApproved` → `SentToKsef`
+
+**Response** (200):
+```json
+{
+  "id": "uuid",
+  "status": "SentToKsef",
+  "ksefReferenceNumber": "KSeF-123456"
+}
+```
+
+#### PATCH /api/invoices/self-billing/{id}/status
+Generic status update (for admin overrides).
+
+**Auth**: Admin
+
+**Request Body**:
+```json
+{
+  "status": "Draft",
+  "rejectionReason": "optional reason"
+}
+```
+
+**Response** (200): Updated invoice object.
+
+#### POST /api/invoices/self-billing/batch
+Batch create up to 100 invoices.
+
+**Auth**: Admin
+
+**Request Body**:
+```json
+{
+  "settingId": "uuid",
+  "invoices": [
+    {
+      "supplierId": "uuid",
+      "invoiceDate": "2024-01-31",
+      "items": [{ "description": "...", "quantity": 1, "unitPrice": 5000.00, "vatRate": 23 }]
+    }
+  ]
+}
+```
+
+**Response** (200):
+```json
+{
+  "created": 5,
+  "invoiceIds": ["uuid", "uuid", "uuid", "uuid", "uuid"]
+}
+```
+
+---
+
+### Self-Billing Approvals
+
+#### GET /api/self-billing/approvals/pending
+List self-billing invoices pending approval for the current user.
+
+**Auth**: Reader
+
+Returns invoices with status `PendingSeller` where the supplier's `sbContactUserId` matches the current user's Dataverse system user ID. Admins can pass `?all=true` to see all pending invoices across all suppliers.
+
+**Query Parameters**:
+- `settingId` (string, required): Company setting ID
+- `all` (string, optional): `true` to list all pending invoices (Admin only)
+
+**Response** (200):
+```json
+{
+  "invoices": [
+    {
+      "id": "uuid",
+      "invoiceNumber": "SF/2024/01/001",
+      "supplierId": "uuid",
+      "supplierName": "Supplier Name",
+      "supplierNip": "1234567890",
+      "invoiceDate": "2024-01-31",
+      "grossAmount": 6150.00,
+      "status": "PendingSeller",
+      "submittedAt": "2024-01-31T10:00:00.000Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+### Self-Billing Import
+
+#### POST /api/invoices/self-billing/import
+Parse and validate a CSV or Excel file for import.
+
+**Auth**: Admin
+
+**Query Parameters**:
+- `settingId` (string, required): Company setting ID
+
+Send the file content in the request body with appropriate `Content-Type` (`text/csv` or `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`). The format is auto-detected.
+
+**Response** (200):
+```json
+{
+  "importId": "uuid",
+  "rows": [
+    {
+      "rowNumber": 1,
+      "supplierNip": "1234567890",
+      "supplierName": "Supplier Name",
+      "isValid": true,
+      "hasAgreement": true,
+      "items": [{ "description": "Service", "quantity": 1, "unitPrice": 5000.00, "vatRate": 23 }]
+    }
+  ],
+  "validCount": 5,
+  "invalidCount": 1
+}
+```
+
+#### POST /api/invoices/self-billing/import/confirm
+Create invoices from validated import rows.
+
+**Auth**: Admin
+
+**Request Body**:
+```json
+{
+  "settingId": "uuid",
+  "rows": [
+    {
+      "supplierNip": "1234567890",
+      "items": [{ "description": "Service", "quantity": 1, "unitPrice": 5000.00, "vatRate": 23 }]
+    }
+  ]
+}
+```
+
+**Response** (200):
+```json
+{
+  "created": 5,
+  "invoiceIds": ["uuid", "uuid", "uuid", "uuid", "uuid"]
+}
+```
+
+#### GET /api/invoices/self-billing/import/template
+Download CSV or Excel import template.
+
+**Auth**: User
+
+**Query Parameters**:
+- `format` (string): `csv` or `xlsx` (default: `csv`)
+
+**Response** (200): File download with appropriate Content-Type.
 
 ---
 

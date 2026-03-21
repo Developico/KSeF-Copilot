@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -43,6 +44,7 @@ import {
   RefreshCw,
   Save,
   Settings,
+  ShieldCheck,
   TestTube2,
   Trash,
 } from 'lucide-react'
@@ -64,15 +66,21 @@ import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
 import { RequireRole } from '@/components/auth/auth-provider'
 import { MpkCentersTab } from '@/components/settings/mpk-centers-tab'
+import { ApproversTab } from '@/components/settings/approvers-tab'
 
 type TokenStatus = 'valid' | 'expiring' | 'expired' | 'missing'
 type Environment = 'production' | 'test' | 'demo'
+
+const VALID_TABS = ['companies', 'costcenters', 'approvers', 'testdata', 'system']
 
 export default function SettingsPage() {
   const { toast } = useToast()
   const t = useTranslations('settings')
   const tCommon = useTranslations('common')
   const locale = useLocale()
+  const searchParams = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const initialTab = tabParam && VALID_TABS.includes(tabParam) ? tabParam : 'companies'
 
   // Helper function to get token status badge with translations
   const getTokenStatusBadge = (status: TokenStatus) => {
@@ -393,7 +401,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="companies">
+      <Tabs defaultValue={initialTab}>
         <TabsList className="w-full md:w-auto overflow-x-auto">
           <TabsTrigger value="companies">
             <Building2 className="mr-2 h-4 w-4" />
@@ -403,13 +411,17 @@ export default function SettingsPage() {
             <DollarSign className="mr-2 h-4 w-4" />
             {t('costCenters')}
           </TabsTrigger>
+          <TabsTrigger value="approvers">
+            <ShieldCheck className="mr-2 h-4 w-4" />
+            {t('approversTab')}
+          </TabsTrigger>
           <TabsTrigger value="testdata">
             <TestTube2 className="mr-2 h-4 w-4" />
             {t('testData')}
           </TabsTrigger>
           <TabsTrigger value="system">
             <AlertCircle className="mr-2 h-4 w-4" />
-            System Status
+            {t('systemStatus')}
           </TabsTrigger>
         </TabsList>
 
@@ -723,6 +735,11 @@ export default function SettingsPage() {
         {/* Cost Centers Tab (MPK Centers content) */}
         <TabsContent value="costcenters" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
           <MpkCentersTab />
+        </TabsContent>
+
+        {/* Approvers Tab */}
+        <TabsContent value="approvers" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
+          <ApproversTab />
         </TabsContent>
 
         {/* System Status Tab */}

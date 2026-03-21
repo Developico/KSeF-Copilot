@@ -168,6 +168,7 @@ describe('MPK Mappers', () => {
         dvlp_isactive: true,
         dvlp_approvalrequired: true,
         dvlp_approvalslahours: 48,
+        dvlp_approvaleffectivefrom: '2026-02-01',
         dvlp_budgetamount: 50000,
         dvlp_budgetperiod: 1,
         dvlp_budgetstartdate: '2026-01-01',
@@ -184,9 +185,27 @@ describe('MPK Mappers', () => {
       expect(result.isActive).toBe(true)
       expect(result.approvalRequired).toBe(true)
       expect(result.approvalSlaHours).toBe(48)
+      expect(result.approvalEffectiveFrom).toBe('2026-02-01')
       expect(result.budgetAmount).toBe(50000)
       expect(result.budgetPeriod).toBe('Quarterly')
       expect(result.budgetStartDate).toBe('2026-01-01')
+    })
+
+    it('should normalize datetime date fields to YYYY-MM-DD', () => {
+      const raw = {
+        dvlp_ksefmpkcenterid: 'center-3',
+        dvlp_name: 'DateTime Test',
+        _dvlp_settingid_value: 'setting-1',
+        dvlp_approvaleffectivefrom: '2026-02-01T00:00:00Z',
+        dvlp_budgetstartdate: '2026-01-15T00:00:00Z',
+        createdon: '2026-03-01T10:00:00Z',
+        modifiedon: '2026-03-01T10:00:00Z',
+      }
+
+      const result = mapDvMpkCenterToApp(raw as any)
+
+      expect(result.approvalEffectiveFrom).toBe('2026-02-01')
+      expect(result.budgetStartDate).toBe('2026-01-15')
     })
 
     it('should default isActive to true and approvalRequired to false', () => {

@@ -32,7 +32,7 @@ import { isPowerAppsHost, getPowerAppsUser } from '@/lib/power-apps-host'
 // Types
 // =============================================================================
 
-export type UserRole = 'Admin' | 'User' | 'Unauthorized'
+export type UserRole = 'Admin' | 'User' | 'Approver' | 'Unauthorized'
 
 export interface AuthUser {
   id: string
@@ -75,6 +75,10 @@ function mapGroupsToRoles(groups: string[]): UserRole[] {
     roles.push('User')
   }
 
+  if (groupConfig.approver && groups.includes(groupConfig.approver)) {
+    roles.push('Approver')
+  }
+
   if (roles.length === 0) {
     roles.push('Unauthorized')
   }
@@ -84,7 +88,7 @@ function mapGroupsToRoles(groups: string[]): UserRole[] {
 
 /** Get primary role (highest in hierarchy) */
 function getPrimaryRole(roles: UserRole[]): UserRole {
-  const hierarchy: UserRole[] = ['Unauthorized', 'User', 'Admin']
+  const hierarchy: UserRole[] = ['Unauthorized', 'Approver', 'User', 'Admin']
   return roles.reduce((highest, role) => {
     const currentIndex = hierarchy.indexOf(role)
     const highestIndex = hierarchy.indexOf(highest)
@@ -381,9 +385,14 @@ export function useHasRole(role: UserRole): boolean {
   // Admin has all permissions
   if (user.primaryRole === 'Admin') return true
 
-  // Check specific role
+  // User role implies Approver capabilities
   if (role === 'User') {
     return user.roles.includes('User') || user.roles.includes('Admin')
+  }
+
+  // Approver role check — User and Admin also satisfy Approver
+  if (role === 'Approver') {
+    return user.roles.includes('Approver') || user.roles.includes('User') || user.roles.includes('Admin')
   }
 
   return user.roles.includes(role)

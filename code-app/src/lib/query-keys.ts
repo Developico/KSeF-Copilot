@@ -5,7 +5,7 @@
  * cache invalidation across the app.
  */
 
-import type { InvoiceListParams, ForecastParams, AnomalyParams } from './types'
+import type { InvoiceListParams, ForecastParams, AnomalyParams, SupplierListParams, SelfBillingInvoiceListParams } from './types'
 
 export const queryKeys = {
   // Health
@@ -103,6 +103,8 @@ export const queryKeys = {
   mpkBudgetStatus: (id: string) =>
     ['mpk-centers', id, 'budget-status'] as const,
   dvUsers: (settingId: string) => ['users', settingId] as const,
+  approverOverview: (settingId: string) =>
+    ['approvers', 'overview', settingId] as const,
 
   // Approvals
   pendingApprovals: (settingId: string) =>
@@ -129,4 +131,33 @@ export const queryKeys = {
     ['reports', 'approver-performance', settingId] as const,
   reportInvoiceProcessing: (settingId: string) =>
     ['reports', 'invoice-processing', settingId] as const,
+
+  // Suppliers
+  suppliers: (params?: SupplierListParams) =>
+    ['suppliers', 'list', params] as const,
+  supplier: (id: string) => ['suppliers', id] as const,
+  supplierStats: (id: string) => ['suppliers', id, 'stats'] as const,
+  supplierInvoices: (id: string) => ['suppliers', id, 'invoices'] as const,
+  supplierNotes: (id: string) => ['suppliers', id, 'notes'] as const,
+  supplierAttachments: (id: string) => ['suppliers', id, 'attachments'] as const,
+
+  // Self-Billing Agreements
+  sbAgreements: (params?: { settingId?: string; supplierId?: string; status?: string }) =>
+    ['sb-agreements', params] as const,
+  sbAgreement: (id: string) => ['sb-agreements', id] as const,
+  sbAgreementAttachments: (id: string) =>
+    ['sb-agreements', id, 'attachments'] as const,
+
+  // Self-Billing Templates
+  sbTemplates: (params?: { settingId?: string; supplierId?: string }) =>
+    ['sb-templates', params] as const,
+  sbTemplate: (id: string) => ['sb-templates', id] as const,
+
+  // Self-Billing Invoices
+  selfBillingInvoices: (params?: SelfBillingInvoiceListParams) =>
+    ['self-billing', 'invoices', params] as const,
+  selfBillingInvoice: (id: string) =>
+    ['self-billing', 'invoices', id] as const,
+  selfBillingInvoiceNotes: (id: string) =>
+    ['self-billing', 'invoices', id, 'notes'] as const,
 }

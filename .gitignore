@@ -98,3 +98,4 @@ web/.env.production
 # Internal architecture and audit docs (private only)
 docs/CONNECTOR_AUDIT.md
 docs/AI_AGENT_ARCHITECTURE.md
+api/scripts/fix-allegro-nip.ts

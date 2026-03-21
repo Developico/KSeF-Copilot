@@ -79,6 +79,10 @@ vi.mock('@/components/dashboard/budget-summary-cards', () => ({
   BudgetSummaryCards: () => <div data-testid="budget-summary-cards" />,
 }))
 
+vi.mock('@/components/dashboard/self-billing-summary-cards', () => ({
+  SelfBillingSummaryCards: () => <div data-testid="self-billing-summary-cards" />,
+}))
+
 import { DashboardContent } from '@/components/dashboard/dashboard-content'
 
 function createTestQueryClient() {

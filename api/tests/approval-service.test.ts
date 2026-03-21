@@ -27,9 +27,18 @@ vi.mock('../src/lib/dataverse/services/budget-service', () => ({
   BudgetService: vi.fn(),
 }))
 
+vi.mock('../src/lib/dataverse/services/notification-service', () => ({
+  notificationService: {
+    create: vi.fn().mockResolvedValue({}),
+    createForRecipients: vi.fn().mockResolvedValue(0),
+  },
+  NotificationService: vi.fn(),
+}))
+
 import { dataverseClient } from '../src/lib/dataverse/client'
 import { ApprovalService } from '../src/lib/dataverse/services/approval-service'
 import { MpkCenterService } from '../src/lib/dataverse/services/mpk-center-service'
+import { notificationService } from '../src/lib/dataverse/services/notification-service'
 import { DV, APPROVAL_STATUS, INVOICE_TYPE } from '../src/lib/dataverse/config'
 import type { AuthUser } from '../src/types/api'
 
@@ -739,5 +748,296 @@ describe('ApprovalService.isAuthorizedApprover', () => {
 
     resolveOid.mockRestore()
     getApprovers.mockRestore()
+  })
+})
+
+// ============================================================================
+// ApprovalService.autoTrigger — D21 (approvalEffectiveFrom)
+// ============================================================================
+
+describe('ApprovalService.autoTrigger – D21 effectiveFrom', () => {
+  const mpkWithEffectiveFrom = {
+    ...mpkWithApproval,
+    approvalEffectiveFrom: '2026-06-01',
+  }
+
+  it('should set DRAFT when invoice date is before effectiveFrom', async () => {
+    const svc = createService()
+
+    vi.mocked(dataverseClient.getById).mockResolvedValueOnce(
+      makeDvInvoice({
+        [DV.invoice.approvalStatus]: APPROVAL_STATUS.DRAFT,
+        [DV.invoice.invoiceDate]: '2026-05-15',
+      })
+    )
+
+    const spy = vi.spyOn(MpkCenterService.prototype, 'getById')
+      .mockResolvedValueOnce(mpkWithEffectiveFrom)
+
+    vi.mocked(dataverseClient.update).mockResolvedValueOnce(undefined)
+
+    const result = await svc.autoTrigger('inv-001')
+    expect(result).toBeTruthy()
+    expect(result!.approvalStatus).toBe('Draft')
+
+    spy.mockRestore()
+  })
+
+  it('should set PENDING when invoice date is on or after effectiveFrom', async () => {
+    const svc = createService()
+
+    vi.mocked(dataverseClient.getById).mockResolvedValueOnce(
+      makeDvInvoice({
+        [DV.invoice.approvalStatus]: APPROVAL_STATUS.DRAFT,
+        [DV.invoice.invoiceDate]: '2026-06-01',
+      })
+    )
+
+    const spy = vi.spyOn(MpkCenterService.prototype, 'getById')
+      .mockResolvedValueOnce(mpkWithEffectiveFrom)
+
+    vi.mocked(dataverseClient.update).mockResolvedValueOnce(undefined)
+
+    const result = await svc.autoTrigger('inv-001')
+    expect(result).toBeTruthy()
+    expect(result!.approvalStatus).toBe('Pending')
+
+    spy.mockRestore()
+  })
+
+  it('should proceed normally when effectiveFrom is not set', async () => {
+    const svc = createService()
+
+    vi.mocked(dataverseClient.getById).mockResolvedValueOnce(
+      makeDvInvoice({
+        [DV.invoice.approvalStatus]: APPROVAL_STATUS.DRAFT,
+        [DV.invoice.invoiceDate]: '2025-01-01',
+      })
+    )
+
+    const spy = vi.spyOn(MpkCenterService.prototype, 'getById')
+      .mockResolvedValueOnce(mpkWithApproval)
+
+    vi.mocked(dataverseClient.update).mockResolvedValueOnce(undefined)
+
+    const result = await svc.autoTrigger('inv-001')
+    expect(result).toBeTruthy()
+    expect(result!.approvalStatus).toBe('Pending')
+
+    spy.mockRestore()
+  })
+})
+
+// ============================================================================
+// ApprovalService.applyApprovalToMpk
+// ============================================================================
+
+describe('ApprovalService.applyApprovalToMpk', () => {
+  it('should throw if MPK center not found', async () => {
+    const svc = createService()
+    const spy = vi.spyOn(MpkCenterService.prototype, 'getById')
+      .mockResolvedValueOnce(null)
+
+    await expect(svc.applyApprovalToMpk('nonexistent', 'unprocessed')).rejects.toThrow('MPK center not found')
+    spy.mockRestore()
+  })
+
+  it('should throw if MPK does not require approval', async () => {
+    const svc = createService()
+    const spy = vi.spyOn(MpkCenterService.prototype, 'getById')
+      .mockResolvedValueOnce(mpkWithoutApproval)
+
+    await expect(svc.applyApprovalToMpk('mpk-002', 'unprocessed')).rejects.toThrow('does not require approval')
+    spy.mockRestore()
+  })
+
+  it('should return counts when processing invoices with dryRun', async () => {
+    const svc = createService()
+    const spy = vi.spyOn(MpkCenterService.prototype, 'getById')
+      .mockResolvedValueOnce(mpkWithApproval)
+
+    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
+        makeDvInvoice({ [DV.invoice.approvalStatus]: APPROVAL_STATUS.DRAFT }),
+        makeDvInvoice({
+          [DV.invoice.id]: 'inv-002',
+          [DV.invoice.approvalStatus]: APPROVAL_STATUS.DRAFT,
+          [DV.invoice.invoiceType]: INVOICE_TYPE.CORRECTIVE,
+        }),
+      ])
+
+    const result = await svc.applyApprovalToMpk('mpk-001', 'unprocessed', true)
+
+    expect(result.total).toBe(2)
+    expect(result.updated).toBe(1)
+    expect(result.autoApproved).toBe(1)
+    expect(result.skipped).toBe(0)
+    expect(dataverseClient.update).not.toHaveBeenCalled()
+
+    spy.mockRestore()
+  })
+
+  it('should actually update invoices when not dryRun', async () => {
+    const svc = createService()
+    const spy = vi.spyOn(MpkCenterService.prototype, 'getById')
+      .mockResolvedValueOnce(mpkWithApproval)
+
+    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
+        makeDvInvoice({ [DV.invoice.approvalStatus]: APPROVAL_STATUS.DRAFT }),
+      ])
+    vi.mocked(dataverseClient.update).mockResolvedValue(undefined)
+
+    const result = await svc.applyApprovalToMpk('mpk-001', 'unprocessed', false)
+
+    expect(result.total).toBe(1)
+    expect(result.updated).toBe(1)
+    expect(result.autoApproved).toBe(0)
+    expect(dataverseClient.update).toHaveBeenCalledTimes(1)
+    expect(dataverseClient.update).toHaveBeenCalledWith(
+      DV.invoice.entitySet,
+      'inv-001',
+      expect.objectContaining({
+        [DV.invoice.approvalStatus]: APPROVAL_STATUS.PENDING,
+      })
+    )
+
+    spy.mockRestore()
+  })
+
+  it('should fire ApprovalRequested notifications for each invoice set to Pending', async () => {
+    const svc = createService()
+    const mpkSpy = vi.spyOn(MpkCenterService.prototype, 'getById')
+      .mockResolvedValueOnce(mpkWithApproval)
+    const approversSpy = vi.spyOn(MpkCenterService.prototype, 'getApprovers')
+      .mockResolvedValue([{ systemUserId: 'user-a', fullName: 'User A' } as never])
+
+    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
+      makeDvInvoice({ [DV.invoice.approvalStatus]: APPROVAL_STATUS.DRAFT }),
+      makeDvInvoice({
+        [DV.invoice.id]: 'inv-002',
+        [DV.invoice.name]: 'FV/2026/002',
+        [DV.invoice.approvalStatus]: APPROVAL_STATUS.DRAFT,
+      }),
+    ])
+    vi.mocked(dataverseClient.update).mockResolvedValue(undefined)
+
+    await svc.applyApprovalToMpk('mpk-001', 'unprocessed', false)
+
+    // Wait for fire-and-forget promises
+    await vi.waitFor(() => {
+      expect(vi.mocked(notificationService.createForRecipients)).toHaveBeenCalledTimes(2)
+    })
+
+    expect(vi.mocked(notificationService.createForRecipients)).toHaveBeenCalledWith(
+      ['user-a'],
+      expect.objectContaining({
+        settingId: 'setting-001',
+        type: 'ApprovalRequested',
+        invoiceId: 'inv-001',
+        mpkCenterId: 'mpk-001',
+      })
+    )
+
+    mpkSpy.mockRestore()
+    approversSpy.mockRestore()
+  })
+
+  it('should NOT fire notifications in dryRun mode', async () => {
+    const svc = createService()
+    const spy = vi.spyOn(MpkCenterService.prototype, 'getById')
+      .mockResolvedValueOnce(mpkWithApproval)
+
+    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
+      makeDvInvoice({ [DV.invoice.approvalStatus]: APPROVAL_STATUS.DRAFT }),
+    ])
+
+    await svc.applyApprovalToMpk('mpk-001', 'unprocessed', true)
+
+    expect(vi.mocked(notificationService.createForRecipients)).not.toHaveBeenCalled()
+
+    spy.mockRestore()
+  })
+})
+
+// ============================================================================
+// ApprovalService.revokeApprovalFromMpk
+// ============================================================================
+
+describe('ApprovalService.revokeApprovalFromMpk', () => {
+  it('should throw if MPK center not found', async () => {
+    const svc = createService()
+    const spy = vi.spyOn(MpkCenterService.prototype, 'getById')
+      .mockResolvedValueOnce(null)
+
+    await expect(svc.revokeApprovalFromMpk('nonexistent', 'pending')).rejects.toThrow('MPK center not found')
+    spy.mockRestore()
+  })
+
+  it('should dryRun count pending invoices without updating', async () => {
+    const svc = createService()
+    const spy = vi.spyOn(MpkCenterService.prototype, 'getById')
+      .mockResolvedValueOnce(mpkWithApproval)
+
+    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
+      makeDvInvoice({ [DV.invoice.approvalStatus]: APPROVAL_STATUS.PENDING }),
+      makeDvInvoice({
+        [DV.invoice.id]: 'inv-002',
+        [DV.invoice.approvalStatus]: APPROVAL_STATUS.PENDING,
+      }),
+    ])
+
+    const result = await svc.revokeApprovalFromMpk('mpk-001', 'pending', true)
+
+    expect(result.total).toBe(2)
+    expect(result.updated).toBe(2)
+    expect(result.skipped).toBe(0)
+    expect(dataverseClient.update).not.toHaveBeenCalled()
+
+    spy.mockRestore()
+  })
+
+  it('should update invoices back to Draft when not dryRun', async () => {
+    const svc = createService()
+    const spy = vi.spyOn(MpkCenterService.prototype, 'getById')
+      .mockResolvedValueOnce(mpkWithApproval)
+
+    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
+      makeDvInvoice({ [DV.invoice.approvalStatus]: APPROVAL_STATUS.APPROVED }),
+    ])
+    vi.mocked(dataverseClient.update).mockResolvedValue(undefined)
+
+    const result = await svc.revokeApprovalFromMpk('mpk-001', 'decided', false)
+
+    expect(result.total).toBe(1)
+    expect(result.updated).toBe(1)
+    expect(result.skipped).toBe(0)
+    expect(dataverseClient.update).toHaveBeenCalledTimes(1)
+    expect(dataverseClient.update).toHaveBeenCalledWith(
+      DV.invoice.entitySet,
+      'inv-001',
+      expect.objectContaining({
+        [DV.invoice.approvalStatus]: APPROVAL_STATUS.DRAFT,
+      })
+    )
+
+    spy.mockRestore()
+  })
+
+  it('should skip already-Draft invoices', async () => {
+    const svc = createService()
+    const spy = vi.spyOn(MpkCenterService.prototype, 'getById')
+      .mockResolvedValueOnce(mpkWithApproval)
+
+    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
+      makeDvInvoice({ [DV.invoice.approvalStatus]: APPROVAL_STATUS.DRAFT }),
+    ])
+
+    const result = await svc.revokeApprovalFromMpk('mpk-001', 'all', false)
+
+    expect(result.total).toBe(1)
+    expect(result.updated).toBe(0)
+    expect(result.skipped).toBe(1)
+    expect(dataverseClient.update).not.toHaveBeenCalled()
+
+    spy.mockRestore()
   })
 })

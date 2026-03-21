@@ -2,8 +2,8 @@
 
 > Przewodnik po dokumentacji integracji z Krajowym Systemem e-Faktur (KSeF)
 
-**Ostatnia aktualizacja:** 2025-06-14
-**Wersja dokumentacji:** 3.1
+**Ostatnia aktualizacja:** 2026-03-20
+**Wersja dokumentacji:** 3.2
 
 ---
 
@@ -49,6 +49,8 @@ Zalecana ścieżka czytania:
 | [Custom Connector](./pl/POWER_PLATFORM_CUSTOM_CONNECTOR.md) | Konfiguracja Custom Connector w Power Platform |
 | [Code Apps — plan](./pl/POWER_APPS_CODE_APPS_PLAN.md) | Analiza, fazy wdrożenia, Code App (Vite + React) |
 | [Analiza kosztów](./pl/ANALIZA_KOSZTOW.md) | Analiza kosztów rozwiązania w Azure |
+| [Role i uprawnienia](./pl/ROLE.md) | Model RBAC — role Admin/User/Approver, macierz dostępu |
+| [Konektor samofakturowania](./pl/SAMOFAKTUROWANIE_CONNECTOR.md) | Operacje konektora Self-Billing, przykłady Power Automate, Copilot Studio |
 
 ### English versions
 
@@ -64,6 +66,8 @@ Zalecana ścieżka czytania:
 | [Custom Connector (EN)](./en/POWER_PLATFORM_CUSTOM_CONNECTOR.md) | Power Platform Custom Connector — English version |
 | [Code Apps Plan (EN)](./en/POWER_APPS_CODE_APPS_PLAN.md) | Code App analysis & rollout plan — English version |
 | [Cost Analysis (EN)](./en/COST_ANALYSIS.md) | Azure cost analysis — English version |
+| [Roles & Permissions (EN)](./en/ROLES.md) | RBAC model — Admin/User/Approver roles, access matrix |
+| [Self-Billing Connector (EN)](./en/SELF_BILLING_CONNECTOR.md) | Self-Billing connector operations, Power Automate examples, Copilot Studio |
 
 ---
 
@@ -109,6 +113,8 @@ Kluczowe dokumenty wdrożeniowe:
 ---
 
 ## Konwencje dokumentacji
+
+- **Zrzuty ekranu:** folder [`docs/screenshots/`](./screenshots/) — lista zaplanowanych screenshotów i konwencje nazewnictwa
 
 - **Język główny:** polski 🇵🇱 → folder `docs/pl/` (nazwy plików po polsku)
 - **Wersje EN:** folder `docs/en/` (nazwy plików po angielsku)

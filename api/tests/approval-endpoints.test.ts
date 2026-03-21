@@ -23,6 +23,7 @@ vi.mock('@azure/functions', () => ({
 vi.mock('../src/lib/auth/middleware', () => ({
   verifyAuth: vi.fn(),
   requireRole: vi.fn(),
+  requireAnyRole: vi.fn(),
 }))
 
 vi.mock('../src/lib/dataverse/services', () => ({
@@ -36,7 +37,7 @@ vi.mock('../src/lib/dataverse/services', () => ({
   },
 }))
 
-import { verifyAuth, requireRole } from '../src/lib/auth/middleware'
+import { verifyAuth, requireRole, requireAnyRole } from '../src/lib/auth/middleware'
 import { approvalService } from '../src/lib/dataverse/services'
 
 // Import the module to trigger handler registration
@@ -86,6 +87,7 @@ function makeContext(): unknown {
 function setupAuth(user = adminUser) {
   vi.mocked(verifyAuth).mockResolvedValue({ success: true, user })
   vi.mocked(requireRole).mockReturnValue({ success: true })
+  vi.mocked(requireAnyRole).mockReturnValue({ success: true })
 }
 
 function setupUnauthenticated() {
@@ -95,6 +97,7 @@ function setupUnauthenticated() {
 function setupForbidden() {
   vi.mocked(verifyAuth).mockResolvedValue({ success: true, user: readerUser })
   vi.mocked(requireRole).mockReturnValue({ success: false, error: 'Forbidden' })
+  vi.mocked(requireAnyRole).mockReturnValue({ success: false, error: 'Forbidden' })
 }
 
 beforeEach(() => {

@@ -3,22 +3,44 @@
  *
  * Centralised currency / date / number formatting so all pages
  * show data consistently.
+ *
+ * Uses `formatToParts()` to work around an ICU/CLDR bug where
+ * `Intl.NumberFormat('pl-PL')` omits the thousands-group separator
+ * for 4-digit integers (1 000 – 9 999).
  */
 
+const NBSP = '\u00A0'
+
 /**
- * Format a number as PLN currency (Polish locale, no decimals for large).
+ * Reconstruct formatted string from parts, forcing proper grouping
+ * on integer segments that the runtime left ungrouped.
+ */
+function formatParts(fmt: Intl.NumberFormat, value: number): string {
+  return fmt
+    .formatToParts(value)
+    .map((p) =>
+      p.type === 'integer' && p.value.length >= 4
+        ? p.value.replace(/\B(?=(\d{3})+(?!\d))/g, NBSP)
+        : p.value,
+    )
+    .join('')
+}
+
+/**
+ * Format a number as PLN currency (Polish locale, 2 decimal places).
  */
 export function formatCurrency(
   amount: number,
   currency = 'PLN',
   locale = 'pl-PL'
 ): string {
-  return new Intl.NumberFormat(locale, {
+  const fmt = new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount)
+  })
+  return formatParts(fmt, amount)
 }
 
 /**
@@ -29,12 +51,13 @@ export function formatCurrencyCompact(
   currency = 'PLN',
   locale = 'pl-PL'
 ): string {
-  return new Intl.NumberFormat(locale, {
+  const fmt = new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount)
+  })
+  return formatParts(fmt, amount)
 }
 
 /**
@@ -69,6 +92,7 @@ export function formatRelativeDate(date: string, locale = 'pl-PL'): string {
 /**
  * Format a number with Polish locale.
  */
-export function formatNumber(n: number, locale = 'pl-PL'): string {
-  return new Intl.NumberFormat(locale).format(n)
+export function formatNumber(n: number, locale = 'pl-PL', options?: Intl.NumberFormatOptions): string {
+  const fmt = new Intl.NumberFormat(locale, options)
+  return formatParts(fmt, n)
 }

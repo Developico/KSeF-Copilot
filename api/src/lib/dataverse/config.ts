@@ -227,6 +227,7 @@ export const DV = {
     isActive: 'dvlp_isactive',
     approvalRequired: 'dvlp_approvalrequired',
     approvalSlaHours: 'dvlp_approvalslahours',
+    approvalEffectiveFrom: 'dvlp_approvaleffectivefrom',
     budgetAmount: 'dvlp_budgetamount',
     budgetPeriod: 'dvlp_budgetperiod',
     budgetStartDate: 'dvlp_budgetstartdate',
@@ -280,6 +281,167 @@ export const DV = {
     azureObjectId: 'azureactivedirectoryobjectid',
     isDisabled: 'isdisabled',
     accessMode: 'accessmode',
+  },
+
+  // ============================================================
+  // KSeF Supplier (dvlp_ksefsupplier)
+  // ============================================================
+  supplier: {
+    entitySet: 'dvlp_ksefsuppliers',
+    id: 'dvlp_ksefsupplierid',
+    name: 'dvlp_name',
+    nip: 'dvlp_nip',
+    shortName: 'dvlp_shortname',
+    regon: 'dvlp_regon',
+    krs: 'dvlp_krs',
+    street: 'dvlp_street',
+    city: 'dvlp_city',
+    postalCode: 'dvlp_postalcode',
+    country: 'dvlp_country',
+    email: 'dvlp_email',
+    phone: 'dvlp_phone',
+    bankAccount: 'dvlp_bankaccount',
+    vatStatus: 'dvlp_vatstatus',
+    vatStatusDate: 'dvlp_vatstatusdate',
+    paymentTermsDays: 'dvlp_paymenttermsdays',
+    defaultCategory: 'dvlp_defaultcategory',
+    notes: 'dvlp_notes',
+    tags: 'dvlp_tags',
+    hasSelfBillingAgreement: 'dvlp_hasselfbillingagreement',
+    selfBillingAgreementDate: 'dvlp_selfbillingagreementdate',
+    selfBillingAgreementExpiry: 'dvlp_selfbillingagreementexpiry',
+    sbContactUserLookup: '_dvlp_sbcontactuserid_value',
+    sbContactUserBind: 'dvlp_sbcontactuserid@odata.bind',
+    firstInvoiceDate: 'dvlp_firstinvoicedate',
+    lastInvoiceDate: 'dvlp_lastinvoicedate',
+    totalInvoiceCount: 'dvlp_totalinvoicecount',
+    totalGrossAmount: 'dvlp_totalgrossamount',
+    status: 'dvlp_status',
+    source: 'dvlp_source',
+    settingLookup: '_dvlp_settingid_value',
+    settingBind: 'dvlp_settingid@odata.bind',
+    defaultMpkLookup: '_dvlp_defaultmpkid_value',
+    defaultMpkBind: 'dvlp_defaultmpkid@odata.bind',
+    createdOn: 'createdon',
+    modifiedOn: 'modifiedon',
+  },
+
+  // ============================================================
+  // KSeF Self-Billing Agreement (dvlp_ksefsbagrement)
+  // ============================================================
+  sbAgreement: {
+    entitySet: 'dvlp_ksefsbagrements',
+    id: 'dvlp_ksefsbagrementid',
+    name: 'dvlp_name',
+    agreementDate: 'dvlp_agreementdate',
+    validFrom: 'dvlp_validfrom',
+    validTo: 'dvlp_validto',
+    renewalDate: 'dvlp_renewaldate',
+    approvalProcedure: 'dvlp_approvalprocedure',
+    status: 'dvlp_status',
+    credentialReference: 'dvlp_credentialreference',
+    notes: 'dvlp_notes',
+    hasDocument: 'dvlp_hasdocument',
+    documentFilename: 'dvlp_documentfilename',
+    autoApprove: 'dvlp_autoapprove',
+    supplierLookup: '_dvlp_supplierid_value',
+    supplierBind: 'dvlp_supplierid@odata.bind',
+    settingLookup: '_dvlp_settingid_value',
+    settingBind: 'dvlp_settingid@odata.bind',
+    createdOn: 'createdon',
+    modifiedOn: 'modifiedon',
+  },
+
+  // ============================================================
+  // KSeF Self-Billing Template (dvlp_ksefselfbillingtemplate)
+  // ============================================================
+  sbTemplate: {
+    entitySet: 'dvlp_ksefselfbillingtemplates',
+    id: 'dvlp_ksefselfbillingtemplateid',
+    name: 'dvlp_name',
+    description: 'dvlp_description',
+    itemDescription: 'dvlp_itemdescription',
+    quantity: 'dvlp_quantity',
+    unit: 'dvlp_unit',
+    unitPrice: 'dvlp_unitprice',
+    vatRate: 'dvlp_vatrate',
+    currency: 'dvlp_currency',
+    isActive: 'dvlp_isactive',
+    sortOrder: 'dvlp_sortorder',
+    paymentTermDays: 'dvlp_paymenttermsdays',
+    supplierLookup: '_dvlp_supplierid_value',
+    supplierBind: 'dvlp_supplierid@odata.bind',
+    settingLookup: '_dvlp_settingid_value',
+    settingBind: 'dvlp_settingid@odata.bind',
+    createdOn: 'createdon',
+    modifiedOn: 'modifiedon',
+  },
+
+  // ============================================================
+  // KSeF Self-Billing Invoice (dvlp_ksefselfbillinginvoice)
+  // ============================================================
+  sbInvoice: {
+    entitySet: 'dvlp_ksefselfbillinginvoices',
+    id: 'dvlp_ksefselfbillinginvoiceid',
+    name: 'dvlp_name',
+    invoiceDate: 'dvlp_invoicedate',
+    dueDate: 'dvlp_duedate',
+    netAmount: 'dvlp_netamount',
+    vatAmount: 'dvlp_vatamount',
+    grossAmount: 'dvlp_grossamount',
+    currency: 'dvlp_currency',
+    status: 'dvlp_status',
+    sellerRejectionReason: 'dvlp_sellerrejectionreason',
+    sentDate: 'dvlp_sentdate',
+    ksefReferenceNumber: 'dvlp_ksefreferencenumber',
+    // Relations
+    settingLookup: '_dvlp_settingid_value',
+    settingBind: 'dvlp_settingid@odata.bind',
+    supplierLookup: '_dvlp_supplierid_value',
+    supplierBind: 'dvlp_supplierid@odata.bind',
+    sbAgreementLookup: '_dvlp_sbagreementid_value',
+    sbAgreementBind: 'dvlp_sbagreementid@odata.bind',
+    ksefInvoiceLookup: '_dvlp_kseFinvoiceid_value',
+    ksefInvoiceBind: 'dvlp_kseFinvoiceid@odata.bind',
+    mpkCenterLookup: '_dvlp_mpkcenterid_value',
+    mpkCenterBind: 'dvlp_mpkcenterid@odata.bind',
+    // Audit: submit & approve
+    submittedByUserLookup: '_dvlp_submittedbyuserid_value',
+    submittedByUserBind: 'dvlp_submittedbyuserid@odata.bind',
+    submittedAt: 'dvlp_submittedat',
+    approvedByUserLookup: '_dvlp_approvedbyuserid_value',
+    approvedByUserBind: 'dvlp_approvedbyuserid@odata.bind',
+    approvedAt: 'dvlp_approvedat',
+    // Standard
+    stateCode: 'statecode',
+    createdOn: 'createdon',
+    modifiedOn: 'modifiedon',
+  },
+
+  // ============================================================
+  // KSeF Self-Billing Line Item (dvlp_ksefselfbillinglineitem)
+  // ============================================================
+  sbLineItem: {
+    entitySet: 'dvlp_ksefselfbillinglineitems',
+    id: 'dvlp_ksefselfbillinglineitemid',
+    name: 'dvlp_name',
+    quantity: 'dvlp_quantity',
+    unit: 'dvlp_unit',
+    unitPrice: 'dvlp_unitprice',
+    vatRate: 'dvlp_vatrate',
+    netAmount: 'dvlp_netamount',
+    vatAmount: 'dvlp_vatamount',
+    grossAmount: 'dvlp_grossamount',
+    paymentTermDays: 'dvlp_paymenttermsdays',
+    sortOrder: 'dvlp_sortorder',
+    // Relations
+    sbInvoiceLookup: '_dvlp_sbinvoiceid_value',
+    sbInvoiceBind: 'dvlp_sbinvoiceid@odata.bind',
+    templateLookup: '_dvlp_templateid_value',
+    templateBind: 'dvlp_templateid@odata.bind',
+    // Standard
+    createdOn: 'createdon',
+    modifiedOn: 'modifiedon',
   },
 } as const
 
@@ -401,6 +563,34 @@ export const NOTIFICATION_TYPE = {
   BUDGET_WARNING_80: 2,
   BUDGET_EXCEEDED: 3,
   APPROVAL_DECIDED: 4,
+  SB_APPROVAL_REQUESTED: 5,
+  SB_APPROVAL_DECIDED: 6,
+} as const
+
+export const SUPPLIER_STATUS = {
+  ACTIVE: 100000001,
+  INACTIVE: 100000002,
+  BLOCKED: 100000003,
+} as const
+
+export const SUPPLIER_SOURCE = {
+  KSEF: 100000001,
+  MANUAL: 100000002,
+  VAT_API: 100000003,
+} as const
+
+export const SB_AGREEMENT_STATUS = {
+  ACTIVE: 100000001,
+  EXPIRED: 100000002,
+  TERMINATED: 100000003,
+} as const
+
+export const SELF_BILLING_STATUS = {
+  DRAFT: 100000001,
+  PENDING_SELLER: 100000002,
+  SELLER_APPROVED: 100000003,
+  SELLER_REJECTED: 100000004,
+  SENT_TO_KSEF: 100000005,
 } as const
 
 // Type exports for type-safe usage
@@ -419,3 +609,7 @@ export type CostCategory = typeof COST_CATEGORY[keyof typeof COST_CATEGORY]
 export type ApprovalStatusValue = typeof APPROVAL_STATUS[keyof typeof APPROVAL_STATUS]
 export type BudgetPeriodValue = typeof BUDGET_PERIOD[keyof typeof BUDGET_PERIOD]
 export type NotificationTypeValue = typeof NOTIFICATION_TYPE[keyof typeof NOTIFICATION_TYPE]
+export type SupplierStatusValue = typeof SUPPLIER_STATUS[keyof typeof SUPPLIER_STATUS]
+export type SupplierSourceValue = typeof SUPPLIER_SOURCE[keyof typeof SUPPLIER_SOURCE]
+export type SbAgreementStatusValue = typeof SB_AGREEMENT_STATUS[keyof typeof SB_AGREEMENT_STATUS]
+export type SelfBillingStatusValue = typeof SELF_BILLING_STATUS[keyof typeof SELF_BILLING_STATUS]

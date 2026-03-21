@@ -38,6 +38,7 @@ export function parseInvoiceXml(xml: string): ParsedInvoice {
   const naglowek = faktura.Naglowek || {}
   const podmiot1 = faktura.Podmiot1 || {} // Seller
   const podmiot2 = faktura.Podmiot2 || {} // Buyer
+  const podmiot3 = faktura.Podmiot3 || null // Issuer (self-billing)
   const fa = faktura.Fa || {}
 
   // Parse supplier (Podmiot1 - seller)
@@ -121,6 +122,20 @@ export function parseInvoiceXml(xml: string): ParsedInvoice {
     })
   }
 
+  // Detect self-billing from Adnotacje.P_17
+  const adnotacje = fa.Adnotacje || {}
+  const isSelfBilling = adnotacje.P_17 === 1 || adnotacje.P_17 === '1'
+
+  // Parse Podmiot3 (issuer, e.g., buyer in self-billing scenario)
+  let issuer: { nip: string; name: string } | undefined
+  if (podmiot3) {
+    const issuerData = podmiot3.DaneIdentyfikacyjne || {}
+    issuer = {
+      nip: formatNip(issuerData.NIP),
+      name: String(issuerData.Nazwa || issuerData.PelnaNazwa || ''),
+    }
+  }
+
   return {
     invoiceNumber: String(fa.P_2 || naglowek.NumerFaktury || ''),
     invoiceDate: String(fa.P_1 || naglowek.DataWystawienia || ''),
@@ -149,6 +164,9 @@ export function parseInvoiceXml(xml: string): ParsedInvoice {
     correctedInvoiceKsefRef,
     correctionPeriodFrom,
     correctionPeriodTo,
+    // Self-billing fields
+    isSelfBilling: isSelfBilling || undefined,
+    issuer,
   }
 }
 
@@ -271,6 +289,15 @@ export function buildInvoiceXml(invoice: KsefInvoice): string {
           AdresL2: `${invoice.buyer.address.postalCode} ${invoice.buyer.address.city}`,
         },
       },
+      ...(invoice.issuer ? {
+        Podmiot3: {
+          DaneIdentyfikacyjne: {
+            NIP: invoice.issuer.nip,
+            Nazwa: invoice.issuer.name,
+          },
+          Rola: 1, // Invoice issuer role
+        },
+      } : {}),
       Fa: {
         KodWaluty: invoice.currency || 'PLN',
         P_1: invoice.invoiceDate,
@@ -280,7 +307,7 @@ export function buildInvoiceXml(invoice: KsefInvoice): string {
         P_15: calculateGrossTotal(invoice.items),
         Adnotacje: {
           P_16: 2, // Not split payment
-          P_17: 2, // Not self-billing
+          P_17: invoice.isSelfBilling ? 1 : 2, // Self-billing flag
           P_18: 2, // Not reverse charge
           P_18A: 2, // Not margin scheme
           P_19: 2, // No links to other invoices

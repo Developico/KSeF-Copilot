@@ -1,8 +1,72 @@
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import CountUp from 'react-countup'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { LucideIcon } from 'lucide-react'
+import { formatCurrencyCompact as formatCurrencyValue, formatNumber } from '@/lib/format'
+
+/**
+ * Hook that animates a number from 0 to `end` using requestAnimationFrame.
+ * Replaces react-countup which crashes with "innerHTML of null" in framer-motion.
+ */
+function useAnimatedNumber(end: number, duration = 1500, delayMs = 0) {
+  const [value, setValue] = useState(0)
+
+  useEffect(() => {
+    let raf: number
+    let timeout: ReturnType<typeof setTimeout>
+
+    timeout = setTimeout(() => {
+      const start = performance.now()
+      const animate = (now: number) => {
+        const elapsed = now - start
+        const progress = Math.min(elapsed / duration, 1)
+        // ease-out cubic
+        const eased = 1 - Math.pow(1 - progress, 3)
+        setValue(eased * end)
+        if (progress < 1) raf = requestAnimationFrame(animate)
+      }
+      raf = requestAnimationFrame(animate)
+    }, delayMs * 1000)
+
+    return () => {
+      clearTimeout(timeout)
+      cancelAnimationFrame(raf)
+    }
+  }, [end, duration, delayMs])
+
+  return value
+}
+
+/** Format an animated value for display */
+function AnimatedValue({
+  end,
+  duration = 1.5,
+  delay = 0,
+  decimals = 0,
+  suffix = '',
+  formattingFn,
+}: {
+  end: number
+  duration?: number
+  delay?: number
+  decimals?: number
+  suffix?: string
+  formattingFn?: (n: number) => string
+}) {
+  const animated = useAnimatedNumber(end, duration * 1000, delay)
+  const rounded = decimals > 0
+    ? Number(animated.toFixed(decimals))
+    : Math.round(animated)
+
+  if (formattingFn) return <>{formattingFn(rounded)}</>
+
+  const formatted = formatNumber(rounded, 'pl-PL', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })
+  return <>{formatted}{suffix}</>
+}
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -25,15 +89,6 @@ type AnimatedKpiCardProps = {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
-
-function formatCurrencyValue(amount: number): string {
-  return new Intl.NumberFormat('pl-PL', {
-    style: 'currency',
-    currency: 'PLN',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
 
 // ─── AnimatedKpiCard ─────────────────────────────────────────────
 
@@ -89,24 +144,17 @@ export function AnimatedKpiCard({
             <>
               <div className="text-2xl font-bold" style={{ color: valueColor }}>
                 {format === 'currency' ? (
-                  <CountUp
-                    start={0}
+                  <AnimatedValue
                     end={value}
                     duration={1.5}
                     delay={delay}
-                    separator=" "
-                    decimal=","
-                    decimals={0}
                     formattingFn={formatCurrencyValue}
                   />
                 ) : (
-                  <CountUp
-                    start={0}
+                  <AnimatedValue
                     end={value}
                     duration={1.5}
                     delay={delay}
-                    separator=" "
-                    decimal=","
                     decimals={decimals}
                     suffix={suffix}
                   />

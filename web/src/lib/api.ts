@@ -63,6 +63,25 @@ export interface DashboardStats {
   payments: PaymentStats
 }
 
+// Activity Feed Types
+export type ActivityItemType = 'invoice' | 'approval' | 'selfbilling' | 'sync'
+
+export interface ActivityItem {
+  id: string
+  type: ActivityItemType
+  title: string
+  description: string
+  amount?: number
+  currency?: string
+  date: string
+  link?: string
+}
+
+export interface ActivityFeedResponse {
+  items: ActivityItem[]
+  count: number
+}
+
 // Forecast Types
 export interface ForecastMonthlyData {
   month: string
@@ -326,6 +345,8 @@ export interface Invoice {
   parentInvoiceId?: string
   correctedInvoiceNumber?: string
   correctionReason?: string
+  // Self-billing
+  isSelfBilling?: boolean
 }
 
 export interface InvoiceItem {
@@ -441,6 +462,7 @@ export interface MpkCenter {
   isActive: boolean
   approvalRequired: boolean
   approvalSlaHours?: number
+  approvalEffectiveFrom?: string
   budgetAmount?: number
   budgetPeriod?: BudgetPeriod
   budgetStartDate?: string
@@ -454,6 +476,7 @@ export interface MpkCenterCreate {
   description?: string
   approvalRequired?: boolean
   approvalSlaHours?: number
+  approvalEffectiveFrom?: string | null
   budgetAmount?: number
   budgetPeriod?: BudgetPeriod
   budgetStartDate?: string
@@ -463,7 +486,8 @@ export interface MpkCenterUpdate {
   name?: string
   description?: string
   approvalRequired?: boolean
-  approvalSlaHours?: number
+  approvalSlaHours?: number | null
+  approvalEffectiveFrom?: string | null
   budgetAmount?: number
   budgetPeriod?: BudgetPeriod
   budgetStartDate?: string
@@ -611,6 +635,7 @@ export type NotificationType =
   | 'BudgetWarning80'
   | 'BudgetExceeded'
   | 'ApprovalDecided'
+  | 'SbApprovalRequested'
 
 export interface AppNotification {
   id: string
@@ -901,6 +926,435 @@ async function apiFetch<T>(
 }
 
 // ============================================================================
+// Supplier Types
+// ============================================================================
+
+export type SupplierStatusType = 'Active' | 'Inactive' | 'Blocked'
+export type SupplierSourceType = 'KSeF' | 'Manual' | 'VatApi'
+
+export interface Supplier {
+  id: string
+  nip: string
+  name: string
+  shortName?: string | null
+  regon?: string | null
+  krs?: string | null
+  street?: string | null
+  city?: string | null
+  postalCode?: string | null
+  country?: string | null
+  email?: string | null
+  phone?: string | null
+  bankAccount?: string | null
+  vatStatus?: string | null
+  vatStatusDate?: string | null
+  paymentTermsDays?: number | null
+  defaultMpkId?: string | null
+  defaultCategory?: string | null
+  notes?: string | null
+  tags?: string | null
+  hasSelfBillingAgreement: boolean
+  selfBillingAgreementDate?: string | null
+  selfBillingAgreementExpiry?: string | null
+  sbContactUserId?: string | null
+  firstInvoiceDate?: string | null
+  lastInvoiceDate?: string | null
+  totalInvoiceCount: number
+  totalGrossAmount: number
+  status: SupplierStatusType
+  source: SupplierSourceType
+  settingId: string
+  createdOn: string
+  modifiedOn: string
+}
+
+export interface SupplierCreate {
+  nip: string
+  name: string
+  shortName?: string
+  street?: string
+  city?: string
+  postalCode?: string
+  country?: string
+  email?: string
+  phone?: string
+  bankAccount?: string
+  settingId: string
+}
+
+export interface SupplierListParams {
+  settingId: string
+  status?: SupplierStatusType
+  search?: string
+  hasSelfBillingAgreement?: boolean
+  top?: number
+  skip?: number
+}
+
+export interface SupplierListResponse {
+  suppliers: Supplier[]
+  count: number
+}
+
+export interface SupplierDetailStats {
+  invoiceCount: number
+  totalGross: number
+  avgInvoiceAmount: number
+  lastInvoiceDate: string | null
+  pendingPayments: number
+  overduePayments: number
+  selfBillingInvoiceCount: number
+  selfBillingPendingCount: number
+}
+
+// ============================================================================
+// Self-Billing Agreement Types
+// ============================================================================
+
+export type SbAgreementStatusType = 'Active' | 'Expired' | 'Terminated'
+
+export interface SbAgreement {
+  id: string
+  name: string
+  supplierId: string
+  agreementDate: string
+  validFrom: string
+  validTo?: string | null
+  renewalDate?: string | null
+  approvalProcedure?: string | null
+  status: SbAgreementStatusType
+  credentialReference?: string | null
+  notes?: string | null
+  hasDocument: boolean
+  documentFilename?: string | null
+  autoApprove: boolean
+  settingId: string
+  createdOn: string
+  modifiedOn: string
+}
+
+export interface SbAgreementCreate {
+  supplierId: string
+  name: string
+  agreementDate: string
+  validFrom: string
+  validTo?: string
+  renewalDate?: string
+  approvalProcedure?: string
+  notes?: string
+  autoApprove?: boolean
+  settingId: string
+}
+
+export interface SbAgreementListResponse {
+  agreements: SbAgreement[]
+  total: number
+}
+
+// ============================================================================
+// Self-Billing Template Types
+// ============================================================================
+
+export interface SbTemplate {
+  id: string
+  supplierId: string
+  settingId: string
+  name: string
+  description?: string | null
+  itemDescription: string
+  quantity: number
+  unit: string
+  unitPrice: number
+  vatRate: number
+  currency: string
+  isActive: boolean
+  sortOrder: number
+  paymentTermDays?: number | null
+  createdOn: string
+  modifiedOn: string
+}
+
+export interface SbTemplateCreate {
+  supplierId: string
+  settingId: string
+  name: string
+  description?: string
+  itemDescription: string
+  quantity: number
+  unit: string
+  unitPrice: number
+  vatRate: number
+  currency?: string
+  paymentTermDays?: number | null
+}
+
+export interface SbTemplateListResponse {
+  templates: SbTemplate[]
+  total: number
+}
+
+// ============================================================================
+// Self-Billing Invoice Types
+// ============================================================================
+
+export type SelfBillingInvoiceStatusType =
+  | 'Draft'
+  | 'PendingSeller'
+  | 'SellerApproved'
+  | 'SellerRejected'
+  | 'SentToKsef'
+
+export interface SelfBillingInvoiceItem {
+  id?: string
+  templateId?: string
+  itemDescription: string
+  quantity: number
+  unit: string
+  unitPrice: number
+  vatRate: number
+  netAmount?: number
+  vatAmount?: number
+  grossAmount?: number
+  paymentTermDays?: number | null
+  sortOrder?: number
+  sbInvoiceId?: string
+  createdOn?: string
+  modifiedOn?: string
+}
+
+export interface SelfBillingInvoice {
+  id: string
+  invoiceNumber: string
+  agreementId?: string
+  supplierId: string
+  supplierName?: string
+  supplierNip?: string
+  ksefInvoiceId?: string
+  mpkCenterId?: string
+  invoiceDate: string
+  dueDate?: string
+  netAmount: number
+  vatAmount: number
+  grossAmount: number
+  currency: string
+  status: SelfBillingInvoiceStatusType
+  ksefReferenceNumber?: string
+  sellerRejectionReason?: string
+  sentDate?: string
+  submittedByUserId?: string
+  submittedAt?: string
+  approvedByUserId?: string
+  approvedAt?: string
+  items: SelfBillingInvoiceItem[]
+  settingId: string
+  createdOn: string
+  modifiedOn: string
+}
+
+export interface SelfBillingInvoiceListParams {
+  settingId: string
+  supplierId?: string
+  status?: SelfBillingInvoiceStatusType
+  dateFrom?: string
+  dateTo?: string
+  top?: number
+  skip?: number
+}
+
+export interface SelfBillingInvoiceListResponse {
+  invoices: SelfBillingInvoice[]
+  total: number
+}
+
+export interface SelfBillingGenerateRequest {
+  settingId: string
+  period: { month: number; year: number }
+  supplierIds?: string[]
+  templateIds?: string[]
+  previews?: SelfBillingGeneratePreview[]
+}
+
+export interface SelfBillingGeneratePreview {
+  supplierId: string
+  supplierName: string
+  supplierNip: string
+  agreementId: string
+  items: Array<{
+    templateId: string
+    templateName: string
+    itemDescription: string
+    quantity: number
+    unit: string
+    unitPrice: number
+    vatRate: number
+    netAmount: number
+    vatAmount: number
+    grossAmount: number
+    paymentTermDays?: number | null
+  }>
+  totals: { netAmount: number; vatAmount: number; grossAmount: number }
+}
+
+export interface SelfBillingGenerateResponse {
+  previews: SelfBillingGeneratePreview[]
+  totals: {
+    supplierCount: number
+    invoiceCount: number
+    netAmount: number
+    vatAmount: number
+    grossAmount: number
+  }
+  diagnostics?: {
+    suppliersFound: number
+    suppliersAfterFilter: number
+    supplierDetails: Array<{
+      id: string
+      name: string
+      hasAgreement: boolean
+      agreementValid: boolean
+      templateCount: number
+      skipReason?: string
+    }>
+  }
+}
+
+export interface SelfBillingCreateResponse {
+  generated: number
+  failed: number
+  results: Array<{ supplierId: string; invoiceId?: string; error?: string }>
+}
+
+export interface SelfBillingConfirmRequest {
+  settingId: string
+  previews: SelfBillingGeneratePreview[]
+}
+
+export interface SelfBillingBatchResult {
+  total: number
+  created: number
+  failed: number
+  invoices: Array<{
+    id: string
+    invoiceNumber: string
+    supplierName: string
+    grossAmount: number
+    status: 'created' | 'failed'
+  }>
+  errors: Array<{ index: number; error: string }>
+}
+
+export interface BatchActionResult {
+  total: number
+  succeeded: number
+  failed: number
+  results: Array<{ id: string; success: boolean; error?: string }>
+}
+
+export interface SbImportEnrichedRow {
+  supplierNip: string
+  supplierName: string | null
+  supplierId: string | null
+  hasAgreement: boolean
+  itemDescription: string
+  quantity: number
+  unit: string
+  unitPrice: number
+  vatRate: number
+  invoiceDate: string
+  dueDate?: string
+  netAmount: number
+  vatAmount: number
+  grossAmount: number
+  valid: boolean
+  error?: string
+}
+
+export interface SelfBillingImportResult {
+  rows: SbImportEnrichedRow[]
+  parseErrors: Array<{ row: number; message: string }>
+  totalRows: number
+  validRows: number
+  invalidRows: number
+}
+
+export interface SelfBillingImportConfirmResult {
+  created: number
+  failed: number
+  results: Array<{ supplierNip: string; invoiceId?: string; error?: string }>
+}
+
+// ── Supplier Import Types ──
+
+export interface SupplierImportEnrichedRow {
+  nip: string
+  sbAgreement: boolean
+  name: string | null
+  regon: string | null
+  krs: string | null
+  street: string | null
+  city: string | null
+  postalCode: string | null
+  vatStatus: string | null
+  bankAccount: string | null
+  exists: boolean
+  existingId: string | null
+  valid: boolean
+  error?: string
+}
+
+export interface SupplierImportResult {
+  rows: SupplierImportEnrichedRow[]
+  parseErrors: Array<{ row: number; message: string }>
+  totalRows: number
+  validRows: number
+  invalidRows: number
+}
+
+export interface SupplierImportConfirmResult {
+  created: number
+  failed: number
+  results: Array<{ nip: string; supplierId?: string; agreementId?: string; error?: string }>
+}
+
+export interface SelfBillingInvoiceCreateData {
+  settingId: string
+  supplierId?: string
+  agreementId?: string
+  mpkId?: string
+  invoiceDate: string
+  dueDate?: string
+  items: Array<{
+    templateId?: string
+    itemDescription: string
+    quantity: number
+    unit: string
+    unitPrice: number
+    vatRate: number
+    paymentTermDays?: number | null
+  }>
+}
+
+export interface SelfBillingBatchCreateData {
+  settingId: string
+  invoices: SelfBillingInvoiceCreateData[]
+}
+
+export interface SelfBillingInvoiceUpdateData {
+  invoiceNumber?: string
+  invoiceDate?: string
+  dueDate?: string
+  items?: Array<{
+    templateId?: string
+    itemDescription: string
+    quantity: number
+    unit: string
+    unitPrice: number
+    vatRate: number
+    paymentTermDays?: number | null
+  }>
+}
+
+// ============================================================================
 // API client
 // ============================================================================
 
@@ -940,6 +1394,13 @@ export const api = {
       if (params?.settingId) searchParams.append('settingId', params.settingId)
       else if (params?.tenantNip) searchParams.append('tenantNip', params.tenantNip)
       return apiFetch<DashboardStats>(`/api/dashboard/stats?${searchParams}`)
+    },
+    activity: (params?: { settingId?: string; top?: number; types?: string }) => {
+      const searchParams = new URLSearchParams()
+      if (params?.settingId) searchParams.append('settingId', params.settingId)
+      if (params?.top) searchParams.append('top', String(params.top))
+      if (params?.types) searchParams.append('types', params.types)
+      return apiFetch<ActivityFeedResponse>(`/api/dashboard/activity?${searchParams}`)
     },
   },
 
@@ -1094,6 +1555,10 @@ export const api = {
       tags?: string[]
       paymentStatus?: 'pending' | 'paid'
       paymentDate?: string
+      // Parent invoice link
+      parentInvoiceId?: string | null
+      // MPK Center lookup
+      mpkCenterId?: string
       // Invoice data fields
       supplierName?: string
       supplierNip?: string
@@ -1238,6 +1703,16 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ invoiceIds, autoApply }),
       }),
+    batchMarkPaid: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/invoice-batch/mark-paid', { method: 'POST', body: JSON.stringify({ invoiceIds }) }),
+    batchMarkUnpaid: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/invoice-batch/mark-unpaid', { method: 'POST', body: JSON.stringify({ invoiceIds }) }),
+    batchApprove: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/invoice-batch/approve', { method: 'POST', body: JSON.stringify({ invoiceIds }) }),
+    batchReject: (invoiceIds: string[], comment: string) =>
+      apiFetch<BatchActionResult>('/api/invoice-batch/reject', { method: 'POST', body: JSON.stringify({ invoiceIds, comment }) }),
+    batchDelete: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/invoice-batch/delete', { method: 'POST', body: JSON.stringify({ invoiceIds }) }),
   },
 
   // Settings
@@ -1488,6 +1963,18 @@ export const api = {
 
     getBudgetStatus: (id: string) =>
       apiFetch<{ data: BudgetStatus }>(`/api/mpk-centers/${id}/budget-status`),
+
+    applyApproval: (id: string, scope: 'unprocessed' | 'decided' | 'all', dryRun?: boolean) =>
+      apiFetch<{ updated: number; skipped: number; autoApproved: number; total: number; dryRun: boolean }>(
+        `/api/mpk-centers/${id}/apply-approval`,
+        { method: 'POST', body: JSON.stringify({ scope, dryRun }) }
+      ),
+
+    revokeApproval: (id: string, scope: 'pending' | 'decided' | 'all', dryRun?: boolean) =>
+      apiFetch<{ updated: number; skipped: number; autoApproved: number; total: number; dryRun: boolean }>(
+        `/api/mpk-centers/${id}/revoke-approval`,
+        { method: 'POST', body: JSON.stringify({ scope, dryRun }) }
+      ),
   },
 
   // ============================================================================
@@ -1497,6 +1984,28 @@ export const api = {
   users: {
     list: (settingId: string) =>
       apiFetch<{ users: DvSystemUser[]; count: number }>(`/api/users?settingId=${settingId}`),
+    listApprovers: (settingId: string) =>
+      apiFetch<{ role: string; users: DvSystemUser[]; count: number }>(`/api/users?settingId=${settingId}&role=approver`),
+  },
+
+  // ============================================================================
+  // Approver Overview (Admin)
+  // ============================================================================
+
+  approverOverview: {
+    get: (settingId: string) =>
+      apiFetch<{
+        members: Array<{
+          id: string
+          displayName: string
+          email: string
+          hasDataverseAccount: boolean
+          mpkCenterNames: string[]
+          supplierCount: number
+        }>
+        configured: boolean
+        count: number
+      }>(`/api/approvers/overview?settingId=${settingId}`),
   },
 
   // ============================================================================
@@ -1569,6 +2078,11 @@ export const api = {
         method: 'POST',
       }),
 
+    markAllRead: (settingId: string) =>
+      apiFetch<{ success: boolean; marked: number }>(`/api/notifications/mark-all-read?settingId=${settingId}`, {
+        method: 'POST',
+      }),
+
     unreadCount: (settingId: string) =>
       apiFetch<{ count: number }>(`/api/notifications/unread-count?settingId=${settingId}`),
   },
@@ -1600,6 +2114,215 @@ export const api = {
 
     invoiceProcessing: (settingId: string) =>
       apiFetch<{ data: ProcessingPipelineReport }>(`/api/reports/invoice-processing?settingId=${encodeURIComponent(settingId)}`),
+  },
+
+  // ============================================================================
+  // Suppliers
+  // ============================================================================
+
+  suppliers: {
+    list: (params?: SupplierListParams) => {
+      const sp = new URLSearchParams()
+      if (params?.settingId) sp.append('settingId', params.settingId)
+      if (params?.status) sp.append('status', params.status)
+      if (params?.search) sp.append('search', params.search)
+      if (params?.hasSelfBillingAgreement !== undefined) sp.append('hasSelfBillingAgreement', String(params.hasSelfBillingAgreement))
+      if (params?.top) sp.append('top', String(params.top))
+      if (params?.skip) sp.append('skip', String(params.skip))
+      return apiFetch<SupplierListResponse>(`/api/suppliers?${sp}`)
+    },
+    get: (id: string) =>
+      apiFetch<{ supplier: Supplier }>(`/api/suppliers/${encodeURIComponent(id)}`).then(r => r.supplier),
+    create: (data: SupplierCreate) =>
+      apiFetch<{ supplier: Supplier }>('/api/suppliers', { method: 'POST', body: JSON.stringify(data) }).then(r => r.supplier),
+    update: (id: string, data: Partial<Supplier>) =>
+      apiFetch<{ supplier: Supplier }>(`/api/suppliers/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }).then(r => r.supplier),
+    delete: (id: string) =>
+      apiFetch<void>(`/api/suppliers/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    stats: (id: string) =>
+      apiFetch<{ stats: SupplierDetailStats }>(`/api/suppliers/${encodeURIComponent(id)}/stats`).then(r => r.stats),
+    refreshStats: (id: string) =>
+      apiFetch<void>(`/api/suppliers/${encodeURIComponent(id)}/stats`, { method: 'POST' }),
+    invoices: (id: string, params?: { top?: number; skip?: number }) => {
+      const sp = new URLSearchParams()
+      if (params?.top) sp.append('top', String(params.top))
+      if (params?.skip) sp.append('skip', String(params.skip))
+      return apiFetch<{ invoices: Invoice[]; count: number }>(`/api/suppliers/${encodeURIComponent(id)}/invoices?${sp}`)
+    },
+    refreshVat: (id: string) =>
+      apiFetch<{ supplier: Supplier }>(`/api/suppliers/${encodeURIComponent(id)}/refresh-vat`, { method: 'POST' }).then(r => r.supplier),
+    createFromVat: (nip: string, settingId: string) =>
+      apiFetch<{ supplier: Supplier }>('/api/suppliers/from-vat', { method: 'POST', body: JSON.stringify({ nip, settingId }) }).then(r => r.supplier),
+
+    // Supplier attachments (Dataverse annotations with isdocument=true)
+    listAttachments: (id: string) =>
+      apiFetch<{ attachments: Attachment[]; count: number }>(`/api/suppliers/${encodeURIComponent(id)}/attachments`),
+    uploadAttachment: (id: string, data: AttachmentUpload) =>
+      apiFetch<Attachment>(`/api/suppliers/${encodeURIComponent(id)}/attachments`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    // Supplier notes (Dataverse annotations with isdocument=false)
+    listNotes: (id: string) =>
+      apiFetch<{ notes: Note[]; count: number }>(`/api/suppliers/${encodeURIComponent(id)}/notes`),
+    createNote: (id: string, data: NoteCreate) =>
+      apiFetch<Note>(`/api/suppliers/${encodeURIComponent(id)}/notes`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    // Supplier bulk import
+    import: (file: File, settingId: string) => {
+      const contentType = file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
+        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : 'text/csv'
+      return apiFetch<SupplierImportResult>(
+        `/api/suppliers/import?settingId=${encodeURIComponent(settingId)}`,
+        { method: 'POST', body: file, headers: { 'Content-Type': contentType } },
+      )
+    },
+    confirmImport: (settingId: string, rows: SupplierImportEnrichedRow[]) =>
+      apiFetch<SupplierImportConfirmResult>('/api/suppliers/import/confirm', {
+        method: 'POST',
+        body: JSON.stringify({ settingId, rows }),
+      }),
+    batchDeactivate: (supplierIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/supplier-batch/deactivate', { method: 'POST', body: JSON.stringify({ supplierIds }) }),
+    batchReactivate: (supplierIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/supplier-batch/reactivate', { method: 'POST', body: JSON.stringify({ supplierIds }) }),
+  },
+
+  // ============================================================================
+  // Self-Billing Agreements
+  // ============================================================================
+
+  sbAgreements: {
+    list: (params?: { settingId?: string; supplierId?: string }) => {
+      const sp = new URLSearchParams()
+      if (params?.settingId) sp.append('settingId', params.settingId)
+      if (params?.supplierId) sp.append('supplierId', params.supplierId)
+      return apiFetch<SbAgreementListResponse>(`/api/sb-agreements?${sp}`)
+    },
+    get: (id: string) => apiFetch<SbAgreement>(`/api/sb-agreements/${encodeURIComponent(id)}`),
+    create: (data: SbAgreementCreate) =>
+      apiFetch<SbAgreement>('/api/sb-agreements', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<SbAgreement>) =>
+      apiFetch<SbAgreement>(`/api/sb-agreements/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    terminate: (id: string) =>
+      apiFetch<SbAgreement>(`/api/sb-agreements/${encodeURIComponent(id)}/terminate`, { method: 'POST' }),
+    listAttachments: (id: string) =>
+      apiFetch<Attachment[]>(`/api/sb-agreements/${encodeURIComponent(id)}/attachments`),
+    uploadAttachment: (id: string, data: { fileName: string; content: string; contentType: string }) =>
+      apiFetch<Attachment>(`/api/sb-agreements/${encodeURIComponent(id)}/attachments`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  },
+
+  // ============================================================================
+  // Self-Billing Templates
+  // ============================================================================
+
+  sbTemplates: {
+    list: (params?: { settingId?: string; supplierId?: string }) => {
+      const sp = new URLSearchParams()
+      if (params?.settingId) sp.append('settingId', params.settingId)
+      if (params?.supplierId) sp.append('supplierId', params.supplierId)
+      return apiFetch<SbTemplateListResponse>(`/api/sb-templates?${sp}`)
+    },
+    get: (id: string) => apiFetch<SbTemplate>(`/api/sb-templates/${encodeURIComponent(id)}`),
+    create: (data: SbTemplateCreate) =>
+      apiFetch<SbTemplate>('/api/sb-templates', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<SbTemplate>) =>
+      apiFetch<SbTemplate>(`/api/sb-templates/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      apiFetch<void>(`/api/sb-templates/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    duplicate: (id: string) =>
+      apiFetch<SbTemplate>(`/api/sb-templates/${encodeURIComponent(id)}/duplicate`, { method: 'POST' }),
+  },
+
+  // ============================================================================
+  // Self-Billing Invoices
+  // ============================================================================
+
+  selfBilling: {
+    list: (params?: SelfBillingInvoiceListParams) => {
+      const sp = new URLSearchParams()
+      if (params?.settingId) sp.append('settingId', params.settingId)
+      if (params?.supplierId) sp.append('supplierId', params.supplierId)
+      if (params?.status) sp.append('selfBillingStatus', params.status)
+      if (params?.dateFrom) sp.append('dateFrom', params.dateFrom)
+      if (params?.dateTo) sp.append('dateTo', params.dateTo)
+      if (params?.top) sp.append('top', String(params.top))
+      if (params?.skip) sp.append('skip', String(params.skip))
+      return apiFetch<SelfBillingInvoiceListResponse>(`/api/self-billing/invoices?${sp}`)
+    },
+    get: (id: string) => apiFetch<SelfBillingInvoice>(`/api/self-billing/invoices/${encodeURIComponent(id)}`),
+    create: (data: SelfBillingInvoiceCreateData) =>
+      apiFetch<SelfBillingInvoice>('/api/self-billing/invoices', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: SelfBillingInvoiceUpdateData) =>
+      apiFetch<SelfBillingInvoice>(`/api/self-billing/invoices/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      apiFetch<void>(`/api/self-billing/invoices/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    batchCreate: (data: SelfBillingBatchCreateData) =>
+      apiFetch<SelfBillingBatchResult>('/api/self-billing/invoices/batch', { method: 'POST', body: JSON.stringify(data) }),
+    generate: (data: SelfBillingGenerateRequest) =>
+      apiFetch<SelfBillingCreateResponse>('/api/self-billing/invoices/generate', { method: 'POST', body: JSON.stringify(data) }),
+    preview: (data: SelfBillingGenerateRequest) =>
+      apiFetch<SelfBillingGenerateResponse>('/api/self-billing/invoices/preview', { method: 'POST', body: JSON.stringify(data) }),
+    confirmGenerated: (data: SelfBillingConfirmRequest) =>
+      apiFetch<SelfBillingBatchResult>('/api/self-billing/invoices/generate/confirm', { method: 'POST', body: JSON.stringify(data) }),
+    updateStatus: (id: string, status: string) =>
+      apiFetch<SelfBillingInvoice>(`/api/self-billing/invoices/${encodeURIComponent(id)}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
+    submit: (id: string) =>
+      apiFetch<SelfBillingInvoice>(`/api/self-billing/invoices/${encodeURIComponent(id)}/submit`, { method: 'POST' }),
+    approve: (id: string, comment?: string, invoiceNumber?: string) =>
+      apiFetch<SelfBillingInvoice>(`/api/self-billing/invoices/${encodeURIComponent(id)}/approve`, { method: 'POST', body: JSON.stringify({ comment, invoiceNumber }) }),
+    reject: (id: string, reason?: string) =>
+      apiFetch<SelfBillingInvoice>(`/api/self-billing/invoices/${encodeURIComponent(id)}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
+    sendToKsef: (id: string) =>
+      apiFetch<SelfBillingInvoice>(`/api/self-billing/invoices/${encodeURIComponent(id)}/send-ksef`, { method: 'POST' }),
+    revertToDraft: (id: string, reason: string) =>
+      apiFetch<SelfBillingInvoice>(`/api/self-billing/invoices/${encodeURIComponent(id)}/revert`, { method: 'POST', body: JSON.stringify({ reason }) }),
+    import: (file: File, settingId: string) => {
+      const contentType = file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
+        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : 'text/csv'
+      return apiFetch<SelfBillingImportResult>(
+        `/api/self-billing/invoices/import?settingId=${encodeURIComponent(settingId)}`,
+        { method: 'POST', body: file, headers: { 'Content-Type': contentType } },
+      )
+    },
+    confirmImport: (settingId: string, rows: SbImportEnrichedRow[]) =>
+      apiFetch<SelfBillingImportConfirmResult>('/api/self-billing/invoices/import/confirm', { method: 'POST', body: JSON.stringify({ settingId, rows }) }),
+    downloadTemplate: () =>
+      apiFetch<{ content: string; fileName: string }>('/api/self-billing/invoices/import/template'),
+    pendingApprovals: (settingId?: string, all?: boolean) => {
+      const sp = new URLSearchParams()
+      if (settingId) sp.append('settingId', settingId)
+      if (all) sp.append('all', 'true')
+      return apiFetch<SelfBillingInvoiceListResponse>(`/api/self-billing/approvals/pending?${sp}`)
+    },
+    // Batch actions
+    batchSubmit: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/self-billing/batch/submit', { method: 'POST', body: JSON.stringify({ invoiceIds }) }),
+    batchApprove: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/self-billing/batch/approve', { method: 'POST', body: JSON.stringify({ invoiceIds }) }),
+    batchReject: (invoiceIds: string[], reason: string) =>
+      apiFetch<BatchActionResult>('/api/self-billing/batch/reject', { method: 'POST', body: JSON.stringify({ invoiceIds, reason }) }),
+    batchSendToKsef: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/self-billing/batch/send-ksef', { method: 'POST', body: JSON.stringify({ invoiceIds }) }),
+    batchDelete: (invoiceIds: string[]) =>
+      apiFetch<BatchActionResult>('/api/self-billing/batch/delete', { method: 'POST', body: JSON.stringify({ invoiceIds }) }),
+    // Notes
+    listNotes: (id: string) =>
+      apiFetch<{ notes: Note[]; count: number }>(`/api/self-billing/invoices/${encodeURIComponent(id)}/notes`),
+    createNote: (id: string, data: NoteCreate) =>
+      apiFetch<Note>(`/api/self-billing/invoices/${encodeURIComponent(id)}/notes`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   },
 }
 
@@ -1742,6 +2465,8 @@ export const queryKeys = {
   // Dashboard
   dashboardStats: (params?: { fromDate?: string; toDate?: string; settingId?: string }) =>
     ['dashboard', 'stats', params] as const,
+  dashboardActivity: (params?: { settingId?: string; top?: number; types?: string }) =>
+    ['dashboard', 'activity', params] as const,
   
   invoices: (params?: InvoiceListParams) => ['invoices', params] as const,
   invoice: (id: string) => ['invoices', id] as const,
@@ -1788,6 +2513,7 @@ export const queryKeys = {
   mpkApprovers: (id: string) => ['mpk-centers', id, 'approvers'] as const,
   mpkBudgetStatus: (id: string) => ['mpk-centers', id, 'budget-status'] as const,
   dvUsers: (settingId: string) => ['users', settingId] as const,
+  approverOverview: (settingId: string) => ['approvers', 'overview', settingId] as const,
 
   // Approvals
   pendingApprovals: (settingId: string) => ['approvals', 'pending', settingId] as const,
@@ -1808,6 +2534,30 @@ export const queryKeys = {
     ['reports', 'approver-performance', settingId] as const,
   reportInvoiceProcessing: (settingId: string) =>
     ['reports', 'invoice-processing', settingId] as const,
+
+  // Suppliers
+  suppliers: (params?: SupplierListParams) => ['suppliers', params] as const,
+  supplier: (id: string) => ['suppliers', id] as const,
+  supplierStats: (id: string) => ['suppliers', id, 'stats'] as const,
+  supplierInvoices: (id: string) => ['suppliers', id, 'invoices'] as const,
+
+  // Self-Billing Agreements
+  sbAgreements: (params?: { settingId?: string; supplierId?: string }) =>
+    ['sb-agreements', params] as const,
+  sbAgreement: (id: string) => ['sb-agreements', id] as const,
+
+  // Self-Billing Templates
+  sbTemplates: (params?: { settingId?: string; supplierId?: string }) =>
+    ['sb-templates', params] as const,
+  sbTemplate: (id: string) => ['sb-templates', id] as const,
+
+  // Self-Billing Invoices
+  selfBillingInvoices: (params?: SelfBillingInvoiceListParams) =>
+    ['self-billing', 'invoices', params] as const,
+  selfBillingInvoice: (id: string) => ['self-billing', 'invoices', id] as const,
+  selfBillingInvoiceNotes: (id: string) => ['self-billing', 'invoices', id, 'notes'] as const,
+  sbPendingApprovals: (settingId?: string) =>
+    ['self-billing', 'approvals', 'pending', settingId] as const,
 }
 
 // ============================================================================

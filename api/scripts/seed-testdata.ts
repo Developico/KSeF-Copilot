@@ -282,6 +282,102 @@ const SourceValues = {
   Manual: 100000001,
 }
 
+// SB Status values
+const SbStatusValues: Record<string, number> = {
+  Draft: 100000000,
+  PendingSeller: 100000001,
+  SellerApproved: 100000002,
+  SellerRejected: 100000003,
+  SentToKsef: 100000004,
+}
+
+// Seed suppliers, SB agreements and SB invoices
+async function seedSelfBillingData(settingId: string, buyerNip: string, count: number) {
+  const supplierData = [
+    { nip: '5213000001', name: 'ACME Sp. z o.o.', city: 'Warszawa', address: 'ul. Prosna 1, 00-001', email: 'kontakt@acme.pl', phone: '+48111222333' },
+    { nip: '5213000002', name: 'Beta Consulting S.A.', city: 'Kraków', address: 'ul. Floriańska 10, 31-019', email: 'office@beta.pl', phone: '+48222333444' },
+    { nip: '5213000003', name: 'Gamma Services', city: 'Wrocław', address: 'ul. Rynek 5, 50-001', email: 'info@gamma.pl', phone: '+48333444555' },
+    { nip: '5213000004', name: 'Delta Transport', city: 'Gdańsk', address: 'ul. Morska 20, 80-001', email: 'biuro@delta.pl', phone: '+48444555666' },
+    { nip: '5213000005', name: 'Epsilon IT Solutions', city: 'Poznań', address: 'ul. Polna 15, 60-001', email: 'hello@epsilon.pl', phone: '+48555666777' },
+  ]
+
+  const statuses = ['Draft', 'PendingSeller', 'SellerApproved', 'SentToKsef'] as const
+  let suppliersCreated = 0
+  let agreementsCreated = 0
+  let sbInvoicesCreated = 0
+
+  for (let i = 0; i < Math.min(count, supplierData.length); i++) {
+    const s = supplierData[i]
+    try {
+      // Create supplier
+      const supplier = await dvFetch('/dvlp_suppliers', {
+        method: 'POST',
+        body: JSON.stringify({
+          'dvlp_settingid@odata.bind': `/dvlp_ksefsettings(${settingId})`,
+          dvlp_name: s.name,
+          dvlp_nip: s.nip,
+          dvlp_city: s.city,
+          dvlp_address: s.address,
+          dvlp_email: s.email,
+          dvlp_phone: s.phone,
+          dvlp_status: 100000000, // Active
+          dvlp_source: 100000001, // Manual
+        }),
+      })
+      suppliersCreated++
+
+      // Create SB agreement for this supplier
+      const agreement = await dvFetch('/dvlp_sbagreements', {
+        method: 'POST',
+        body: JSON.stringify({
+          'dvlp_settingid@odata.bind': `/dvlp_ksefsettings(${settingId})`,
+          'dvlp_supplierid@odata.bind': `/dvlp_suppliers(${supplier.dvlp_supplierid})`,
+          dvlp_name: `SB-AGR-${s.nip.slice(-4)}`,
+          dvlp_startdate: '2025-01-01',
+          dvlp_status: 100000000, // Active
+          dvlp_description: `Self-billing agreement with ${s.name}`,
+        }),
+      })
+      agreementsCreated++
+
+      // Create 2 SB invoices per supplier
+      for (let j = 0; j < 2; j++) {
+        const status = statuses[(i * 2 + j) % statuses.length]
+        const month = String(j + 1).padStart(2, '0')
+        const grossAmount = Math.round((1000 + Math.random() * 9000) * 100) / 100
+        const netAmount = Math.round(grossAmount / 1.23 * 100) / 100
+        const vatAmount = Math.round((grossAmount - netAmount) * 100) / 100
+
+        await dvFetch('/dvlp_selfbillinginvoices', {
+          method: 'POST',
+          body: JSON.stringify({
+            'dvlp_settingid@odata.bind': `/dvlp_ksefsettings(${settingId})`,
+            'dvlp_supplierid@odata.bind': `/dvlp_suppliers(${supplier.dvlp_supplierid})`,
+            'dvlp_agreementid@odata.bind': `/dvlp_sbagreements(${agreement.dvlp_sbagreementid})`,
+            dvlp_name: `SB/2025/${month}/${s.nip.slice(-4)}/${j + 1}`,
+            dvlp_invoicenumber: `SB/2025/${month}/${s.nip.slice(-4)}/${j + 1}`,
+            dvlp_invoicedate: `2025-${month}-15`,
+            dvlp_netamount: netAmount,
+            dvlp_vatamount: vatAmount,
+            dvlp_grossamount: grossAmount,
+            dvlp_status: SbStatusValues[status],
+            dvlp_suppliername: s.name,
+            dvlp_suppliernip: s.nip,
+            dvlp_buyernip: buyerNip,
+          }),
+        })
+        sbInvoicesCreated++
+      }
+    } catch (err) {
+      console.error(`   ⚠️  Failed for ${s.name}:`, err instanceof Error ? err.message : err)
+    }
+  }
+
+  console.log(`   ✅ Suppliers: ${suppliersCreated}`)
+  console.log(`   ✅ SB Agreements: ${agreementsCreated}`)
+  console.log(`   ✅ SB Invoices: ${sbInvoicesCreated}`)
+}
+
 async function main() {
   const options = parseArgs()
   
@@ -423,6 +519,12 @@ async function main() {
   console.log('\n📊 Final statistics:')
   const totalCount = await countInvoicesForSetting(company.id, options.nip)
   console.log(`   Total invoices for ${company.companyName} (${company.environment}): ${totalCount}`)
+
+  // Seed self-billing entities (suppliers + agreements + SB invoices)
+  if (options.count > 0) {
+    console.log('\n📋 Seeding self-billing entities...')
+    await seedSelfBillingData(company.id, options.nip, Math.min(options.count, 5))
+  }
   
   console.log('\n' + '='.repeat(60))
   console.log('✅ Seed completed!\n')

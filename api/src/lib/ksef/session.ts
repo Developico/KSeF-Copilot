@@ -177,7 +177,7 @@ async function encryptToken(token: string, timestampMs: number, publicKeyBase64:
 /**
  * Start a new session with KSeF API 2.0
  */
-export async function initSession(nip: string): Promise<KsefSession> {
+export async function initSession(nip: string, settingId?: string): Promise<KsefSession> {
   // Check rate limit before making API calls
   if (!checkRateLimit('initSession')) {
     const status = getRateLimitStatus('initSession')
@@ -185,7 +185,7 @@ export async function initSession(nip: string): Promise<KsefSession> {
   }
   
   // Get config from Dataverse for this NIP
-  const config = await getKsefConfigForNip(nip)
+  const config = await getKsefConfigForNip(nip, settingId)
   
   // Step 1: Request authorization challenge
   const challenge = await requestAuthChallenge(config)
@@ -771,14 +771,14 @@ export async function getSessionStatus(): Promise<KsefSessionStatus> {
 /**
  * Refresh session if needed
  */
-export async function ensureActiveSession(nip: string): Promise<KsefSession> {
+export async function ensureActiveSession(nip: string, settingId?: string): Promise<KsefSession> {
   // Get config first to know which environment we need
-  const config = await getKsefConfigForNip(nip)
+  const config = await getKsefConfigForNip(nip, settingId)
   const cached = getActiveSessionWithEnv()
   
   if (!cached) {
     console.log(`[KSEF] No active session, creating new one for NIP: ${nip}, environment: ${config.environment}`)
-    return initSession(nip)
+    return initSession(nip, settingId)
   }
   
   const { session, environment } = cached
@@ -788,14 +788,14 @@ export async function ensureActiveSession(nip: string): Promise<KsefSession> {
   if (session.nip !== nip) {
     console.log(`[KSEF] Session NIP mismatch: active session is for ${session.nip}, but requested ${nip}. Terminating and creating new session.`)
     await terminateSession()
-    return initSession(nip)
+    return initSession(nip, settingId)
   }
   
   // Check if the environment matches - critical for TEST/DEMO/PROD isolation
   if (environment !== config.environment) {
     console.log(`[KSEF] Session environment mismatch: active session is for ${environment}, but requested ${config.environment}. Terminating and creating new session.`)
     await terminateSession()
-    return initSession(nip)
+    return initSession(nip, settingId)
   }
   
   // Check if session is about to expire (less than 10 minutes)
@@ -803,7 +803,7 @@ export async function ensureActiveSession(nip: string): Promise<KsefSession> {
   if (session.expiresAt && session.expiresAt < tenMinutesFromNow) {
     console.log(`[KSEF] Session expiring soon, creating new one for NIP: ${nip}, environment: ${config.environment}`)
     await terminateSession()
-    return initSession(nip)
+    return initSession(nip, settingId)
   }
   
   console.log(`[KSEF] Reusing active session for NIP: ${nip}, environment: ${environment}`)

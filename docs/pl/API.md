@@ -21,6 +21,12 @@
   - [Raporty](#raporty)
   - [Wyszukiwanie WL VAT (Biała Lista)](#wyszukiwanie-wl-vat-biała-lista)
   - [Przetwarzanie dokumentów](#przetwarzanie-dokumentów)
+  - [Dostawcy](#dostawcy)
+  - [Umowy samofakturowania](#umowy-samofakturowania)
+  - [Szablony samofakturowania](#szablony-samofakturowania)
+  - [Faktury samofakturowania](#faktury-samofakturowania)
+  - [Zatwierdzanie samofakturowania](#zatwierdzanie-samofakturowania)
+  - [Import samofakturowania](#import-samofakturowania)
 - [Obsługa błędów](#obsługa-błędów)
 - [Limity zapytań](#limity-zapytań)
 
@@ -1538,6 +1544,783 @@ Ekstrakcja danych z dokumentu faktury (OCR/AI).
   "confidence": 0.92
 }
 ```
+
+---
+
+### Dostawcy
+
+#### GET /api/suppliers
+Lista dostawców.
+
+**Autentykacja**: Reader
+
+**Parametry zapytania**:
+- `settingId` (string, wymagane): ID ustawień firmy
+- `status` (string): Filtr statusu (`Active`, `Inactive`, `Blocked`)
+- `search` (string): Wyszukiwanie po nazwie lub NIP
+- `hasSelfBillingAgreement` (boolean): Filtr dostawców z aktywnymi umowami SB
+- `top` (number): Maks. wyników (domyślnie 100)
+- `skip` (number): Przesunięcie do paginacji
+
+**Odpowiedź** (200):
+```json
+{
+  "suppliers": [
+    {
+      "id": "uuid",
+      "settingId": "uuid",
+      "name": "Nazwa dostawcy",
+      "nip": "1234567890",
+      "street": "ul. Przykładowa 1",
+      "city": "Warszawa",
+      "postalCode": "00-001",
+      "email": "kontakt@dostawca.pl",
+      "phone": "+48 111 222 333",
+      "status": "Active",
+      "source": "VAT",
+      "hasSelfBillingAgreement": true,
+      "createdAt": "2024-01-15T10:00:00.000Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+#### POST /api/suppliers
+Utworzenie nowego dostawcy.
+
+**Autentykacja**: Admin
+
+**Treść żądania**:
+```json
+{
+  "settingId": "uuid",
+  "name": "Nazwa dostawcy",
+  "nip": "1234567890",
+  "street": "ul. Przykładowa 1",
+  "city": "Warszawa",
+  "postalCode": "00-001",
+  "email": "kontakt@dostawca.pl",
+  "phone": "+48 111 222 333"
+}
+```
+
+**Odpowiedź** (201):
+```json
+{
+  "id": "uuid",
+  "name": "Nazwa dostawcy",
+  "nip": "1234567890",
+  "status": "Active"
+}
+```
+
+Zwraca `409 Conflict` jeśli dostawca o tym samym NIP już istnieje.
+
+#### GET /api/suppliers/{id}
+Pobranie dostawcy po ID.
+
+**Autentykacja**: Reader
+
+**Odpowiedź** (200): Pełny obiekt dostawcy.
+
+#### PATCH /api/suppliers/{id}
+Aktualizacja pól dostawcy.
+
+**Autentykacja**: Admin
+
+**Treść żądania**: Częściowy obiekt dostawcy (tylko zmieniane pola).
+
+**Odpowiedź** (200): Zaktualizowany obiekt dostawcy.
+
+#### DELETE /api/suppliers/{id}
+Dezaktywacja (soft-delete) dostawcy.
+
+**Autentykacja**: Admin
+
+**Odpowiedź** (200):
+```json
+{ "success": true }
+```
+
+#### GET /api/suppliers/{id}/stats
+Statystyki dostawcy.
+
+**Autentykacja**: Reader
+
+**Odpowiedź** (200):
+```json
+{
+  "invoiceCount": 42,
+  "totalGross": 125000.00,
+  "avgInvoiceAmount": 2976.19,
+  "pendingPayments": 3,
+  "selfBillingInvoiceCount": 15
+}
+```
+
+#### POST /api/suppliers/{id}/stats/refresh
+Odświeżenie cache'owanych statystyk dostawcy.
+
+**Autentykacja**: Admin
+
+**Odpowiedź** (200): Zaktualizowany obiekt statystyk.
+
+#### GET /api/suppliers/{id}/invoices
+Faktury dla danego dostawcy.
+
+**Autentykacja**: Reader
+
+**Odpowiedź** (200):
+```json
+{
+  "invoices": [
+    {
+      "id": "uuid",
+      "invoiceNumber": "SF/2024/01/001",
+      "invoiceDate": "2024-01-15",
+      "grossAmount": 1230.00,
+      "status": "SentToKsef"
+    }
+  ]
+}
+```
+
+#### POST /api/suppliers/from-vat
+Utworzenie dostawcy z rejestru VAT.
+
+**Autentykacja**: Admin
+
+**Treść żądania**:
+```json
+{
+  "settingId": "uuid",
+  "nip": "1234567890"
+}
+```
+
+**Odpowiedź** (201): Utworzony obiekt dostawcy z danymi z rejestru VAT.
+
+#### POST /api/suppliers/{id}/refresh-vat
+Odświeżenie danych dostawcy z rejestru VAT.
+
+**Autentykacja**: Admin
+
+**Odpowiedź** (200): Zaktualizowany obiekt dostawcy.
+
+---
+
+### Umowy samofakturowania
+
+#### GET /api/sb-agreements
+Lista umów samofakturowania.
+
+**Autentykacja**: Reader
+
+**Parametry zapytania**:
+- `settingId` (string, wymagane): ID ustawień firmy
+- `supplierId` (string): Filtr po dostawcy
+- `status` (string): Filtr statusu (`Active`, `Terminated`, `Expired`)
+
+**Odpowiedź** (200):
+```json
+{
+  "agreements": [
+    {
+      "id": "uuid",
+      "settingId": "uuid",
+      "supplierId": "uuid",
+      "supplierName": "Nazwa dostawcy",
+      "status": "Active",
+      "validFrom": "2024-01-01",
+      "validTo": "2025-12-31",
+      "createdAt": "2024-01-15T10:00:00.000Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+#### POST /api/sb-agreements
+Utworzenie nowej umowy samofakturowania.
+
+**Autentykacja**: Admin
+
+**Treść żądania**:
+```json
+{
+  "settingId": "uuid",
+  "supplierId": "uuid",
+  "validFrom": "2024-01-01",
+  "validTo": "2025-12-31"
+}
+```
+
+Waliduje, że dostawca ma status `Active`. Ustawia flagę `hasSelfBillingAgreement` dostawcy.
+
+**Odpowiedź** (201): Utworzony obiekt umowy.
+
+#### GET /api/sb-agreements/{id}
+Pobranie umowy po ID.
+
+**Autentykacja**: Reader
+
+**Odpowiedź** (200): Pełny obiekt umowy.
+
+#### PATCH /api/sb-agreements/{id}
+Aktualizacja pól umowy.
+
+**Autentykacja**: Admin
+
+**Treść żądania**: Częściowy obiekt umowy.
+
+**Odpowiedź** (200): Zaktualizowany obiekt umowy.
+
+#### POST /api/sb-agreements/{id}/terminate
+Rozwiązanie aktywnej umowy.
+
+**Autentykacja**: Admin
+
+**Odpowiedź** (200):
+```json
+{
+  "id": "uuid",
+  "status": "Terminated"
+}
+```
+
+#### GET /api/sb-agreements/{id}/attachments
+Lista załączników umowy.
+
+**Autentykacja**: Reader
+
+**Odpowiedź** (200):
+```json
+{
+  "attachments": [
+    {
+      "id": "uuid",
+      "fileName": "skan-umowy.pdf",
+      "mimeType": "application/pdf",
+      "size": 125000,
+      "createdAt": "2024-01-15T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### POST /api/sb-agreements/{id}/attachments
+Przesłanie załącznika do umowy.
+
+**Autentykacja**: Admin
+
+**Treść żądania**:
+```json
+{
+  "fileName": "skan-umowy.pdf",
+  "mimeType": "application/pdf",
+  "content": "zawartość-w-base64",
+  "description": "Skan podpisanej umowy"
+}
+```
+
+Waliduje typ i rozmiar pliku.
+
+**Odpowiedź** (201):
+```json
+{
+  "id": "uuid",
+  "fileName": "skan-umowy.pdf"
+}
+```
+
+---
+
+### Szablony samofakturowania
+
+#### GET /api/sb-templates
+Lista szablonów faktur.
+
+**Autentykacja**: Reader
+
+**Parametry zapytania**:
+- `settingId` (string, wymagane): ID ustawień firmy
+- `supplierId` (string): Filtr po dostawcy
+- `activeOnly` (boolean): Tylko aktywne szablony (domyślnie: `true`)
+
+**Odpowiedź** (200):
+```json
+{
+  "templates": [
+    {
+      "id": "uuid",
+      "settingId": "uuid",
+      "supplierId": "uuid",
+      "name": "Usługa miesięczna",
+      "itemDescription": "Usługi konsultacji IT",
+      "quantity": 1,
+      "unit": "szt.",
+      "unitPrice": 5000.00,
+      "vatRate": 23,
+      "currency": "PLN",
+      "isActive": true,
+      "createdAt": "2024-01-15T10:00:00.000Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+#### POST /api/sb-templates
+Utworzenie nowego szablonu.
+
+**Autentykacja**: Admin
+
+**Treść żądania**:
+```json
+{
+  "settingId": "uuid",
+  "supplierId": "uuid",
+  "name": "Usługa miesięczna",
+  "itemDescription": "Usługi konsultacji IT",
+  "quantity": 1,
+  "unit": "szt.",
+  "unitPrice": 5000.00,
+  "vatRate": 23,
+  "currency": "PLN"
+}
+```
+
+**Odpowiedź** (201): Utworzony obiekt szablonu.
+
+#### GET /api/sb-templates/{id}
+Pobranie szablonu po ID.
+
+**Autentykacja**: Reader
+
+**Odpowiedź** (200): Pełny obiekt szablonu.
+
+#### PATCH /api/sb-templates/{id}
+Aktualizacja pól szablonu.
+
+**Autentykacja**: Admin
+
+**Treść żądania**: Częściowy obiekt szablonu.
+
+**Odpowiedź** (200): Zaktualizowany obiekt szablonu.
+
+#### DELETE /api/sb-templates/{id}
+Dezaktywacja (soft-delete) szablonu.
+
+**Autentykacja**: Admin
+
+**Odpowiedź** (200):
+```json
+{ "success": true }
+```
+
+#### POST /api/sb-templates/duplicate
+Duplikacja szablonów z jednego dostawcy do drugiego.
+
+**Autentykacja**: Admin
+
+**Treść żądania**:
+```json
+{
+  "fromSupplierId": "uuid",
+  "toSupplierId": "uuid",
+  "settingId": "uuid"
+}
+```
+
+**Odpowiedź** (200):
+```json
+{
+  "duplicated": 3
+}
+```
+
+---
+
+### Faktury samofakturowania
+
+#### POST /api/invoices/self-billing
+Utworzenie pojedynczej faktury samofakturowania.
+
+**Autentykacja**: Admin
+
+**Treść żądania**:
+```json
+{
+  "settingId": "uuid",
+  "supplierId": "uuid",
+  "invoiceDate": "2024-01-31",
+  "items": [
+    {
+      "description": "Usługi konsultacji IT",
+      "quantity": 1,
+      "unit": "szt.",
+      "unitPrice": 5000.00,
+      "vatRate": 23
+    }
+  ]
+}
+```
+
+Automatycznie rozwiązuje umowę na podstawie `agreementId` lub `supplierId`. Generuje numer faktury w formacie `SF/{RRRR}/{MM}/{NNN}`.
+
+**Odpowiedź** (201):
+```json
+{
+  "id": "uuid",
+  "invoiceNumber": "SF/2024/01/001",
+  "status": "Draft",
+  "grossAmount": 6150.00
+}
+```
+
+#### GET /api/invoices/self-billing
+Lista faktur samofakturowania.
+
+**Autentykacja**: Reader
+
+**Parametry zapytania**:
+- `settingId` (string): ID ustawień firmy
+- `supplierId` (string): Filtr po dostawcy
+- `selfBillingStatus` (string): Filtr statusu (`Draft`, `PendingSeller`, `SellerApproved`, `SellerRejected`, `SentToKsef`)
+- `top` (number): Maks. wyników
+
+**Odpowiedź** (200):
+```json
+{
+  "invoices": [
+    {
+      "id": "uuid",
+      "invoiceNumber": "SF/2024/01/001",
+      "supplierId": "uuid",
+      "supplierName": "Nazwa dostawcy",
+      "invoiceDate": "2024-01-31",
+      "grossAmount": 6150.00,
+      "status": "Draft",
+      "createdAt": "2024-01-31T10:00:00.000Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+#### POST /api/invoices/self-billing/preview
+Podgląd generowania faktur za okres.
+
+**Autentykacja**: Reader
+
+**Treść żądania**:
+```json
+{
+  "settingId": "uuid",
+  "period": { "month": 1, "year": 2024 },
+  "supplierIds": ["uuid"]
+}
+```
+
+`supplierIds` jest opcjonalne — pominięcie uwzględnia wszystkich dostawców z aktywnymi umowami.
+
+**Odpowiedź** (200):
+```json
+{
+  "previews": [
+    {
+      "supplierId": "uuid",
+      "supplierName": "Nazwa dostawcy",
+      "items": [{ "description": "...", "quantity": 1, "unitPrice": 5000.00, "vatRate": 23 }],
+      "totals": { "net": 5000.00, "vat": 1150.00, "gross": 6150.00 }
+    }
+  ],
+  "totals": { "invoiceCount": 1, "totalGross": 6150.00 }
+}
+```
+
+#### POST /api/invoices/self-billing/generate
+Generowanie faktur za okres. Używa tej samej treści żądania co podgląd.
+
+**Autentykacja**: Admin
+
+**Odpowiedź** (200):
+```json
+{
+  "created": 3,
+  "invoiceIds": ["uuid", "uuid", "uuid"]
+}
+```
+
+#### POST /api/invoices/self-billing/generate/confirm
+Potwierdzenie wygenerowanych faktur — zmiana statusu z Draft na PendingSeller.
+
+**Autentykacja**: Admin
+
+**Treść żądania**:
+```json
+{
+  "invoiceIds": ["uuid", "uuid"]
+}
+```
+
+**Odpowiedź** (200):
+```json
+{
+  "confirmed": 2
+}
+```
+
+#### POST /api/invoices/self-billing/{id}/submit
+Przesłanie faktury do akceptacji sprzedawcy.
+
+**Autentykacja**: Admin
+
+Rozwiązuje tożsamość Dataverse bieżącego użytkownika. Weryfikuje, czy dostawca ma przypisanego użytkownika kontaktowego SB (`sbContactUserId`). Rejestruje `submittedByUserId` i `submittedAt`. Wysyła powiadomienie `SbApprovalRequested` do osoby kontaktowej SB dostawcy.
+
+Przejście: `Draft` → `PendingSeller`
+
+**Odpowiedź** (200):
+```json
+{
+  "invoice": {
+    "id": "uuid",
+    "status": "PendingSeller",
+    "submittedByUserId": "uuid",
+    "submittedAt": "2026-03-15T14:30:00.000Z"
+  }
+}
+```
+
+**Błędy**:
+- `400` — Dostawca nie ma przypisanego użytkownika kontaktowego SB
+- `400` — Status faktury nie jest Draft
+- `403` — Nie można rozwiązać konta użytkownika Dataverse
+- `404` — Nie znaleziono faktury lub dostawcy
+
+#### POST /api/invoices/self-billing/{id}/approve
+Akceptacja faktury przez sprzedawcę.
+
+**Autentykacja**: Reader (minimum) — autoryzacja dla wyznaczonego użytkownika kontaktowego SB dostawcy lub Admin
+
+Rozwiązuje tożsamość Dataverse wywołującego i sprawdza autoryzację: wywołujący odpowiada `sbContactUserId` dostawcy lub posiada rolę Admin. Rejestruje `approvedByUserId` i `approvedAt`.
+
+Przejście: `PendingSeller` → `SellerApproved`
+
+**Odpowiedź** (200):
+```json
+{
+  "invoice": {
+    "id": "uuid",
+    "status": "SellerApproved",
+    "approvedByUserId": "uuid",
+    "approvedAt": "2026-03-15T15:00:00.000Z"
+  }
+}
+```
+
+**Błędy**:
+- `400` — Status faktury nie jest PendingSeller
+- `403` — Tylko wyznaczony kontakt dostawcy lub Admin może zatwierdzić
+
+#### POST /api/invoices/self-billing/{id}/reject
+Odrzucenie faktury przez sprzedawcę.
+
+**Autentykacja**: Reader (minimum) — autoryzacja dla wyznaczonego użytkownika kontaktowego SB dostawcy lub Admin
+
+Ten sam model autoryzacji co zatwierdzanie. Rejestruje powód odrzucenia, `approvedByUserId` i `approvedAt`.
+
+**Treść żądania**:
+```json
+{
+  "reason": "Nieprawidłowe kwoty"
+}
+```
+
+Przejście: `PendingSeller` → `SellerRejected`
+
+**Odpowiedź** (200):
+```json
+{
+  "invoice": {
+    "id": "uuid",
+    "status": "SellerRejected",
+    "sellerRejectionReason": "Nieprawidłowe kwoty",
+    "approvedByUserId": "uuid",
+    "approvedAt": "2026-03-15T15:00:00.000Z"
+  }
+}
+```
+
+**Błędy**:
+- `400` — Powód odrzucenia jest wymagany
+- `400` — Status faktury nie jest PendingSeller
+- `403` — Tylko wyznaczony kontakt dostawcy lub Admin może odrzucić
+
+#### POST /api/invoices/self-billing/{id}/send-ksef
+Wysłanie zaakceptowanej faktury do KSeF.
+
+**Autentykacja**: Admin
+
+Buduje XML KSeF z `isSelfBilling: true` (ustawia P_17=1, dodaje Podmiot3 — wystawcę). Faktura musi mieć status `SellerApproved`.
+
+Przejście: `SellerApproved` → `SentToKsef`
+
+**Odpowiedź** (200):
+```json
+{
+  "id": "uuid",
+  "status": "SentToKsef",
+  "ksefReferenceNumber": "KSeF-123456"
+}
+```
+
+#### PATCH /api/invoices/self-billing/{id}/status
+Ogólna zmiana statusu (dla nadpisań administracyjnych).
+
+**Autentykacja**: Admin
+
+**Treść żądania**:
+```json
+{
+  "status": "Draft",
+  "rejectionReason": "opcjonalny powód"
+}
+```
+
+**Odpowiedź** (200): Zaktualizowany obiekt faktury.
+
+#### POST /api/invoices/self-billing/batch
+Wsadowe utworzenie do 100 faktur.
+
+**Autentykacja**: Admin
+
+**Treść żądania**:
+```json
+{
+  "settingId": "uuid",
+  "invoices": [
+    {
+      "supplierId": "uuid",
+      "invoiceDate": "2024-01-31",
+      "items": [{ "description": "...", "quantity": 1, "unitPrice": 5000.00, "vatRate": 23 }]
+    }
+  ]
+}
+```
+
+**Odpowiedź** (200):
+```json
+{
+  "created": 5,
+  "invoiceIds": ["uuid", "uuid", "uuid", "uuid", "uuid"]
+}
+```
+
+---
+
+### Zatwierdzanie samofakturowania
+
+#### GET /api/self-billing/approvals/pending
+Lista faktur samofakturowania oczekujących na zatwierdzenie przez bieżącego użytkownika.
+
+**Autentykacja**: Reader
+
+Zwraca faktury ze statusem `PendingSeller`, dla których `sbContactUserId` dostawcy odpowiada identyfikatorowi systemowego użytkownika Dataverse bieżącego użytkownika. Administratorzy mogą przekazać `?all=true`, aby zobaczyć wszystkie oczekujące faktury ze wszystkich dostawców.
+
+**Parametry zapytania**:
+- `settingId` (string, wymagany): Identyfikator ustawień firmy
+- `all` (string, opcjonalny): `true` — lista wszystkich oczekujących faktur (tylko Admin)
+
+**Odpowiedź** (200):
+```json
+{
+  "invoices": [
+    {
+      "id": "uuid",
+      "invoiceNumber": "SF/2024/01/001",
+      "supplierId": "uuid",
+      "supplierName": "Nazwa dostawcy",
+      "supplierNip": "1234567890",
+      "invoiceDate": "2024-01-31",
+      "grossAmount": 6150.00,
+      "status": "PendingSeller",
+      "submittedAt": "2024-01-31T10:00:00.000Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+### Import samofakturowania
+
+#### POST /api/invoices/self-billing/import
+Parsowanie i walidacja pliku CSV lub Excel do importu.
+
+**Autentykacja**: Admin
+
+**Parametry zapytania**:
+- `settingId` (string, wymagane): ID ustawień firmy
+
+Wyślij zawartość pliku w treści żądania z odpowiednim `Content-Type` (`text/csv` lub `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`). Format jest wykrywany automatycznie.
+
+**Odpowiedź** (200):
+```json
+{
+  "importId": "uuid",
+  "rows": [
+    {
+      "rowNumber": 1,
+      "supplierNip": "1234567890",
+      "supplierName": "Nazwa dostawcy",
+      "isValid": true,
+      "hasAgreement": true,
+      "items": [{ "description": "Usługa", "quantity": 1, "unitPrice": 5000.00, "vatRate": 23 }]
+    }
+  ],
+  "validCount": 5,
+  "invalidCount": 1
+}
+```
+
+#### POST /api/invoices/self-billing/import/confirm
+Utworzenie faktur z zwalidowanych wierszy importu.
+
+**Autentykacja**: Admin
+
+**Treść żądania**:
+```json
+{
+  "settingId": "uuid",
+  "rows": [
+    {
+      "supplierNip": "1234567890",
+      "items": [{ "description": "Usługa", "quantity": 1, "unitPrice": 5000.00, "vatRate": 23 }]
+    }
+  ]
+}
+```
+
+**Odpowiedź** (200):
+```json
+{
+  "created": 5,
+  "invoiceIds": ["uuid", "uuid", "uuid", "uuid", "uuid"]
+}
+```
+
+#### GET /api/invoices/self-billing/import/template
+Pobranie szablonu importu CSV lub Excel.
+
+**Autentykacja**: User
+
+**Parametry zapytania**:
+- `format` (string): `csv` lub `xlsx` (domyślnie: `csv`)
+
+**Odpowiedź** (200): Pobranie pliku z odpowiednim Content-Type.
 
 ---
 

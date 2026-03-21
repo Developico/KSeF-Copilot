@@ -201,7 +201,7 @@ web/
 ```
 api/
 ├── src/
-│   ├── functions/              # HTTP-triggered functions
+│   ├── functions/              # HTTP-triggered functions (27 modules, 92 endpoints)
 │   │   ├── health.ts          # Health check endpoint
 │   │   ├── settings.ts        # Settings CRUD
 │   │   ├── sessions.ts        # KSeF session management
@@ -221,7 +221,13 @@ api/
 │   │   ├── exchange-rates.ts  # NBP exchange rates
 │   │   ├── forecast.ts        # Invoice forecasting
 │   │   ├── anomalies.ts       # Anomaly detection
-│   │   └── documents.ts       # Document processing
+│   │   ├── documents.ts       # Document processing
+│   │   ├── suppliers.ts       # Supplier registry CRUD (8 endpoints)
+│   │   ├── sb-agreements.ts   # Self-billing agreement CRUD (7 endpoints)
+│   │   ├── sb-templates.ts    # Self-billing template CRUD (5 endpoints)
+│   │   ├── self-billing-invoices.ts # Self-billing invoices + generate + import (12 endpoints)
+│   │   ├── sb-agreement-expiry-check.ts # Timer: expiring SB agreements
+│   │   └── ksef-testdata.ts   # Test data (generation, cleanup)
 │   │
 │   └── lib/                   # Core libraries
 │       ├── auth/              # Authentication & authorization
@@ -423,6 +429,7 @@ MPK (Cost Center) configuration per tenant.
   dvlp_isactive: boolean          // Active status
   dvlp_approvalrequired: boolean  // Requires approval workflow
   dvlp_approvalslahours: Integer  // SLA hours for approval
+  dvlp_approvaleffectivefrom: DateOnly // Only invoices issued on/after this date require approval
   dvlp_budgetamount: Decimal      // Budget amount
   dvlp_budgetperiod: Choice       // Budget period (monthly/quarterly/half-yearly/annual)
   dvlp_budgetstartdate: DateTime  // Budget start date
@@ -458,6 +465,59 @@ User notifications for approval and budget events.
 }
 ```
 
+#### SupplierEntity (`dvlp_ksefsupplier`)
+Supplier registry — master data, VAT status, invoice statistics.
+```typescript
+{
+  dvlp_ksefsupplierid: string     // Primary key (GUID)
+  dvlp_nip: string                 // Supplier NIP (10 digits)
+  dvlp_name: string                // Supplier name
+  dvlp_city: string                // City
+  dvlp_vatstatus: string           // VAT status from White List
+  dvlp_hasselfbillingagreement: boolean // Has active SB agreement
+  dvlp_totalinvoicecount: Integer  // Cached invoice count
+  dvlp_totalgrossamount: Money     // Cached total gross
+  dvlp_status: Choice              // Status (Active/Inactive/Blocked)
+  dvlp_source: Choice              // Source (KSeF/Manual/VatApi)
+  _dvlp_settingid_value: Lookup    // Foreign key to SettingEntity
+}
+```
+
+#### SbAgreementEntity (`dvlp_ksefsbagrement`)
+Self-billing agreements between buyer and supplier.
+```typescript
+{
+  dvlp_ksefsbagrementid: string   // Primary key (GUID)
+  dvlp_name: string                // Agreement name
+  dvlp_agreementdate: DateTime     // Agreement signing date
+  dvlp_validfrom: DateTime         // Valid from
+  dvlp_validto: DateTime           // Valid to (nullable)
+  dvlp_status: Choice              // Status (Active/Expired/Terminated)
+  dvlp_hasdocument: boolean        // Has attached document
+  _dvlp_supplierid_value: Lookup   // Foreign key to SupplierEntity
+  _dvlp_settingid_value: Lookup    // Foreign key to SettingEntity
+}
+```
+
+#### SbTemplateEntity (`dvlp_ksefselfbillingtemplate`)
+Self-billing invoice line item templates per supplier.
+```typescript
+{
+  dvlp_ksefselfbillingtemplateid: string // Primary key (GUID)
+  dvlp_name: string                      // Template name
+  dvlp_itemdescription: string           // Line item description
+  dvlp_quantity: Decimal                 // Default quantity
+  dvlp_unit: string                      // Unit of measure
+  dvlp_unitprice: Money                  // Unit price
+  dvlp_vatrate: Integer                  // VAT rate (%)
+  dvlp_currency: string                  // Currency (default PLN)
+  dvlp_isactive: boolean                 // Active status
+  dvlp_sortorder: Integer                // Display sort order
+  _dvlp_supplierid_value: Lookup         // Foreign key to SupplierEntity
+  _dvlp_settingid_value: Lookup          // Foreign key to SettingEntity
+}
+```
+
 **Relationships**:
 - `SettingEntity 1:N InvoiceEntity` (one tenant, many invoices)
 - `SettingEntity 1:N SyncLogEntity` (one tenant, many sync logs)
@@ -468,6 +528,192 @@ User notifications for approval and budget events.
 - `MpkCenterEntity 1:N NotificationEntity` (one center, many notifications)
 - `SettingEntity 1:N NotificationEntity` (one tenant, many notifications)
 - `InvoiceEntity 1:N NotificationEntity` (one invoice, many notifications)
+- `SettingEntity 1:N SupplierEntity` (one tenant, many suppliers)
+- `SupplierEntity 1:N InvoiceEntity` (one supplier, many invoices via supplierId)
+- `SupplierEntity 1:N SbAgreementEntity` (one supplier, many SB agreements)
+- `SbAgreementEntity 1:N SbTemplateEntity` (one agreement, many line item templates)
+
+#### Self-Billing Module — Data Flow
+
+```mermaid
+flowchart LR
+    T[Line Item Templates] --> G[Bulk Generate]
+    G --> P[Preview]
+    P --> C[Confirm]
+    C --> D[Draft Invoices]
+    D --> S[Submit → PendingSeller]
+    S --> A[Approve → SellerApproved]
+    A --> K[Send to KSeF]
+    S --> R[Reject → SellerRejected]
+    
+    IMP[Import CSV/Excel] --> VAL[Validate + Preview]
+    VAL --> C
+```
+
+#### Invoice Approval Workflow
+
+```mermaid
+stateDiagram-v2
+    [*] --> New: Invoice imported / manually created
+    New --> PendingApproval: MPK assigned (approvalRequired=true)
+    New --> Approved: MPK without required approval
+
+    PendingApproval --> Approved: Approve (single or bulk)
+    PendingApproval --> Rejected: Reject (with comment)
+    PendingApproval --> Cancelled: Cancel approval (Admin)
+
+    Rejected --> PendingApproval: Resubmit for approval
+    Cancelled --> PendingApproval: Resubmit for approval
+
+    Approved --> [*]
+    Rejected --> [*]
+    Cancelled --> [*]
+
+    note right of PendingApproval
+        SLA timer checks breaches
+        every hour (approval-sla-check)
+    end note
+```
+
+#### Self-Billing Invoice Full Lifecycle (Extended)
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft: Generated / Imported
+
+    state "Creation Path" as create {
+        [*] --> Template: From line item templates
+        [*] --> Import: CSV / Excel
+        Template --> Preview: Bulk generate
+        Import --> Validation: Parse file
+        Validation --> Preview: Data valid
+        Validation --> ImportError: Validation errors
+        ImportError --> Import: Fix and retry
+        Preview --> Confirmation: User confirms
+    }
+
+    create --> Draft: Confirmation
+
+    Draft --> PendingSeller: Submit (send to seller)
+    Draft --> Draft: Edit (update fields)
+
+    PendingSeller --> SellerApproved: Seller approves
+    PendingSeller --> SellerRejected: Seller rejects (with reason)
+
+    SellerRejected --> Draft: Revert to draft (edit and resubmit)
+    SellerRejected --> [*]: Abandoned
+
+    SellerApproved --> SentToKSeF: Send to KSeF API
+    SentToKSeF --> Confirmed: UPO received
+    SentToKSeF --> KSeFError: Send error
+    KSeFError --> SellerApproved: Retry send
+
+    Confirmed --> [*]
+
+    note right of PendingSeller
+        Bulk operations:
+        batch-approve, batch-reject,
+        batch-send, batch-delete
+    end note
+```
+
+#### Sync Flow — Incoming vs Self-Billing Mode
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant API as Azure Functions
+    participant DV as Dataverse
+    participant KV as Key Vault
+    participant KSeF as KSeF API
+
+    U->>API: POST /api/ksef/sync
+    API->>DV: Get setting (settingId)
+    API->>KV: Get KSeF token
+    API->>KSeF: Initialize session
+
+    rect rgb(230, 245, 255)
+        Note over API,KSeF: Incoming mode (subject1 + subject2)
+        API->>KSeF: Query/Invoice/Sync (subjectType=subject1)
+        KSeF-->>API: Purchase invoices
+        API->>KSeF: Query/Invoice/Sync (subjectType=subject2)
+        KSeF-->>API: Sales invoices
+    end
+
+    rect rgb(255, 245, 230)
+        Note over API,KSeF: Self-billing mode (subject3)
+        API->>KSeF: Query/Invoice/Sync (subjectType=subject3)
+        KSeF-->>API: Self-billing invoices issued by buyer
+    end
+
+    loop Each invoice
+        API->>DV: Check duplicate
+        alt New
+            API->>DV: Create InvoiceEntity
+        end
+    end
+    API->>DV: Create SyncLogEntity
+    API-->>U: Summary
+```
+
+#### Dashboard Architecture
+
+```mermaid
+graph LR
+    subgraph API["API Endpoints"]
+        Stats["GET /dashboard/stats"]
+        Activity["GET /dashboard/activity"]
+        Budget["GET /budget/summary"]
+        Approvers["GET /approvers/overview"]
+        Forecast["GET /forecast/monthly"]
+        SBInvoices["GET /self-billing/invoices"]
+    end
+
+    subgraph Dashboard["Dashboard Tiles"]
+        Hero["Hero Chart<br/>Invoice Trends"]
+        ActivityFeed["Activity Feed<br/>Recent Events"]
+        ApprovalTile["Approvals<br/>Pending / SLA"]
+        SBPipeline["SB Pipeline<br/>Draft → KSeF"]
+        BudgetSummary["Budget Summary<br/>MPK Utilization"]
+        BudgetChart["Budget Chart<br/>Plan vs Actual"]
+        ForecastChart["Forecast<br/>Trend + CI"]
+        QuickActions["Quick Actions<br/>Sync / Import / Export"]
+        SupplierTop["Top Suppliers<br/>Value Ranking"]
+    end
+
+    Stats --> Hero
+    Stats --> SupplierTop
+    Activity --> ActivityFeed
+    Budget --> BudgetSummary
+    Budget --> BudgetChart
+    Approvers --> ApprovalTile
+    Forecast --> ForecastChart
+    SBInvoices --> SBPipeline
+```
+
+#### Multi-Company Flow (settingId Routing)
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant FE as Frontend
+    participant API as Azure Functions
+    participant DV as Dataverse
+    participant KV as Key Vault
+    participant KSeF as KSeF API
+
+    U->>FE: Select company (NIP)
+    FE->>API: Request + settingId header
+    API->>DV: Get dvlp_ksefsetting (settingId)
+    DV-->>API: NIP, environment, tokenSecretName
+    API->>API: Resolve endpoint by environment
+    Note over API: test → api-test.ksef.mf.gov.pl<br/>demo → api-demo.ksef.mf.gov.pl<br/>prod → api.ksef.mf.gov.pl
+    API->>KV: GET secret (ksef-token-{nip})
+    KV-->>API: Authorization token
+    API->>KSeF: API call with token
+    KSeF-->>API: Response
+    API-->>FE: Data in selected company context
+```
 
 ---
 

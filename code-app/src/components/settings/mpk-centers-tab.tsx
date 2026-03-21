@@ -16,18 +16,23 @@ import {
   DollarSign,
   Shield,
   AlertCircle,
+  Play,
+  Square,
 } from 'lucide-react'
 import {
   useMpkCenters,
   useCreateMpkCenter,
   useUpdateMpkCenter,
   useDeactivateMpkCenter,
+  useApplyApproval,
+  useRevokeApproval,
   useMpkApprovers,
   useSetMpkApprovers,
   useMpkBudgetStatus,
   useDvUsers,
 } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
+import { formatNumber } from '@/lib/format'
 import type {
   MpkCenter,
   MpkCenterCreate,
@@ -191,10 +196,10 @@ function BudgetStatusPanel({ mpkCenter }: { mpkCenter: MpkCenter }) {
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>
-          {intl.formatMessage({ id: 'mpkCenters.utilized' })}: {budget.utilized.toLocaleString('pl-PL')} PLN
+          {intl.formatMessage({ id: 'mpkCenters.utilized' })}: {formatNumber(budget.utilized)} PLN
         </span>
         <span>
-          {intl.formatMessage({ id: 'mpkCenters.remaining' })}: {budget.remaining.toLocaleString('pl-PL')} PLN
+          {intl.formatMessage({ id: 'mpkCenters.remaining' })}: {formatNumber(budget.remaining)} PLN
         </span>
       </div>
     </div>
@@ -212,8 +217,18 @@ export function MpkCentersTab() {
   const createMpk = useCreateMpkCenter()
   const updateMpk = useUpdateMpkCenter()
   const deactivateMpk = useDeactivateMpkCenter()
+  const applyMutation = useApplyApproval()
+  const revokeMutation = useRevokeApproval()
 
   const centers = data?.mpkCenters ?? []
+
+  // Apply approval state
+  const [applyMpkId, setApplyMpkId] = useState<string | null>(null)
+  const [applyScope, setApplyScope] = useState<'unprocessed' | 'decided' | 'all'>('unprocessed')
+
+  // Revoke approval state
+  const [revokeMpkId, setRevokeMpkId] = useState<string | null>(null)
+  const [revokeScope, setRevokeScope] = useState<'pending' | 'decided' | 'all'>('pending')
 
   // Form state
   const [showForm, setShowForm] = useState(false)
@@ -224,6 +239,7 @@ export function MpkCentersTab() {
     description: '',
     approvalRequired: false,
     approvalSlaHours: 24,
+    approvalEffectiveFrom: null,
     budgetAmount: undefined,
     budgetPeriod: 'Monthly',
     budgetStartDate: '',
@@ -236,6 +252,7 @@ export function MpkCentersTab() {
       description: '',
       approvalRequired: false,
       approvalSlaHours: 24,
+      approvalEffectiveFrom: null,
       budgetAmount: undefined,
       budgetPeriod: 'Monthly',
       budgetStartDate: '',
@@ -251,6 +268,7 @@ export function MpkCentersTab() {
       description: c.description ?? '',
       approvalRequired: c.approvalRequired,
       approvalSlaHours: c.approvalSlaHours ?? 24,
+      approvalEffectiveFrom: c.approvalEffectiveFrom ?? null,
       budgetAmount: c.budgetAmount,
       budgetPeriod: c.budgetPeriod ?? 'Monthly',
       budgetStartDate: c.budgetStartDate ?? '',
@@ -264,6 +282,11 @@ export function MpkCentersTab() {
 
     if (editingId) {
       const { settingId: _s, name, ...rest } = form
+      // When disabling approval, clear approval-related fields
+      if (!rest.approvalRequired) {
+        rest.approvalSlaHours = undefined
+        rest.approvalEffectiveFrom = null
+      }
       updateMpk.mutate(
         { id: editingId, data: { name, ...rest } },
         {
@@ -341,10 +364,11 @@ export function MpkCentersTab() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium mb-1 block">
+                <label htmlFor="mpk-description" className="text-xs font-medium mb-1 block">
                   {intl.formatMessage({ id: 'mpkCenters.description' })}
                 </label>
                 <input
+                  id="mpk-description"
                   type="text"
                   value={form.description ?? ''}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -371,16 +395,34 @@ export function MpkCentersTab() {
               </div>
               {form.approvalRequired && (
                 <div>
-                  <label className="text-xs font-medium mb-1 block">
+                  <label htmlFor="mpk-sla-hours" className="text-xs font-medium mb-1 block">
                     {intl.formatMessage({ id: 'mpkCenters.slaHours' })}
                   </label>
                   <input
+                    id="mpk-sla-hours"
                     type="number"
                     min={1}
                     value={form.approvalSlaHours ?? 24}
                     onChange={(e) => setForm((f) => ({ ...f, approvalSlaHours: parseInt(e.target.value) || 24 }))}
                     className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
                   />
+                </div>
+              )}
+              {form.approvalRequired && (
+                <div className="col-span-2">
+                  <label htmlFor="mpk-effective-from" className="text-xs font-medium mb-1 block">
+                    {intl.formatMessage({ id: 'mpkCenters.approvalEffectiveFrom' })}
+                  </label>
+                  <input
+                    id="mpk-effective-from"
+                    type="date"
+                    value={form.approvalEffectiveFrom ?? ''}
+                    onChange={(e) => setForm((f) => ({ ...f, approvalEffectiveFrom: e.target.value || null }))}
+                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {intl.formatMessage({ id: 'mpkCenters.approvalEffectiveFromHint' })}
+                  </p>
                 </div>
               )}
             </div>
@@ -407,10 +449,11 @@ export function MpkCentersTab() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium mb-1 block">
+                <label htmlFor="mpk-budget-period" className="text-xs font-medium mb-1 block">
                   {intl.formatMessage({ id: 'mpkCenters.budgetPeriod' })}
                 </label>
                 <select
+                  id="mpk-budget-period"
                   value={form.budgetPeriod ?? 'Monthly'}
                   onChange={(e) => setForm((f) => ({ ...f, budgetPeriod: e.target.value as BudgetPeriod }))}
                   className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
@@ -423,10 +466,11 @@ export function MpkCentersTab() {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium mb-1 block">
+                <label htmlFor="mpk-budget-start-date" className="text-xs font-medium mb-1 block">
                   {intl.formatMessage({ id: 'mpkCenters.budgetStartDate' })}
                 </label>
                 <input
+                  id="mpk-budget-start-date"
                   type="date"
                   value={form.budgetStartDate ?? ''}
                   onChange={(e) => setForm((f) => ({ ...f, budgetStartDate: e.target.value }))}
@@ -492,6 +536,36 @@ export function MpkCentersTab() {
                     )}
                   </CardTitle>
                   <div className="flex gap-1">
+                    {c.approvalRequired && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2"
+                          title={intl.formatMessage({ id: 'mpkCenters.applyApproval' })}
+                          onClick={() => {
+                            setApplyMpkId(c.id)
+                            setApplyScope('unprocessed')
+                            setRevokeMpkId(null)
+                          }}
+                        >
+                          <Play className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2"
+                          title={intl.formatMessage({ id: 'mpkCenters.revokeApproval' })}
+                          onClick={() => {
+                            setRevokeMpkId(c.id)
+                            setRevokeScope('pending')
+                            setApplyMpkId(null)
+                          }}
+                        >
+                          <Square className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
                     <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => startEdit(c)}>
                       <Edit2 className="h-3 w-3" />
                     </Button>
@@ -519,7 +593,7 @@ export function MpkCentersTab() {
                     <span>
                       <DollarSign className="h-3 w-3 inline mr-0.5" />
                       {intl.formatMessage({ id: 'mpkCenters.budgetAmount' })}:{' '}
-                      <span className="font-medium">{c.budgetAmount.toLocaleString('pl-PL')} PLN</span>
+                      <span className="font-medium">{formatNumber(c.budgetAmount)} PLN</span>
                     </span>
                     {c.budgetPeriod && (
                       <span className="text-muted-foreground">
@@ -534,6 +608,149 @@ export function MpkCentersTab() {
                 <Separator />
 
                 <ApproversPanel mpkCenter={c} />
+
+                {/* Apply approval inline panel */}
+                {applyMpkId === c.id && (
+                  <>
+                    <Separator />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium flex items-center gap-1">
+                          <Shield className="h-3 w-3" />
+                          {intl.formatMessage({ id: 'mpkCenters.applyApproval' })}
+                        </span>
+                        <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setApplyMpkId(null)}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {intl.formatMessage({ id: 'mpkCenters.applyApprovalDesc' })}
+                      </p>
+                      <select
+                        value={applyScope}
+                        onChange={(e) => setApplyScope(e.target.value as typeof applyScope)}
+                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+                        aria-label={intl.formatMessage({ id: 'mpkCenters.applyApproval' })}
+                      >
+                        <option value="unprocessed">{intl.formatMessage({ id: 'mpkCenters.scopeUnprocessed' })}</option>
+                        <option value="decided">{intl.formatMessage({ id: 'mpkCenters.scopeDecided' })}</option>
+                        <option value="all">{intl.formatMessage({ id: 'mpkCenters.scopeAll' })}</option>
+                      </select>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={applyMutation.isPending}
+                          onClick={() => {
+                            applyMutation.mutate(
+                              { id: c.id, scope: applyScope, dryRun: true },
+                              {
+                                onSuccess: (r) =>
+                                  toast.info(intl.formatMessage({ id: 'mpkCenters.applyPreviewResult' }, { updated: r.updated, skipped: r.skipped })),
+                                onError: (err) => toast.error(err.message),
+                              }
+                            )
+                          }}
+                        >
+                          {intl.formatMessage({ id: 'mpkCenters.applyDryRun' })}
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={applyMutation.isPending}
+                          onClick={() => {
+                            applyMutation.mutate(
+                              { id: c.id, scope: applyScope },
+                              {
+                                onSuccess: (r) => {
+                                  toast.success(
+                                    intl.formatMessage({ id: 'mpkCenters.applyResult' }, { updated: r.updated, skipped: r.skipped, autoApproved: r.autoApproved })
+                                  )
+                                  setApplyMpkId(null)
+                                },
+                                onError: (err) => toast.error(err.message),
+                              }
+                            )
+                          }}
+                        >
+                          {applyMutation.isPending && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                          {intl.formatMessage({ id: 'mpkCenters.applyExecute' })}
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Revoke approval inline panel */}
+                {revokeMpkId === c.id && (
+                  <>
+                    <Separator />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium flex items-center gap-1">
+                          <Square className="h-3 w-3" />
+                          {intl.formatMessage({ id: 'mpkCenters.revokeApproval' })}
+                        </span>
+                        <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setRevokeMpkId(null)}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {intl.formatMessage({ id: 'mpkCenters.revokeApprovalDesc' })}
+                      </p>
+                      <select
+                        value={revokeScope}
+                        onChange={(e) => setRevokeScope(e.target.value as typeof revokeScope)}
+                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+                        aria-label={intl.formatMessage({ id: 'mpkCenters.revokeApproval' })}
+                      >
+                        <option value="pending">{intl.formatMessage({ id: 'mpkCenters.scopePending' })}</option>
+                        <option value="decided">{intl.formatMessage({ id: 'mpkCenters.scopeDecided' })}</option>
+                        <option value="all">{intl.formatMessage({ id: 'mpkCenters.scopeAll' })}</option>
+                      </select>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={revokeMutation.isPending}
+                          onClick={() => {
+                            revokeMutation.mutate(
+                              { id: c.id, scope: revokeScope, dryRun: true },
+                              {
+                                onSuccess: (r) =>
+                                  toast.info(intl.formatMessage({ id: 'mpkCenters.revokePreviewResult' }, { updated: r.updated, skipped: r.skipped })),
+                                onError: (err) => toast.error(err.message),
+                              }
+                            )
+                          }}
+                        >
+                          {intl.formatMessage({ id: 'mpkCenters.revokeDryRun' })}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={revokeMutation.isPending}
+                          onClick={() => {
+                            revokeMutation.mutate(
+                              { id: c.id, scope: revokeScope },
+                              {
+                                onSuccess: (r) => {
+                                  toast.success(
+                                    intl.formatMessage({ id: 'mpkCenters.revokeResult' }, { updated: r.updated, skipped: r.skipped })
+                                  )
+                                  setRevokeMpkId(null)
+                                },
+                                onError: (err) => toast.error(err.message),
+                              }
+                            )
+                          }}
+                        >
+                          {revokeMutation.isPending && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                          {intl.formatMessage({ id: 'mpkCenters.revokeExecute' })}
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           ))}

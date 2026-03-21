@@ -33,6 +33,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Tooltip,
   TooltipContent,
@@ -47,6 +49,8 @@ import {
   ShieldCheck,
   DollarSign,
   AlertTriangle,
+  Play,
+  Square,
 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { UserAvatar } from '@/components/ui/user-avatar'
@@ -57,12 +61,15 @@ import {
   useCreateMpkCenter,
   useUpdateMpkCenter,
   useDeactivateMpkCenter,
+  useApplyApproval,
+  useRevokeApproval,
   useMpkApprovers,
   useSetMpkApprovers,
   useMpkBudgetStatus,
   useContextDvUsers,
 } from '@/hooks/use-api'
 import type { MpkCenter, MpkCenterCreate, MpkCenterUpdate, BudgetPeriod } from '@/lib/api'
+import { formatNumber } from '@/lib/format'
 
 // ---------------------------------------------------------------------------
 // MPK Centers Tab
@@ -85,6 +92,7 @@ export function MpkCentersTab() {
   const [newDescription, setNewDescription] = useState('')
   const [newApprovalRequired, setNewApprovalRequired] = useState(false)
   const [newSlaHours, setNewSlaHours] = useState('')
+  const [newEffectiveFrom, setNewEffectiveFrom] = useState('')
   const [newBudgetAmount, setNewBudgetAmount] = useState('')
   const [newBudgetPeriod, setNewBudgetPeriod] = useState<BudgetPeriod | ''>('')
   const [newBudgetStartDate, setNewBudgetStartDate] = useState('')
@@ -96,6 +104,7 @@ export function MpkCentersTab() {
   const [editDescription, setEditDescription] = useState('')
   const [editApprovalRequired, setEditApprovalRequired] = useState(false)
   const [editSlaHours, setEditSlaHours] = useState('')
+  const [editEffectiveFrom, setEditEffectiveFrom] = useState('')
   const [editBudgetAmount, setEditBudgetAmount] = useState('')
   const [editBudgetPeriod, setEditBudgetPeriod] = useState<BudgetPeriod | ''>('')
   const [editBudgetStartDate, setEditBudgetStartDate] = useState('')
@@ -108,6 +117,15 @@ export function MpkCentersTab() {
   const [budgetMpkId, setBudgetMpkId] = useState<string | null>(null)
   const [budgetOpen, setBudgetOpen] = useState(false)
 
+  // Apply/Revoke approval dialog state
+  const [applyMpkId, setApplyMpkId] = useState<string | null>(null)
+  const [applyOpen, setApplyOpen] = useState(false)
+  const [applyMode, setApplyMode] = useState<'apply' | 'revoke'>('apply')
+  const [applyScope, setApplyScope] = useState<'unprocessed' | 'decided' | 'all'>('unprocessed')
+  const [revokeScope, setRevokeScope] = useState<'pending' | 'decided' | 'all'>('pending')
+  const applyMutation = useApplyApproval()
+  const revokeMutation = useRevokeApproval()
+
   const mpkCenters = mpkData?.mpkCenters ?? []
 
   // --- Handlers ---
@@ -117,6 +135,7 @@ export function MpkCentersTab() {
     setNewDescription('')
     setNewApprovalRequired(false)
     setNewSlaHours('')
+    setNewEffectiveFrom('')
     setNewBudgetAmount('')
     setNewBudgetPeriod('')
     setNewBudgetStartDate('')
@@ -131,6 +150,7 @@ export function MpkCentersTab() {
       description: newDescription.trim() || undefined,
       approvalRequired: newApprovalRequired,
       approvalSlaHours: newSlaHours ? Number(newSlaHours) : undefined,
+      approvalEffectiveFrom: newEffectiveFrom || null,
       budgetAmount: newBudgetAmount ? Number(newBudgetAmount) : undefined,
       budgetPeriod: newBudgetPeriod || undefined,
       budgetStartDate: newBudgetStartDate || undefined,
@@ -152,6 +172,7 @@ export function MpkCentersTab() {
     setEditDescription(mpk.description ?? '')
     setEditApprovalRequired(mpk.approvalRequired)
     setEditSlaHours(mpk.approvalSlaHours?.toString() ?? '')
+    setEditEffectiveFrom(mpk.approvalEffectiveFrom ?? '')
     setEditBudgetAmount(mpk.budgetAmount?.toString() ?? '')
     setEditBudgetPeriod(mpk.budgetPeriod ?? '')
     setEditBudgetStartDate(mpk.budgetStartDate ?? '')
@@ -165,7 +186,8 @@ export function MpkCentersTab() {
       name: editName.trim() || undefined,
       description: editDescription.trim() || undefined,
       approvalRequired: editApprovalRequired,
-      approvalSlaHours: editSlaHours ? Number(editSlaHours) : undefined,
+      approvalSlaHours: editApprovalRequired ? (editSlaHours ? Number(editSlaHours) : undefined) : null,
+      approvalEffectiveFrom: editApprovalRequired ? (editEffectiveFrom || null) : null,
       budgetAmount: editBudgetAmount ? Number(editBudgetAmount) : undefined,
       budgetPeriod: editBudgetPeriod || undefined,
       budgetStartDate: editBudgetStartDate || undefined,
@@ -228,6 +250,8 @@ export function MpkCentersTab() {
               onApprovalRequiredChange={setNewApprovalRequired}
               slaHours={newSlaHours}
               onSlaHoursChange={setNewSlaHours}
+              effectiveFrom={newEffectiveFrom}
+              onEffectiveFromChange={setNewEffectiveFrom}
               budgetAmount={newBudgetAmount}
               onBudgetAmountChange={setNewBudgetAmount}
               budgetPeriod={newBudgetPeriod}
@@ -280,6 +304,18 @@ export function MpkCentersTab() {
                       setBudgetMpkId(mpk.id)
                       setBudgetOpen(true)
                     }}
+                    onApplyApproval={mpk.approvalRequired ? () => {
+                      setApplyMpkId(mpk.id)
+                      setApplyMode('apply')
+                      setApplyScope('unprocessed')
+                      setApplyOpen(true)
+                    } : undefined}
+                    onRevokeApproval={mpk.approvalRequired ? () => {
+                      setApplyMpkId(mpk.id)
+                      setApplyMode('revoke')
+                      setRevokeScope('pending')
+                      setApplyOpen(true)
+                    } : undefined}
                     t={t}
                   />
                 ))}
@@ -304,6 +340,8 @@ export function MpkCentersTab() {
             onApprovalRequiredChange={setEditApprovalRequired}
             slaHours={editSlaHours}
             onSlaHoursChange={setEditSlaHours}
+            effectiveFrom={editEffectiveFrom}
+            onEffectiveFromChange={setEditEffectiveFrom}
             budgetAmount={editBudgetAmount}
             onBudgetAmountChange={setEditBudgetAmount}
             budgetPeriod={editBudgetPeriod}
@@ -333,6 +371,167 @@ export function MpkCentersTab() {
         onOpenChange={setBudgetOpen}
         mpkId={budgetMpkId}
       />
+
+      {/* Apply / Revoke approval dialog */}
+      <Dialog open={applyOpen} onOpenChange={setApplyOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>{applyMode === 'apply' ? t('applyApproval') : t('revokeApproval')}</DialogTitle>
+            <DialogDescription>{applyMode === 'apply' ? t('applyApprovalDesc') : t('revokeApprovalDesc')}</DialogDescription>
+          </DialogHeader>
+
+          {applyMode === 'apply' ? (
+            <>
+              <div className="space-y-3">
+                <Label>{t('applyApprovalScope')}</Label>
+                <Select value={applyScope} onValueChange={(v) => setApplyScope(v as typeof applyScope)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unprocessed">{t('scopeUnprocessed')}</SelectItem>
+                    <SelectItem value="decided">{t('scopeDecided')}</SelectItem>
+                    <SelectItem value="all">{t('scopeAll')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {applyScope === 'unprocessed' && t('scopeUnprocessedDesc')}
+                  {applyScope === 'decided' && t('scopeDecidedDesc')}
+                  {applyScope === 'all' && t('scopeAllDesc')}
+                </p>
+              </div>
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  disabled={applyMutation.isPending}
+                  onClick={() => {
+                    if (!applyMpkId) return
+                    applyMutation.mutate(
+                      { id: applyMpkId, scope: applyScope, dryRun: true },
+                      {
+                        onSuccess: (result) => {
+                          toast({
+                            title: t('applyDryRun'),
+                            description: t('applyPreviewResult', {
+                              updated: result.updated,
+                              skipped: result.skipped,
+                              autoApproved: result.autoApproved,
+                              total: result.total,
+                            }),
+                          })
+                        },
+                        onError: () => toast({ title: t('applyError'), variant: 'destructive' }),
+                      }
+                    )
+                  }}
+                >
+                  {t('applyDryRun')}
+                </Button>
+                <Button
+                  disabled={applyMutation.isPending}
+                  onClick={() => {
+                    if (!applyMpkId) return
+                    applyMutation.mutate(
+                      { id: applyMpkId, scope: applyScope },
+                      {
+                        onSuccess: (result) => {
+                          toast({
+                            title: t('applySuccess'),
+                            description: t('applyResult', {
+                              updated: result.updated,
+                              skipped: result.skipped,
+                              autoApproved: result.autoApproved,
+                              total: result.total,
+                            }),
+                          })
+                          setApplyOpen(false)
+                        },
+                        onError: () => toast({ title: t('applyError'), variant: 'destructive' }),
+                      }
+                    )
+                  }}
+                >
+                  {t('applyExecute')}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="space-y-3">
+                <Label>{t('revokeScope')}</Label>
+                <Select value={revokeScope} onValueChange={(v) => setRevokeScope(v as typeof revokeScope)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">{t('scopePending')}</SelectItem>
+                    <SelectItem value="decided">{t('scopeDecided')}</SelectItem>
+                    <SelectItem value="all">{t('scopeAll')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {revokeScope === 'pending' && t('scopePendingDesc')}
+                  {revokeScope === 'decided' && t('revokeDecidedDesc')}
+                  {revokeScope === 'all' && t('revokeAllDesc')}
+                </p>
+              </div>
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  disabled={revokeMutation.isPending}
+                  onClick={() => {
+                    if (!applyMpkId) return
+                    revokeMutation.mutate(
+                      { id: applyMpkId, scope: revokeScope, dryRun: true },
+                      {
+                        onSuccess: (result) => {
+                          toast({
+                            title: t('revokeDryRun'),
+                            description: t('revokePreviewResult', {
+                              updated: result.updated,
+                              skipped: result.skipped,
+                              total: result.total,
+                            }),
+                          })
+                        },
+                        onError: () => toast({ title: t('revokeError'), variant: 'destructive' }),
+                      }
+                    )
+                  }}
+                >
+                  {t('revokeDryRun')}
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={revokeMutation.isPending}
+                  onClick={() => {
+                    if (!applyMpkId) return
+                    revokeMutation.mutate(
+                      { id: applyMpkId, scope: revokeScope },
+                      {
+                        onSuccess: (result) => {
+                          toast({
+                            title: t('revokeSuccess'),
+                            description: t('revokeResult', {
+                              updated: result.updated,
+                              skipped: result.skipped,
+                              total: result.total,
+                            }),
+                          })
+                          setApplyOpen(false)
+                        },
+                        onError: () => toast({ title: t('revokeError'), variant: 'destructive' }),
+                      }
+                    )
+                  }}
+                >
+                  {t('revokeExecute')}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }
@@ -350,6 +549,8 @@ interface MpkFormProps {
   onApprovalRequiredChange: (v: boolean) => void
   slaHours: string
   onSlaHoursChange: (v: string) => void
+  effectiveFrom: string
+  onEffectiveFromChange: (v: string) => void
   budgetAmount: string
   onBudgetAmountChange: (v: string) => void
   budgetPeriod: BudgetPeriod | ''
@@ -368,6 +569,8 @@ function MpkForm({
   onApprovalRequiredChange,
   slaHours,
   onSlaHoursChange,
+  effectiveFrom,
+  onEffectiveFromChange,
   budgetAmount,
   onBudgetAmountChange,
   budgetPeriod,
@@ -415,6 +618,13 @@ function MpkForm({
             onChange={(e) => onSlaHoursChange(e.target.value)}
             placeholder={t('slaHoursPlaceholder')}
           />
+          <Label>{t('approvalEffectiveFrom')}</Label>
+          <Input
+            type="date"
+            value={effectiveFrom}
+            onChange={(e) => onEffectiveFromChange(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">{t('approvalEffectiveFromHint')}</p>
         </div>
       )}
 
@@ -470,6 +680,8 @@ function MpkRow({
   onDeactivate,
   onApprovers,
   onBudget,
+  onApplyApproval,
+  onRevokeApproval,
   t,
 }: {
   mpk: MpkCenter
@@ -477,6 +689,8 @@ function MpkRow({
   onDeactivate: () => void
   onApprovers: () => void
   onBudget: () => void
+  onApplyApproval?: () => void
+  onRevokeApproval?: () => void
   t: ReturnType<typeof useTranslations>
 }) {
   return (
@@ -514,24 +728,7 @@ function MpkRow({
         <ApproversCell mpkId={mpk.id} onManage={onApprovers} t={t} />
       </TableCell>
       <TableCell>
-        {mpk.budgetAmount && mpk.budgetAmount > 0 ? (
-          <button
-            onClick={onBudget}
-            className="text-left hover:underline"
-          >
-            <span className="font-mono text-sm">
-              {mpk.budgetAmount.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN
-            </span>
-            <p className="text-xs text-muted-foreground">
-              {mpk.budgetPeriod === 'Monthly' && t('monthly')}
-              {mpk.budgetPeriod === 'Quarterly' && t('quarterly')}
-              {mpk.budgetPeriod === 'HalfYearly' && t('halfYearly')}
-              {mpk.budgetPeriod === 'Annual' && t('yearly')}
-            </p>
-          </button>
-        ) : (
-          <span className="text-muted-foreground text-sm">—</span>
-        )}
+        <BudgetCell mpk={mpk} onBudget={onBudget} t={t} />
       </TableCell>
       <TableCell>
         <Badge variant={mpk.isActive ? 'default' : 'secondary'}>
@@ -540,16 +737,42 @@ function MpkRow({
       </TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-1">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={onApprovers}>
-                  <Users className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t('manageApprovers')}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {mpk.approvalRequired && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={onApprovers}>
+                    <Users className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('manageApprovers')}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {onApplyApproval && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={onApplyApproval}>
+                    <Play className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('applyApproval')}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {onRevokeApproval && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={onRevokeApproval}>
+                    <Square className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('revokeApproval')}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <Button variant="ghost" size="icon" onClick={onEdit}>
             <Edit className="h-4 w-4" />
           </Button>
@@ -561,6 +784,97 @@ function MpkRow({
         </div>
       </TableCell>
     </TableRow>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Budget Cell (mini progress bar + hover popover)
+// ---------------------------------------------------------------------------
+
+function BudgetCell({
+  mpk,
+  onBudget,
+  t,
+}: {
+  mpk: MpkCenter
+  onBudget: () => void
+  t: ReturnType<typeof useTranslations>
+}) {
+  const { data, isLoading } = useMpkBudgetStatus(mpk.id)
+
+  if (!mpk.budgetAmount || mpk.budgetAmount <= 0) {
+    return <span className="text-muted-foreground text-sm">—</span>
+  }
+
+  const periodLabel =
+    mpk.budgetPeriod === 'Monthly' ? t('monthly')
+    : mpk.budgetPeriod === 'Quarterly' ? t('quarterly')
+    : mpk.budgetPeriod === 'HalfYearly' ? t('halfYearly')
+    : mpk.budgetPeriod === 'Annual' ? t('yearly')
+    : ''
+
+  const budget = data?.data
+  const pct = budget?.utilizationPercent ?? 0
+  const progressClass = budget?.isExceeded
+    ? '[&>div]:bg-red-500'
+    : budget?.isWarning
+      ? '[&>div]:bg-amber-500'
+      : '[&>div]:bg-emerald-500'
+
+  const content = (
+    <button onClick={onBudget} className="text-left w-full min-w-[140px]">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="font-mono text-sm">
+          {formatNumber(mpk.budgetAmount, 'pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} PLN
+        </span>
+        <span className="text-xs text-muted-foreground">{periodLabel}</span>
+      </div>
+      {isLoading ? (
+        <Skeleton className="h-1.5 w-full mt-1.5 rounded-full" />
+      ) : budget ? (
+        <div className="mt-1.5 space-y-0.5">
+          <Progress value={Math.min(pct, 100)} className={`h-1.5 ${progressClass}`} />
+          <span className="text-[10px] text-muted-foreground font-mono">{pct.toFixed(0)}%</span>
+        </div>
+      ) : null}
+    </button>
+  )
+
+  if (!budget) return content
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>{content}</PopoverTrigger>
+      <PopoverContent className="w-64 p-3" side="bottom" align="start">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">{t('budgetStatusTitle')}</span>
+            {budget.isExceeded && (
+              <Badge variant="destructive" className="text-[10px] px-1.5">{t('budgetExceeded')}</Badge>
+            )}
+            {!budget.isExceeded && budget.isWarning && (
+              <Badge className="text-[10px] px-1.5 bg-amber-100 text-amber-800">{t('budgetWarning')}</Badge>
+            )}
+          </div>
+          <Progress value={Math.min(pct, 100)} className={`h-2 ${progressClass}`} />
+          <div className="flex justify-between text-xs">
+            <span className="font-mono font-medium">{pct.toFixed(1)}%</span>
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+            <span className="text-muted-foreground">{t('utilized')}:</span>
+            <span className="text-right font-mono">{formatNumber(budget.utilized)} PLN</span>
+            <span className="text-muted-foreground">{t('remaining')}:</span>
+            <span className="text-right font-mono">{formatNumber(budget.remaining)} PLN</span>
+            <span className="text-muted-foreground">{t('invoiceCountLabel')}:</span>
+            <span className="text-right font-mono">{budget.invoiceCount}</span>
+            <span className="text-muted-foreground">{t('periodRange')}:</span>
+            <span className="text-right text-[10px]">
+              {new Date(budget.periodStart).toLocaleDateString('pl-PL')} – {new Date(budget.periodEnd).toLocaleDateString('pl-PL')}
+            </span>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -791,8 +1105,8 @@ function BudgetStatusDialog({
               <div className="flex justify-between text-sm">
                 <span>{t('utilized')}</span>
                 <span className="font-mono">
-                  {status.utilized.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} /{' '}
-                  {status.budgetAmount.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN
+                  {formatNumber(status.utilized, 'pl-PL', { minimumFractionDigits: 2 })} /{' '}
+                  {formatNumber(status.budgetAmount, 'pl-PL', { minimumFractionDigits: 2 })} PLN
                 </span>
               </div>
               <Progress
@@ -808,7 +1122,7 @@ function BudgetStatusDialog({
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>{status.utilizationPercent.toFixed(1)}%</span>
                 <span>
-                  {t('remaining')}: {status.remaining.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN
+                  {t('remaining')}: {formatNumber(status.remaining, 'pl-PL', { minimumFractionDigits: 2 })} PLN
                 </span>
               </div>
             </div>

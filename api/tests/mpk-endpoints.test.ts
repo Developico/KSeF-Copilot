@@ -42,8 +42,16 @@ vi.mock('../src/lib/dataverse/services/mpk-center-service', () => ({
   },
 }))
 
+vi.mock('../src/lib/dataverse/services/approval-service', () => ({
+  approvalService: {
+    applyApprovalToMpk: vi.fn(),
+    revokeApprovalFromMpk: vi.fn(),
+  },
+}))
+
 import { verifyAuth, requireRole } from '../src/lib/auth/middleware'
 import { mpkCenterService } from '../src/lib/dataverse/services/mpk-center-service'
+import { approvalService } from '../src/lib/dataverse/services/approval-service'
 
 // Import function modules to trigger handler registration
 import '../src/functions/mpk-centers'
@@ -425,6 +433,180 @@ describe('Users Endpoint', () => {
 
       const res = await handler()(mockRequest(), mockContext())
       expect(res.status).toBe(500)
+    })
+  })
+
+  // ══════════════════════════════════════════════════════════════
+  // POST /api/mpk-centers/:id/apply-approval
+  // ══════════════════════════════════════════════════════════════
+
+  describe('POST /api/mpk-centers/:id/apply-approval', () => {
+    const handler = () => registeredHandlers['mpk-centers-apply-approval']
+
+    it('should return 401 for unauthenticated requests', async () => {
+      authFail()
+      const req = mockRequest({ params: { id: 'c1' } })
+      const res = await handler()(req, mockContext())
+      expect(res.status).toBe(401)
+    })
+
+    it('should return 403 for non-admin', async () => {
+      roleFail()
+      const req = mockRequest({ params: { id: 'c1' } })
+      const res = await handler()(req, mockContext())
+      expect(res.status).toBe(403)
+    })
+
+    it('should return 400 for invalid scope', async () => {
+      authSuccess()
+      const req = mockRequest({
+        params: { id: 'c1' },
+        json: async () => ({ scope: 'invalid' }),
+      })
+      const res = await handler()(req, mockContext())
+      expect(res.status).toBe(400)
+      expect(res.jsonBody.error).toContain('Invalid scope')
+    })
+
+    it('should call applyApprovalToMpk with correct params', async () => {
+      authSuccess()
+      vi.mocked(approvalService.applyApprovalToMpk).mockResolvedValue({
+        updated: 5,
+        skipped: 2,
+        autoApproved: 1,
+        total: 8,
+      })
+
+      const req = mockRequest({
+        params: { id: 'c1' },
+        json: async () => ({ scope: 'unprocessed', dryRun: true }),
+      })
+      const res = await handler()(req, mockContext())
+
+      expect(res.status).toBe(200)
+      expect(approvalService.applyApprovalToMpk).toHaveBeenCalledWith('c1', 'unprocessed', true)
+      expect(res.jsonBody.updated).toBe(5)
+      expect(res.jsonBody.dryRun).toBe(true)
+    })
+
+    it('should default to unprocessed scope', async () => {
+      authSuccess()
+      vi.mocked(approvalService.applyApprovalToMpk).mockResolvedValue({
+        updated: 0,
+        skipped: 0,
+        autoApproved: 0,
+        total: 0,
+      })
+
+      const req = mockRequest({
+        params: { id: 'c1' },
+        json: async () => ({}),
+      })
+      const res = await handler()(req, mockContext())
+
+      expect(res.status).toBe(200)
+      expect(approvalService.applyApprovalToMpk).toHaveBeenCalledWith('c1', 'unprocessed', false)
+    })
+
+    it('should return 500 on service error', async () => {
+      authSuccess()
+      vi.mocked(approvalService.applyApprovalToMpk).mockRejectedValue(new Error('MPK center not found'))
+
+      const req = mockRequest({
+        params: { id: 'c1' },
+        json: async () => ({ scope: 'all' }),
+      })
+      const res = await handler()(req, mockContext())
+
+      expect(res.status).toBe(500)
+      expect(res.jsonBody.error).toBe('MPK center not found')
+    })
+  })
+
+  // ══════════════════════════════════════════════════════════════
+  // POST /api/mpk-centers/:id/revoke-approval
+  // ══════════════════════════════════════════════════════════════
+
+  describe('POST /api/mpk-centers/:id/revoke-approval', () => {
+    const handler = () => registeredHandlers['mpk-centers-revoke-approval']
+
+    it('should return 401 for unauthenticated requests', async () => {
+      authFail()
+      const req = mockRequest({ params: { id: 'c1' } })
+      const res = await handler()(req, mockContext())
+      expect(res.status).toBe(401)
+    })
+
+    it('should return 403 for non-admin', async () => {
+      roleFail()
+      const req = mockRequest({ params: { id: 'c1' } })
+      const res = await handler()(req, mockContext())
+      expect(res.status).toBe(403)
+    })
+
+    it('should return 400 for invalid scope', async () => {
+      authSuccess()
+      const req = mockRequest({
+        params: { id: 'c1' },
+        json: async () => ({ scope: 'invalid' }),
+      })
+      const res = await handler()(req, mockContext())
+      expect(res.status).toBe(400)
+      expect(res.jsonBody.error).toContain('Invalid scope')
+    })
+
+    it('should call revokeApprovalFromMpk with correct params', async () => {
+      authSuccess()
+      vi.mocked(approvalService.revokeApprovalFromMpk).mockResolvedValue({
+        updated: 3,
+        skipped: 1,
+        autoApproved: 0,
+        total: 4,
+      })
+
+      const req = mockRequest({
+        params: { id: 'c1' },
+        json: async () => ({ scope: 'pending', dryRun: true }),
+      })
+      const res = await handler()(req, mockContext())
+
+      expect(res.status).toBe(200)
+      expect(approvalService.revokeApprovalFromMpk).toHaveBeenCalledWith('c1', 'pending', true)
+      expect(res.jsonBody.updated).toBe(3)
+      expect(res.jsonBody.dryRun).toBe(true)
+    })
+
+    it('should default to pending scope', async () => {
+      authSuccess()
+      vi.mocked(approvalService.revokeApprovalFromMpk).mockResolvedValue({
+        updated: 0,
+        skipped: 0,
+        autoApproved: 0,
+        total: 0,
+      })
+
+      const req = mockRequest({
+        params: { id: 'c1' },
+        json: async () => ({}),
+      })
+      const res = await handler()(req, mockContext())
+
+      expect(res.status).toBe(200)
+      expect(approvalService.revokeApprovalFromMpk).toHaveBeenCalledWith('c1', 'pending', false)
+    })
+
+    it('should return 500 on service error', async () => {
+      authSuccess()
+      vi.mocked(approvalService.revokeApprovalFromMpk).mockRejectedValue(new Error('MPK center not found'))
+
+      const req = mockRequest({
+        params: { id: 'c1' },
+        json: async () => ({ scope: 'all' }),
+      })
+      const res = await handler()(req, mockContext())
+
+      expect(res.status).toBe(500)
+      expect(res.jsonBody.error).toBe('MPK center not found')
     })
   })
 })

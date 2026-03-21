@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { DollarSign, AlertTriangle, TrendingUp } from 'lucide-react'
 import { useBudgetSummary } from '@/hooks/use-api'
 import type { BudgetStatus } from '@/lib/types'
+import { formatNumber } from '@/lib/format'
 
 function BudgetBar({ status }: { status: BudgetStatus }) {
   const pct = status.utilizationPercent
@@ -43,7 +44,7 @@ function BudgetBar({ status }: { status: BudgetStatus }) {
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>
-          {status.utilized.toLocaleString('pl-PL')} / {status.budgetAmount.toLocaleString('pl-PL')} PLN
+          {formatNumber(status.utilized)} / {formatNumber(status.budgetAmount)} PLN
         </span>
         <span>
           {status.invoiceCount} inv.
@@ -101,7 +102,7 @@ export function BudgetSummaryCards({ settingId }: { settingId: string }) {
             {overallPct.toFixed(0)}% {intl.formatMessage({ id: 'budget.overall' })}
           </span>
           <span>
-            {totalUtilized.toLocaleString('pl-PL')} / {totalBudget.toLocaleString('pl-PL')} PLN
+            {formatNumber(totalUtilized)} / {formatNumber(totalBudget)} PLN
           </span>
         </div>
       </CardHeader>

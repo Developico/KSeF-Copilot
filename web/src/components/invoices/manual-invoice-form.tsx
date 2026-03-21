@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
+import { formatCurrency } from '@/lib/format'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -873,7 +874,7 @@ export function ManualInvoiceForm() {
                     <div>
                       <span className="text-muted-foreground">{t('manualForm.netPln')}</span>
                       <p className="font-semibold">
-                        {new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(
+                        {formatCurrency(
                           parseFloat(formData.netAmount) * parseFloat(formData.exchangeRate)
                         )}
                       </p>
@@ -881,7 +882,7 @@ export function ManualInvoiceForm() {
                     <div>
                       <span className="text-muted-foreground">{t('manualForm.vatPln')}</span>
                       <p className="font-semibold">
-                        {new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(
+                        {formatCurrency(
                           parseFloat(formData.vatAmount || '0') * parseFloat(formData.exchangeRate)
                         )}
                       </p>
@@ -889,7 +890,7 @@ export function ManualInvoiceForm() {
                     <div>
                       <span className="text-muted-foreground">{t('manualForm.grossPln')}</span>
                       <p className="font-semibold">
-                        {new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(
+                        {formatCurrency(
                           parseFloat(formData.grossAmount || '0') * parseFloat(formData.exchangeRate)
                         )}
                       </p>

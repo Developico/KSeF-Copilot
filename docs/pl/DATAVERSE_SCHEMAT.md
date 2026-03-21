@@ -15,6 +15,11 @@ Specyfikacja modelu danych dla integracji z Krajowym Systemem e-Faktur (KSeF).
    - [dvlp_ksefmpkcenter](#dvlp_ksefmpkcenter)
    - [dvlp_ksefmpkapprover](#dvlp_ksefmpkapprover)
    - [dvlp_ksefnotification](#dvlp_ksefnotification)
+   - [dvlp_ksefsupplier](#dvlp_ksefsupplier)
+   - [dvlp_ksefsbagrement](#dvlp_ksefsbagrement)
+   - [dvlp_ksefselfbillingtemplate](#dvlp_ksefselfbillingtemplate)
+   - [dvlp_ksefselfbillinginvoice](#dvlp_ksefselfbillinginvoice)
+   - [dvlp_ksefselfbillinglineitem](#dvlp_ksefselfbillinglineitem)
 4. [Option Sets (Choices)](#option-sets-choices)
 5. [Relacje](#relacje)
 6. [Role bezpieczeństwa](#role-bezpieczeństwa)
@@ -36,6 +41,18 @@ erDiagram
     dvlp_ksefsetting ||--o{ dvlp_ksefinvoice : "1:N (via settingid)"
     dvlp_ksefsetting ||--o{ dvlp_ksefmpkcenter : "1:N"
     dvlp_ksefsetting ||--o{ dvlp_ksefnotification : "1:N"
+    dvlp_ksefsetting ||--o{ dvlp_ksefsupplier : "1:N"
+    dvlp_ksefsetting ||--o{ dvlp_ksefsbagrement : "1:N"
+    dvlp_ksefsetting ||--o{ dvlp_ksefselfbillingtemplate : "1:N"
+    dvlp_ksefsetting ||--o{ dvlp_ksefselfbillinginvoice : "1:N"
+    dvlp_ksefsupplier ||--o{ dvlp_ksefsbagrement : "1:N"
+    dvlp_ksefsupplier ||--o{ dvlp_ksefselfbillingtemplate : "1:N"
+    dvlp_ksefsupplier ||--o{ dvlp_ksefselfbillinginvoice : "1:N"
+    dvlp_ksefsbagrement ||--o{ dvlp_ksefselfbillinginvoice : "1:N"
+    dvlp_ksefselfbillinginvoice ||--o{ dvlp_ksefselfbillinglineitem : "1:N"
+    dvlp_ksefselfbillinginvoice ||--o| dvlp_ksefinvoice : "0..1 (KSeF link)"
+    dvlp_ksefselfbillinginvoice ||--o| dvlp_ksefmpkcenter : "0..1 (MPK)"
+    dvlp_ksefselfbillinglineitem ||--o| dvlp_ksefselfbillingtemplate : "0..1 (traceability)"
     dvlp_ksefsession ||--o{ dvlp_ksefinvoice : "1:N (via sessionid)"
     dvlp_ksefinvoice ||--o{ dvlp_aifeedback : "1:N"
     dvlp_ksefinvoice ||--o{ dvlp_ksefnotification : "1:N"
@@ -718,6 +735,7 @@ Te dane są wykorzystywane do budowania kontekstu w promptach AI (few-shot learn
 | `dvlp_isactive` | Aktywna | Boolean | ✅ | Czy centrum jest aktywne |
 | `dvlp_approvalrequired` | Wymagane zatwierdzenie | Boolean | ✅ | Czy faktury przypisane do tego MPK wymagają zatwierdzenia |
 | `dvlp_approvalslahours` | SLA zatwierdzenia (godz.) | Integer | ❌ | Maksymalna liczba godzin na zatwierdzenie przed alertem SLA |
+| `dvlp_approvaleffectivefrom` | Zatwierdzanie od daty | DateOnly | ❌ | Jeśli ustawiono, tylko faktury wystawione od tej daty wymagają zatwierdzenia. Faktury sprzed tej daty są traktowane jako "nie wymaga zatwierdzenia". Null oznacza, że wszystkie faktury wymagają zatwierdzenia |
 | `dvlp_budgetamount` | Kwota budżetu | Decimal(12,2) | ❌ | Limit budżetowy |
 | `dvlp_budgetperiod` | Okres budżetowy | OptionSet (dvlp_budgetperiod) | ❌ | Typ okresu: miesięczny/kwartalny/półroczny/roczny |
 | `dvlp_budgetstartdate` | Początek okresu budżetowego | Date | ❌ | Data początkowa okresu budżetowego |
@@ -793,6 +811,246 @@ Te dane są wykorzystywane do budowania kontekstu w promptach AI (few-shot learn
 | N:1 | dvlp_ksefsetting | `dvlp_ksefsetting_notifications` |
 | N:1 | dvlp_ksefinvoice | `dvlp_invoice_notifications` |
 | N:1 | dvlp_ksefmpkcenter | `dvlp_mpkcenter_notifications` |
+
+| N:1 | dvlp_ksefmpkcenter | `dvlp_mpkcenter_notifications` |
+
+---
+
+### dvlp_ksefsupplier
+
+**Nazwa wyświetlana:** Dostawca KSeF / KSeF Supplier  
+**Nazwa logiczna:** `dvlp_ksefsupplier`  
+**Nazwa zestawu:** `dvlp_ksefsuppliers`  
+**Typ własności:** Organization  
+**Opis:** Rejestr dostawców dla zarządzania fakturami samofakturowania
+
+#### Atrybuty
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_ksefsupplierid` | ID | Uniqueidentifier | Auto | Klucz główny |
+| `dvlp_name` | Nazwa | String(255) | ✅ | Pełna nazwa dostawcy (Primary Name) |
+| `dvlp_nip` | NIP | String(10) | ✅ | Numer identyfikacji podatkowej dostawcy |
+| `dvlp_shortname` | Nazwa skrócona | String(100) | ❌ | Krótka nazwa wyświetlana |
+| `dvlp_regon` | REGON | String(14) | ❌ | Numer REGON |
+| `dvlp_krs` | KRS | String(10) | ❌ | Numer KRS |
+| `dvlp_street` | Ulica | String(250) | ❌ | Adres ulicy |
+| `dvlp_city` | Miasto | String(100) | ❌ | Miasto |
+| `dvlp_postalcode` | Kod pocztowy | String(10) | ❌ | Kod pocztowy |
+| `dvlp_country` | Kraj | String(100) | ❌ | Kraj |
+| `dvlp_email` | Email | String(200) | ❌ | Email kontaktowy |
+| `dvlp_phone` | Telefon | String(20) | ❌ | Telefon kontaktowy |
+| `dvlp_bankaccount` | Konto bankowe | String(50) | ❌ | Numer rachunku IBAN |
+| `dvlp_vatstatus` | Status VAT | String(50) | ❌ | Status podatnika VAT z API MF |
+| `dvlp_vatstatusdate` | Data statusu VAT | Date | ❌ | Data ostatniego sprawdzenia statusu VAT |
+| `dvlp_paymenttermsdays` | Termin płatności (dni) | Integer | ❌ | Domyślny termin płatności w dniach |
+| `dvlp_defaultcategory` | Domyślna kategoria | String(100) | ❌ | Domyślna kategoria kosztowa |
+| `dvlp_notes` | Notatki | Memo(10000) | ❌ | Notatki tekstowe |
+| `dvlp_tags` | Tagi | String(500) | ❌ | Tagi oddzielone przecinkami |
+| `dvlp_hasselfbillingagreement` | Ma umowę SB | Boolean | ❌ | Prawda gdy istnieje aktywna umowa samofakturowania |
+| `dvlp_selfbillingagreementdate` | Data umowy SB | Date | ❌ | Data umowy samofakturowania |
+| `dvlp_selfbillingagreementexpiry` | Wygaśnięcie umowy SB | Date | ❌ | Data wygaśnięcia umowy |
+| `dvlp_firstinvoicedate` | Data pierwszej faktury | Date | ❌ | Cache: data najwcześniejszej faktury |
+| `dvlp_lastinvoicedate` | Data ostatniej faktury | Date | ❌ | Cache: data najnowszej faktury |
+| `dvlp_totalinvoicecount` | Liczba faktur | Integer | ❌ | Cache: łączna liczba faktur |
+| `dvlp_totalgrossamount` | Łączna kwota brutto | Decimal(12,2) | ❌ | Cache: łączna kwota brutto |
+| `dvlp_status` | Status | OptionSet (dvlp_supplierstatus) | ✅ | Aktywny/Nieaktywny/Zablokowany |
+| `dvlp_source` | Źródło | OptionSet (dvlp_suppliersource) | ❌ | Sposób dodania dostawcy |
+| `dvlp_settingid` | Ustawienie KSeF | Lookup (dvlp_ksefsetting) | ✅ | Izolacja tenanta |
+| `dvlp_defaultmpkid` | Domyślne MPK | Lookup (dvlp_ksefmpkcenter) | ❌ | Domyślne centrum kosztów MPK |
+| `dvlp_sbcontactuserid` | Zatwierdzający SB | Lookup (systemuser) | ❌ | Użytkownik systemowy odpowiedzialny za zatwierdzanie faktur samofakturowania tego dostawcy |
+| `createdon` | Utworzono | DateTime | Auto | Data utworzenia |
+| `modifiedon` | Zmodyfikowano | DateTime | Auto | Data modyfikacji |
+
+#### Klucze alternatywne
+
+| Nazwa | Atrybuty | Opis |
+|-------|----------|------|
+| `dvlp_supplier_nip_setting` | `dvlp_nip`, `dvlp_settingid` | Unikalny NIP dostawcy per tenant |
+
+#### Relacje
+
+| Typ | Powiązana tabela | Nazwa relacji |
+|-----|------------------|---------------|
+| N:1 | dvlp_ksefsetting | `dvlp_ksefsetting_suppliers` |
+| N:1 | dvlp_ksefmpkcenter | `dvlp_ksefmpkcenter_suppliers` |
+| N:1 | systemuser | `dvlp_systemuser_supplier_sbcontact` |
+| 1:N | dvlp_ksefsbagrement | `dvlp_ksefsupplier_sbagrements` |
+| 1:N | dvlp_ksefselfbillingtemplate | `dvlp_ksefsupplier_sbtemplates` |
+| 1:N | dvlp_ksefselfbillinginvoice | `dvlp_ksefsupplier_sbinvoices` |
+| 1:N | dvlp_ksefinvoice | `dvlp_ksefsupplier_invoices` |
+
+---
+
+### dvlp_ksefsbagrement
+
+**Nazwa wyświetlana:** Umowa samofakturowania KSeF / KSeF SB Agreement  
+**Nazwa logiczna:** `dvlp_ksefsbagrement`  
+**Nazwa zestawu:** `dvlp_ksefsbagrements`  
+**Typ własności:** Organization  
+**Opis:** Umowy samofakturowania między nabywcą a dostawcą
+
+#### Atrybuty
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_ksefsbagrement_id` | ID | Uniqueidentifier | Auto | Klucz główny |
+| `dvlp_name` | Nazwa | String(255) | ✅ | Nazwa umowy (Primary Name) |
+| `dvlp_agreementdate` | Data umowy | Date | ✅ | Data podpisania umowy |
+| `dvlp_validfrom` | Ważna od | Date | ✅ | Data rozpoczęcia ważności |
+| `dvlp_validto` | Ważna do | Date | ❌ | Data zakończenia ważności (null = bezterminowo) |
+| `dvlp_renewaldate` | Data odnowienia | Date | ❌ | Data następnego odnowienia |
+| `dvlp_approvalprocedure` | Procedura zatwierdzania | String(500) | ❌ | Opis procedury akceptacji faktur |
+| `dvlp_status` | Status | OptionSet (dvlp_sbagreementstatus) | ✅ | Aktywna/Wygasła/Rozwiązana |
+| `dvlp_credentialreference` | Referencja poświadczeń | String(200) | ❌ | Referencja do certyfikatu autoryzacji |
+| `dvlp_notes` | Notatki | Memo(10000) | ❌ | Notatki o umowie |
+| `dvlp_hasdocument` | Ma dokument | Boolean | ❌ | Prawda gdy dokument umowy został przesłany |
+| `dvlp_documentfilename` | Nazwa pliku dokumentu | String(255) | ❌ | Nazwa przesłanego pliku |
+| `dvlp_supplierid` | Dostawca | Lookup (dvlp_ksefsupplier) | ✅ | Dostawca, do którego należy umowa |
+| `dvlp_settingid` | Ustawienie KSeF | Lookup (dvlp_ksefsetting) | ✅ | Izolacja tenanta |
+| `createdon` | Utworzono | DateTime | Auto | Data utworzenia |
+| `modifiedon` | Zmodyfikowano | DateTime | Auto | Data modyfikacji |
+
+#### Klucze alternatywne
+
+| Nazwa | Atrybuty | Opis |
+|-------|----------|------|
+| `dvlp_sbagrement_name_supplier` | `dvlp_name`, `dvlp_supplierid` | Unikalna nazwa umowy per dostawca |
+
+#### Relacje
+
+| Typ | Powiązana tabela | Nazwa relacji |
+|-----|------------------|---------------|
+| N:1 | dvlp_ksefsupplier | `dvlp_ksefsupplier_sbagrements` |
+| N:1 | dvlp_ksefsetting | `dvlp_ksefsetting_sbagrements` |
+| 1:N | dvlp_ksefinvoice | `dvlp_ksefsbagrement_invoices` |
+
+---
+
+### dvlp_ksefselfbillingtemplate
+
+**Nazwa wyświetlana:** Szablon samofakturowania KSeF / KSeF SB Template  
+**Nazwa logiczna:** `dvlp_ksefselfbillingtemplate`  
+**Nazwa zestawu:** `dvlp_ksefselfbillingtemplates`  
+**Typ własności:** Organization  
+**Opis:** Szablony do automatycznego generowania faktur samofakturowania
+
+#### Atrybuty
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_ksefselfbillingtemplateid` | ID | Uniqueidentifier | Auto | Klucz główny |
+| `dvlp_name` | Nazwa | String(255) | ✅ | Nazwa szablonu (Primary Name) |
+| `dvlp_description` | Opis | Memo(2000) | ❌ | Opis szablonu |
+| `dvlp_itemdescription` | Opis pozycji | String(500) | ✅ | Domyślny opis pozycji fakturowej |
+| `dvlp_quantity` | Ilość | Decimal(6,4) | ❌ | Domyślna ilość |
+| `dvlp_unit` | Jednostka | String(20) | ❌ | Jednostka miary (np. szt., godz., usł.) |
+| `dvlp_unitprice` | Cena jednostkowa | Decimal(9,2) | ❌ | Domyślna cena netto |
+| `dvlp_vatrate` | Stawka VAT | String(10) | ❌ | Kod stawki VAT (23, 8, 5, 0, zw, np) |
+| `dvlp_currency` | Waluta | String(3) | ❌ | Kod waluty ISO 4217 (PLN, EUR) |
+| `dvlp_isactive` | Aktywny | Boolean | ✅ | Nieaktywne szablony ukryte w listach wyboru |
+| `dvlp_sortorder` | Kolejność sortowania | Integer | ❌ | Pozycja wyświetlania na liście szablonów |
+| `dvlp_paymenttermsdays` | Termin płatności (dni) | Integer | ❌ | Domyślny termin płatności w dniach |
+| `dvlp_supplierid` | Dostawca | Lookup (dvlp_ksefsupplier) | ✅ | Dostawca, do którego należy szablon |
+| `dvlp_settingid` | Ustawienie KSeF | Lookup (dvlp_ksefsetting) | ✅ | Izolacja tenanta |
+| `createdon` | Utworzono | DateTime | Auto | Data utworzenia |
+| `modifiedon` | Zmodyfikowano | DateTime | Auto | Data modyfikacji |
+
+#### Relacje
+
+| Typ | Powiązana tabela | Nazwa relacji |
+|-----|------------------|---------------|
+| N:1 | dvlp_ksefsupplier | `dvlp_ksefsupplier_sbtemplates` |
+| N:1 | dvlp_ksefsetting | `dvlp_ksefsetting_sbtemplates` |
+
+---
+
+### dvlp_ksefselfbillinginvoice
+
+**Nazwa wyświetlana:** Samofaktura KSeF / KSeF Self-Billing Invoice  
+**Nazwa logiczna:** `dvlp_ksefselfbillinginvoice`  
+**Nazwa zestawu:** `dvlp_ksefselfbillinginvoices`  
+**Typ własności:** User  
+**Opis:** Dedykowana tabela dla faktur samofakturowania (wystawianych przez nabywcę)
+
+#### Atrybuty
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_ksefselfbillinginvoiceid` | ID | Uniqueidentifier | Auto | Klucz główny |
+| `dvlp_name` | Numer faktury | String(200) | ✅ | Numer faktury (Primary Name) |
+| `dvlp_invoicedate` | Data wystawienia | Date | ✅ | Data wystawienia faktury |
+| `dvlp_duedate` | Termin płatności | Date | ❌ | Data terminu płatności |
+| `dvlp_netamount` | Kwota netto | Decimal(9,2) | ❌ | Łączna kwota netto |
+| `dvlp_vatamount` | Kwota VAT | Decimal(9,2) | ❌ | Łączna kwota VAT |
+| `dvlp_grossamount` | Kwota brutto | Decimal(9,2) | ❌ | Łączna kwota brutto |
+| `dvlp_currency` | Waluta | String(3) | ❌ | Kod waluty (domyślnie PLN) |
+| `dvlp_status` | Status | OptionSet (dvlp_selfbillingstatus) | ✅ | Status workflow samofakturowania |
+| `dvlp_sellerrejectionreason` | Powód odrzucenia | String(1000) | ❌ | Powód odrzucenia przez sprzedawcę |
+| `dvlp_sentdate` | Data wysłania | DateTime | ❌ | Data wysłania do KSeF |
+| `dvlp_ksefreferencenumber` | Numer referencyjny KSeF | String(100) | ❌ | Numer nadany po wysłaniu do KSeF |
+| `dvlp_settingid` | Ustawienie KSeF | Lookup (dvlp_ksefsetting) | ✅ | Izolacja tenanta |
+| `dvlp_supplierid` | Dostawca | Lookup (dvlp_ksefsupplier) | ✅ | Dostawca (sprzedawca) |
+| `dvlp_sbagreementid` | Umowa SB | Lookup (dvlp_ksefsbagrement) | ❌ | Umowa samofakturowania |
+| `dvlp_kseFinvoiceid` | Faktura KSeF | Lookup (dvlp_ksefinvoice) | ❌ | Powiązanie z rekordem faktury KSeF po wysłaniu |
+| `dvlp_mpkcenterid` | Centrum MPK | Lookup (dvlp_ksefmpkcenter) | ❌ | Centrum kosztów do alokacji |
+| `dvlp_submittedbyuserid` | Przesłane przez | Lookup (systemuser) | ❌ | Użytkownik systemowy, który przesłał fakturę do weryfikacji sprzedawcy |
+| `dvlp_submittedat` | Data przesłania | DateTime | ❌ | Znacznik czasu przesłania faktury do weryfikacji |
+| `dvlp_approvedbyuserid` | Zatwierdzono/Odrzucono przez | Lookup (systemuser) | ❌ | Użytkownik systemowy, który zatwierdził lub odrzucił fakturę |
+| `dvlp_approvedat` | Data zatwierdzenia/odrzucenia | DateTime | ❌ | Znacznik czasu zatwierdzenia lub odrzucenia faktury |
+| `statecode` | Stan | State | Auto | Aktywny/Nieaktywny |
+| `createdon` | Utworzono | DateTime | Auto | Data utworzenia |
+| `modifiedon` | Zmodyfikowano | DateTime | Auto | Data modyfikacji |
+
+#### Relacje
+
+| Typ | Powiązana tabela | Nazwa relacji |
+|-----|------------------|---------------|
+| N:1 | dvlp_ksefsetting | `dvlp_ksefsetting_sbinvoices` |
+| N:1 | dvlp_ksefsupplier | `dvlp_ksefsupplier_sbinvoices` |
+| N:1 | dvlp_ksefsbagrement | `dvlp_ksefsbagrement_sbinvoices` |
+| N:1 | dvlp_ksefinvoice | `dvlp_ksefinvoice_sbinvoices` |
+| N:1 | dvlp_ksefmpkcenter | `dvlp_ksefmpkcenter_sbinvoices` |
+| N:1 | systemuser | `dvlp_systemuser_sbinvoice_submittedby` |
+| N:1 | systemuser | `dvlp_systemuser_sbinvoice_approvedby` |
+| 1:N | dvlp_ksefselfbillinglineitem | `dvlp_ksefselfbillinginvoice_lineitems` |
+
+---
+
+### dvlp_ksefselfbillinglineitem
+
+**Nazwa wyświetlana:** Pozycja samofaktury KSeF / KSeF SB Line Item  
+**Nazwa logiczna:** `dvlp_ksefselfbillinglineitem`  
+**Nazwa zestawu:** `dvlp_ksefselfbillinglineitems`  
+**Typ własności:** User  
+**Opis:** Pozycje faktur samofakturowania
+
+#### Atrybuty
+
+| Nazwa logiczna | Nazwa wyświetlana | Typ | Wymagane | Opis |
+|----------------|-------------------|-----|----------|------|
+| `dvlp_ksefselfbillinglineitemid` | ID | Uniqueidentifier | Auto | Klucz główny |
+| `dvlp_name` | Opis pozycji | String(500) | ✅ | Opis pozycji (Primary Name) |
+| `dvlp_quantity` | Ilość | Decimal(6,3) | ✅ | Ilość |
+| `dvlp_unit` | Jednostka | String(20) | ✅ | Jednostka miary |
+| `dvlp_unitprice` | Cena jednostkowa | Decimal(9,2) | ✅ | Cena jednostkowa netto |
+| `dvlp_vatrate` | Stawka VAT | Integer | ✅ | Stawka VAT w procentach (23, 8, 5, 0, -1=zw) |
+| `dvlp_netamount` | Kwota netto | Decimal(9,2) | ❌ | Kwota netto pozycji |
+| `dvlp_vatamount` | Kwota VAT | Decimal(9,2) | ❌ | Kwota VAT pozycji |
+| `dvlp_grossamount` | Kwota brutto | Decimal(9,2) | ❌ | Kwota brutto pozycji |
+| `dvlp_paymenttermsdays` | Termin płatności (dni) | Integer | ❌ | Termin płatności dla pozycji |
+| `dvlp_sortorder` | Kolejność | Integer | ❌ | Kolejność wyświetlania pozycji |
+| `dvlp_sbinvoiceid` | Samofaktura | Lookup (dvlp_ksefselfbillinginvoice) | ✅ | Faktura nadrzędna |
+| `dvlp_templateid` | Szablon | Lookup (dvlp_ksefselfbillingtemplate) | ❌ | Szablon, z którego utworzono pozycję (traceability) |
+| `createdon` | Utworzono | DateTime | Auto | Data utworzenia |
+| `modifiedon` | Zmodyfikowano | DateTime | Auto | Data modyfikacji |
+
+#### Relacje
+
+| Typ | Powiązana tabela | Nazwa relacji |
+|-----|------------------|---------------|
+| N:1 | dvlp_ksefselfbillinginvoice | `dvlp_ksefselfbillinginvoice_lineitems` |
+| N:1 | dvlp_ksefselfbillingtemplate | `dvlp_ksefselfbillingtemplate_lineitems` |
 
 ---
 
@@ -1058,6 +1316,60 @@ Te dane są wykorzystywane do budowania kontekstu w promptach AI (few-shot learn
 
 ---
 
+### dvlp_supplierstatus
+
+**Nazwa wyświetlana:** Status dostawcy  
+**Typ:** Global OptionSet
+
+| Wartość | Label (EN) | Label (PL) | Opis |
+|---------|------------|------------|------|
+| 100000001 | Active | Aktywny | Dostawca aktywny — może być używany w nowych fakturach |
+| 100000002 | Inactive | Nieaktywny | Dostawca nieaktywny — ukryty z list wyboru |
+| 100000003 | Blocked | Zablokowany | Dostawca zablokowany — niedostępny operacyjnie |
+
+---
+
+### dvlp_suppliersource
+
+**Nazwa wyświetlana:** Źródło dostawcy  
+**Typ:** Global OptionSet
+
+| Wartość | Label (EN) | Label (PL) | Opis |
+|---------|------------|------------|------|
+| 100000001 | Manual | Ręcznie | Wprowadzony ręcznie przez użytkownika |
+| 100000002 | KSeF Sync | Synchronizacja KSeF | Utworzony automatycznie podczas synchronizacji KSeF |
+| 100000003 | Import | Import | Zaimportowany z pliku CSV/XLSX |
+
+---
+
+### dvlp_sbagreementstatus
+
+**Nazwa wyświetlana:** Status umowy samofakturowania  
+**Typ:** Global OptionSet
+
+| Wartość | Label (EN) | Label (PL) | Opis |
+|---------|------------|------------|------|
+| 100000001 | Active | Aktywna | Umowa obowiązuje |
+| 100000002 | Expired | Wygasła | Umowa wygasła po dacie validTo |
+| 100000003 | Terminated | Rozwiązana | Umowa rozwiązana przed terminem |
+
+---
+
+### dvlp_selfbillingstatus
+
+**Nazwa wyświetlana:** Status samofakturowania  
+**Typ:** Global OptionSet
+
+| Wartość | Label (EN) | Label (PL) | Opis |
+|---------|------------|------------|------|
+| 100000001 | Draft | Szkic | Faktura w przygotowaniu |
+| 100000002 | Pending Approval | Oczekuje na akceptację | Wysłana do dostawcy do zatwierdzenia |
+| 100000003 | Approved | Zatwierdzona | Zaakceptowana przez dostawcę |
+| 100000004 | Rejected | Odrzucona | Odrzucona przez dostawcę |
+| 100000005 | Sent to KSeF | Wysłana do KSeF | Przekazana do systemu KSeF |
+
+---
+
 ## Relacje
 
 ### Diagram relacji
@@ -1069,12 +1381,20 @@ graph TD
     Setting -->|1:N| Invoice1["dvlp_ksefinvoice<br/>(via dvlp_ksefsettingid)"]
     Setting -->|1:N| MpkCenter["dvlp_ksefmpkcenter"]
     Setting -->|1:N| Notification["dvlp_ksefnotification"]
+    Setting -->|1:N| Supplier["dvlp_ksefsupplier"]
+    Setting -->|1:N| SbAgreement["dvlp_ksefsbagrement"]
+    Setting -->|1:N| SbTemplate["dvlp_ksefselfbillingtemplate"]
     Session -->|1:N| Invoice2["dvlp_ksefinvoice<br/>(via dvlp_ksefsessionid)"]
     Invoice1 -->|1:N| Feedback["dvlp_aifeedback<br/>(via dvlp_invoiceid)"]
     Invoice1 -->|1:N| Notification
     MpkCenter -->|1:N| Approver["dvlp_ksefmpkapprover"]
     MpkCenter -->|1:N| Invoice1
     MpkCenter -->|1:N| Notification
+    MpkCenter -->|1:N| Supplier
+    Supplier -->|1:N| SbAgreement
+    Supplier -->|1:N| SbTemplate
+    Supplier -->|1:N| Invoice1
+    SbAgreement -->|1:N| Invoice1
     SystemUser["systemuser"] -->|1:N| Approver
     SystemUser -->|1:N| Notification
 ```
@@ -1481,6 +1801,10 @@ Utwórz najpierw wszystkie globalne zestawy opcji:
 15. `dvlp_budgetperiod` - Okres budżetowy
 16. `dvlp_notificationtype` - Typ powiadomienia
 17. `dvlp_invoicesource` - Źródło faktury
+18. `dvlp_supplierstatus` - Status dostawcy
+19. `dvlp_suppliersource` - Źródło dostawcy
+20. `dvlp_sbagreementstatus` - Status umowy samofakturowania
+21. `dvlp_selfbillingstatus` - Status samofakturowania
 
 ### 2. Utworzenie tabel w kolejności
 
@@ -1492,11 +1816,18 @@ Utwórz najpierw wszystkie globalne zestawy opcji:
 6. `dvlp_ksefmpkcenter` — Centra MPK (z relacją do dvlp_ksefsetting)
 7. `dvlp_ksefmpkapprover` — Akceptanci MPK (z relacjami do dvlp_ksefmpkcenter + systemuser)
 8. `dvlp_ksefnotification` — Powiadomienia (z relacjami do systemuser, dvlp_ksefsetting, dvlp_ksefinvoice, dvlp_ksefmpkcenter)
+9. `dvlp_ksefsupplier` — Dostawcy (z relacjami do dvlp_ksefsetting, dvlp_ksefmpkcenter)
+10. `dvlp_ksefsbagrement` — Umowy samofakturowania (z relacjami do dvlp_ksefsupplier, dvlp_ksefsetting)
+11. `dvlp_ksefselfbillingtemplate` — Szablony samofakturowania (z relacjami do dvlp_ksefsupplier, dvlp_ksefsetting)
+12. `dvlp_ksefselfbillinginvoice` — Faktury samofakturowania (z relacjami do dvlp_ksefsetting, dvlp_ksefsupplier, dvlp_ksefsbagrement, dvlp_ksefinvoice, dvlp_ksefmpkcenter)
+13. `dvlp_ksefselfbillinglineitem` — Pozycje faktur samofakturowania (z relacjami do dvlp_ksefselfbillinginvoice, dvlp_ksefselfbillingtemplate)
 
 ### 3. Utworzenie kluczy alternatywnych
 
 - `dvlp_ksefsetting`: `dvlp_nip_key`
 - `dvlp_ksefinvoice`: `dvlp_ksefref_key`, `dvlp_invoice_composite_key`
+- `dvlp_ksefsupplier`: `dvlp_supplier_nip_setting`
+- `dvlp_ksefsbagrement`: `dvlp_sbagrement_name_supplier`
 
 ### 4. Utworzenie widoków, formularzy i wykresów
 
@@ -1513,6 +1844,9 @@ Zgodnie ze specyfikacją dla każdej tabeli.
 | 1.2.0 | 2026-01 | Uproszczenie struktury: 22 kolumny zamiast 50+, Decimal zamiast Currency, MPK/Kategoria jako OptionSet |
 | 1.3.0 | 2026-02 | Połączenie ze specyfikacją pól AI: dvlp_aimpksuggestion, dvlp_aicategorysuggestion, dvlp_aidescription, dvlp_airationale, dvlp_aiconfidence, dvlp_aiprocessedat + tabela dvlp_aifeedback + dvlp_costcenter szczegółowy + instrukcja wdrożenia |
 | 1.4.0 | 2026-03 | Dodano encję Centrum MPK (dvlp_ksefmpkcenter), Akceptant MPK (dvlp_ksefmpkapprover), Powiadomienie (dvlp_ksefnotification). Pola workflow akceptacji faktur (dvlp_approvalstatus, dvlp_approvedby, dvlp_approvedbyoid, dvlp_approvedat, dvlp_approvalcomment, dvlp_mpkcenterid). Nowe OptionSets: dvlp_approvalstatus, dvlp_budgetperiod, dvlp_notificationtype |
+| 1.5.0 | 2026-04 | Dodano encje samofakturowania: dvlp_ksefsupplier (Dostawca), dvlp_ksefsbagrement (Umowa SB), dvlp_ksefselfbillingtemplate (Szablon SB). Nowe OptionSets: dvlp_supplierstatus, dvlp_suppliersource, dvlp_sbagreementstatus, dvlp_selfbillingstatus. Wersja rozwiązania: 1.0.0.9 |
+| 1.6.0 | 2026-04 | Migracja faktur SB do dedykowanych tabel: dvlp_ksefselfbillinginvoice (Faktura SB) + dvlp_ksefselfbillinglineitem (Pozycja SB). Usunięto pola SB z dvlp_ksefinvoice (dvlp_isselfbilling, dvlp_selfbillingstatus, dvlp_sellerrejectionreason, dvlp_selfbillingsentdate, dvlp_supplierid, dvlp_sbagrementid). Pozycje faktur jako osobne rekordy zamiast JSON w polu description. |
+| 1.7.0 | 2026-03 | Workflow zatwierdzania SB: dodano dvlp_sbcontactuserid (lookup systemuser) do dvlp_ksefsupplier. Dodano kolumny audytu do dvlp_ksefselfbillinginvoice: dvlp_submittedbyuserid (lookup systemuser), dvlp_submittedat (DateTime), dvlp_approvedbyuserid (lookup systemuser), dvlp_approvedat (DateTime). Nowy endpoint GET /api/self-billing/approvals/pending. Endpointy submit/approve/reject wymuszają autoryzację wyznaczonego zatwierdzającego. |
 
 ---
 
@@ -1525,6 +1859,6 @@ Zgodnie ze specyfikacją dla każdej tabeli.
 
 ---
 
-**Ostatnia aktualizacja:** 2026-03-10  
-**Wersja:** 1.4  
+**Ostatnia aktualizacja:** 2026-03-15  
+**Wersja:** 1.7  
 **Opiekun:** dvlp-dev team

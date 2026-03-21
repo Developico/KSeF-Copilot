@@ -2,7 +2,7 @@
 
 > Kompletny, krok po kroku przewodnik wdrożenia rozwiązania KSeF Copilot w chmurze Azure i Power Platform.
 
-**Ostatnia aktualizacja:** 2026-02-21
+**Ostatnia aktualizacja:** 2026-03-20
 **Wersja:** 4.0
 **Szacowany czas wdrożenia:** ~7–8 godzin (bez kroków opcjonalnych)
 
@@ -191,7 +191,7 @@ graph TB
 | Warstwa | Technologia | Model |
 |---------|------------|-------|
 | Web Frontend | Azure App Service | Next.js (standalone output) |
-| REST API | Azure Functions | Flex Consumption, Node.js 20 |
+| REST API | Azure Functions | Flex Consumption, Node.js 22 |
 | Baza danych | Microsoft Dataverse | Power Platform |
 | Magazyn secretów | Azure Key Vault | Standard |
 | AI | Azure OpenAI | gpt-4o-mini |
@@ -316,6 +316,9 @@ npm run dev --workspace=web      # http://localhost:3000
     "DATAVERSE_ENTITY_SETTING": "dvlp_ksefsetting",
     "DATAVERSE_ENTITY_SESSION": "dvlp_ksefsession",
     "DATAVERSE_ENTITY_SYNCLOG": "dvlp_ksefsynclog",
+    "DATAVERSE_ENTITY_SUPPLIER": "dvlp_ksefsupplier",
+    "DATAVERSE_ENTITY_SB_AGREEMENT": "dvlp_ksefsbagrement",
+    "DATAVERSE_ENTITY_SB_TEMPLATE": "dvlp_ksefselfbillingtemplate",
     "AZURE_KEYVAULT_URL": "https://<vault-name>.vault.azure.net/",
     "KSEF_ENVIRONMENT": "test",
     "KSEF_NIP": "<NIP>",
@@ -477,7 +480,7 @@ az role assignment list `
 - [ ] `az account show` — zwraca poprawną subskrypcję
 - [ ] `func --version` — zwraca 4.x
 - [ ] `pac auth list` — widoczne aktywne połączenie z Dataverse
-- [ ] `node --version` — Node 20+
+- [ ] `node --version` — Node 22+
 - [ ] Rola Dataverse: System Administrator ✓
 
 > **🛑 STOP — Nie przechodź dalej** dopóki wszystkie powyższe checkboxy nie są zaznaczone. Bez pozytywnej weryfikacji kolejne kroki nie zadziałają.
@@ -542,9 +545,15 @@ pac solution list
   - [ ] `dvlp_ksefsetting` — ustawienia firmy
   - [ ] `dvlp_ksefsession` — sesje KSeF
   - [ ] `dvlp_ksefsynclog` — logi synchronizacji
+- [ ] 3 tabele Self-Billing utworzone:
+  - [ ] `dvlp_ksefsupplier` — rejestr dostawców
+  - [ ] `dvlp_ksefsbagrement` — umowy samofakturowania
+  - [ ] `dvlp_ksefselfbillingtemplate` — szablony pozycji samofaktur
 - [ ] MDA App widoczna w Apps
 - [ ] Custom Connector widoczny w Data → Custom connectors
 - [ ] Cloud Flows widoczne w Cloud flows
+
+> **🛣️ Provisioning Self-Billing**: Po imporcie solucji zweryfikuj, że tabele `dvlp_ksefsupplier`, `dvlp_ksefsbagrement` i `dvlp_ksefselfbillingtemplate` są widoczne w Maker Portal → Tables. Jeśli używasz skryptu `Provision-SelfBillingSchema.ps1`, uruchom go po imporcie solucji, aby utworzyć brakujące kolumny i OptionSety.
 
 > **🛑 STOP — Nie przechodź dalej** dopóki wszystkie powyższe checkboxy nie są zaznaczone.
 
@@ -791,7 +800,7 @@ Jeśli nie chcesz używać Bicep, utwórz zasoby ręcznie w Azure Portal. Utwór
 1. **+ Create a resource** → **Web App**
 2. Resource group: `<RESOURCE_GROUP_NAME>`
 3. Name: `<WEB_APP_NAME>` (np. `app-ksef-web-prod`)
-4. Runtime stack: **Node 20 LTS**
+4. Runtime stack: **Node 22 LTS**
 5. Region: **Poland Central**
 6. App Service Plan: wybierz z B6
 7. **Create**
@@ -802,7 +811,7 @@ Jeśli nie chcesz używać Bicep, utwórz zasoby ręcznie w Azure Portal. Utwór
 1. **+ Create a resource** → **Function App**
 2. Resource group: `<RESOURCE_GROUP_NAME>`
 3. Name: `<FUNCTION_APP_NAME>` (np. `func-ksef-api-prod`)
-4. Runtime stack: **Node.js 20**
+4. Runtime stack: **Node.js 22**
 5. Region: **Poland Central**
 6. **Hosting plan:** Flex Consumption
 7. Storage account: wybierz z B4
@@ -878,6 +887,9 @@ az functionapp config appsettings set `
         "DATAVERSE_ENTITY_SETTING=dvlp_ksefsetting" `
         "DATAVERSE_ENTITY_SESSION=dvlp_ksefsession" `
         "DATAVERSE_ENTITY_SYNCLOG=dvlp_ksefsynclog" `
+        "DATAVERSE_ENTITY_SUPPLIER=dvlp_ksefsupplier" `
+        "DATAVERSE_ENTITY_SB_AGREEMENT=dvlp_ksefsbagrement" `
+        "DATAVERSE_ENTITY_SB_TEMPLATE=dvlp_ksefselfbillingtemplate" `
         "AZURE_KEYVAULT_URL=<KEY_VAULT_URL>" `
         "KSEF_ENVIRONMENT=<test|demo|prod>" `
         "KSEF_NIP=<NIP>" `

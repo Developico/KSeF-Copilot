@@ -140,7 +140,11 @@ export class SessionService {
 
       const result = await dataverseClient.create<DvSession>(this.entitySet, payload)
       
-      // Fetch the created record
+      // Dataverse may return full entity (Prefer: return=representation) or { id } (204)
+      const dvIdField = DV.session.id
+      if (result && dvIdField in (result as unknown as Record<string, unknown>)) {
+        return mapDvSessionToApp(result as unknown as DvSession)
+      }
       if (result && 'id' in result) {
         const created = await this.getById((result as { id: string }).id)
         if (created) return created

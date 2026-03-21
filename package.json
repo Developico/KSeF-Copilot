@@ -37,6 +37,7 @@
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present",
+    "docs:check-links": "npx markdown-link-check --config .markdown-link-check.json docs/**/*.md docs/pl/*.md docs/en/*.md README.md README.en.md CHANGELOG.md",
     "prepare": "husky"
   },
   "devDependencies": {

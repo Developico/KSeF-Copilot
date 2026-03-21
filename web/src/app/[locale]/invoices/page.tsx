@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useMemo, Fragment } from 'react'
 import { Link } from '@/i18n/navigation'
 import { useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
+import { formatCurrency as formatCurrencyUtil } from '@/lib/format'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -48,11 +49,13 @@ import {
   Paperclip,
   StickyNote,
   CornerDownRight,
+  XCircle,
+  BanknoteIcon,
 } from 'lucide-react'
-import { useInvoices, useMarkAsPaid, useDeleteInvoice, useUpdateInvoice, useContextMpkCenters } from '@/hooks/use-api'
+import { useInvoices, useMarkAsPaid, useDeleteInvoice, useUpdateInvoice, useContextMpkCenters, useBatchMarkPaidInvoices, useBatchMarkUnpaidInvoices, useBatchApproveInvoices, useBatchRejectInvoices, useBatchDeleteInvoices } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
 import { useToast } from '@/hooks/use-toast'
-import { Invoice, InvoiceListParams } from '@/lib/api'
+import { Invoice, InvoiceListParams, BatchActionResult } from '@/lib/api'
 import { exportInvoicesToCsv } from '@/lib/export'
 import { InvoiceFilters, GroupBy, SortColumn, SortDirection } from '@/components/invoices/invoice-filters'
 import { InvoiceMobileCard } from '@/components/invoices/invoice-mobile-card'
@@ -73,6 +76,15 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 // Description status types - simplified to 3 states
 type DescriptionStatus = 'not_described' | 'ai_suggested' | 'described'
@@ -224,10 +236,7 @@ export default function InvoicesPage() {
   
   // Locale-aware formatting
   const formatCurrency = useCallback((amount: number, currency: string = 'PLN') => {
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: currency,
-    }).format(amount)
+    return formatCurrencyUtil(amount, currency, locale)
   }, [locale])
 
   const formatDate = useCallback((date: string) => {
@@ -325,6 +334,40 @@ export default function InvoicesPage() {
   const deleteInvoiceMutation = useDeleteInvoice()
   const updateInvoiceMutation = useUpdateInvoice()
   const { data: mpkCentersData } = useContextMpkCenters()
+
+  // Bulk action mutations
+  const batchMarkPaidMutation = useBatchMarkPaidInvoices()
+  const batchMarkUnpaidMutation = useBatchMarkUnpaidInvoices()
+  const batchApproveMutation = useBatchApproveInvoices()
+  const batchRejectMutation = useBatchRejectInvoices()
+  const batchDeleteMutation = useBatchDeleteInvoices()
+
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkConfirmAction, setBulkConfirmAction] = useState<'markPaid' | 'markUnpaid' | 'approve' | 'delete' | null>(null)
+  const [bulkRejectOpen, setBulkRejectOpen] = useState(false)
+  const [bulkRejectReason, setBulkRejectReason] = useState('')
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), [])
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll(filteredInvoices: Invoice[]) {
+    const filteredIds = filteredInvoices.map(inv => inv.id)
+    const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id))
+    if (allSelected) {
+      clearSelection()
+    } else {
+      setSelectedIds(new Set(filteredIds))
+    }
+  }
 
   // Apply client-side description filter
   const allInvoices = data?.invoices || []
@@ -597,6 +640,88 @@ export default function InvoicesPage() {
         variant: 'destructive',
       })
     }
+  }
+
+  // ── Bulk action helpers ─────────────────────────────────
+
+  const selectedInvoices = useMemo(() =>
+    allInvoices.filter(inv => selectedIds.has(inv.id)),
+    [allInvoices, selectedIds],
+  )
+
+  const eligibleCounts = useMemo(() => {
+    const sel = selectedInvoices
+    return {
+      markPaid: sel.filter(inv => inv.paymentStatus !== 'paid').length,
+      markUnpaid: sel.filter(inv => inv.paymentStatus === 'paid').length,
+      approve: sel.filter(inv => inv.approvalStatus === 'Pending' || inv.approvalStatus === 'Draft').length,
+      reject: sel.filter(inv => inv.approvalStatus === 'Pending' || inv.approvalStatus === 'Draft').length,
+      delete: sel.length,
+    }
+  }, [selectedInvoices])
+
+  const isBulkBusy = batchMarkPaidMutation.isPending || batchMarkUnpaidMutation.isPending ||
+    batchApproveMutation.isPending || batchRejectMutation.isPending || batchDeleteMutation.isPending
+
+  function handleBatchResult(result: BatchActionResult) {
+    clearSelection()
+    refetch()
+    if (result.failed === 0) {
+      toast({
+        title: t('bulk.resultSuccess', { count: result.succeeded }),
+        variant: 'success',
+      })
+    } else {
+      toast({
+        title: t('bulk.resultPartial', {
+          succeeded: result.succeeded,
+          total: result.total,
+          failed: result.failed,
+        }),
+        variant: 'destructive',
+      })
+    }
+  }
+
+  function executeBulkAction(action: 'markPaid' | 'markUnpaid' | 'approve' | 'delete') {
+    const ids = selectedInvoices
+      .filter(inv => {
+        if (action === 'markPaid') return inv.paymentStatus !== 'paid'
+        if (action === 'markUnpaid') return inv.paymentStatus === 'paid'
+        if (action === 'approve') return inv.approvalStatus === 'Pending' || inv.approvalStatus === 'Draft'
+        if (action === 'delete') return true
+        return false
+      })
+      .map(inv => inv.id)
+
+    if (ids.length === 0) return
+    setBulkConfirmAction(null)
+
+    const opts = {
+      onSuccess: (result: BatchActionResult) => handleBatchResult(result),
+      onError: (err: Error) => toast({ title: tCommon('error'), description: err.message, variant: 'destructive' }),
+    }
+
+    if (action === 'markPaid') batchMarkPaidMutation.mutate(ids, opts)
+    else if (action === 'markUnpaid') batchMarkUnpaidMutation.mutate(ids, opts)
+    else if (action === 'approve') batchApproveMutation.mutate(ids, opts)
+    else if (action === 'delete') batchDeleteMutation.mutate(ids, opts)
+  }
+
+  function executeBulkReject() {
+    if (!bulkRejectReason.trim()) return
+    const ids = selectedInvoices
+      .filter(inv => inv.approvalStatus === 'Pending' || inv.approvalStatus === 'Draft')
+      .map(inv => inv.id)
+    if (ids.length === 0) return
+    setBulkRejectOpen(false)
+    batchRejectMutation.mutate(
+      { invoiceIds: ids, comment: bulkRejectReason.trim() },
+      {
+        onSuccess: (result) => handleBatchResult(result),
+        onError: (err) => toast({ title: tCommon('error'), description: err.message, variant: 'destructive' }),
+      },
+    )
   }
 
   return (
@@ -1025,6 +1150,13 @@ export default function InvoicesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={sortedInvoices.length > 0 && sortedInvoices.every(inv => selectedIds.has(inv.id))}
+                      onCheckedChange={() => toggleSelectAll(sortedInvoices)}
+                      aria-label={t('bulk.selectAll')}
+                    />
+                  </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50 select-none"
                     onClick={() => {
@@ -1108,6 +1240,7 @@ export default function InvoicesPage() {
                   <TableHead className="hidden xl:table-cell">{t('mpk')}</TableHead>
                   <TableHead className="hidden xl:table-cell">{t('category')}</TableHead>
                   <TableHead className="hidden lg:table-cell">{t('approvalColumn')}</TableHead>
+                  <TableHead className="hidden lg:table-cell text-center">{t('selfBillingColumn')}</TableHead>
                   <TableHead className="hidden md:table-cell">{t('descriptionStatus')}</TableHead>
                   <TableHead className="w-[100px] lg:w-[120px] text-center">{tCommon('actions')}</TableHead>
                 </TableRow>
@@ -1122,7 +1255,7 @@ export default function InvoicesPage() {
                         className="bg-muted/50 hover:bg-muted/70 cursor-pointer"
                         onClick={() => toggleGroupCollapse(group.key)}
                       >
-                        <TableCell colSpan={9}>
+                        <TableCell colSpan={11}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               {collapsedGroups.has(group.key) ? (
@@ -1146,9 +1279,16 @@ export default function InvoicesPage() {
                     {!collapsedGroups.has(group.key) && nestCorrections(group.invoices).map(({ invoice, isCorrection }) => (
                   <TableRow 
                     key={invoice.id}
-                    className={`cursor-pointer hover:bg-muted/50 ${isCorrection ? 'bg-orange-50/40 dark:bg-orange-950/20 border-l-2 border-l-orange-300 dark:border-l-orange-700' : ''}`}
+                    className={`cursor-pointer hover:bg-muted/50 ${isCorrection ? 'bg-orange-50/40 dark:bg-orange-950/20 border-l-2 border-l-orange-300 dark:border-l-orange-700' : ''} ${selectedIds.has(invoice.id) ? 'bg-primary/5' : ''}`}
                     onDoubleClick={() => router.push(`/invoices/${invoice.id}`)}
                   >
+                    <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedIds.has(invoice.id)}
+                        onCheckedChange={() => toggleSelect(invoice.id)}
+                        aria-label={invoice.invoiceNumber}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {isCorrection ? (
@@ -1235,6 +1375,13 @@ export default function InvoicesPage() {
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       <ApprovalStatusBadge status={invoice.approvalStatus} />
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-center">
+                      {invoice.isSelfBilling && (
+                        <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800 text-[10px] px-1.5 py-0 leading-tight">
+                          {t('selfBillingColumn')}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       {getDescriptionStatusBadgeTranslated(getDescriptionStatus(invoice))}
@@ -1333,6 +1480,136 @@ export default function InvoicesPage() {
           router.push('/invoices/new')
         }}
       />
+
+      {/* Bulk action floating toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-background border rounded-lg shadow-lg px-4 py-3 flex items-center gap-3 flex-wrap max-w-[95vw]">
+          <span className="text-sm font-medium whitespace-nowrap">
+            {t('bulk.selected', { count: selectedIds.size })}
+          </span>
+          <div className="h-4 w-px bg-border" />
+          {eligibleCounts.markPaid > 0 && isAdmin && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isBulkBusy}
+              onClick={() => setBulkConfirmAction('markPaid')}
+            >
+              <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+              {t('bulk.markPaid', { count: eligibleCounts.markPaid })}
+            </Button>
+          )}
+          {eligibleCounts.markUnpaid > 0 && isAdmin && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isBulkBusy}
+              onClick={() => setBulkConfirmAction('markUnpaid')}
+            >
+              <BanknoteIcon className="h-3.5 w-3.5 mr-1.5" />
+              {t('bulk.markUnpaid', { count: eligibleCounts.markUnpaid })}
+            </Button>
+          )}
+          {eligibleCounts.approve > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isBulkBusy}
+              onClick={() => setBulkConfirmAction('approve')}
+            >
+              <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+              {t('bulk.approve', { count: eligibleCounts.approve })}
+            </Button>
+          )}
+          {eligibleCounts.reject > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isBulkBusy}
+              onClick={() => { setBulkRejectReason(''); setBulkRejectOpen(true) }}
+            >
+              <XCircle className="h-3.5 w-3.5 mr-1.5" />
+              {t('bulk.reject', { count: eligibleCounts.reject })}
+            </Button>
+          )}
+          {eligibleCounts.delete > 0 && isAdmin && (
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={isBulkBusy}
+              onClick={() => setBulkConfirmAction('delete')}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              {t('bulk.delete', { count: eligibleCounts.delete })}
+            </Button>
+          )}
+          <div className="h-4 w-px bg-border" />
+          <Button size="sm" variant="ghost" onClick={clearSelection}>
+            {t('bulk.deselectAll')}
+          </Button>
+          {isBulkBusy && (
+            <span className="text-xs text-muted-foreground animate-pulse">
+              {t('bulk.processing')}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Bulk confirm dialog */}
+      <Dialog open={bulkConfirmAction !== null} onOpenChange={(open) => { if (!open) setBulkConfirmAction(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('bulk.confirmTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm">
+            {bulkConfirmAction === 'markPaid' && t('bulk.confirmMarkPaid', { count: eligibleCounts.markPaid })}
+            {bulkConfirmAction === 'markUnpaid' && t('bulk.confirmMarkUnpaid', { count: eligibleCounts.markUnpaid })}
+            {bulkConfirmAction === 'approve' && t('bulk.confirmApprove', { count: eligibleCounts.approve })}
+            {bulkConfirmAction === 'delete' && t('bulk.confirmDelete', { count: eligibleCounts.delete })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkConfirmAction(null)}>
+              {tCommon('cancel')}
+            </Button>
+            <Button
+              variant={bulkConfirmAction === 'delete' ? 'destructive' : 'default'}
+              onClick={() => bulkConfirmAction && executeBulkAction(bulkConfirmAction)}
+              disabled={isBulkBusy}
+            >
+              {isBulkBusy ? t('bulk.processing') : tCommon('confirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk reject dialog */}
+      <Dialog open={bulkRejectOpen} onOpenChange={setBulkRejectOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('bulk.confirmTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <p className="text-sm">{t('bulk.confirmReject', { count: eligibleCounts.reject })}</p>
+            <Input
+              placeholder={t('bulk.rejectReasonPlaceholder')}
+              value={bulkRejectReason}
+              onChange={(e) => setBulkRejectReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkRejectOpen(false)}>
+              {tCommon('cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={executeBulkReject}
+              disabled={isBulkBusy || !bulkRejectReason.trim()}
+            >
+              {isBulkBusy ? t('bulk.processing') : t('bulk.reject', { count: eligibleCounts.reject })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

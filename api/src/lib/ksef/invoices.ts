@@ -20,10 +20,11 @@ import {
  */
 export async function sendInvoice(
   nip: string,
-  invoice: KsefInvoice
+  invoice: KsefInvoice,
+  settingId?: string
 ): Promise<KsefSendInvoiceResponse> {
-  const session = await ensureActiveSession(nip)
-  const config = await getKsefConfigForNip(nip)
+  const session = await ensureActiveSession(nip, settingId)
+  const config = await getKsefConfigForNip(nip, settingId)
   
   // Build FA(3) XML
   const invoiceXml = buildInvoiceXml(invoice)
@@ -193,8 +194,13 @@ export async function queryInvoices(
   }
   
   // Build request body for API 2.0 - only filter criteria, no pagination
+  const subjectTypeMap: Record<string, string> = {
+    subject1: 'Subject1',
+    subject2: 'Subject2',
+    subject3: 'Subject3',
+  }
   const requestBody = {
-    subjectType: query.subjectType === 'subject1' ? 'Subject1' : 'Subject2',
+    subjectType: subjectTypeMap[query.subjectType || 'subject2'] || 'Subject2',
     dateRange: {
       dateType: 'Invoicing',
       from: formatDate(query.dateFrom || ''),

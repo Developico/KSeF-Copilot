@@ -181,6 +181,7 @@ export interface DvMpkCenter {
   // Approval
   dvlp_approvalrequired: boolean
   dvlp_approvalslahours?: number
+  dvlp_approvaleffectivefrom?: string
   // Budget
   dvlp_budgetamount?: number
   dvlp_budgetperiod?: number // BudgetPeriod choice
@@ -257,4 +258,209 @@ export type DvInvoiceCreate = Omit<DvInvoice,
 
 export type DvInvoiceUpdate = Partial<Omit<DvInvoice, 
   'dvlp_ksefinvoiceid' | 'statecode' | 'statuscode' | 'createdon' | 'modifiedon' | '_createdby_value' | '_modifiedby_value'
+>>
+
+// ============================================================
+// KSeF Supplier (dvlp_ksefsupplier)
+// ============================================================
+
+export interface DvSupplier {
+  dvlp_ksefsupplierid: string
+  dvlp_name: string
+  dvlp_nip: string
+  dvlp_shortname?: string
+  dvlp_regon?: string
+  dvlp_krs?: string
+  // Address
+  dvlp_street?: string
+  dvlp_city?: string
+  dvlp_postalcode?: string
+  dvlp_country?: string
+  // Contact
+  dvlp_email?: string
+  dvlp_phone?: string
+  dvlp_bankaccount?: string
+  // VAT API
+  dvlp_vatstatus?: string
+  dvlp_vatstatusdate?: string
+  // Business
+  dvlp_paymenttermsdays?: number
+  '_dvlp_defaultmpkid_value'?: string
+  dvlp_defaultcategory?: string
+  dvlp_notes?: string
+  dvlp_tags?: string
+  // Self-billing flags
+  dvlp_hasselfbillingagreement?: boolean
+  dvlp_selfbillingagreementdate?: string
+  dvlp_selfbillingagreementexpiry?: string
+  // SB contact user (approver)
+  '_dvlp_sbcontactuserid_value'?: string
+  // Cached statistics
+  dvlp_firstinvoicedate?: string
+  dvlp_lastinvoicedate?: string
+  dvlp_totalinvoicecount?: number
+  dvlp_totalgrossamount?: number
+  // Status & source
+  dvlp_status: number   // SupplierStatus
+  dvlp_source: number   // SupplierSource
+  // Relations
+  '_dvlp_settingid_value': string
+  // Standard fields
+  createdon: string
+  modifiedon: string
+}
+
+// ============================================================
+// KSeF Self-Billing Agreement (dvlp_ksefsbagrement)
+// ============================================================
+
+export interface DvSbAgreement {
+  dvlp_ksefsbagrementid: string
+  dvlp_name: string
+  '_dvlp_supplierid_value': string
+  '_dvlp_settingid_value': string
+  dvlp_agreementdate: string
+  dvlp_validfrom: string
+  dvlp_validto?: string
+  dvlp_renewaldate?: string
+  dvlp_approvalprocedure?: string
+  dvlp_credentialreference?: string
+  dvlp_notes?: string
+  dvlp_hasdocument?: boolean
+  dvlp_documentfilename?: string
+  dvlp_autoapprove?: boolean
+  dvlp_status: number   // SbAgreementStatus
+  // Standard fields
+  createdon: string
+  modifiedon: string
+}
+
+// ============================================================
+// KSeF Self-Billing Template (dvlp_ksefselfbillingtemplate)
+// ============================================================
+
+export interface DvSbTemplate {
+  dvlp_ksefselfbillingtemplateid: string
+  dvlp_name: string
+  '_dvlp_supplierid_value': string
+  '_dvlp_settingid_value': string
+  dvlp_description?: string
+  dvlp_itemdescription: string
+  dvlp_quantity?: number
+  dvlp_unit: string
+  dvlp_unitprice: number
+  dvlp_vatrate: number
+  dvlp_currency?: string
+  dvlp_isactive?: boolean
+  dvlp_sortorder?: number
+  dvlp_paymenttermsdays?: number | null
+  // Standard fields
+  createdon: string
+  modifiedon: string
+}
+
+// ============================================================
+// Create/Update DTOs for Supplier, SbAgreement, SbTemplate
+// ============================================================
+
+export type DvSupplierCreate = Omit<DvSupplier,
+  'dvlp_ksefsupplierid' | 'createdon' | 'modifiedon'
+>
+
+export type DvSupplierUpdate = Partial<Omit<DvSupplier,
+  'dvlp_ksefsupplierid' | 'createdon' | 'modifiedon'
+>>
+
+export type DvSbAgreementCreate = Omit<DvSbAgreement,
+  'dvlp_ksefsbagrementid' | 'createdon' | 'modifiedon'
+>
+
+export type DvSbAgreementUpdate = Partial<Omit<DvSbAgreement,
+  'dvlp_ksefsbagrementid' | 'createdon' | 'modifiedon'
+>>
+
+export type DvSbTemplateCreate = Omit<DvSbTemplate,
+  'dvlp_ksefselfbillingtemplateid' | 'createdon' | 'modifiedon'
+>
+
+export type DvSbTemplateUpdate = Partial<Omit<DvSbTemplate,
+  'dvlp_ksefselfbillingtemplateid' | 'createdon' | 'modifiedon'
+>>
+
+// ============================================================
+// KSeF Self-Billing Invoice (dvlp_ksefselfbillinginvoice)
+// ============================================================
+
+export interface DvSbInvoice {
+  dvlp_ksefselfbillinginvoiceid: string
+  dvlp_name: string // Invoice number
+  dvlp_invoicedate: string
+  dvlp_duedate?: string
+  dvlp_netamount: number
+  dvlp_vatamount: number
+  dvlp_grossamount: number
+  dvlp_currency?: string
+  dvlp_status: number // SelfBillingStatus
+  dvlp_sellerrejectionreason?: string
+  dvlp_sentdate?: string
+  dvlp_ksefreferencenumber?: string
+  // Relations
+  '_dvlp_settingid_value': string
+  '_dvlp_supplierid_value': string
+  '_dvlp_sbagreementid_value'?: string
+  '_dvlp_kseFinvoiceid_value'?: string
+  '_dvlp_mpkcenterid_value'?: string
+  // Audit: submit & approve
+  '_dvlp_submittedbyuserid_value'?: string
+  dvlp_submittedat?: string
+  '_dvlp_approvedbyuserid_value'?: string
+  dvlp_approvedat?: string
+  // Standard fields
+  statecode: number
+  createdon: string
+  modifiedon: string
+}
+
+// ============================================================
+// KSeF Self-Billing Line Item (dvlp_ksefselfbillinglineitem)
+// ============================================================
+
+export interface DvSbLineItem {
+  dvlp_ksefselfbillinglineitemid: string
+  dvlp_name: string // Item description (primary)
+  dvlp_quantity: number
+  dvlp_unit: string
+  dvlp_unitprice: number
+  dvlp_vatrate: number
+  dvlp_netamount: number
+  dvlp_vatamount: number
+  dvlp_grossamount: number
+  dvlp_paymenttermsdays?: number | null
+  dvlp_sortorder?: number
+  // Relations
+  '_dvlp_sbinvoiceid_value': string
+  '_dvlp_templateid_value'?: string
+  // Standard fields
+  createdon: string
+  modifiedon: string
+}
+
+// ============================================================
+// Create/Update DTOs for SB Invoice and Line Item
+// ============================================================
+
+export type DvSbInvoiceCreate = Omit<DvSbInvoice,
+  'dvlp_ksefselfbillinginvoiceid' | 'statecode' | 'createdon' | 'modifiedon'
+>
+
+export type DvSbInvoiceUpdate = Partial<Omit<DvSbInvoice,
+  'dvlp_ksefselfbillinginvoiceid' | 'statecode' | 'createdon' | 'modifiedon'
+>>
+
+export type DvSbLineItemCreate = Omit<DvSbLineItem,
+  'dvlp_ksefselfbillinglineitemid' | 'createdon' | 'modifiedon'
+>
+
+export type DvSbLineItemUpdate = Partial<Omit<DvSbLineItem,
+  'dvlp_ksefselfbillinglineitemid' | 'createdon' | 'modifiedon'
 >>

@@ -2413,6 +2413,1153 @@ paths:
         '403':
           description: Forbidden — requires Reader role
 
+  # ================================================================
+  # Self-Billing: Suppliers
+  # ================================================================
+  /suppliers:
+    get:
+      operationId: ListSuppliers
+      summary: List Suppliers
+      description: >-
+        /PL/: Lista dostawców z filtrowaniem. Wymagany parametr settingId.
+        /EN/: List suppliers with filters. settingId query parameter is required.
+      x-ms-visibility: important
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Company setting ID (UUID)
+        - name: status
+          in: query
+          type: string
+          required: false
+          description: Filter by status
+          enum:
+            - Active
+            - Inactive
+            - Blocked
+        - name: search
+          in: query
+          type: string
+          required: false
+          description: Search by name or NIP
+        - name: hasSelfBillingAgreement
+          in: query
+          type: boolean
+          required: false
+          description: Filter suppliers with active self-billing agreement
+        - name: top
+          in: query
+          type: integer
+          required: false
+          description: Max results (default 50)
+        - name: skip
+          in: query
+          type: integer
+          required: false
+          description: Offset for pagination
+      responses:
+        '200':
+          description: Supplier list
+          schema:
+            $ref: '#/definitions/SupplierListResponse'
+        '400':
+          description: settingId query parameter is required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+    post:
+      operationId: CreateSupplier
+      summary: Create Supplier
+      description: >-
+        /PL/: Tworzy nowego dostawcę. NIP musi mieć poprawną sumę kontrolną.
+        /EN/: Create a new supplier. NIP must have a valid checksum.
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/SupplierCreate'
+      responses:
+        '201':
+          description: Supplier created
+          schema:
+            $ref: '#/definitions/Supplier'
+        '400':
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '409':
+          description: Supplier with this NIP already exists
+  /suppliers/{id}:
+    get:
+      operationId: GetSupplier
+      summary: Get Supplier
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Supplier ID (GUID)
+      responses:
+        '200':
+          description: Supplier details
+          schema:
+            $ref: '#/definitions/Supplier'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Supplier not found
+    patch:
+      operationId: UpdateSupplier
+      summary: Update Supplier
+      description: Partially update an existing supplier.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Supplier ID (GUID)
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/SupplierUpdate'
+      responses:
+        '200':
+          description: Supplier updated
+          schema:
+            $ref: '#/definitions/Supplier'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Supplier not found
+    delete:
+      operationId: DeleteSupplier
+      summary: Delete Supplier
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Supplier ID (GUID)
+      responses:
+        '200':
+          description: Supplier deleted
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Supplier not found
+  /suppliers/{id}/stats:
+    get:
+      operationId: GetSupplierStats
+      summary: Get Supplier Stats
+      description: >-
+        /PL/: Statystyki dostawcy — liczba faktur, kwoty, zaległości.
+        /EN/: Supplier statistics — invoice count, amounts, overdue payments.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Supplier ID (GUID)
+      responses:
+        '200':
+          description: Supplier statistics
+          schema:
+            $ref: '#/definitions/SupplierStats'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Supplier not found
+  /suppliers/{id}/stats/refresh:
+    post:
+      operationId: RefreshSupplierStats
+      summary: Refresh Supplier Stats
+      description: Force recalculation of cached supplier statistics.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Supplier ID (GUID)
+      responses:
+        '200':
+          description: Stats refreshed
+          schema:
+            $ref: '#/definitions/SupplierStats'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Supplier not found
+  /suppliers/{id}/invoices:
+    get:
+      operationId: GetSupplierInvoices
+      summary: Get Supplier Invoices
+      description: List invoices for a specific supplier.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Supplier ID (GUID)
+      responses:
+        '200':
+          description: Invoice list for supplier
+          schema:
+            $ref: '#/definitions/InvoiceListResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Supplier not found
+  /suppliers/{id}/refresh-vat:
+    post:
+      operationId: RefreshSupplierVat
+      summary: Refresh Supplier VAT Data
+      description: >-
+        /PL/: Odświeża dane dostawcy z rejestru VAT (Biała Lista).
+        /EN/: Refresh supplier data from VAT White List.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Supplier ID (GUID)
+      responses:
+        '200':
+          description: VAT data refreshed
+          schema:
+            $ref: '#/definitions/Supplier'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Supplier not found
+  /suppliers/from-vat:
+    post:
+      operationId: CreateSupplierFromVat
+      summary: Create Supplier from VAT Registry
+      description: >-
+        /PL/: Tworzy dostawcę na podstawie danych z rejestru VAT. Podaj NIP i settingId.
+        /EN/: Create a supplier using VAT White List data. Provide NIP and settingId.
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - nip
+              - settingId
+            properties:
+              nip:
+                type: string
+                description: NIP (10 digits, valid checksum)
+              settingId:
+                type: string
+                format: uuid
+                description: Company setting ID
+      responses:
+        '201':
+          description: Supplier created from VAT data
+          schema:
+            $ref: '#/definitions/Supplier'
+        '400':
+          description: Invalid NIP
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '409':
+          description: Supplier with this NIP already exists
+
+  # ================================================================
+  # Self-Billing: Agreements
+  # ================================================================
+  /sb-agreements:
+    get:
+      operationId: ListSbAgreements
+      summary: List Self-Billing Agreements
+      description: >-
+        /PL/: Lista umów samofakturowania. Wymagany parametr settingId.
+        /EN/: List self-billing agreements. settingId is required.
+      x-ms-visibility: important
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Company setting ID (UUID)
+        - name: supplierId
+          in: query
+          type: string
+          required: false
+          description: Filter by supplier ID (UUID)
+        - name: status
+          in: query
+          type: string
+          required: false
+          description: Filter by status
+          enum:
+            - Active
+            - Expired
+            - Terminated
+        - name: top
+          in: query
+          type: integer
+          required: false
+        - name: skip
+          in: query
+          type: integer
+          required: false
+      responses:
+        '200':
+          description: Agreements list
+          schema:
+            $ref: '#/definitions/SbAgreementListResponse'
+        '400':
+          description: settingId query parameter is required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+    post:
+      operationId: CreateSbAgreement
+      summary: Create Self-Billing Agreement
+      description: >-
+        /PL/: Tworzy nową umowę samofakturowania. Dostawca musi istnieć i być aktywny.
+        /EN/: Create a new self-billing agreement. Supplier must exist and be active.
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/SbAgreementCreate'
+      responses:
+        '201':
+          description: Agreement created
+          schema:
+            $ref: '#/definitions/SbAgreement'
+        '400':
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Supplier not found
+  /sb-agreements/{id}:
+    get:
+      operationId: GetSbAgreement
+      summary: Get Self-Billing Agreement
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Agreement ID (GUID)
+      responses:
+        '200':
+          description: Agreement details
+          schema:
+            $ref: '#/definitions/SbAgreement'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Agreement not found
+    patch:
+      operationId: UpdateSbAgreement
+      summary: Update Self-Billing Agreement
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Agreement ID (GUID)
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/SbAgreementUpdate'
+      responses:
+        '200':
+          description: Agreement updated
+          schema:
+            $ref: '#/definitions/SbAgreement'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Agreement not found
+  /sb-agreements/{id}/terminate:
+    post:
+      operationId: TerminateSbAgreement
+      summary: Terminate Self-Billing Agreement
+      description: >-
+        /PL/: Rozwiązuje umowę samofakturowania. Status zmienia się na Terminated.
+        /EN/: Terminate the agreement. Status changes to Terminated.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Agreement ID (GUID)
+      responses:
+        '200':
+          description: Agreement terminated
+          schema:
+            $ref: '#/definitions/SbAgreement'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Agreement not found
+  /sb-agreements/{id}/attachments:
+    get:
+      operationId: ListSbAgreementAttachments
+      summary: List Agreement Attachments
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Agreement ID (GUID)
+      responses:
+        '200':
+          description: Attachment list
+          schema:
+            type: object
+            properties:
+              attachments:
+                type: array
+                items:
+                  $ref: '#/definitions/Attachment'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Agreement not found
+    post:
+      operationId: UploadSbAgreementAttachment
+      summary: Upload Agreement Attachment
+      description: Upload a document (e.g., signed agreement PDF) to an agreement.
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Agreement ID (GUID)
+        - name: file
+          in: formData
+          type: file
+          required: true
+          description: File to upload (max 10 MB)
+        - name: description
+          in: formData
+          type: string
+          required: false
+          description: Optional attachment description
+      responses:
+        '201':
+          description: Attachment uploaded
+          schema:
+            $ref: '#/definitions/Attachment'
+        '400':
+          description: No file provided or file too large
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Agreement not found
+
+  # ================================================================
+  # Self-Billing: Templates
+  # ================================================================
+  /sb-templates:
+    get:
+      operationId: ListSbTemplates
+      summary: List Self-Billing Templates
+      description: >-
+        /PL/: Lista szablonów pozycji samofakturowania. Wymagany parametr settingId.
+        /EN/: List self-billing invoice item templates. settingId is required.
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Company setting ID (UUID)
+        - name: supplierId
+          in: query
+          type: string
+          required: false
+          description: Filter by supplier ID (UUID)
+        - name: isActive
+          in: query
+          type: boolean
+          required: false
+          description: Filter by active status
+      responses:
+        '200':
+          description: Template list
+          schema:
+            $ref: '#/definitions/SbTemplateListResponse'
+        '400':
+          description: settingId query parameter is required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+    post:
+      operationId: CreateSbTemplate
+      summary: Create Self-Billing Template
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/SbTemplateCreate'
+      responses:
+        '201':
+          description: Template created
+          schema:
+            $ref: '#/definitions/SbTemplate'
+        '400':
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+  /sb-templates/{id}:
+    get:
+      operationId: GetSbTemplate
+      summary: Get Self-Billing Template
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Template ID (GUID)
+      responses:
+        '200':
+          description: Template details
+          schema:
+            $ref: '#/definitions/SbTemplate'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Template not found
+    patch:
+      operationId: UpdateSbTemplate
+      summary: Update Self-Billing Template
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Template ID (GUID)
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/SbTemplateUpdate'
+      responses:
+        '200':
+          description: Template updated
+          schema:
+            $ref: '#/definitions/SbTemplate'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Template not found
+    delete:
+      operationId: DeleteSbTemplate
+      summary: Delete Self-Billing Template
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Template ID (GUID)
+      responses:
+        '200':
+          description: Template deleted
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Template not found
+  /sb-templates/duplicate:
+    post:
+      operationId: DuplicateSbTemplate
+      summary: Duplicate Self-Billing Template
+      description: >-
+        /PL/: Duplikuje szablon dla innego dostawcy.
+        /EN/: Duplicate a template for another supplier.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - templateId
+              - targetSupplierId
+            properties:
+              templateId:
+                type: string
+                format: uuid
+                description: Source template ID
+              targetSupplierId:
+                type: string
+                format: uuid
+                description: Target supplier ID
+      responses:
+        '201':
+          description: Template duplicated
+          schema:
+            $ref: '#/definitions/SbTemplate'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Source template not found
+
+  # ================================================================
+  # Self-Billing: Invoices & Workflow
+  # ================================================================
+  /invoices/self-billing:
+    get:
+      operationId: ListSelfBillingInvoices
+      summary: List Self-Billing Invoices
+      description: >-
+        /PL/: Lista faktur samofakturowania. Wymagany parametr settingId.
+        /EN/: List self-billing invoices with filtering. settingId is required.
+      x-ms-visibility: important
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Company setting ID (UUID)
+        - name: supplierId
+          in: query
+          type: string
+          required: false
+          description: Filter by supplier ID
+        - name: status
+          in: query
+          type: string
+          required: false
+          description: Filter by status
+          enum:
+            - Draft
+            - PendingSeller
+            - SellerApproved
+            - SellerRejected
+            - SentToKsef
+        - name: dateFrom
+          in: query
+          type: string
+          format: date
+          required: false
+        - name: dateTo
+          in: query
+          type: string
+          format: date
+          required: false
+        - name: top
+          in: query
+          type: integer
+          required: false
+        - name: skip
+          in: query
+          type: integer
+          required: false
+      responses:
+        '200':
+          description: Self-billing invoice list
+          schema:
+            $ref: '#/definitions/SelfBillingInvoiceListResponse'
+        '400':
+          description: settingId query parameter is required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+    post:
+      operationId: CreateSelfBillingInvoice
+      summary: Create Self-Billing Invoice
+      description: >-
+        /PL/: Tworzy nową fakturę samofakturowania. Wymagane agreementId lub supplierId.
+        /EN/: Create a self-billing invoice. Either agreementId or supplierId is required.
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/SelfBillingInvoiceCreate'
+      responses:
+        '201':
+          description: Invoice created
+          schema:
+            $ref: '#/definitions/SelfBillingInvoice'
+        '400':
+          description: Validation error
+          schema:
+            $ref: '#/definitions/ValidationError'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+  /invoices/self-billing/preview:
+    post:
+      operationId: PreviewSelfBillingInvoice
+      summary: Preview Self-Billing Invoice
+      description: >-
+        /PL/: Podgląd generowanej faktury bez zapisywania.
+        /EN/: Preview a generated invoice without saving.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/SelfBillingInvoiceCreate'
+      responses:
+        '200':
+          description: Invoice preview
+          schema:
+            $ref: '#/definitions/SelfBillingInvoice'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+  /invoices/self-billing/generate:
+    post:
+      operationId: GenerateSelfBillingInvoices
+      summary: Generate Self-Billing Invoices
+      description: >-
+        /PL/: Generuje faktury samofakturowania na podstawie szablonów dla wybranego okresu.
+        Zwraca podgląd (preview) do potwierdzenia.
+        /EN/: Generate self-billing invoices from templates for a given period.
+        Returns a preview for confirmation.
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/SelfBillingGenerateRequest'
+      responses:
+        '200':
+          description: Generated invoice previews
+          schema:
+            type: object
+            properties:
+              previews:
+                type: array
+                items:
+                  $ref: '#/definitions/SelfBillingGeneratePreview'
+              totals:
+                type: object
+                properties:
+                  supplierCount:
+                    type: integer
+                  invoiceCount:
+                    type: integer
+                  netAmount:
+                    type: number
+                  vatAmount:
+                    type: number
+                  grossAmount:
+                    type: number
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+  /invoices/self-billing/generate/confirm:
+    post:
+      operationId: ConfirmGeneratedSelfBilling
+      summary: Confirm Generated Self-Billing Invoices
+      description: >-
+        /PL/: Zatwierdza wygenerowane faktury i zapisuje je w Dataverse.
+        /EN/: Confirm and save generated invoices to Dataverse.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - previews
+              - settingId
+            properties:
+              settingId:
+                type: string
+                format: uuid
+              previews:
+                type: array
+                items:
+                  $ref: '#/definitions/SelfBillingGeneratePreview'
+      responses:
+        '200':
+          description: Invoices created
+          schema:
+            $ref: '#/definitions/SelfBillingBatchResult'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+  /invoices/self-billing/batch:
+    post:
+      operationId: BatchCreateSelfBillingInvoices
+      summary: Batch Create Self-Billing Invoices
+      description: >-
+        /PL/: Tworzenie wielu faktur samofakturowania jednocześnie (max 100).
+        /EN/: Create multiple self-billing invoices at once (max 100).
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - invoices
+              - settingId
+            properties:
+              settingId:
+                type: string
+                format: uuid
+              invoices:
+                type: array
+                maxItems: 100
+                items:
+                  $ref: '#/definitions/SelfBillingInvoiceCreate'
+      responses:
+        '200':
+          description: Batch result
+          schema:
+            $ref: '#/definitions/SelfBillingBatchResult'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+  /invoices/self-billing/{id}/status:
+    patch:
+      operationId: UpdateSelfBillingStatus
+      summary: Update Self-Billing Invoice Status
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (GUID)
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - status
+            properties:
+              status:
+                type: string
+                enum:
+                  - Draft
+                  - PendingSeller
+                  - SellerApproved
+                  - SellerRejected
+                  - SentToKsef
+      responses:
+        '200':
+          description: Status updated
+          schema:
+            $ref: '#/definitions/SelfBillingInvoice'
+        '400':
+          description: Invalid status transition
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Invoice not found
+  /invoices/self-billing/{id}/submit:
+    post:
+      operationId: SubmitForSellerReview
+      summary: Submit Self-Billing Invoice for Seller Review
+      description: >-
+        /PL/: Wysyła fakturę do akceptacji sprzedawcy. Status: Draft → PendingSeller.
+        /EN/: Submit invoice for seller review. Status: Draft → PendingSeller.
+      x-ms-visibility: important
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (GUID)
+      responses:
+        '200':
+          description: Invoice submitted
+          schema:
+            $ref: '#/definitions/SelfBillingInvoice'
+        '400':
+          description: Invalid status transition (must be Draft)
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Invoice not found
+  /invoices/self-billing/{id}/approve:
+    post:
+      operationId: SellerApproveInvoice
+      summary: Seller Approve Self-Billing Invoice
+      description: >-
+        /PL/: Sprzedawca akceptuje fakturę. Status: PendingSeller → SellerApproved.
+        /EN/: Seller approves the invoice. Status: PendingSeller → SellerApproved.
+      x-ms-visibility: important
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (GUID)
+      responses:
+        '200':
+          description: Invoice approved
+          schema:
+            $ref: '#/definitions/SelfBillingInvoice'
+        '400':
+          description: Invalid status (must be PendingSeller)
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Invoice not found
+  /invoices/self-billing/{id}/reject:
+    post:
+      operationId: SellerRejectInvoice
+      summary: Seller Reject Self-Billing Invoice
+      description: >-
+        /PL/: Sprzedawca odrzuca fakturę. Status: PendingSeller → SellerRejected.
+        /EN/: Seller rejects the invoice. Status: PendingSeller → SellerRejected.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (GUID)
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - reason
+            properties:
+              reason:
+                type: string
+                description: Rejection reason
+                maxLength: 4000
+      responses:
+        '200':
+          description: Invoice rejected
+          schema:
+            $ref: '#/definitions/SelfBillingInvoice'
+        '400':
+          description: Invalid status or missing reason
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Invoice not found
+  /invoices/self-billing/{id}/send-ksef:
+    post:
+      operationId: SendSelfBillingToKsef
+      summary: Send Self-Billing Invoice to KSeF
+      description: >-
+        /PL/: Wysyła zaakceptowaną fakturę do KSeF. Status: SellerApproved → SentToKsef.
+        /EN/: Send approved invoice to KSeF. Status: SellerApproved → SentToKsef.
+      x-ms-visibility: important
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (GUID)
+      responses:
+        '200':
+          description: Invoice sent to KSeF
+          schema:
+            type: object
+            properties:
+              invoiceId:
+                type: string
+              ksefReferenceNumber:
+                type: string
+              status:
+                type: string
+        '400':
+          description: Invalid status (must be SellerApproved)
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Invoice not found
+
+  # ================================================================
+  # Self-Billing: Import
+  # ================================================================
+  /invoices/self-billing/import:
+    post:
+      operationId: ImportSelfBillingFile
+      summary: Import Self-Billing Invoices from File
+      description: >-
+        /PL/: Import faktur z pliku CSV lub Excel. Zwraca podgląd do potwierdzenia.
+        /EN/: Import invoices from CSV or Excel file. Returns preview for confirmation.
+      x-ms-visibility: important
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Company setting ID (UUID)
+        - name: file
+          in: formData
+          type: file
+          required: true
+          description: CSV or XLSX file
+      responses:
+        '200':
+          description: Import preview
+          schema:
+            $ref: '#/definitions/SelfBillingImportResult'
+        '400':
+          description: Invalid file format or content
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+  /invoices/self-billing/import/confirm:
+    post:
+      operationId: ConfirmSelfBillingImport
+      summary: Confirm Self-Billing Import
+      description: >-
+        /PL/: Zatwierdza zaimportowane faktury i zapisuje je w Dataverse.
+        /EN/: Confirm and save imported invoices.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - importId
+            properties:
+              importId:
+                type: string
+                description: Import session ID returned from import preview
+      responses:
+        '200':
+          description: Import confirmed
+          schema:
+            $ref: '#/definitions/SelfBillingBatchResult'
+        '400':
+          description: Invalid or expired import session
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+  /invoices/self-billing/import/template:
+    get:
+      operationId: DownloadSelfBillingTemplate
+      summary: Download Self-Billing Import Template
+      description: >-
+        /PL/: Pobierz szablon pliku CSV do importu faktur samofakturowania.
+        /EN/: Download CSV template for self-billing invoice import.
+      produces:
+        - text/csv
+      parameters:
+        - name: format
+          in: query
+          type: string
+          required: false
+          description: Template file format
+          default: csv
+          enum:
+            - csv
+            - xlsx
+      responses:
+        '200':
+          description: Template file
+          schema:
+            type: file
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+
 definitions:
   VatLookupResult:
     type: object
@@ -3914,6 +5061,847 @@ definitions:
         type: string
       approvalComment:
         type: string
+
+  # ================================================================
+  # Self-Billing Definitions
+  # ================================================================
+  Supplier:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      nip:
+        type: string
+        description: NIP (10 digits)
+      name:
+        type: string
+      shortName:
+        type: string
+      regon:
+        type: string
+      krs:
+        type: string
+      street:
+        type: string
+      city:
+        type: string
+      postalCode:
+        type: string
+      country:
+        type: string
+      email:
+        type: string
+      phone:
+        type: string
+      bankAccount:
+        type: string
+      vatStatus:
+        type: string
+      vatStatusDate:
+        type: string
+        format: date-time
+      paymentTermsDays:
+        type: integer
+      defaultMpkId:
+        type: string
+        format: uuid
+      defaultCategory:
+        type: string
+      notes:
+        type: string
+      tags:
+        type: string
+      hasSelfBillingAgreement:
+        type: boolean
+      selfBillingAgreementDate:
+        type: string
+        format: date-time
+      selfBillingAgreementExpiry:
+        type: string
+        format: date-time
+      firstInvoiceDate:
+        type: string
+        format: date
+      lastInvoiceDate:
+        type: string
+        format: date
+      totalInvoiceCount:
+        type: integer
+      totalGrossAmount:
+        type: number
+      status:
+        type: string
+        enum:
+          - Active
+          - Inactive
+          - Blocked
+      source:
+        type: string
+        enum:
+          - KSeF
+          - Manual
+          - VatApi
+      settingId:
+        type: string
+        format: uuid
+      createdOn:
+        type: string
+        format: date-time
+      modifiedOn:
+        type: string
+        format: date-time
+  SupplierCreate:
+    type: object
+    required:
+      - nip
+      - name
+      - settingId
+    properties:
+      nip:
+        type: string
+        description: NIP (10 digits, valid checksum)
+      name:
+        type: string
+        maxLength: 255
+      shortName:
+        type: string
+        maxLength: 100
+      regon:
+        type: string
+        maxLength: 14
+      krs:
+        type: string
+        maxLength: 20
+      street:
+        type: string
+        maxLength: 255
+      city:
+        type: string
+        maxLength: 100
+      postalCode:
+        type: string
+        maxLength: 20
+      country:
+        type: string
+        maxLength: 100
+        default: PL
+      email:
+        type: string
+        format: email
+      phone:
+        type: string
+        maxLength: 50
+      bankAccount:
+        type: string
+        maxLength: 50
+      vatStatus:
+        type: string
+      vatStatusDate:
+        type: string
+        format: date-time
+      paymentTermsDays:
+        type: integer
+        minimum: 0
+        maximum: 365
+      defaultMpkId:
+        type: string
+        format: uuid
+      defaultCategory:
+        type: string
+      notes:
+        type: string
+        maxLength: 4000
+      tags:
+        type: string
+        maxLength: 1000
+      hasSelfBillingAgreement:
+        type: boolean
+        default: false
+      status:
+        type: string
+        enum:
+          - Active
+          - Inactive
+          - Blocked
+        default: Active
+      source:
+        type: string
+        enum:
+          - KSeF
+          - Manual
+          - VatApi
+        default: Manual
+      settingId:
+        type: string
+        format: uuid
+  SupplierUpdate:
+    type: object
+    properties:
+      name:
+        type: string
+        maxLength: 255
+      shortName:
+        type: string
+        maxLength: 100
+      regon:
+        type: string
+      krs:
+        type: string
+      street:
+        type: string
+      city:
+        type: string
+      postalCode:
+        type: string
+      country:
+        type: string
+      email:
+        type: string
+        format: email
+      phone:
+        type: string
+      bankAccount:
+        type: string
+      vatStatus:
+        type: string
+      vatStatusDate:
+        type: string
+        format: date-time
+      paymentTermsDays:
+        type: integer
+        minimum: 0
+        maximum: 365
+      defaultMpkId:
+        type: string
+        format: uuid
+      defaultCategory:
+        type: string
+      notes:
+        type: string
+        maxLength: 4000
+      tags:
+        type: string
+        maxLength: 1000
+      hasSelfBillingAgreement:
+        type: boolean
+      status:
+        type: string
+        enum:
+          - Active
+          - Inactive
+          - Blocked
+      source:
+        type: string
+        enum:
+          - KSeF
+          - Manual
+          - VatApi
+  SupplierStats:
+    type: object
+    properties:
+      invoiceCount:
+        type: integer
+      totalGross:
+        type: number
+      avgInvoiceAmount:
+        type: number
+      lastInvoiceDate:
+        type: string
+        format: date
+      pendingPayments:
+        type: integer
+      overduePayments:
+        type: integer
+      selfBillingInvoiceCount:
+        type: integer
+      selfBillingPendingCount:
+        type: integer
+  SupplierListResponse:
+    type: object
+    properties:
+      suppliers:
+        type: array
+        items:
+          $ref: '#/definitions/Supplier'
+      total:
+        type: integer
+  SbAgreement:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      name:
+        type: string
+      supplierId:
+        type: string
+        format: uuid
+      agreementDate:
+        type: string
+        format: date
+      validFrom:
+        type: string
+        format: date
+      validTo:
+        type: string
+        format: date
+      renewalDate:
+        type: string
+        format: date
+      approvalProcedure:
+        type: string
+      status:
+        type: string
+        enum:
+          - Active
+          - Expired
+          - Terminated
+      credentialReference:
+        type: string
+      notes:
+        type: string
+      hasDocument:
+        type: boolean
+      documentFilename:
+        type: string
+      settingId:
+        type: string
+        format: uuid
+      createdOn:
+        type: string
+        format: date-time
+      modifiedOn:
+        type: string
+        format: date-time
+  SbAgreementCreate:
+    type: object
+    required:
+      - supplierId
+      - name
+      - agreementDate
+      - validFrom
+      - settingId
+    properties:
+      supplierId:
+        type: string
+        format: uuid
+      name:
+        type: string
+        maxLength: 255
+      agreementDate:
+        type: string
+        format: date
+      validFrom:
+        type: string
+        format: date
+      validTo:
+        type: string
+        format: date
+        description: Must be after validFrom
+      renewalDate:
+        type: string
+        format: date
+      approvalProcedure:
+        type: string
+        maxLength: 4000
+      credentialReference:
+        type: string
+        maxLength: 500
+      notes:
+        type: string
+        maxLength: 4000
+      settingId:
+        type: string
+        format: uuid
+  SbAgreementUpdate:
+    type: object
+    properties:
+      name:
+        type: string
+        maxLength: 255
+      agreementDate:
+        type: string
+        format: date
+      validFrom:
+        type: string
+        format: date
+      validTo:
+        type: string
+        format: date
+      renewalDate:
+        type: string
+        format: date
+      approvalProcedure:
+        type: string
+        maxLength: 4000
+      credentialReference:
+        type: string
+        maxLength: 500
+      notes:
+        type: string
+        maxLength: 4000
+      status:
+        type: string
+        enum:
+          - Active
+          - Expired
+          - Terminated
+      hasDocument:
+        type: boolean
+      documentFilename:
+        type: string
+        maxLength: 255
+  SbAgreementListResponse:
+    type: object
+    properties:
+      agreements:
+        type: array
+        items:
+          $ref: '#/definitions/SbAgreement'
+      total:
+        type: integer
+  SbTemplate:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      supplierId:
+        type: string
+        format: uuid
+      settingId:
+        type: string
+        format: uuid
+      name:
+        type: string
+      description:
+        type: string
+      itemDescription:
+        type: string
+      quantity:
+        type: number
+      unit:
+        type: string
+      unitPrice:
+        type: number
+      vatRate:
+        type: integer
+        description: VAT rate (%). -1 = exempt.
+      currency:
+        type: string
+        default: PLN
+      isActive:
+        type: boolean
+      sortOrder:
+        type: integer
+      createdOn:
+        type: string
+        format: date-time
+      modifiedOn:
+        type: string
+        format: date-time
+  SbTemplateCreate:
+    type: object
+    required:
+      - supplierId
+      - settingId
+      - name
+      - itemDescription
+      - quantity
+      - unit
+      - unitPrice
+      - vatRate
+    properties:
+      supplierId:
+        type: string
+        format: uuid
+      settingId:
+        type: string
+        format: uuid
+      name:
+        type: string
+        maxLength: 255
+      description:
+        type: string
+        maxLength: 1000
+      itemDescription:
+        type: string
+        maxLength: 500
+      quantity:
+        type: number
+        minimum: 0
+      unit:
+        type: string
+        maxLength: 50
+      unitPrice:
+        type: number
+        minimum: 0
+      vatRate:
+        type: integer
+        minimum: -1
+        maximum: 100
+      currency:
+        type: string
+        maxLength: 10
+        default: PLN
+      isActive:
+        type: boolean
+        default: true
+      sortOrder:
+        type: integer
+        minimum: 0
+        default: 0
+  SbTemplateUpdate:
+    type: object
+    properties:
+      name:
+        type: string
+        maxLength: 255
+      description:
+        type: string
+        maxLength: 1000
+      itemDescription:
+        type: string
+        maxLength: 500
+      quantity:
+        type: number
+        minimum: 0
+      unit:
+        type: string
+        maxLength: 50
+      unitPrice:
+        type: number
+        minimum: 0
+      vatRate:
+        type: integer
+        minimum: -1
+        maximum: 100
+      currency:
+        type: string
+        maxLength: 10
+      isActive:
+        type: boolean
+      sortOrder:
+        type: integer
+        minimum: 0
+  SbTemplateListResponse:
+    type: object
+    properties:
+      templates:
+        type: array
+        items:
+          $ref: '#/definitions/SbTemplate'
+      total:
+        type: integer
+  SelfBillingInvoice:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      invoiceNumber:
+        type: string
+      agreementId:
+        type: string
+        format: uuid
+      supplierId:
+        type: string
+        format: uuid
+      supplierName:
+        type: string
+      supplierNip:
+        type: string
+      mpkId:
+        type: string
+        format: uuid
+      invoiceDate:
+        type: string
+        format: date
+      dueDate:
+        type: string
+        format: date
+      netAmount:
+        type: number
+      vatAmount:
+        type: number
+      grossAmount:
+        type: number
+      currency:
+        type: string
+        default: PLN
+      status:
+        type: string
+        enum:
+          - Draft
+          - PendingSeller
+          - SellerApproved
+          - SellerRejected
+          - SentToKsef
+      ksefReferenceNumber:
+        type: string
+        description: KSeF reference number (set after sending to KSeF)
+      rejectionReason:
+        type: string
+      items:
+        type: array
+        items:
+          $ref: '#/definitions/SelfBillingInvoiceItem'
+      settingId:
+        type: string
+        format: uuid
+      createdOn:
+        type: string
+        format: date-time
+      modifiedOn:
+        type: string
+        format: date-time
+  SelfBillingInvoiceItem:
+    type: object
+    properties:
+      templateId:
+        type: string
+        format: uuid
+      itemDescription:
+        type: string
+      quantity:
+        type: number
+      unit:
+        type: string
+      unitPrice:
+        type: number
+      vatRate:
+        type: integer
+      netAmount:
+        type: number
+      vatAmount:
+        type: number
+      grossAmount:
+        type: number
+  SelfBillingInvoiceCreate:
+    type: object
+    required:
+      - invoiceDate
+      - items
+      - settingId
+    properties:
+      agreementId:
+        type: string
+        format: uuid
+        description: Either agreementId or supplierId must be provided
+      supplierId:
+        type: string
+        format: uuid
+        description: Either agreementId or supplierId must be provided
+      mpkId:
+        type: string
+        format: uuid
+      invoiceDate:
+        type: string
+        format: date
+      dueDate:
+        type: string
+        format: date
+      items:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          required:
+            - itemDescription
+            - quantity
+            - unit
+            - unitPrice
+            - vatRate
+          properties:
+            templateId:
+              type: string
+              format: uuid
+            itemDescription:
+              type: string
+              maxLength: 500
+            quantity:
+              type: number
+              minimum: 0
+            unit:
+              type: string
+              maxLength: 50
+            unitPrice:
+              type: number
+              minimum: 0
+            vatRate:
+              type: integer
+              minimum: -1
+              maximum: 100
+      settingId:
+        type: string
+        format: uuid
+  SelfBillingInvoiceListResponse:
+    type: object
+    properties:
+      invoices:
+        type: array
+        items:
+          $ref: '#/definitions/SelfBillingInvoice'
+      total:
+        type: integer
+  SelfBillingGenerateRequest:
+    type: object
+    required:
+      - settingId
+      - period
+    properties:
+      settingId:
+        type: string
+        format: uuid
+      period:
+        type: object
+        required:
+          - month
+          - year
+        properties:
+          month:
+            type: integer
+            minimum: 1
+            maximum: 12
+          year:
+            type: integer
+            minimum: 2020
+            maximum: 2100
+      supplierIds:
+        type: array
+        maxItems: 200
+        items:
+          type: string
+          format: uuid
+        description: Optional — limit to specific suppliers
+  SelfBillingGeneratePreview:
+    type: object
+    properties:
+      supplierId:
+        type: string
+        format: uuid
+      supplierName:
+        type: string
+      supplierNip:
+        type: string
+      agreementId:
+        type: string
+        format: uuid
+      items:
+        type: array
+        items:
+          type: object
+          properties:
+            templateId:
+              type: string
+              format: uuid
+            templateName:
+              type: string
+            itemDescription:
+              type: string
+            quantity:
+              type: number
+            unit:
+              type: string
+            unitPrice:
+              type: number
+            vatRate:
+              type: integer
+            netAmount:
+              type: number
+            vatAmount:
+              type: number
+            grossAmount:
+              type: number
+      totals:
+        type: object
+        properties:
+          netAmount:
+            type: number
+          vatAmount:
+            type: number
+          grossAmount:
+            type: number
+  SelfBillingBatchResult:
+    type: object
+    properties:
+      total:
+        type: integer
+        description: Total items in batch
+      created:
+        type: integer
+        description: Successfully created
+      failed:
+        type: integer
+        description: Failed to create
+      invoices:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            invoiceNumber:
+              type: string
+            supplierName:
+              type: string
+            grossAmount:
+              type: number
+            status:
+              type: string
+              enum:
+                - created
+                - failed
+      errors:
+        type: array
+        items:
+          type: object
+          properties:
+            index:
+              type: integer
+            error:
+              type: string
+  SelfBillingImportResult:
+    type: object
+    properties:
+      importId:
+        type: string
+        description: Import session ID (use in confirm endpoint)
+      total:
+        type: integer
+      valid:
+        type: integer
+      invalid:
+        type: integer
+      previews:
+        type: array
+        items:
+          type: object
+          properties:
+            row:
+              type: integer
+            supplierNip:
+              type: string
+            supplierName:
+              type: string
+            itemDescription:
+              type: string
+            quantity:
+              type: number
+            unitPrice:
+              type: number
+            vatRate:
+              type: integer
+            grossAmount:
+              type: number
+            valid:
+              type: boolean
+            errors:
+              type: array
+              items:
+                type: string
 
 parameters: {}
 responses: {}

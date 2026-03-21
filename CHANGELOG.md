@@ -16,6 +16,67 @@ Projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.0] — 2026-03-20
+
+### Dodane — Samofakturowanie (Self-Billing)
+
+#### Zarządzanie dostawcami
+- `GET /suppliers` — lista dostawców (filtrowanie, paginacja)
+- `POST /suppliers` — tworzenie dostawcy
+- `GET /suppliers/{id}` — szczegóły dostawcy
+- `PATCH /suppliers/{id}` — aktualizacja dostawcy
+- `DELETE /suppliers/{id}` — dezaktywacja dostawcy (soft delete)
+- `GET /suppliers/{id}/stats` — statystyki dostawcy (faktury, kwoty, SB)
+- `POST /suppliers/{id}/refresh-stats` — odświeżenie statystyk
+- `GET /suppliers/{id}/invoices` — faktury dostawcy
+- `POST /suppliers/{id}/refresh-vat` — odświeżenie danych z Białej Listy
+- `POST /suppliers/create-from-vat` — tworzenie dostawcy na podstawie NIP (Biała Lista)
+- Nowa tabela Dataverse: `dvlp_supplier`
+
+#### Umowy samofakturowania (SB Agreements)
+- `GET /sb-agreements` — lista umów SB
+- `POST /sb-agreements` — tworzenie umowy
+- `GET /sb-agreements/{id}` — szczegóły umowy
+- `PATCH /sb-agreements/{id}` — aktualizacja umowy
+- `POST /sb-agreements/{id}/terminate` — terminacja umowy
+- Nowa tabela Dataverse: `dvlp_sbagreement`
+
+#### Szablony samofakturowania (SB Templates)
+- `GET /sb-templates` — lista szablonów
+- `POST /sb-templates` — tworzenie szablonu
+- `GET /sb-templates/{id}` — szczegóły szablonu
+- `PATCH /sb-templates/{id}` — aktualizacja szablonu
+- `DELETE /sb-templates/{id}` — usunięcie szablonu
+- `POST /sb-templates/{id}/duplicate` — duplikowanie szablonu
+- Nowa tabela Dataverse: `dvlp_sbtemplate`
+
+#### Faktury samofakturowania (SB Invoices)
+- `GET /sb-invoices` — lista faktur SB (filtrowanie po statusie, paginacja)
+- `GET /sb-invoices/{id}` — szczegóły faktury SB
+- `POST /sb-invoices/generate` — podgląd generowania faktur na okres
+- `POST /sb-invoices/generate/confirm` — potwierdzenie i utworzenie faktur
+- `POST /sb-invoices/{id}/submit` — wysłanie do akceptacji sprzedawcy
+- `POST /sb-invoices/{id}/approve` — zatwierdzenie przez sprzedawcę
+- `POST /sb-invoices/{id}/reject` — odrzucenie (z powodem)
+- `PATCH /sb-invoices/{id}/status` — aktualizacja statusu
+- `POST /sb-invoices/{id}/send-to-ksef` — wysłanie do KSeF
+- `POST /sb-invoices/import` — import z CSV/Excel (walidacja + podgląd)
+- `POST /sb-invoices/import/confirm` — potwierdzenie importu
+- `GET /sb-invoices/import/template` — pobranie szablonu importu
+- Nowa tabela Dataverse: `dvlp_selfbillinginvoice`
+- Workflow statusów: Draft → PendingSeller → SellerApproved → SentToKsef
+
+### Dodane — UI
+- Code App (React SPA): strony dostawców, szczegółów dostawcy, samofakturowania z generowaniem i importem
+- Web App (Next.js): strony dostawców, szczegółów dostawcy, samofakturowania, nawigacja, dashboard KPIs
+- Tłumaczenia PL/EN dla obu aplikacji
+
+### Dodane — Tooling
+- `swagger.local.yaml` — lokalna wersja specyfikacji OpenAPI (localhost:7071)
+- Rozszerzenie `seed-testdata.ts` o encje SB (dostawcy, umowy, faktury)
+
+---
+
 ## [0.2.0] — 2026-03-10
 
 ### Dodane — Centra kosztowe (MPK)
@@ -80,6 +141,7 @@ Projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `GET /invoices/{id}/notes` (`ListInvoiceNotes`) — pobieranie notatek przypisanych do faktury
 - Nowe schematy odpowiedzi: `InvoiceListResponse`, `Note`, `KsefSyncResult`
 
-[Nieudostępnione]: https://github.com/Developico/KSeFCopilot/compare/v0.2.0...HEAD
+[Nieudostępnione]: https://github.com/Developico/KSeFCopilot/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Developico/KSeFCopilot/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Developico/KSeFCopilot/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Developico/KSeFCopilot/releases/tag/v0.1.0

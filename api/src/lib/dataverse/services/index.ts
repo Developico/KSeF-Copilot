@@ -28,4 +28,10 @@ export type { BudgetStatus, BudgetCheckResult } from './budget-service'
 export { NotificationService, notificationService } from './notification-service'
 
 export { ReportService, reportService } from './report-service'
+
+export { SupplierService, supplierService } from './supplier-service'
+
+export { SbAgreementService, sbAgreementService } from './sb-agreement-service'
+
+export { SbTemplateService, sbTemplateService } from './sb-template-service'
 export type { BudgetUtilizationReport, ApprovalHistoryReport, ApprovalHistoryEntry, ApproverPerformanceReport, ApproverPerformanceEntry, ProcessingPipelineReport, ProcessingPipelineEntry } from './report-service'

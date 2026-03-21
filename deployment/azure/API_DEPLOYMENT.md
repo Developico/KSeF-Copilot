@@ -2,8 +2,8 @@
 
 Dokument opisuje proces przygotowania, przeprowadzenia i weryfikacji wdrożenia API (`your-functionapp-name`) na platformę Azure Functions w planie Flex Consumption.
 
-**Data wdrożenia:** 2026-02-09  
-**Wersja:** 0.6.1  
+**Data wdrożenia:** 2026-03-20  
+**Wersja:** 0.6.2  
 
 > **Uwaga — placeholdery:** W całym dokumencie występują nazwy zaczynające się od `your-` (np. `your-functionapp-name`, `your-resource-group`). Zamień je na rzeczywiste nazwy swoich zasobów Azure. Przykład: `your-functionapp-name` → `func-ksef-prod`.
 
@@ -157,7 +157,7 @@ LICENSE
 .DS_Store
 ```
 
-### 5. Zarejestrowane funkcje (21 modułów → 62 endpointy)
+### 5. Zarejestrowane funkcje (178 endpointów)
 
 | Moduł | Opis |
 |---|---|

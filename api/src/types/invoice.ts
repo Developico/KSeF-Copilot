@@ -137,6 +137,8 @@ export interface Invoice {
   // Attachment summary
   hasAttachments?: boolean
   attachmentCount?: number
+  // Self-billing
+  isSelfBilling?: boolean
   // Approval workflow
   approvalStatus?: ApprovalStatus
   approvedBy?: string
@@ -171,6 +173,8 @@ export const InvoiceUpdateSchema = z.object({
   /** MPK Center entity ID (GUID) — replaces legacy mpk enum */
   mpkCenterId: z.string().uuid().nullable().optional(),
   category: z.string().max(50).optional(),
+  // Parent invoice link (for correction invoices)
+  parentInvoiceId: z.string().uuid().nullable().optional(),
   description: z.string().max(500).optional(),
   project: z.string().max(100).optional(),
   tags: z.array(z.string()).optional(),
@@ -247,6 +251,8 @@ export interface InvoiceCreate {
   mpk?: string
   mpkCenterId?: string
   category?: string
+  // Self-billing
+  isSelfBilling?: boolean
   // AI suggestion fields (from document extraction)
   aiMpkSuggestion?: string
   aiCategorySuggestion?: string

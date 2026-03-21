@@ -238,6 +238,47 @@ describe('MpkCenterService', () => {
         expect.objectContaining({ dvlp_name: 'Updated' })
       )
     })
+
+    it('should clear approval fields and remove approvers when disabling approval', async () => {
+      vi.mocked(dataverseClient.update).mockResolvedValue(undefined)
+      vi.mocked(dataverseClient.getById).mockResolvedValue({
+        ...dvCenter1,
+        dvlp_approvalrequired: false,
+      })
+      // getApprovers call — returns one existing approver
+      vi.mocked(dataverseClient.listAll)
+        .mockResolvedValueOnce([dvApprover1])  // getApprovers — approvers query
+        .mockResolvedValueOnce([dvUser1])       // getApprovers — listSystemUsers
+        .mockResolvedValueOnce([])              // final getApprovers after clear
+        .mockResolvedValueOnce([dvUser1])       // final listSystemUsers
+      vi.mocked(dataverseClient.delete).mockResolvedValue(undefined)
+
+      const svc = createService()
+      const result = await svc.update('c1', {
+        approvalRequired: false,
+        approvalSlaHours: 24,
+        approvalEffectiveFrom: '2026-01-15',
+      })
+
+      // Should have updated the DV record with null approval fields
+      expect(vi.mocked(dataverseClient.update)).toHaveBeenCalledWith(
+        DV.mpkCenter.entitySet,
+        'c1',
+        expect.objectContaining({
+          [DV.mpkCenter.approvalRequired]: false,
+          [DV.mpkCenter.approvalSlaHours]: null,
+          [DV.mpkCenter.approvalEffectiveFrom]: null,
+        })
+      )
+
+      // Should have deleted the existing approver
+      expect(vi.mocked(dataverseClient.delete)).toHaveBeenCalledWith(
+        DV.mpkApprover.entitySet,
+        'a1',
+      )
+
+      expect(result).not.toBeNull()
+    })
   })
 
   // ────── deactivate ──────

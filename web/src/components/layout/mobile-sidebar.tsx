@@ -15,7 +15,9 @@ import {
   TrendingUp,
   RefreshCw, 
   Settings,
-  X
+  ShieldCheck,
+  Building2,
+  Receipt,
 } from 'lucide-react'
 import { useAuth, useHasRole, type UserRole } from '@/components/auth/auth-provider'
 import { CompanySelector } from './company-selector'
@@ -33,38 +35,40 @@ type NavigationItem = {
   requiredRole?: UserRole
 }
 
-const navigationItems: NavigationItem[] = [
+type NavigationSection = {
+  labelKey: string
+  items: NavigationItem[]
+}
+
+const navigationSections: NavigationSection[] = [
   {
-    nameKey: 'dashboard',
-    icon: LayoutDashboard,
-    href: '/',
+    labelKey: 'sectionMain',
+    items: [
+      { nameKey: 'dashboard', icon: LayoutDashboard, href: '/' },
+      { nameKey: 'invoices', icon: FileText, href: '/invoices' },
+      { nameKey: 'approvals', icon: ShieldCheck, href: '/approvals' },
+    ],
   },
   {
-    nameKey: 'invoices',
-    icon: FileText,
-    href: '/invoices',
+    labelKey: 'sectionAnalysis',
+    items: [
+      { nameKey: 'reports', icon: BarChart3, href: '/reports' },
+      { nameKey: 'forecast', icon: TrendingUp, href: '/forecast' },
+    ],
   },
   {
-    nameKey: 'reports',
-    icon: BarChart3,
-    href: '/reports',
+    labelKey: 'sectionSuppliers',
+    items: [
+      { nameKey: 'suppliers', icon: Building2, href: '/suppliers' },
+      { nameKey: 'selfBilling', icon: Receipt, href: '/self-billing' },
+    ],
   },
   {
-    nameKey: 'forecast',
-    icon: TrendingUp,
-    href: '/forecast',
-  },
-  {
-    nameKey: 'sync',
-    icon: RefreshCw,
-    href: '/sync',
-    requiredRole: 'Admin',
-  },
-  {
-    nameKey: 'settings',
-    icon: Settings,
-    href: '/settings',
-    requiredRole: 'Admin',
+    labelKey: 'sectionAdmin',
+    items: [
+      { nameKey: 'sync', icon: RefreshCw, href: '/sync', requiredRole: 'Admin' },
+      { nameKey: 'settings', icon: Settings, href: '/settings', requiredRole: 'Admin' },
+    ],
   },
 ]
 
@@ -76,10 +80,15 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
   const { user } = useAuth()
   const isAdmin = useHasRole('Admin')
 
-  // Filter navigation items by role
-  const visibleItems = navigationItems.filter(
-    (item) => !item.requiredRole || (item.requiredRole === 'Admin' && isAdmin)
-  )
+  // Filter sections: remove items by role, then remove empty sections
+  const visibleSections = navigationSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) => !item.requiredRole || (item.requiredRole === 'Admin' && isAdmin)
+      ),
+    }))
+    .filter((section) => section.items.length > 0)
 
   // Close drawer when route changes
   useEffect(() => {
@@ -108,48 +117,62 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 p-3 overflow-y-auto">
-          <ul className="space-y-1">
-            {visibleItems.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
-              const name = t(item.nameKey as 'dashboard' | 'invoices' | 'reports' | 'forecast' | 'sync' | 'settings')
-
-              if (item.disabled) {
-                return (
-                  <li key={item.nameKey}>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start h-12 text-base opacity-50 cursor-not-allowed"
-                      disabled
-                    >
-                      <Icon className="h-5 w-5 mr-3" />
-                      <span className="flex-1 text-left">{name}</span>
-                      <span className="text-xs text-muted-foreground">{tCommon('comingSoon')}</span>
-                    </Button>
-                  </li>
-                )
-              }
-
+          <div className="space-y-4">
+            {visibleSections.map((section) => {
+              const sectionLabel = t(section.labelKey as 'sectionMain' | 'sectionAnalysis' | 'sectionSuppliers' | 'sectionAdmin')
               return (
-                <li key={item.nameKey}>
-                  <Button
-                    asChild
-                    variant="ghost"
-                    className={cn(
-                      'w-full justify-start h-12 text-base relative border-l-4 border-l-transparent',
-                      isActive && 'border-l-primary bg-primary/10 text-primary hover:bg-primary/15',
-                      !isActive && 'hover:bg-accent hover:text-accent-foreground'
-                    )}
-                  >
-                    <Link href={item.href}>
-                      <Icon className="h-5 w-5 mr-3" />
-                      <span className="flex-1 text-left">{name}</span>
-                    </Link>
-                  </Button>
-                </li>
+                <div key={section.labelKey}>
+                  <div className="px-3 mb-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {sectionLabel}
+                    </span>
+                  </div>
+                  <ul className="space-y-1">
+                    {section.items.map((item) => {
+                      const Icon = item.icon
+                      const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+                      const name = t(item.nameKey as 'dashboard' | 'invoices' | 'approvals' | 'reports' | 'forecast' | 'suppliers' | 'selfBilling' | 'sync' | 'settings')
+
+                      if (item.disabled) {
+                        return (
+                          <li key={item.nameKey}>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start h-12 text-base opacity-50 cursor-not-allowed"
+                              disabled
+                            >
+                              <Icon className="h-5 w-5 mr-3" />
+                              <span className="flex-1 text-left">{name}</span>
+                              <span className="text-xs text-muted-foreground">{tCommon('comingSoon')}</span>
+                            </Button>
+                          </li>
+                        )
+                      }
+
+                      return (
+                        <li key={item.nameKey}>
+                          <Button
+                            asChild
+                            variant="ghost"
+                            className={cn(
+                              'w-full justify-start h-12 text-base relative border-l-4 border-l-transparent',
+                              isActive && 'border-l-primary bg-primary/10 text-primary hover:bg-primary/15',
+                              !isActive && 'hover:bg-accent hover:text-accent-foreground'
+                            )}
+                          >
+                            <Link href={item.href}>
+                              <Icon className="h-5 w-5 mr-3" />
+                              <span className="flex-1 text-left">{name}</span>
+                            </Link>
+                          </Button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
               )
             })}
-          </ul>
+          </div>
         </nav>
 
         {/* Company selector */}

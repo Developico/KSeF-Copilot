@@ -73,6 +73,8 @@ export const InvoiceEntity = {
     approvedByOid: 'dvlp_approvedbyoid',
     approvedAt: 'dvlp_approvedat',
     approvalComment: 'dvlp_approvalcomment',
+    // Self-billing flag
+    isSelfBilling: 'dvlp_isselfbilling',
   },
 }
 

@@ -18,7 +18,8 @@ import {
   RefreshCw,
   Settings,
   Building2,
-  ChevronDown,
+  ShieldCheck,
+  Receipt,
 } from 'lucide-react'
 import { useCompanyContext } from '@/contexts/company-context'
 import { useAuth } from '@/components/auth/auth-provider'
@@ -36,38 +37,40 @@ type NavigationItem = {
   adminOnly?: boolean
 }
 
-const navigationItems: NavigationItem[] = [
+type NavigationSection = {
+  labelKey: string
+  items: NavigationItem[]
+}
+
+const navigationSections: NavigationSection[] = [
   {
-    nameKey: 'navigation.dashboard',
-    icon: LayoutDashboard,
-    href: '/',
+    labelKey: 'navigation.sectionMain',
+    items: [
+      { nameKey: 'navigation.dashboard', icon: LayoutDashboard, href: '/' },
+      { nameKey: 'navigation.invoices', icon: FileText, href: '/invoices' },
+      { nameKey: 'navigation.approvals', icon: ShieldCheck, href: '/approvals' },
+    ],
   },
   {
-    nameKey: 'navigation.invoices',
-    icon: FileText,
-    href: '/invoices',
+    labelKey: 'navigation.sectionAnalysis',
+    items: [
+      { nameKey: 'navigation.reports', icon: BarChart3, href: '/reports' },
+      { nameKey: 'navigation.forecast', icon: TrendingUp, href: '/forecast' },
+    ],
   },
   {
-    nameKey: 'navigation.reports',
-    icon: BarChart3,
-    href: '/reports',
+    labelKey: 'navigation.sectionSuppliers',
+    items: [
+      { nameKey: 'navigation.suppliers', icon: Building2, href: '/suppliers' },
+      { nameKey: 'navigation.selfBilling', icon: Receipt, href: '/self-billing' },
+    ],
   },
   {
-    nameKey: 'navigation.forecast',
-    icon: TrendingUp,
-    href: '/forecast',
-  },
-  {
-    nameKey: 'navigation.sync',
-    icon: RefreshCw,
-    href: '/sync',
-    adminOnly: true,
-  },
-  {
-    nameKey: 'navigation.settings',
-    icon: Settings,
-    href: '/settings',
-    adminOnly: true,
+    labelKey: 'navigation.sectionAdmin',
+    items: [
+      { nameKey: 'navigation.sync', icon: RefreshCw, href: '/sync', adminOnly: true },
+      { nameKey: 'navigation.settings', icon: Settings, href: '/settings', adminOnly: true },
+    ],
   },
 ]
 
@@ -81,10 +84,15 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
     setSelectedCompany,
   } = useCompanyContext()
 
-  // Filter navigation items by role
-  const visibleItems = navigationItems.filter(
-    (item) => !item.adminOnly || isAdmin
-  )
+  // Filter sections: remove items by role, then remove empty sections
+  const visibleSections = navigationSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) => !item.adminOnly || isAdmin
+      ),
+    }))
+    .filter((section) => section.items.length > 0)
 
   // Close drawer when route changes
   useEffect(() => {
@@ -121,54 +129,68 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 p-3 overflow-y-auto">
-          <ul className="space-y-1">
-            {visibleItems.map((item) => {
-              const Icon = item.icon
-              const isActive =
-                pathname === item.href ||
-                (item.href !== '/' && pathname.startsWith(item.href + '/'))
-              const name = intl.formatMessage({ id: item.nameKey })
-
-              if (item.disabled) {
-                return (
-                  <li key={item.nameKey}>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start h-12 text-base opacity-50 cursor-not-allowed"
-                      disabled
-                    >
-                      <Icon className="h-5 w-5 mr-3" />
-                      <span className="flex-1 text-left">{name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {intl.formatMessage({ id: 'common.comingSoon' })}
-                      </span>
-                    </Button>
-                  </li>
-                )
-              }
-
+          <div className="space-y-4">
+            {visibleSections.map((section) => {
+              const sectionLabel = intl.formatMessage({ id: section.labelKey })
               return (
-                <li key={item.nameKey}>
-                  <Button
-                    asChild
-                    variant="ghost"
-                    className={cn(
-                      'w-full justify-start h-12 text-base relative border-l-4 border-l-transparent',
-                      isActive &&
-                        'border-l-primary bg-[#174372] text-white hover:bg-[#174372]/90',
-                      !isActive &&
-                        'hover:bg-accent hover:text-accent-foreground'
-                    )}
-                  >
-                    <Link to={item.href}>
-                      <Icon className="h-5 w-5 mr-3" />
-                      <span className="flex-1 text-left">{name}</span>
-                    </Link>
-                  </Button>
-                </li>
+                <div key={section.labelKey}>
+                  <div className="px-3 mb-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {sectionLabel}
+                    </span>
+                  </div>
+                  <ul className="space-y-1">
+                    {section.items.map((item) => {
+                      const Icon = item.icon
+                      const isActive =
+                        pathname === item.href ||
+                        (item.href !== '/' && pathname.startsWith(item.href + '/'))
+                      const name = intl.formatMessage({ id: item.nameKey })
+
+                      if (item.disabled) {
+                        return (
+                          <li key={item.nameKey}>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start h-12 text-base opacity-50 cursor-not-allowed"
+                              disabled
+                            >
+                              <Icon className="h-5 w-5 mr-3" />
+                              <span className="flex-1 text-left">{name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {intl.formatMessage({ id: 'common.comingSoon' })}
+                              </span>
+                            </Button>
+                          </li>
+                        )
+                      }
+
+                      return (
+                        <li key={item.nameKey}>
+                          <Button
+                            asChild
+                            variant="ghost"
+                            className={cn(
+                              'w-full justify-start h-12 text-base relative border-l-4 border-l-transparent',
+                              isActive &&
+                                'border-l-primary bg-[#174372] text-white hover:bg-[#174372]/90',
+                              !isActive &&
+                                'hover:bg-accent hover:text-accent-foreground'
+                            )}
+                          >
+                            <Link to={item.href}>
+                              <Icon className="h-5 w-5 mr-3" />
+                              <span className="flex-1 text-left">{name}</span>
+                            </Link>
+                          </Button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
               )
             })}
-          </ul>
+          </div>
         </nav>
 
         {/* Company selector */}

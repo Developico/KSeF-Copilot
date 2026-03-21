@@ -11,7 +11,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { verifyAuth, requireRole } from '../lib/auth/middleware'
+import { verifyAuth, requireRole, requireAnyRole } from '../lib/auth/middleware'
 import { approvalService } from '../lib/dataverse/services'
 import { z } from 'zod'
 
@@ -53,7 +53,7 @@ async function approveHandler(
       return { status: 401, jsonBody: { error: 'Unauthorized' } }
     }
 
-    const roleCheck = requireRole(authResult.user, 'Reader')
+    const roleCheck = requireAnyRole(authResult.user, ['Reader', 'Approver'])
     if (!roleCheck.success) {
       return { status: 403, jsonBody: { error: 'Forbidden' } }
     }
@@ -95,7 +95,7 @@ async function rejectHandler(
       return { status: 401, jsonBody: { error: 'Unauthorized' } }
     }
 
-    const roleCheck = requireRole(authResult.user, 'Reader')
+    const roleCheck = requireAnyRole(authResult.user, ['Reader', 'Approver'])
     if (!roleCheck.success) {
       return { status: 403, jsonBody: { error: 'Forbidden' } }
     }
@@ -179,7 +179,7 @@ async function refreshApproversHandler(
       return { status: 401, jsonBody: { error: 'Unauthorized' } }
     }
 
-    const roleCheck = requireRole(authResult.user, 'Reader')
+    const roleCheck = requireAnyRole(authResult.user, ['Reader', 'Approver'])
     if (!roleCheck.success) {
       return { status: 403, jsonBody: { error: 'Forbidden' } }
     }
@@ -215,7 +215,7 @@ async function bulkApproveHandler(
       return { status: 401, jsonBody: { error: 'Unauthorized' } }
     }
 
-    const roleCheck = requireRole(authResult.user, 'Reader')
+    const roleCheck = requireAnyRole(authResult.user, ['Reader', 'Approver'])
     if (!roleCheck.success) {
       return { status: 403, jsonBody: { error: 'Forbidden' } }
     }
@@ -255,7 +255,7 @@ async function pendingApprovalsHandler(
       return { status: 401, jsonBody: { error: 'Unauthorized' } }
     }
 
-    const roleCheck = requireRole(authResult.user, 'Reader')
+    const roleCheck = requireAnyRole(authResult.user, ['Reader', 'Approver'])
     if (!roleCheck.success) {
       return { status: 403, jsonBody: { error: 'Forbidden' } }
     }

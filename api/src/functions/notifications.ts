@@ -2,10 +2,11 @@
  * Notification API Endpoints
  *
  * Endpoints:
- * - GET    /api/notifications            — List notifications for current user
- * - PATCH  /api/notifications/:id/read   — Mark notification as read
- * - POST   /api/notifications/:id/dismiss — Dismiss notification
- * - GET    /api/notifications/unread-count — Get unread count
+ * - GET    /api/notifications              — List notifications for current user
+ * - PATCH  /api/notifications/:id/read     — Mark notification as read
+ * - POST   /api/notifications/:id/dismiss  — Dismiss notification
+ * - POST   /api/notifications/mark-all-read — Mark all unread as read
+ * - GET    /api/notifications/unread-count  — Get unread count
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
@@ -122,6 +123,44 @@ async function dismissHandler(
 }
 
 /**
+ * POST /api/notifications/mark-all-read
+ */
+async function markAllReadHandler(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  try {
+    const auth = await verifyAuth(request)
+    if (!auth.success || !auth.user) {
+      return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+    }
+
+    const roleCheck = requireRole(auth.user, 'Reader')
+    if (!roleCheck.success) {
+      return { status: 403, jsonBody: { error: 'Forbidden — requires Reader role' } }
+    }
+
+    const settingId = request.query.get('settingId')
+    if (!settingId) {
+      return { status: 400, jsonBody: { error: 'settingId query parameter is required' } }
+    }
+
+    const dvUser = await mpkCenterService.resolveSystemUserByOid(auth.user.id)
+    if (!dvUser) {
+      return { status: 200, jsonBody: { success: true, marked: 0 } }
+    }
+
+    const marked = await notificationService.markAllRead(dvUser.systemUserId, settingId)
+
+    return { status: 200, jsonBody: { success: true, marked } }
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    context.error('Failed to mark all notifications as read:', msg)
+    return { status: 500, jsonBody: { error: `Failed to mark all as read: ${msg}` } }
+  }
+}
+
+/**
  * GET /api/notifications/unread-count
  */
 async function unreadCountHandler(
@@ -180,6 +219,13 @@ app.http('notifications-dismiss', {
   authLevel: 'anonymous',
   route: 'notifications/{id}/dismiss',
   handler: dismissHandler,
+})
+
+app.http('notifications-mark-all-read', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  route: 'notifications/mark-all-read',
+  handler: markAllReadHandler,
 })
 
 app.http('notifications-unread-count', {

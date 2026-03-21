@@ -1,5 +1,5 @@
 ﻿import { describe, it, expect } from 'vitest'
-import { parseInvoiceXml, validateParsedInvoice } from '../src/lib/ksef/parser'
+import { parseInvoiceXml, validateParsedInvoice, buildInvoiceXml } from '../src/lib/ksef/parser'
 
 // Sample FA(2) invoice XML for testing
 const sampleInvoiceXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -326,5 +326,135 @@ describe('Multiple line items', () => {
     const result = parseInvoiceXml(noAddressXml)
     expect(result.supplier.address).toBe('')
     expect(result.supplier.country).toBeUndefined()
+  })
+})
+
+// ── Self-billing (P_17 / Podmiot3) tests ─────────────────────────
+
+describe('Self-billing P_17 and Podmiot3', () => {
+  it('should parse P_17=1 as isSelfBilling and extract Podmiot3 issuer', () => {
+    const sbXml = `<?xml version="1.0" encoding="UTF-8"?>
+<Faktura xmlns="http://crd.gov.pl/wzor/2023/06/29/12648/">
+  <Naglowek><KodFormularza kodSystemowy="FA (2)" wersjaSchemy="1-0E">FA</KodFormularza><WariantFormularza>2</WariantFormularza></Naglowek>
+  <Podmiot1><DaneIdentyfikacyjne><NIP>1234567890</NIP><Nazwa>Supplier Sp. z o.o.</Nazwa></DaneIdentyfikacyjne>
+    <Adres><KodKraju>PL</KodKraju><AdresL1>ul. Testowa 1</AdresL1><AdresL2>00-001 Warszawa</AdresL2></Adres></Podmiot1>
+  <Podmiot2><DaneIdentyfikacyjne><NIP>0987654321</NIP><Nazwa>Buyer S.A.</Nazwa></DaneIdentyfikacyjne>
+    <Adres><KodKraju>PL</KodKraju><AdresL1>ul. Kupiecka 10</AdresL1><AdresL2>00-002 Kraków</AdresL2></Adres></Podmiot2>
+  <Podmiot3><DaneIdentyfikacyjne><NIP>1111111111</NIP><Nazwa>Issuer Company</Nazwa></DaneIdentyfikacyjne><Rola>1</Rola></Podmiot3>
+  <Fa>
+    <KodWaluty>PLN</KodWaluty><P_1>2024-03-01</P_1><P_2>SB/2024/001</P_2><P_13_1>1000.00</P_13_1><P_14_1>230.00</P_14_1><P_15>1230.00</P_15>
+    <Adnotacje><P_16>2</P_16><P_17>1</P_17><P_18>2</P_18></Adnotacje>
+    <FaWiersz><NrWierszaFa>1</NrWierszaFa><P_7>Service</P_7><P_8A>1</P_8A><P_8B>szt.</P_8B><P_9A>1000.00</P_9A><P_11>1000.00</P_11><P_12>23</P_12></FaWiersz>
+  </Fa>
+</Faktura>`
+
+    const result = parseInvoiceXml(sbXml)
+    expect(result.isSelfBilling).toBe(true)
+    expect(result.issuer).toBeDefined()
+    expect(result.issuer?.nip).toBe('1111111111')
+    expect(result.issuer?.name).toBe('Issuer Company')
+  })
+
+  it('should parse P_17=2 as not self-billing and no issuer', () => {
+    const normalXml = `<?xml version="1.0" encoding="UTF-8"?>
+<Faktura xmlns="http://crd.gov.pl/wzor/2023/06/29/12648/">
+  <Naglowek><KodFormularza kodSystemowy="FA (2)" wersjaSchemy="1-0E">FA</KodFormularza><WariantFormularza>2</WariantFormularza></Naglowek>
+  <Podmiot1><DaneIdentyfikacyjne><NIP>1234567890</NIP><Nazwa>Supplier</Nazwa></DaneIdentyfikacyjne>
+    <Adres><KodKraju>PL</KodKraju><AdresL1>ul. Testowa 1</AdresL1><AdresL2>00-001 Warszawa</AdresL2></Adres></Podmiot1>
+  <Podmiot2><DaneIdentyfikacyjne><NIP>0987654321</NIP><Nazwa>Buyer</Nazwa></DaneIdentyfikacyjne>
+    <Adres><KodKraju>PL</KodKraju><AdresL1>ul. Kupiecka 10</AdresL1><AdresL2>00-002 Kraków</AdresL2></Adres></Podmiot2>
+  <Fa>
+    <KodWaluty>PLN</KodWaluty><P_1>2024-03-01</P_1><P_2>FV/2024/001</P_2><P_13_1>500.00</P_13_1><P_14_1>115.00</P_14_1><P_15>615.00</P_15>
+    <Adnotacje><P_16>2</P_16><P_17>2</P_17><P_18>2</P_18></Adnotacje>
+    <FaWiersz><NrWierszaFa>1</NrWierszaFa><P_7>Goods</P_7><P_8A>10</P_8A><P_8B>szt.</P_8B><P_9A>50.00</P_9A><P_11>500.00</P_11><P_12>23</P_12></FaWiersz>
+  </Fa>
+</Faktura>`
+
+    const result = parseInvoiceXml(normalXml)
+    expect(result.isSelfBilling).toBeUndefined()
+    expect(result.issuer).toBeUndefined()
+  })
+
+  it('should parse invoice without Adnotacje as not self-billing', () => {
+    const result = parseInvoiceXml(sampleInvoiceXml)
+    // sampleInvoiceXml has no Adnotacje section
+    expect(result.isSelfBilling).toBeUndefined()
+    expect(result.issuer).toBeUndefined()
+  })
+
+  it('buildInvoiceXml should set P_17=1 and include Podmiot3 for self-billing', () => {
+    const invoice = {
+      invoiceNumber: 'SB/2024/001',
+      invoiceDate: '2024-03-01',
+      seller: {
+        nip: '1234567890',
+        name: 'Supplier Sp. z o.o.',
+        address: { street: 'Testowa', houseNumber: '1', postalCode: '00-001', city: 'Warszawa', country: 'PL' },
+      },
+      buyer: {
+        nip: '0987654321',
+        name: 'Buyer S.A.',
+        address: { street: 'Kupiecka', houseNumber: '10', postalCode: '00-002', city: 'Kraków', country: 'PL' },
+      },
+      items: [{
+        lineNumber: 1,
+        description: 'Service',
+        quantity: 1,
+        unit: 'szt.',
+        unitPrice: 1000,
+        netAmount: 1000,
+        vatRate: 23,
+        vatAmount: 230,
+        grossAmount: 1230,
+      }],
+      currency: 'PLN',
+      isSelfBilling: true,
+      issuer: { nip: '1111111111', name: 'Issuer Company' },
+    }
+
+    const xml = buildInvoiceXml(invoice)
+
+    // Self-billing flag P_17 should be 1
+    expect(xml).toContain('<P_17>1</P_17>')
+    // Podmiot3 with issuer data
+    expect(xml).toContain('<Podmiot3>')
+    expect(xml).toContain('<NIP>1111111111</NIP>')
+    expect(xml).toContain('<Nazwa>Issuer Company</Nazwa>')
+    expect(xml).toContain('<Rola>1</Rola>')
+  })
+
+  it('buildInvoiceXml should set P_17=2 and omit Podmiot3 for regular invoice', () => {
+    const invoice = {
+      invoiceNumber: 'FV/2024/001',
+      invoiceDate: '2024-03-01',
+      seller: {
+        nip: '1234567890',
+        name: 'Supplier Sp. z o.o.',
+        address: { street: 'Testowa', houseNumber: '1', postalCode: '00-001', city: 'Warszawa', country: 'PL' },
+      },
+      buyer: {
+        nip: '0987654321',
+        name: 'Buyer S.A.',
+        address: { street: 'Kupiecka', houseNumber: '10', postalCode: '00-002', city: 'Kraków', country: 'PL' },
+      },
+      items: [{
+        lineNumber: 1,
+        description: 'Goods',
+        quantity: 10,
+        unit: 'szt.',
+        unitPrice: 50,
+        netAmount: 500,
+        vatRate: 23,
+        vatAmount: 115,
+        grossAmount: 615,
+      }],
+      currency: 'PLN',
+      isSelfBilling: false,
+    }
+
+    const xml = buildInvoiceXml(invoice)
+
+    expect(xml).toContain('<P_17>2</P_17>')
+    expect(xml).not.toContain('<Podmiot3>')
   })
 })

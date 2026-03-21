@@ -319,6 +319,9 @@ Pełna specyfikacja encji, relacji, OptionSetów i indeksów znajduje się w: [S
 | `dvlp_ksefmpkcenter` | Centra MPK — konfiguracja, budżety, workflow akceptacji |
 | `dvlp_ksefmpkapprover` | Akceptanci przypisani do centrów MPK |
 | `dvlp_ksefnotification` | Powiadomienia o akceptacjach, SLA, budżetach |
+| `dvlp_ksefsupplier` | Rejestr dostawców — dane, NIP, VAT, statystyki faktur |
+| `dvlp_ksefsbagrement` | Umowy samofakturowania — daty ważności, status, załączniki |
+| `dvlp_ksefselfbillingtemplate` | Szablony pozycji samofaktur — opis, cena, VAT, waluta |
 
 **Relacje**:
 - `SettingEntity 1:N InvoiceEntity` (jedna firma, wiele faktur)
@@ -330,6 +333,192 @@ Pełna specyfikacja encji, relacji, OptionSetów i indeksów znajduje się w: [S
 - `MpkCenterEntity 1:N NotificationEntity` (jedno centrum, wiele powiadomień)
 - `SettingEntity 1:N NotificationEntity` (jedna firma, wiele powiadomień)
 - `InvoiceEntity 1:N NotificationEntity` (jedna faktura, wiele powiadomień)
+- `SettingEntity 1:N SupplierEntity` (jedna firma, wielu dostawców)
+- `SupplierEntity 1:N InvoiceEntity` (jeden dostawca, wiele faktur via supplierId)
+- `SupplierEntity 1:N SbAgreementEntity` (jeden dostawca, wiele umów SF)
+- `SbAgreementEntity 1:N SbTemplateEntity` (jedna umowa, wiele szablonów pozycji)
+
+#### Moduł Samofakturowania — przepływ danych
+
+```mermaid
+flowchart LR
+    T[Szablony pozycji] --> G[Generowanie hurtowe]
+    G --> P[Podgląd preview]
+    P --> C[Potwierdzenie]
+    C --> D[Faktury Draft]
+    D --> S[Submit → PendingSeller]
+    S --> A[Approve → SellerApproved]
+    A --> K[Wysyłka do KSeF]
+    S --> R[Reject → SellerRejected]
+    
+    IMP[Import CSV/Excel] --> VAL[Walidacja + podgląd]
+    VAL --> C
+```
+
+#### Workflow akceptacji faktur
+
+```mermaid
+stateDiagram-v2
+    [*] --> Nowa: Faktura zaimportowana / utworzona ręcznie
+    Nowa --> OczekujeNaAkceptacje: Przypisanie MPK (approvalRequired=true)
+    Nowa --> Zaakceptowana: MPK bez wymaganej akceptacji
+
+    OczekujeNaAkceptacje --> Zaakceptowana: Zaakceptuj (pojedynczo lub hurtowo)
+    OczekujeNaAkceptacje --> Odrzucona: Odrzuć (z komentarzem)
+    OczekujeNaAkceptacje --> Anulowana: Anuluj akceptację (Admin)
+
+    Odrzucona --> OczekujeNaAkceptacje: Ponowne przesłanie do akceptacji
+    Anulowana --> OczekujeNaAkceptacje: Ponowne przesłanie do akceptacji
+
+    Zaakceptowana --> [*]
+    Odrzucona --> [*]
+    Anulowana --> [*]
+
+    note right of OczekujeNaAkceptacje
+        Timer SLA sprawdza przekroczenia
+        co godzinę (approval-sla-check)
+    end note
+```
+
+#### Pełny cykl życia samofaktury (rozbudowany)
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft: Wygenerowana / Zaimportowana
+
+    state "Ścieżka tworzenia" as create {
+        [*] --> Szablon: Z szablonów pozycji
+        [*] --> Import: CSV / Excel
+        Szablon --> Podglad: Generowanie hurtowe
+        Import --> Walidacja: Parsowanie pliku
+        Walidacja --> Podglad: Dane poprawne
+        Walidacja --> BladImportu: Błędy walidacji
+        BladImportu --> Import: Popraw i ponów
+        Podglad --> Potwierdzenie: Użytkownik potwierdza
+    }
+
+    create --> Draft: Potwierdzenie
+
+    Draft --> PendingSeller: Submit (wyślij do sprzedawcy)
+    Draft --> Draft: Edycja (aktualizacja pól)
+
+    PendingSeller --> SellerApproved: Sprzedawca zatwierdza
+    PendingSeller --> SellerRejected: Sprzedawca odrzuca (z powodem)
+
+    SellerRejected --> Draft: Cofnij do szkicu (edycja i ponowne wysłanie)
+    SellerRejected --> [*]: Porzucona
+
+    SellerApproved --> SentToKSeF: Wysyłka do KSeF API
+    SentToKSeF --> Confirmed: UPO otrzymane
+    SentToKSeF --> KSeFError: Błąd wysyłki
+    KSeFError --> SellerApproved: Ponów wysyłkę
+
+    Confirmed --> [*]
+
+    note right of PendingSeller
+        Operacje hurtowe:
+        batch-approve, batch-reject,
+        batch-send, batch-delete
+    end note
+```
+
+#### Przepływ synchronizacji — tryb incoming vs self-billing
+
+```mermaid
+sequenceDiagram
+    actor U as Użytkownik
+    participant API as Azure Functions
+    participant DV as Dataverse
+    participant KV as Key Vault
+    participant KSeF as KSeF API
+
+    U->>API: POST /api/ksef/sync
+    API->>DV: Pobierz ustawienie (settingId)
+    API->>KV: Pobierz token KSeF
+    API->>KSeF: Inicjalizuj sesję
+
+    rect rgb(230, 245, 255)
+        Note over API,KSeF: Tryb incoming (subject1 + subject2)
+        API->>KSeF: Query/Invoice/Sync (subjectType=subject1)
+        KSeF-->>API: Faktury zakupowe
+        API->>KSeF: Query/Invoice/Sync (subjectType=subject2)
+        KSeF-->>API: Faktury sprzedażowe
+    end
+
+    rect rgb(255, 245, 230)
+        Note over API,KSeF: Tryb self-billing (subject3)
+        API->>KSeF: Query/Invoice/Sync (subjectType=subject3)
+        KSeF-->>API: Samofaktury wystawione przez nabywcę
+    end
+
+    loop Każda faktura
+        API->>DV: Sprawdź duplikat
+        alt Nowa
+            API->>DV: Utwórz InvoiceEntity
+        end
+    end
+    API->>DV: Utwórz SyncLogEntity
+    API-->>U: Podsumowanie
+```
+
+#### Architektura dashboardu
+
+```mermaid
+graph LR
+    subgraph API["Endpointy API"]
+        Stats["GET /dashboard/stats"]
+        Activity["GET /dashboard/activity"]
+        Budget["GET /budget/summary"]
+        Approvers["GET /approvers/overview"]
+        Forecast["GET /forecast/monthly"]
+        SBInvoices["GET /self-billing/invoices"]
+    end
+
+    subgraph Dashboard["Kafelki dashboardu"]
+        Hero["Hero Chart<br/>Trendy faktur"]
+        ActivityFeed["Activity Feed<br/>Ostatnie zdarzenia"]
+        ApprovalTile["Zatwierdzenia<br/>Oczekujące / SLA"]
+        SBPipeline["Pipeline SF<br/>Draft → KSeF"]
+        BudgetSummary["Podsumowanie budżetu<br/>Wykorzystanie MPK"]
+        BudgetChart["Wykres budżetu<br/>Plan vs wykonanie"]
+        ForecastChart["Prognoza<br/>Trend + CI"]
+        QuickActions["Szybkie akcje<br/>Sync / Import / Export"]
+        SupplierTop["Top dostawcy<br/>Ranking wartości"]
+    end
+
+    Stats --> Hero
+    Stats --> SupplierTop
+    Activity --> ActivityFeed
+    Budget --> BudgetSummary
+    Budget --> BudgetChart
+    Approvers --> ApprovalTile
+    Forecast --> ForecastChart
+    SBInvoices --> SBPipeline
+```
+
+#### Przepływ multi-company (routing po settingId)
+
+```mermaid
+sequenceDiagram
+    actor U as Użytkownik
+    participant FE as Frontend
+    participant API as Azure Functions
+    participant DV as Dataverse
+    participant KV as Key Vault
+    participant KSeF as KSeF API
+
+    U->>FE: Wybór firmy (NIP)
+    FE->>API: Request + settingId header
+    API->>DV: Pobierz dvlp_ksefsetting (settingId)
+    DV-->>API: NIP, environment, tokenSecretName
+    API->>API: Resolve endpoint wg environment
+    Note over API: test → api-test.ksef.mf.gov.pl<br/>demo → api-demo.ksef.mf.gov.pl<br/>prod → api.ksef.mf.gov.pl
+    API->>KV: GET secret (ksef-token-{nip})
+    KV-->>API: Token autoryzacyjny
+    API->>KSeF: Wywołanie API z tokenem
+    KSeF-->>API: Odpowiedź
+    API-->>FE: Dane w kontekście wybranej firmy
+```
 
 ---
 

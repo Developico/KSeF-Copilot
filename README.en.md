@@ -53,6 +53,15 @@
 - 📄 AI document scanning (OCR)
 - 🔗 Supplier verification — White List VAT (replaced GUS)
 
+### Self-Billing
+- 🧾 **Supplier management** — list, details, add from VAT registry, statistics
+- 📝 **SB Agreements** — full CRUD, termination, linked to supplier
+- 📋 **SB Templates** — CRUD, duplication
+- 🧾 **Self-billing invoices** — generate, preview, approve, reject with reason
+- 📤 **Send to KSeF** — integration with KSeF statuses
+- 📥 **Invoice import** — import from CSV/Excel with validation and preview
+- 🔄 **Status workflow** — Draft → PendingSeller → SellerApproved → SentToKsef
+
 ## 🏗️ Architecture
 
 ![KSeF Copilot Architecture](docs/KSeFCopilotArchitektura.jpg)

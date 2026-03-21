@@ -88,6 +88,11 @@ export class MpkCenterService {
       const payload = mapAppMpkCenterToDv(data as Partial<MpkCenter> & { settingId: string })
       const result = await dataverseClient.create<DvMpkCenter>(this.entitySet, payload)
 
+      // Dataverse may return full entity (Prefer: return=representation) or { id } (204)
+      const dvIdField = DV.mpkCenter.id
+      if (result && dvIdField in (result as unknown as Record<string, unknown>)) {
+        return mapDvMpkCenterToApp(result as unknown as DvMpkCenter)
+      }
       if (result && 'id' in result) {
         const created = await this.getById((result as { id: string }).id)
         if (created) return created
@@ -107,8 +112,20 @@ export class MpkCenterService {
     logDataverseInfo('MpkCenterService.update', 'Updating MPK center', { id, fields: Object.keys(data) })
 
     try {
+      // When disabling approval, also clear approval-related fields
+      if (data.approvalRequired === false) {
+        data.approvalSlaHours = null
+        data.approvalEffectiveFrom = null
+      }
+
       const payload = mapAppMpkCenterToDv(data as Partial<MpkCenter>)
       await dataverseClient.update(this.entitySet, id, payload)
+
+      // When disabling approval, also remove all approvers
+      if (data.approvalRequired === false) {
+        await this.setApprovers(id, [])
+      }
+
       return this.getById(id)
     } catch (error) {
       logDataverseError('MpkCenterService.update', error)

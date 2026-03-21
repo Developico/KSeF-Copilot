@@ -8,6 +8,7 @@ import { Locale } from '@/i18n/config'
 import { Providers } from '@/components/providers'
 import { PageWrapper } from '@/components/layout/page-wrapper'
 import { Toaster } from '@/components/ui/toaster'
+import { Toaster as SonnerToaster } from '@/components/ui/sonner'
 import '../globals.css'
 
 const inter = Inter({
@@ -59,6 +60,7 @@ export default async function LocaleLayout({
               {children}
             </PageWrapper>
             <Toaster />
+            <SonnerToaster />
           </Providers>
         </NextIntlClientProvider>
       </body>

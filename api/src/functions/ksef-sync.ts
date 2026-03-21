@@ -2,8 +2,9 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { queryInvoices, getInvoice } from '../lib/ksef/invoices'
 import { parseInvoiceXml } from '../lib/ksef/parser'
-import { createInvoice, invoiceExistsByReference, findParentInvoice } from '../lib/dataverse/invoices'
+import { createInvoice, invoiceExistsByReference, findParentInvoice, linkOrphanedCorrections, getInvoiceById } from '../lib/dataverse/invoices'
 import { settingService, sessionService, syncLogService, logDataverseInfo, logDataverseError } from '../lib/dataverse'
+import { supplierService } from '../lib/dataverse/services'
 import { getKsefConfig } from '../lib/ksef/config'
 import { InvoiceCreate, InvoiceTypeEnum } from '../types/invoice'
 import type { ParsedInvoiceType } from '../lib/ksef/types'
@@ -68,6 +69,7 @@ app.http('ksef-sync', {
         dateFrom?: string
         dateTo?: string
         importAll?: boolean
+        mode?: 'incoming' | 'self-billing'  // 'incoming' = subject2 (default), 'self-billing' = subject3
       }
 
       // Get setting - prefer settingId if provided, otherwise lookup by NIP
@@ -130,8 +132,11 @@ app.http('ksef-sync', {
       const dateFrom = body.dateFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
       // Query invoices from KSeF
+      // mode: 'incoming' (default) = subject2 (we are the buyer)
+      // mode: 'self-billing' = subject3 (invoices issued on our behalf)
+      const subjectType = body.mode === 'self-billing' ? 'subject3' : 'subject2'
       const queryResult = await queryInvoices(nip, {
-        subjectType: 'subject2', // We are the buyer (incoming invoices)
+        subjectType,
         type: 'range',
         dateFrom,
         dateTo,
@@ -204,6 +209,7 @@ app.http('ksef-sync', {
             invoiceType: mapParsedTypeToApp(parsed.invoiceType),
             correctedInvoiceNumber: parsed.correctedInvoiceNumber,
             correctionReason: parsed.correctionReason,
+            isSelfBilling: parsed.isSelfBilling || false,
           }
 
           // Link corrective invoice to parent
@@ -217,6 +223,12 @@ app.http('ksef-sync', {
               if (parentId) {
                 invoiceData.parentInvoiceId = parentId
                 context.log(`Linked corrective invoice to parent: ${parentId}`)
+                // Copy MPK and category from parent invoice
+                try {
+                  const parentInvoice = await getInvoiceById(parentId)
+                  if (parentInvoice?.mpkCenterId) invoiceData.mpkCenterId = parentInvoice.mpkCenterId
+                  if (parentInvoice?.category) invoiceData.category = parentInvoice.category
+                } catch { /* best-effort */ }
               } else {
                 context.warn(`Parent invoice not found for correction ${parsed.invoiceNumber}`)
               }
@@ -225,7 +237,35 @@ app.http('ksef-sync', {
             }
           }
 
+          // Auto-create/update supplier in the Supplier Registry
+          try {
+            if (parsed.supplier.nip && settingId) {
+              await supplierService.findOrCreate(parsed.supplier.nip, parsed.supplier.name, settingId)
+            }
+          } catch (supplierError) {
+            context.warn(`Failed to auto-create supplier for NIP ${parsed.supplier.nip}:`, supplierError)
+          }
+
           const createdInvoice = await createInvoice(invoiceData)
+
+          // Retroactively link orphaned correction invoices that reference this one
+          if (parsed.invoiceType !== 'KOR' && parsed.invoiceType !== 'KOR_ZAL') {
+            try {
+              const linked = await linkOrphanedCorrections(
+                createdInvoice.id,
+                header.ksefNumber,
+                parsed.invoiceNumber,
+                settingId,
+                createdInvoice.mpkCenterId,
+                createdInvoice.category,
+              )
+              if (linked > 0) {
+                context.log(`Retroactively linked ${linked} correction(s) to ${parsed.invoiceNumber}`)
+              }
+            } catch (linkError) {
+              context.warn(`Failed to link orphaned corrections for ${parsed.invoiceNumber}:`, linkError)
+            }
+          }
 
           result.imported++
           result.newInvoiceIds.push(createdInvoice.id)
@@ -528,6 +568,7 @@ app.http('ksef-sync-import', {
             invoiceType: mapParsedTypeToApp(parsed.invoiceType),
             correctedInvoiceNumber: parsed.correctedInvoiceNumber,
             correctionReason: parsed.correctionReason,
+            isSelfBilling: parsed.isSelfBilling || false,
           }
 
           // Link corrective invoice to parent
@@ -541,6 +582,12 @@ app.http('ksef-sync-import', {
               if (parentId) {
                 invoiceData.parentInvoiceId = parentId
                 context.log(`Linked corrective invoice to parent: ${parentId}`)
+                // Copy MPK and category from parent invoice
+                try {
+                  const parentInvoice = await getInvoiceById(parentId)
+                  if (parentInvoice?.mpkCenterId) invoiceData.mpkCenterId = parentInvoice.mpkCenterId
+                  if (parentInvoice?.category) invoiceData.category = parentInvoice.category
+                } catch { /* best-effort */ }
               } else {
                 context.warn(`Parent invoice not found for correction ${parsed.invoiceNumber}`)
               }
@@ -549,7 +596,35 @@ app.http('ksef-sync-import', {
             }
           }
 
+          // Auto-create/update supplier in the Supplier Registry
+          try {
+            if (parsed.supplier.nip && settingId) {
+              await supplierService.findOrCreate(parsed.supplier.nip, parsed.supplier.name, settingId)
+            }
+          } catch (supplierError) {
+            context.warn(`Failed to auto-create supplier for NIP ${parsed.supplier.nip}:`, supplierError)
+          }
+
           const createdInvoice = await createInvoice(invoiceData)
+
+          // Retroactively link orphaned correction invoices that reference this one
+          if (parsed.invoiceType !== 'KOR' && parsed.invoiceType !== 'KOR_ZAL') {
+            try {
+              const linked = await linkOrphanedCorrections(
+                createdInvoice.id,
+                refNumber,
+                parsed.invoiceNumber,
+                settingId,
+                createdInvoice.mpkCenterId,
+                createdInvoice.category,
+              )
+              if (linked > 0) {
+                context.log(`Retroactively linked ${linked} correction(s) to ${parsed.invoiceNumber}`)
+              }
+            } catch (linkError) {
+              context.warn(`Failed to link orphaned corrections for ${parsed.invoiceNumber}:`, linkError)
+            }
+          }
 
           result.imported++
           result.newInvoiceIds.push(createdInvoice.id)

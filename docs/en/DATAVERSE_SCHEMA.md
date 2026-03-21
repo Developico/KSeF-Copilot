@@ -15,6 +15,11 @@
   - [dvlp_ksefmpkcenter](#dvlp_ksefmpkcenter)
   - [dvlp_ksefmpkapprover](#dvlp_ksefmpkapprover)
   - [dvlp_ksefnotification](#dvlp_ksefnotification)
+  - [dvlp_ksefsupplier](#dvlp_ksefsupplier)
+  - [dvlp_ksefsbagrement](#dvlp_ksefsbagrement)
+  - [dvlp_ksefselfbillingtemplate](#dvlp_ksefselfbillingtemplate)
+  - [dvlp_ksefselfbillinginvoice](#dvlp_ksefselfbillinginvoice)
+  - [dvlp_ksefselfbillinglineitem](#dvlp_ksefselfbillinglineitem)
 - [Option Sets (Choices)](#option-sets-choices)
 - [Relationships](#relationships)
 - [Security Roles](#security-roles)
@@ -46,9 +51,14 @@ dvlp_ksefsetting (1) ──┬──► (N) dvlp_ksefsession
                         ├──► (N) dvlp_ksefsynclog
                         ├──► (N) dvlp_ksefinvoice ──┬──► (N) dvlp_aifeedback
                         │                           └──► (N) dvlp_ksefnotification
-                        └──► (N) dvlp_ksefmpkcenter (1) ──┬──► (N) dvlp_ksefmpkapprover
-                                                          ├──► (N) dvlp_ksefinvoice
-                                                          └──► (N) dvlp_ksefnotification
+                        ├──► (N) dvlp_ksefmpkcenter (1) ──┬──► (N) dvlp_ksefmpkapprover
+                        │                                 ├──► (N) dvlp_ksefinvoice
+                        │                                 └──► (N) dvlp_ksefnotification
+                        ├──► (N) dvlp_ksefsupplier (1) ──┬──► (N) dvlp_ksefsbagrement (1) ──► (N) dvlp_ksefinvoice
+                        │                                ├──► (N) dvlp_ksefselfbillingtemplate
+                        │                                └──► (N) dvlp_ksefinvoice
+                        ├──► (N) dvlp_ksefsbagrement
+                        └──► (N) dvlp_ksefselfbillingtemplate
 ```
 
 ---
@@ -70,7 +80,7 @@ dvlp_ksefsetting (1) ──┬──► (N) dvlp_ksefsession
 |----------|-------|
 | Display Name | Developico KSeF |
 | Unique Name | DevelopicoKSeF |
-| Version | 1.0.0.8 |
+| Version | 1.0.0.9 |
 | Publisher | dvlp (Developico) |
 | Type | Unmanaged (development) / Managed (production) |
 
@@ -266,6 +276,17 @@ dvlp_ksefsetting (1) ──┬──► (N) dvlp_ksefsession
 | `dvlp_approvedbyoid` | Approved By OID | String(50) | ❌ | Azure AD Object ID of approver |
 | `dvlp_approvedat` | Approved At | DateTime | ❌ | When the approval decision was made |
 | `dvlp_approvalcomment` | Approval Comment | String(500) | ❌ | Comment from approver |
+
+#### Attributes — Self-Billing
+
+| Logical Name | Display Name | Type | Required | Description |
+|-------------|-------------|------|----------|-------------|
+| `dvlp_isselfbilling` | Is Self-Billing | Boolean | ❌ | True when the invoice was created via self-billing |
+| `dvlp_selfbillingstatus` | SB Status | OptionSet (dvlp_selfbillingstatus) | ❌ | Self-billing approval workflow status |
+| `dvlp_sellerrejectionreason` | Seller Rejection Reason | String(1000) | ❌ | Reason provided by seller when rejecting a SB invoice |
+| `dvlp_selfbillingsentdate` | SB Sent Date | DateTime | ❌ | When the self-billing invoice was sent to KSeF |
+| `dvlp_supplierid` | Supplier | Lookup (dvlp_ksefsupplier) | ❌ | Supplier registry link for self-billing invoices |
+| `dvlp_sbagreementid` | SB Agreement | Lookup (dvlp_ksefsbagrement) | ❌ | Agreement under which this SB invoice was created |
 
 #### Attributes — AI Categorization
 
@@ -631,6 +652,7 @@ This data is used to build context in AI prompts (few-shot learning).
 | `dvlp_isactive` | Active | Boolean | ✅ | Whether the center is active |
 | `dvlp_approvalrequired` | Approval Required | Boolean | ✅ | Whether invoices assigned to this MPK require approval |
 | `dvlp_approvalslahours` | Approval SLA (hours) | Integer | ❌ | Maximum hours allowed for approval before SLA alert |
+| `dvlp_approvaleffectivefrom` | Approval Effective From | DateOnly | ❌ | If set, only invoices issued on or after this date require approval. Invoices before this date are treated as "not required". Null means all invoices require approval |
 | `dvlp_budgetamount` | Budget Amount | Decimal(12,2) | ❌ | Budget limit amount |
 | `dvlp_budgetperiod` | Budget Period | OptionSet (dvlp_budgetperiod) | ❌ | Budget period type: monthly/quarterly/half-yearly/annual |
 | `dvlp_budgetstartdate` | Budget Start Date | Date | ❌ | Budget period start date |
@@ -706,6 +728,242 @@ This data is used to build context in AI prompts (few-shot learning).
 | N:1 | dvlp_ksefsetting | `dvlp_ksefsetting_notifications` |
 | N:1 | dvlp_ksefinvoice | `dvlp_invoice_notifications` |
 | N:1 | dvlp_ksefmpkcenter | `dvlp_mpkcenter_notifications` |
+
+---
+
+### dvlp_ksefsupplier
+
+**Display Name:** KSeF Supplier / Dostawca KSeF  
+**Logical Name:** `dvlp_ksefsupplier`  
+**Collection Name:** `dvlp_ksefsuppliers`  
+**Ownership Type:** Organization  
+**Description:** Supplier registry for self-billing invoice management
+
+#### Attributes
+
+| Logical Name | Display Name | Type | Required | Description |
+|-------------|-------------|------|----------|-------------|
+| `dvlp_ksefsupplierid` | ID | Uniqueidentifier | Auto | Primary key |
+| `dvlp_name` | Name | String(255) | ✅ | Full supplier name (Primary Name) |
+| `dvlp_nip` | NIP | String(10) | ✅ | Supplier tax identification number |
+| `dvlp_shortname` | Short Name | String(100) | ❌ | Short display name |
+| `dvlp_regon` | REGON | String(14) | ❌ | REGON number |
+| `dvlp_krs` | KRS | String(10) | ❌ | KRS number |
+| `dvlp_street` | Street | String(250) | ❌ | Street address |
+| `dvlp_city` | City | String(100) | ❌ | City |
+| `dvlp_postalcode` | Postal Code | String(10) | ❌ | Postal code |
+| `dvlp_country` | Country | String(100) | ❌ | Country |
+| `dvlp_email` | Email | String(200) | ❌ | Contact email |
+| `dvlp_phone` | Phone | String(20) | ❌ | Contact phone |
+| `dvlp_bankaccount` | Bank Account | String(50) | ❌ | IBAN bank account number |
+| `dvlp_vatstatus` | VAT Status | String(50) | ❌ | VAT payer status from MF API |
+| `dvlp_vatstatusdate` | VAT Status Date | Date | ❌ | Date of last VAT status check |
+| `dvlp_paymenttermsdays` | Payment Terms | Integer | ❌ | Default payment terms in days |
+| `dvlp_defaultcategory` | Default Category | String(100) | ❌ | Default cost category |
+| `dvlp_notes` | Notes | Memo(10000) | ❌ | Free-text notes |
+| `dvlp_tags` | Tags | String(500) | ❌ | Comma-separated tags |
+| `dvlp_hasselfbillingagreement` | Has SB Agreement | Boolean | ❌ | True when an active SB agreement exists |
+| `dvlp_selfbillingagreementdate` | SB Agreement Date | Date | ❌ | Self-billing agreement date |
+| `dvlp_selfbillingagreementexpiry` | SB Agreement Expiry | Date | ❌ | Self-billing agreement expiry date |
+| `dvlp_firstinvoicedate` | First Invoice Date | Date | ❌ | Cached: earliest invoice date |
+| `dvlp_lastinvoicedate` | Last Invoice Date | Date | ❌ | Cached: latest invoice date |
+| `dvlp_totalinvoicecount` | Total Invoice Count | Integer | ❌ | Cached: total number of invoices |
+| `dvlp_totalgrossamount` | Total Gross Amount | Decimal(12,2) | ❌ | Cached: total gross amount |
+| `dvlp_status` | Status | OptionSet (dvlp_supplierstatus) | ✅ | Active/Inactive/Blocked |
+| `dvlp_source` | Source | OptionSet (dvlp_suppliersource) | ❌ | How the supplier was added |
+| `dvlp_settingid` | KSeF Setting | Lookup (dvlp_ksefsetting) | ✅ | Tenant isolation |
+| `dvlp_defaultmpkid` | Default MPK | Lookup (dvlp_ksefmpkcenter) | ❌ | Default MPK Center |
+| `dvlp_sbcontactuserid` | SB Contact User | Lookup (systemuser) | ❌ | System user responsible for approving self-billing invoices for this supplier |
+| `createdon` | Created On | DateTime | Auto | Record creation date |
+| `modifiedon` | Modified On | DateTime | Auto | Record last modified date |
+
+#### Alternate Keys
+
+| Name | Attributes | Description |
+|------|-----------|-------------|
+| `dvlp_supplier_nip_setting` | `dvlp_nip`, `dvlp_settingid` | Unique supplier NIP per tenant |
+
+#### Relationships
+
+| Type | Related Table | Relationship Name |
+|------|---------------|-------------------|
+| N:1 | dvlp_ksefsetting | `dvlp_ksefsetting_suppliers` |
+| N:1 | dvlp_ksefmpkcenter | `dvlp_ksefmpkcenter_suppliers` |
+| N:1 | systemuser | `dvlp_systemuser_supplier_sbcontact` |
+| 1:N | dvlp_ksefsbagrement | `dvlp_ksefsupplier_sbagrements` |
+| 1:N | dvlp_ksefselfbillingtemplate | `dvlp_ksefsupplier_sbtemplates` |
+| 1:N | dvlp_ksefselfbillinginvoice | `dvlp_ksefsupplier_sbinvoices` |
+| 1:N | dvlp_ksefinvoice | `dvlp_ksefsupplier_invoices` |
+
+---
+
+### dvlp_ksefsbagrement
+
+**Display Name:** KSeF SB Agreement / Umowa samofakturowania KSeF  
+**Logical Name:** `dvlp_ksefsbagrement`  
+**Collection Name:** `dvlp_ksefsbagrements`  
+**Ownership Type:** Organization  
+**Description:** Self-billing agreements between buyer and supplier
+
+#### Attributes
+
+| Logical Name | Display Name | Type | Required | Description |
+|-------------|-------------|------|----------|-------------|
+| `dvlp_ksefsbagrement_id` | ID | Uniqueidentifier | Auto | Primary key |
+| `dvlp_name` | Name | String(255) | ✅ | Agreement name (Primary Name) |
+| `dvlp_agreementdate` | Agreement Date | Date | ✅ | Date the agreement was signed |
+| `dvlp_validfrom` | Valid From | Date | ✅ | Validity start date |
+| `dvlp_validto` | Valid To | Date | ❌ | Validity end date (null = indefinite) |
+| `dvlp_renewaldate` | Renewal Date | Date | ❌ | Next renewal date |
+| `dvlp_approvalprocedure` | Approval Procedure | String(500) | ❌ | Description of the approval procedure |
+| `dvlp_status` | Status | OptionSet (dvlp_sbagreementstatus) | ✅ | Active/Expired/Terminated |
+| `dvlp_credentialreference` | Credential Reference | String(200) | ❌ | Authorization credential reference |
+| `dvlp_notes` | Notes | Memo(10000) | ❌ | Notes about the agreement |
+| `dvlp_hasdocument` | Has Document | Boolean | ❌ | True when agreement document uploaded |
+| `dvlp_documentfilename` | Document Filename | String(255) | ❌ | Uploaded document filename |
+| `dvlp_supplierid` | Supplier | Lookup (dvlp_ksefsupplier) | ✅ | Supplier this agreement belongs to |
+| `dvlp_settingid` | KSeF Setting | Lookup (dvlp_ksefsetting) | ✅ | Tenant isolation |
+| `createdon` | Created On | DateTime | Auto | Record creation date |
+| `modifiedon` | Modified On | DateTime | Auto | Record last modified date |
+
+#### Alternate Keys
+
+| Name | Attributes | Description |
+|------|-----------|-------------|
+| `dvlp_sbagrement_name_supplier` | `dvlp_name`, `dvlp_supplierid` | Unique agreement name per supplier |
+
+#### Relationships
+
+| Type | Related Table | Relationship Name |
+|------|---------------|-------------------|
+| N:1 | dvlp_ksefsupplier | `dvlp_ksefsupplier_sbagrements` |
+| N:1 | dvlp_ksefsetting | `dvlp_ksefsetting_sbagrements` |
+| 1:N | dvlp_ksefinvoice | `dvlp_ksefsbagrement_invoices` |
+
+---
+
+### dvlp_ksefselfbillingtemplate
+
+**Display Name:** KSeF SB Template / Szablon samofakturowania KSeF  
+**Logical Name:** `dvlp_ksefselfbillingtemplate`  
+**Collection Name:** `dvlp_ksefselfbillingtemplates`  
+**Ownership Type:** Organization  
+**Description:** Templates for automatic self-billing invoice generation
+
+#### Attributes
+
+| Logical Name | Display Name | Type | Required | Description |
+|-------------|-------------|------|----------|-------------|
+| `dvlp_ksefselfbillingtemplateid` | ID | Uniqueidentifier | Auto | Primary key |
+| `dvlp_name` | Name | String(255) | ✅ | Template name (Primary Name) |
+| `dvlp_description` | Description | Memo(2000) | ❌ | Template description |
+| `dvlp_itemdescription` | Item Description | String(500) | ✅ | Default line item description |
+| `dvlp_quantity` | Quantity | Decimal(6,4) | ❌ | Default item quantity |
+| `dvlp_unit` | Unit | String(20) | ❌ | Unit of measure |
+| `dvlp_unitprice` | Unit Price | Decimal(9,2) | ❌ | Default unit price (net) |
+| `dvlp_vatrate` | VAT Rate | String(10) | ❌ | VAT rate code (23, 8, 5, 0, zw, np) |
+| `dvlp_currency` | Currency | String(3) | ❌ | ISO 4217 currency code |
+| `dvlp_isactive` | Active | Boolean | ✅ | Whether the template is active |
+| `dvlp_sortorder` | Sort Order | Integer | ❌ | Display position in template list |
+| `dvlp_supplierid` | Supplier | Lookup (dvlp_ksefsupplier) | ✅ | Supplier this template belongs to |
+| `dvlp_settingid` | KSeF Setting | Lookup (dvlp_ksefsetting) | ✅ | Tenant isolation |
+| `createdon` | Created On | DateTime | Auto | Record creation date |
+| `modifiedon` | Modified On | DateTime | Auto | Record last modified date |
+
+#### Relationships
+
+| Type | Related Table | Relationship Name |
+|------|---------------|-------------------|
+| N:1 | dvlp_ksefsupplier | `dvlp_ksefsupplier_sbtemplates` |
+| N:1 | dvlp_ksefsetting | `dvlp_ksefsetting_sbtemplates` |
+
+---
+
+### dvlp_ksefselfbillinginvoice
+
+**Display Name:** KSeF Self-Billing Invoice / Samofaktura KSeF  
+**Logical Name:** `dvlp_ksefselfbillinginvoice`  
+**Collection Name:** `dvlp_ksefselfbillinginvoices`  
+**Ownership Type:** User  
+**Description:** Dedicated table for self-billing invoices (issued by the buyer)
+
+#### Attributes
+
+| Logical Name | Display Name | Type | Required | Description |
+|-------------|-------------|------|----------|-------------|
+| `dvlp_ksefselfbillinginvoiceid` | ID | Uniqueidentifier | Auto | Primary key |
+| `dvlp_name` | Invoice Number | String(200) | ✅ | Invoice number (Primary Name) |
+| `dvlp_invoicedate` | Invoice Date | Date | ✅ | Invoice issue date |
+| `dvlp_duedate` | Due Date | Date | ❌ | Payment due date |
+| `dvlp_netamount` | Net Amount | Decimal(9,2) | ❌ | Total net amount |
+| `dvlp_vatamount` | VAT Amount | Decimal(9,2) | ❌ | Total VAT amount |
+| `dvlp_grossamount` | Gross Amount | Decimal(9,2) | ❌ | Total gross amount |
+| `dvlp_currency` | Currency | String(3) | ❌ | Currency code (default PLN) |
+| `dvlp_status` | Status | OptionSet (dvlp_selfbillingstatus) | ✅ | Self-billing workflow status |
+| `dvlp_sellerrejectionreason` | Rejection Reason | String(1000) | ❌ | Seller rejection reason |
+| `dvlp_sentdate` | Sent Date | DateTime | ❌ | Date sent to KSeF |
+| `dvlp_ksefreferencenumber` | KSeF Reference | String(100) | ❌ | Reference number assigned after KSeF submission |
+| `dvlp_submittedbyuserid` | Submitted By | Lookup (systemuser) | ❌ | System user who submitted this invoice for seller review |
+| `dvlp_submittedat` | Submitted At | DateTime | ❌ | Timestamp when the invoice was submitted for seller review |
+| `dvlp_approvedbyuserid` | Approved/Rejected By | Lookup (systemuser) | ❌ | System user who approved or rejected this invoice |
+| `dvlp_approvedat` | Approved/Rejected At | DateTime | ❌ | Timestamp when the invoice was approved or rejected |
+| `dvlp_settingid` | KSeF Setting | Lookup (dvlp_ksefsetting) | ✅ | Tenant isolation |
+| `dvlp_supplierid` | Supplier | Lookup (dvlp_ksefsupplier) | ✅ | Supplier (seller) |
+| `dvlp_sbagreementid` | SB Agreement | Lookup (dvlp_ksefsbagrement) | ❌ | Self-billing agreement |
+| `dvlp_kseFinvoiceid` | KSeF Invoice | Lookup (dvlp_ksefinvoice) | ❌ | Link to KSeF invoice record after submission |
+| `dvlp_mpkcenterid` | MPK Center | Lookup (dvlp_ksefmpkcenter) | ❌ | Cost center for allocation |
+| `statecode` | State | State | Auto | Active/Inactive |
+| `createdon` | Created On | DateTime | Auto | Record creation date |
+| `modifiedon` | Modified On | DateTime | Auto | Record last modified date |
+
+#### Relationships
+
+| Type | Related Table | Relationship Name |
+|------|---------------|-------------------|
+| N:1 | dvlp_ksefsetting | `dvlp_ksefsetting_sbinvoices` |
+| N:1 | dvlp_ksefsupplier | `dvlp_ksefsupplier_sbinvoices` |
+| N:1 | dvlp_ksefsbagrement | `dvlp_ksefsbagrement_sbinvoices` |
+| N:1 | dvlp_ksefinvoice | `dvlp_ksefinvoice_sbinvoices` |
+| N:1 | dvlp_ksefmpkcenter | `dvlp_ksefmpkcenter_sbinvoices` |
+| N:1 | systemuser | `dvlp_systemuser_sbinvoice_submittedby` |
+| N:1 | systemuser | `dvlp_systemuser_sbinvoice_approvedby` |
+| 1:N | dvlp_ksefselfbillinglineitem | `dvlp_ksefselfbillinginvoice_lineitems` |
+
+---
+
+### dvlp_ksefselfbillinglineitem
+
+**Display Name:** KSeF SB Line Item / Pozycja samofaktury KSeF  
+**Logical Name:** `dvlp_ksefselfbillinglineitem`  
+**Collection Name:** `dvlp_ksefselfbillinglineitems`  
+**Ownership Type:** Organization  
+**Description:** Individual line items for self-billing invoices
+
+#### Attributes
+
+| Logical Name | Display Name | Type | Required | Description |
+|-------------|-------------|------|----------|-------------|
+| `dvlp_ksefselfbillinglineitemid` | ID | Uniqueidentifier | Auto | Primary key |
+| `dvlp_name` | Description | String(500) | ✅ | Line item description (Primary Name) |
+| `dvlp_quantity` | Quantity | Decimal(6,4) | ✅ | Item quantity |
+| `dvlp_unit` | Unit | String(20) | ❌ | Unit of measure |
+| `dvlp_unitprice` | Unit Price | Decimal(9,2) | ✅ | Unit price (net) |
+| `dvlp_vatrate` | VAT Rate | String(10) | ❌ | VAT rate code (23, 8, 5, 0, zw, np) |
+| `dvlp_netamount` | Net Amount | Decimal(9,2) | ❌ | Calculated net amount |
+| `dvlp_vatamount` | VAT Amount | Decimal(9,2) | ❌ | Calculated VAT amount |
+| `dvlp_grossamount` | Gross Amount | Decimal(9,2) | ❌ | Calculated gross amount |
+| `dvlp_sortorder` | Sort Order | Integer | ❌ | Display position |
+| `dvlp_sbinvoiceid` | SB Invoice | Lookup (dvlp_ksefselfbillinginvoice) | ✅ | Parent invoice |
+| `dvlp_templateid` | Template | Lookup (dvlp_ksefselfbillingtemplate) | ❌ | Source template |
+| `createdon` | Created On | DateTime | Auto | Record creation date |
+| `modifiedon` | Modified On | DateTime | Auto | Record last modified date |
+
+#### Relationships
+
+| Type | Related Table | Relationship Name |
+|------|---------------|-------------------|
+| N:1 | dvlp_ksefselfbillinginvoice | `dvlp_ksefselfbillinginvoice_lineitems` |
+| N:1 | dvlp_ksefselfbillingtemplate | `dvlp_ksefselfbillingtemplate_lineitems` |
 
 ---
 
@@ -971,6 +1229,60 @@ This data is used to build context in AI prompts (few-shot learning).
 
 ---
 
+### dvlp_supplierstatus
+
+**Display Name:** Supplier Status  
+**Type:** Global OptionSet
+
+| Value | Label (EN) | Label (PL) | Description |
+|-------|-----------|-----------|-------------|
+| 100000001 | Active | Aktywny | Supplier is active |
+| 100000002 | Inactive | Nieaktywny | Supplier is deactivated |
+| 100000003 | Blocked | Zablokowany | Supplier is blocked |
+
+---
+
+### dvlp_suppliersource
+
+**Display Name:** Supplier Source  
+**Type:** Global OptionSet
+
+| Value | Label (EN) | Label (PL) | Description |
+|-------|-----------|-----------|-------------|
+| 100000001 | KSeF Sync | Synchronizacja KSeF | Auto-created during KSeF invoice sync |
+| 100000002 | Manual | Ręczne | Manually added |
+| 100000003 | VAT API | API VAT | Created from MF VAT payer verification |
+
+---
+
+### dvlp_sbagreementstatus
+
+**Display Name:** SB Agreement Status  
+**Type:** Global OptionSet
+
+| Value | Label (EN) | Label (PL) | Description |
+|-------|-----------|-----------|-------------|
+| 100000001 | Active | Aktywna | Agreement is currently valid |
+| 100000002 | Expired | Wygasła | Agreement has passed its validity end date |
+| 100000003 | Terminated | Rozwiązana | Agreement was manually terminated |
+
+---
+
+### dvlp_selfbillingstatus
+
+**Display Name:** Self-Billing Status  
+**Type:** Global OptionSet
+
+| Value | Label (EN) | Label (PL) | Color | Description |
+|-------|-----------|-----------|-------|-------------|
+| 100000001 | Draft | Szkic | Gray | SB invoice created, not yet submitted |
+| 100000002 | Pending Seller | Oczekuje na sprzedawcę | Yellow | Sent to seller for approval |
+| 100000003 | Seller Approved | Zaakceptowana | Green | Seller approved the SB invoice |
+| 100000004 | Seller Rejected | Odrzucona | Red | Seller rejected the SB invoice |
+| 100000005 | Sent to KSeF | Wysłana do KSeF | Blue | SB invoice submitted to KSeF |
+
+---
+
 ## Relationships
 
 ### Relationship Diagram
@@ -982,12 +1294,25 @@ graph TD
     Setting -->|1:N| Invoice1["dvlp_ksefinvoice<br/>(via dvlp_ksefsettingid)"]
     Setting -->|1:N| MpkCenter["dvlp_ksefmpkcenter"]
     Setting -->|1:N| Notification["dvlp_ksefnotification"]
+    Setting -->|1:N| Supplier["dvlp_ksefsupplier"]
+    Setting -->|1:N| SbAgree["dvlp_ksefsbagrement"]
+    Setting -->|1:N| SbTmpl["dvlp_ksefselfbillingtemplate"]
+    Setting -->|1:N| SbInv["dvlp_ksefselfbillinginvoice"]
+    Supplier -->|1:N| SbInv
+    SbAgree -->|1:N| SbInv
+    SbInv -->|1:N| SbLineItem["dvlp_ksefselfbillinglineitem"]
+    SbInv -->|0..1| Invoice1
+    Supplier -->|0..1| SystemUser["systemuser (SB Contact)"]
     Session -->|1:N| Invoice2["dvlp_ksefinvoice<br/>(via dvlp_ksefsessionid)"]
     Invoice1 -->|1:N| Feedback["dvlp_aifeedback<br/>(via dvlp_invoiceid)"]
     Invoice1 -->|1:N| Notification
     MpkCenter -->|1:N| Approver["dvlp_ksefmpkapprover"]
     MpkCenter -->|1:N| Invoice1
     MpkCenter -->|1:N| Notification
+    Supplier -->|1:N| SbAgree
+    Supplier -->|1:N| SbTmpl
+    Supplier -->|1:N| Invoice1
+    SbAgree -->|1:N| Invoice1
     SystemUser["systemuser"] -->|1:N| Approver
     SystemUser -->|1:N| Notification
 ```
@@ -1426,6 +1751,9 @@ As specified for each table.
 | 1.2.0 | 2026-01 | Simplified structure: 22 columns instead of 50+, Decimal instead of Currency, MPK/Category as OptionSet |
 | 1.3.0 | 2026-02 | Merged AI field specification: dvlp_aimpksuggestion, dvlp_aicategorysuggestion, dvlp_aidescription, dvlp_airationale, dvlp_aiconfidence, dvlp_aiprocessedat + dvlp_aifeedback table + detailed dvlp_costcenter + deployment instructions |
 | 1.4.0 | 2026-03 | Added MPK Center entity (dvlp_ksefmpkcenter), MPK Approver (dvlp_ksefmpkapprover), Notification (dvlp_ksefnotification). Invoice approval workflow fields (dvlp_approvalstatus, dvlp_approvedby, dvlp_approvedbyoid, dvlp_approvedat, dvlp_approvalcomment, dvlp_mpkcenterid). New OptionSets: dvlp_approvalstatus, dvlp_budgetperiod, dvlp_notificationtype |
+| 1.5.0 | 2026-04 | Added Self-Billing entities: dvlp_ksefsupplier, dvlp_ksefsbagrement, dvlp_ksefselfbillingtemplate. Invoice self-billing fields (dvlp_isselfbilling, dvlp_selfbillingstatus, dvlp_sellerrejectionreason, dvlp_selfbillingsentdate, dvlp_supplierid, dvlp_sbagreementid). New OptionSets: dvlp_supplierstatus, dvlp_suppliersource, dvlp_sbagreementstatus, dvlp_selfbillingstatus. Solution version bump to 1.0.0.9 |
+| 1.6.0 | 2026-04 | Migrated SB invoices to dedicated tables: dvlp_ksefselfbillinginvoice + dvlp_ksefselfbillinglineitem. Removed SB fields from dvlp_ksefinvoice. Line items as separate records instead of JSON. |
+| 1.7.0 | 2026-03 | SB Approval workflow: added dvlp_sbcontactuserid (systemuser lookup) to dvlp_ksefsupplier. Added audit columns to dvlp_ksefselfbillinginvoice: dvlp_submittedbyuserid (systemuser lookup), dvlp_submittedat (DateTime), dvlp_approvedbyuserid (systemuser lookup), dvlp_approvedat (DateTime). New endpoint GET /api/self-billing/approvals/pending. Submit/approve/reject endpoints now enforce designated approver authorization. |
 
 ---
 
@@ -1438,6 +1766,6 @@ As specified for each table.
 
 ---
 
-**Last updated:** 2026-03-10  
-**Version:** 1.4  
+**Last updated:** 2026-03-15  
+**Version:** 1.7  
 **Maintainer:** dvlp-dev team

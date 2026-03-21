@@ -64,6 +64,7 @@ export const apiScopes = {
 export const groupConfig = {
   admin: import.meta.env.VITE_ADMIN_GROUP || '',
   user: import.meta.env.VITE_USER_GROUP || '',
+  approver: import.meta.env.VITE_APPROVER_GROUP || '',
 }
 
 // ── Singleton MSAL instance ─────────────────────────────────────────

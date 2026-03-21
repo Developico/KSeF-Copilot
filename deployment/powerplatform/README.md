@@ -34,12 +34,12 @@ Plik solucji (`.zip`) zawiera:
 
 | Komponent | Opis |
 |-----------|------|
-| **Tabele Dataverse** | 7 tabel z prefixem `dvlp_ksef` (w tym MPK, approvers, notifications) |
+| **Tabele Dataverse** | 13 tabel z prefixem `dvlp_ksef` (faktury, ustawienia, sesje, logi sync, dostawcy, MPK, akceptanci MPK, notyfikacje, umowy SB, szablony SB, faktury SB, pozycje SB, AI feedback) |
 | **Model-Driven App (MDA)** | Aplikacja administracyjna do zarządzania fakturami i ustawieniami |
 | **Code Component (PCF)** | Aplikacja frontendowa (React/Vite) osadzona w Power Apps |
 | **Custom Connector** | Konektor do API Azure Functions (KSeF Integration) |
 | **Procesy Power Automate** | Przepływy automatyzacji (sync, kategoryzacja AI, alerty) |
-| **Security Roles** | Role bezpieczeństwa: KSeF Admin, KSeF Reader |
+| **Security Roles** | Role bezpieczeństwa: KSeF Admin, KSeF Reader, KSeF Approver |
 | **Option Sets** | Zestawy opcji: status faktury, kierunek, środowisko KSeF, status sesji |
 
 ---
@@ -104,6 +104,181 @@ Plik solucji (`.zip`) zawiera:
 | `dvlp_invoices_count` | Integer | Liczba faktur |
 | `dvlp_error_message` | String | Komunikat błędu |
 | `dvlp_setting` | Lookup | FK → `dvlp_ksefsetting` |
+
+### dvlp_ksefsupplier (Dostawcy)
+
+| Kolumna | Typ | Opis |
+|---------|-----|------|
+| `dvlp_ksefsupplierid` | Uniqueidentifier | PK |
+| `dvlp_name` | String | Nazwa dostawcy |
+| `dvlp_shortname` | String | Nazwa skrócona |
+| `dvlp_nip` | String | NIP dostawcy |
+| `dvlp_regon` | String | REGON |
+| `dvlp_krs` | String | KRS |
+| `dvlp_street` | String | Ulica |
+| `dvlp_city` | String | Miasto |
+| `dvlp_postalcode` | String | Kod pocztowy |
+| `dvlp_country` | String | Kraj |
+| `dvlp_email` | String | Email kontaktowy |
+| `dvlp_phone` | String | Telefon |
+| `dvlp_bankaccount` | String | Numer konta bankowego |
+| `dvlp_vatstatus` | String | Status VAT (Biała Lista) |
+| `dvlp_vatstatusdate` | DateTime | Data weryfikacji VAT |
+| `dvlp_paymenttermsdays` | Integer | Termin płatności (dni) |
+| `dvlp_defaultcategory` | String | Domyślna kategoria |
+| `dvlp_notes` | String | Notatki |
+| `dvlp_tags` | String | Tagi |
+| `dvlp_hasselfbillingagreement` | Boolean | Czy ma aktywną umowę SB |
+| `dvlp_selfbillingagreementdate` | DateTime | Data umowy SB |
+| `dvlp_selfbillingagreementexpiry` | DateTime | Data wygaśnięcia umowy SB |
+| `dvlp_firstinvoicedate` | DateTime | Data pierwszej faktury |
+| `dvlp_lastinvoicedate` | DateTime | Data ostatniej faktury |
+| `dvlp_totalinvoicecount` | Integer | Łączna liczba faktur |
+| `dvlp_totalgrossamount` | Currency | Łączna kwota brutto |
+| `dvlp_status` | OptionSet | Status (Active/Inactive/Blocked) |
+| `dvlp_source` | OptionSet | Źródło (Manual/VAT/Import) |
+| `dvlp_setting` | Lookup | FK → `dvlp_ksefsetting` |
+| `dvlp_defaultmpkid` | Lookup | FK → `dvlp_ksefmpkcenter` |
+
+### dvlp_ksefsbagrement (Umowy samofakturowania)
+
+| Kolumna | Typ | Opis |
+|---------|-----|------|
+| `dvlp_ksefsbagrement_id` | Uniqueidentifier | PK |
+| `dvlp_name` | String | Nazwa/numer umowy |
+| `dvlp_agreementdate` | DateTime | Data zawarcia umowy |
+| `dvlp_validfrom` | DateTime | Obowiązuje od |
+| `dvlp_validto` | DateTime | Obowiązuje do |
+| `dvlp_renewaldate` | DateTime | Data odnowienia |
+| `dvlp_approvalprocedure` | String | Procedura akceptacji |
+| `dvlp_status` | OptionSet | Status (Active/Terminated/Expired) |
+| `dvlp_credentialreference` | String | Referencja poświadczenia |
+| `dvlp_notes` | String | Notatki |
+| `dvlp_hasdocument` | Boolean | Czy ma załączony dokument |
+| `dvlp_documentfilename` | String | Nazwa pliku dokumentu |
+| `dvlp_autoapprove` | Boolean | Auto-akceptacja — pomija akceptację dostawcy przy submit (domyślnie: false) |
+| `dvlp_supplierid` | Lookup | FK → `dvlp_ksefsupplier` |
+| `dvlp_setting` | Lookup | FK → `dvlp_ksefsetting` |
+
+### dvlp_ksefselfbillingtemplate (Szablony samofakturowania)
+
+| Kolumna | Typ | Opis |
+|---------|-----|------|
+| `dvlp_ksefselfbillingtemplateid` | Uniqueidentifier | PK |
+| `dvlp_name` | String | Nazwa szablonu |
+| `dvlp_description` | String | Opis |
+| `dvlp_itemdescription` | String | Opis pozycji faktury |
+| `dvlp_quantity` | Decimal | Ilość |
+| `dvlp_unit` | String | Jednostka miary |
+| `dvlp_unitprice` | Currency | Cena jednostkowa |
+| `dvlp_vatrate` | Integer | Stawka VAT (%) |
+| `dvlp_currency` | String | Waluta (PLN/EUR/USD) |
+| `dvlp_isactive` | Boolean | Czy aktywny |
+| `dvlp_sortorder` | Integer | Kolejność sortowania |
+| `dvlp_paymenttermsdays` | Integer | Termin płatności (dni) |
+| `dvlp_supplierid` | Lookup | FK → `dvlp_ksefsupplier` |
+| `dvlp_setting` | Lookup | FK → `dvlp_ksefsetting` |
+
+### dvlp_ksefmpkcenter (Centra kosztów MPK)
+
+| Kolumna | Typ | Opis |
+|---------|-----|------|
+| `dvlp_ksefmpkcenterid` | Uniqueidentifier | PK |
+| `dvlp_name` | String | Nazwa centrum kosztów |
+| `dvlp_description` | String | Opis |
+| `dvlp_isactive` | Boolean | Czy aktywne |
+| `dvlp_approvalrequired` | Boolean | Czy wymaga akceptacji |
+| `dvlp_approvalslahours` | Integer | SLA akceptacji (godziny) |
+| `dvlp_approvaleffectivefrom` | DateTime | Akceptacja obowiązuje od |
+| `dvlp_budgetamount` | Currency | Kwota budżetu |
+| `dvlp_budgetperiod` | String | Okres budżetowy |
+| `dvlp_budgetstartdate` | DateTime | Data rozpoczęcia budżetu |
+| `dvlp_settingid` | Lookup | FK → `dvlp_ksefsetting` |
+
+### dvlp_ksefmpkapprover (Akceptanci MPK)
+
+| Kolumna | Typ | Opis |
+|---------|-----|------|
+| `dvlp_ksefmpkapproverid` | Uniqueidentifier | PK |
+| `dvlp_name` | String | Nazwa (auto: user + MPK) |
+| `dvlp_mpkcenterid` | Lookup | FK → `dvlp_ksefmpkcenter` |
+| `dvlp_systemuserid` | Lookup | FK → `systemuser` |
+
+### dvlp_ksefnotification (Notyfikacje)
+
+| Kolumna | Typ | Opis |
+|---------|-----|------|
+| `dvlp_ksefnotificationid` | Uniqueidentifier | PK |
+| `dvlp_name` | String | Opis notyfikacji |
+| `dvlp_type` | OptionSet | Typ (approval_request, approved, rejected, itp.) |
+| `dvlp_message` | String | Treść wiadomości |
+| `dvlp_isread` | Boolean | Czy przeczytana |
+| `dvlp_isdismissed` | Boolean | Czy odrzucona |
+| `dvlp_recipientid` | Lookup | FK → `systemuser` |
+| `dvlp_invoiceid` | Lookup | FK → `dvlp_ksefinvoice` |
+| `dvlp_mpkcenterid` | Lookup | FK → `dvlp_ksefmpkcenter` |
+| `dvlp_settingid` | Lookup | FK → `dvlp_ksefsetting` |
+
+### dvlp_ksefselfbillinginvoice (Faktury samofakturowania)
+
+| Kolumna | Typ | Opis |
+|---------|-----|------|
+| `dvlp_ksefselfbillinginvoiceid` | Uniqueidentifier | PK |
+| `dvlp_name` | String | Numer faktury SB |
+| `dvlp_invoicedate` | DateTime | Data wystawienia |
+| `dvlp_duedate` | DateTime | Termin płatności |
+| `dvlp_netamount` | Currency | Kwota netto |
+| `dvlp_vatamount` | Currency | Kwota VAT |
+| `dvlp_grossamount` | Currency | Kwota brutto |
+| `dvlp_currency` | String | Waluta |
+| `dvlp_status` | OptionSet | Status (Draft/Pending/Approved/Rejected/Sent) |
+| `dvlp_sellerrejectionreason` | String | Powód odrzucenia przez dostawcę |
+| `dvlp_sentdate` | DateTime | Data wysłania do KSeF |
+| `dvlp_ksefreferencenumber` | String | Numer referencyjny KSeF |
+| `dvlp_submittedbyuserid` | Lookup | FK → `systemuser` (kto złożył) |
+| `dvlp_submittedat` | DateTime | Data złożenia |
+| `dvlp_approvedbyuserid` | Lookup | FK → `systemuser` (kto zaakceptował) |
+| `dvlp_approvedat` | DateTime | Data akceptacji |
+| `dvlp_supplierid` | Lookup | FK → `dvlp_ksefsupplier` |
+| `dvlp_sbagreementid` | Lookup | FK → `dvlp_ksefsbagrement` |
+| `dvlp_mpkcenterid` | Lookup | FK → `dvlp_ksefmpkcenter` |
+| `dvlp_kseFinvoiceid` | Lookup | FK → `dvlp_ksefinvoice` (po wysłaniu) |
+| `dvlp_settingid` | Lookup | FK → `dvlp_ksefsetting` |
+
+### dvlp_ksefselfbillinglineitem (Pozycje faktur SB)
+
+| Kolumna | Typ | Opis |
+|---------|-----|------|
+| `dvlp_ksefselfbillinglineitemid` | Uniqueidentifier | PK |
+| `dvlp_name` | String | Opis pozycji |
+| `dvlp_quantity` | Decimal | Ilość |
+| `dvlp_unit` | String | Jednostka miary |
+| `dvlp_unitprice` | Currency | Cena jednostkowa |
+| `dvlp_vatrate` | Integer | Stawka VAT (%) |
+| `dvlp_netamount` | Currency | Kwota netto |
+| `dvlp_vatamount` | Currency | Kwota VAT |
+| `dvlp_grossamount` | Currency | Kwota brutto |
+| `dvlp_paymenttermsdays` | Integer | Termin płatności (dni) |
+| `dvlp_sortorder` | Integer | Kolejność sortowania |
+| `dvlp_sbinvoiceid` | Lookup | FK → `dvlp_ksefselfbillinginvoice` |
+| `dvlp_templateid` | Lookup | FK → `dvlp_ksefselfbillingtemplate` |
+
+### dvlp_ksefaifeedback (Feedback AI)
+
+| Kolumna | Typ | Opis |
+|---------|-----|------|
+| `dvlp_ksefaifeedbackid` | Uniqueidentifier | PK |
+| `dvlp_invoiceid` | Lookup | FK → `dvlp_ksefinvoice` |
+| `dvlp_tenantnip` | String | NIP firmy |
+| `dvlp_suppliernip` | String | NIP dostawcy |
+| `dvlp_suppliername` | String | Nazwa dostawcy |
+| `dvlp_invoicedescription` | String | Opis faktury |
+| `dvlp_aimpksuggestion` | String | Sugestia AI — MPK |
+| `dvlp_aicategorysuggestion` | String | Sugestia AI — kategoria |
+| `dvlp_aiconfidence` | Decimal | Pewność AI (0–1) |
+| `dvlp_usermpk` | String | MPK wybrane przez użytkownika |
+| `dvlp_usercategory` | String | Kategoria wybrana przez użytkownika |
+| `dvlp_feedbacktype` | OptionSet | Typ (Applied/Modified/Rejected) |
 
 ---
 

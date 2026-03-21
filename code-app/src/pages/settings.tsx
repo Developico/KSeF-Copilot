@@ -36,6 +36,7 @@ import {
 } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
 import { MpkCentersTab } from '@/components/settings/mpk-centers-tab'
+import { ApproversTab } from '@/components/settings/approvers-tab'
 import type { KsefSetting, ServiceStatus } from '@/lib/types'
 
 // ── Token status badge ───────────────────────────────────────────
@@ -85,12 +86,15 @@ export function SettingsPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="companies">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="companies">
             {intl.formatMessage({ id: 'settings.companies' })}
           </TabsTrigger>
           <TabsTrigger value="costCenters">
             {intl.formatMessage({ id: 'settings.costCenters' })}
+          </TabsTrigger>
+          <TabsTrigger value="approvers">
+            {intl.formatMessage({ id: 'settings.approversOverview.tabLabel' })}
           </TabsTrigger>
           <TabsTrigger value="testData">
             {intl.formatMessage({ id: 'settings.testData' })}
@@ -106,6 +110,10 @@ export function SettingsPage() {
 
         <TabsContent value="costCenters" className="mt-4">
           <MpkCentersTab />
+        </TabsContent>
+
+        <TabsContent value="approvers" className="mt-4">
+          <ApproversTab />
         </TabsContent>
 
         <TabsContent value="testData" className="mt-4">
@@ -261,6 +269,7 @@ function CompaniesTab() {
                   value={formEnv}
                   onChange={(e) => setFormEnv(e.target.value as typeof formEnv)}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  aria-label={intl.formatMessage({ id: 'settings.environment' })}
                 >
                   <option value="production">{intl.formatMessage({ id: 'settings.production' })}</option>
                   <option value="test">{intl.formatMessage({ id: 'settings.test' })}</option>
@@ -553,6 +562,7 @@ function TestDataTab({ nip, companyId }: { nip?: string; companyId?: string }) {
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  aria-label={intl.formatMessage({ id: 'sync.dateFrom' })}
                 />
               </div>
               <div>
@@ -564,6 +574,7 @@ function TestDataTab({ nip, companyId }: { nip?: string; companyId?: string }) {
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  aria-label={intl.formatMessage({ id: 'sync.dateTo' })}
                 />
               </div>
             </div>
@@ -740,7 +751,9 @@ function SystemStatusTab({ environment }: { environment?: string }) {
             {/* Overall status */}
             <div className="flex items-center gap-3">
               <ServiceStatusDot status={health.status} />
-              <span className="font-medium capitalize">{health.status}</span>
+              <span className="font-medium">
+                {intl.formatMessage({ id: `settings.status${health.status.charAt(0).toUpperCase() + health.status.slice(1)}` })}
+              </span>
               <span className="text-xs text-muted-foreground">
                 {new Date(health.timestamp).toLocaleString('pl-PL')}
               </span>
@@ -750,15 +763,21 @@ function SystemStatusTab({ environment }: { environment?: string }) {
             <div className="grid grid-cols-3 gap-3">
               <div className="rounded-md border p-3 text-center">
                 <p className="text-2xl font-bold text-green-600">{health.summary.healthy}</p>
-                <p className="text-xs text-muted-foreground">Healthy</p>
+                <p className="text-xs text-muted-foreground">
+                  {intl.formatMessage({ id: 'settings.statusHealthy' })}
+                </p>
               </div>
               <div className="rounded-md border p-3 text-center">
                 <p className="text-2xl font-bold text-amber-600">{health.summary.degraded}</p>
-                <p className="text-xs text-muted-foreground">Degraded</p>
+                <p className="text-xs text-muted-foreground">
+                  {intl.formatMessage({ id: 'settings.statusDegraded' })}
+                </p>
               </div>
               <div className="rounded-md border p-3 text-center">
                 <p className="text-2xl font-bold text-red-600">{health.summary.unhealthy}</p>
-                <p className="text-xs text-muted-foreground">Unhealthy</p>
+                <p className="text-xs text-muted-foreground">
+                  {intl.formatMessage({ id: 'settings.statusUnhealthy' })}
+                </p>
               </div>
             </div>
 
@@ -789,9 +808,9 @@ function SystemStatusTab({ environment }: { environment?: string }) {
                             ? 'secondary'
                             : 'destructive'
                       }
-                      className="text-xs capitalize"
+                      className="text-xs"
                     >
-                      {svc.status}
+                      {intl.formatMessage({ id: `settings.status${svc.status.charAt(0).toUpperCase() + svc.status.slice(1)}` })}
                     </Badge>
                   </div>
                 </div>

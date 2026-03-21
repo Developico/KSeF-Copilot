@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
+import { formatCurrency as formatCurrencyUtil } from '@/lib/format'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -91,10 +92,7 @@ export default function ReportsPage() {
 
   // Locale-aware formatting
   const formatCurrency = useCallback((amount: number, currency: string = 'PLN') => {
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: currency,
-    }).format(amount)
+    return formatCurrencyUtil(amount, currency, locale)
   }, [locale])
 
   // Calculate available years from invoices

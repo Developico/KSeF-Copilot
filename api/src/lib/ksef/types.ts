@@ -123,6 +123,12 @@ export interface ParsedInvoice {
   correctedInvoiceKsefRef?: string
   correctionPeriodFrom?: string
   correctionPeriodTo?: string
+  // Self-billing fields
+  isSelfBilling?: boolean
+  issuer?: {
+    nip: string
+    name: string
+  }
 }
 
 /**
@@ -226,6 +232,7 @@ export interface KsefInvoice {
   invoiceNumber: string
   invoiceDate: string
   dueDate?: string
+  isSelfBilling?: boolean
   seller: {
     nip: string
     name: string
@@ -249,6 +256,11 @@ export interface KsefInvoice {
       city: string
       country: string
     }
+  }
+  /** Podmiot3 — the issuer (when different from seller, e.g., self-billing) */
+  issuer?: {
+    nip: string
+    name: string
   }
   items: KsefInvoiceItem[]
   currency: string
@@ -310,7 +322,7 @@ export interface KsefInvoiceStatusResponse {
  * Query invoices request
  */
 export interface KsefQueryInvoicesRequest {
-  subjectType?: 'subject1' | 'subject2' // subject1 = seller (outgoing), subject2 = buyer (incoming)
+  subjectType?: 'subject1' | 'subject2' | 'subject3' // subject1 = seller, subject2 = buyer, subject3 = issuer
   type?: 'incremental' | 'range'
   dateFrom?: string
   dateTo?: string

@@ -77,10 +77,7 @@ function formatMonth(month: string): string {
 }
 
 function formatCurrencyShort(amount: number): string {
-  return new Intl.NumberFormat('pl-PL', {
-    style: 'currency', currency: 'PLN',
-    minimumFractionDigits: 0, maximumFractionDigits: 0,
-  }).format(amount)
+  return formatCurrencyCompact(amount)
 }
 
 // ─── Component ───────────────────────────────────────────────────

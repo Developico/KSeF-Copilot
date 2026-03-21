@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 env:
-  NODE_VERSION: '20.x'
+  NODE_VERSION: '22.x'
 
 jobs:
   test-api:
@@ -78,6 +78,29 @@ jobs:
           scan-type: 'fs'
           scan-ref: '.'
           severity: 'CRITICAL,HIGH'
+
+  docs-lint:
+    name: Documentation Link Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Check markdown links
+        run: |
+          npx markdown-link-check --config .markdown-link-check.json \
+            docs/README.md \
+            docs/pl/*.md \
+            docs/en/*.md \
+            README.md \
+            README.en.md \
+            CHANGELOG.md
           format: 'sarif'
           output: 'trivy-results.sarif'
           

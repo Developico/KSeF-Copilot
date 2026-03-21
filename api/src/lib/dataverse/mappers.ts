@@ -11,6 +11,16 @@ import type { DvInvoice, DvSetting, DvSession, DvSyncLog } from '../../types/dat
 import type { Invoice, PaymentStatus as AppPaymentStatus, MPK, InvoiceSource, Currency, InvoiceTypeEnum, ApprovalStatus } from '../../types/invoice'
 
 // ============================================================
+// Helpers
+// ============================================================
+
+/** Normalize a DV date or datetime string to YYYY-MM-DD (DateOnly). */
+function toDateOnly(value: string | null | undefined): string | undefined {
+  if (!value) return undefined
+  return value.substring(0, 10)
+}
+
+// ============================================================
 // Invoice Mappers
 // ============================================================
 
@@ -511,9 +521,10 @@ export function mapDvMpkCenterToApp(raw: DvMpkCenter): MpkCenter {
     isActive: (raw[s.isActive as keyof DvMpkCenter] as boolean) ?? true,
     approvalRequired: (raw[s.approvalRequired as keyof DvMpkCenter] as boolean) ?? false,
     approvalSlaHours: raw[s.approvalSlaHours as keyof DvMpkCenter] as number | undefined,
+    approvalEffectiveFrom: toDateOnly(raw[s.approvalEffectiveFrom as keyof DvMpkCenter] as string | undefined),
     budgetAmount: raw[s.budgetAmount as keyof DvMpkCenter] as number | undefined,
     budgetPeriod: mapDvBudgetPeriodToApp(raw[s.budgetPeriod as keyof DvMpkCenter] as number | undefined),
-    budgetStartDate: raw[s.budgetStartDate as keyof DvMpkCenter] as string | undefined,
+    budgetStartDate: toDateOnly(raw[s.budgetStartDate as keyof DvMpkCenter] as string | undefined),
     createdOn: raw[s.createdOn as keyof DvMpkCenter] as string,
     modifiedOn: raw[s.modifiedOn as keyof DvMpkCenter] as string,
   }
@@ -530,6 +541,7 @@ export function mapAppMpkCenterToDv(
   if (app.isActive !== undefined) payload[s.isActive] = app.isActive
   if (app.approvalRequired !== undefined) payload[s.approvalRequired] = app.approvalRequired
   if (app.approvalSlaHours !== undefined) payload[s.approvalSlaHours] = app.approvalSlaHours ?? null
+  if (app.approvalEffectiveFrom !== undefined) payload[s.approvalEffectiveFrom] = app.approvalEffectiveFrom ?? null
   if (app.budgetAmount !== undefined) payload[s.budgetAmount] = app.budgetAmount ?? null
   if (app.budgetPeriod !== undefined) payload[s.budgetPeriod] = app.budgetPeriod ? mapAppBudgetPeriodToDv(app.budgetPeriod) : null
   if (app.budgetStartDate !== undefined) payload[s.budgetStartDate] = app.budgetStartDate ?? null

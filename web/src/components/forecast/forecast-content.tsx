@@ -74,6 +74,7 @@ import type {
   AnomalyType,
 } from '@/lib/api'
 import { Link } from '@/i18n/navigation'
+import { formatCurrencyCompact } from '@/lib/format'
 
 // ============================================================================
 // Constants
@@ -117,12 +118,7 @@ const CHART_COLORS = [
 // ============================================================================
 
 function formatAmount(amount: number, locale: string): string {
-  return new Intl.NumberFormat(locale === 'pl' ? 'pl-PL' : 'en-US', {
-    style: 'currency',
-    currency: 'PLN',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
+  return formatCurrencyCompact(amount, 'PLN', locale === 'pl' ? 'pl-PL' : 'en-US')
 }
 
 function formatMonth(month: string, locale: string): string {

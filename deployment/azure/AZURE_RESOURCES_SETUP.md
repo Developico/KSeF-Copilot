@@ -374,7 +374,7 @@ Alternatywnie, w `staticwebapp.config.json`:
 
 ### Checklist Azure Functions
 
-- [ ] Function App utworzony z Node.js 20 LTS
+- [ ] Function App utworzony z Node.js 22 LTS
 - [ ] System-assigned Managed Identity = **On**
 - [ ] Application Insights włączony
 - [ ] Key Vault References skonfigurowane (zielone ikony ✅)

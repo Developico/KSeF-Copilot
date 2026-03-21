@@ -51,7 +51,7 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 - [ ] PowerShell 7+ → wersja: __________
 - [ ] Azure CLI 2.60+ → wersja: __________
 - [ ] Azure Functions Core Tools 4.x → wersja: __________
-- [ ] Node.js 20 LTS → wersja: __________
+- [ ] Node.js 22 LTS → wersja: __________
 - [ ] npm 10+ → wersja: __________
 - [ ] Power Platform CLI → wersja: __________
 - [ ] Git → wersja: __________
@@ -118,6 +118,9 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
   - [ ] `dvlp_ksefsetting`
   - [ ] `dvlp_ksefsession`
   - [ ] `dvlp_ksefsynclog`
+  - [ ] `dvlp_ksefsupplier`
+  - [ ] `dvlp_ksefsbagrement`
+  - [ ] `dvlp_ksefselfbillingtemplate`
 - [ ] MDA App widoczna w Apps
 - [ ] Custom Connector widoczny w Data → Custom connectors
 - [ ] Cloud Flows widoczne
@@ -205,6 +208,9 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 - [ ] `DATAVERSE_ENTITY_SETTING` = `dvlp_ksefsetting`
 - [ ] `DATAVERSE_ENTITY_SESSION` = `dvlp_ksefsession`
 - [ ] `DATAVERSE_ENTITY_SYNCLOG` = `dvlp_ksefsynclog`
+- [ ] `DATAVERSE_ENTITY_SUPPLIER` = `dvlp_ksefsupplier`
+- [ ] `DATAVERSE_ENTITY_SB_AGREEMENT` = `dvlp_ksefsbagrement`
+- [ ] `DATAVERSE_ENTITY_SB_TEMPLATE` = `dvlp_ksefselfbillingtemplate`
 - [ ] `AZURE_KEYVAULT_URL` — ustawione
 - [ ] `KSEF_ENVIRONMENT` — ustawione
 - [ ] `KSEF_NIP` — ustawione
@@ -391,6 +397,15 @@ Centralna tabela — uzupełniaj w miarę uzyskiwania wartości:
 - [ ] Logowanie Entra ID działa
 - [ ] Dashboard wyświetla dane
 - [ ] Filtrowanie/sortowanie działa
+
+### Samofakturowanie (Self-Billing)
+
+- [ ] Strona dostawców — lista dostawców widoczna
+- [ ] Szczegóły dostawcy — karta umowy SB, szablony
+- [ ] Strona samofakturowania — lista faktur SB
+- [ ] Generowanie faktur — podgląd i potwierdzenie
+- [ ] Import z pliku — pobieranie szablonu, upload, walidacja
+- [ ] Dashboard — kafelki KPI samofakturowania widoczne
 
 ### Power Platform
 

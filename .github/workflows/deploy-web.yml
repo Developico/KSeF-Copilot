@@ -70,6 +70,7 @@ jobs:
           NEXT_PUBLIC_API_SCOPE: ${{ secrets.NEXT_PUBLIC_API_SCOPE }}
           NEXT_PUBLIC_ADMIN_GROUP: ${{ secrets.NEXT_PUBLIC_ADMIN_GROUP }}
           NEXT_PUBLIC_USER_GROUP: ${{ secrets.NEXT_PUBLIC_USER_GROUP }}
+          NEXT_PUBLIC_APPROVER_GROUP: ${{ secrets.NEXT_PUBLIC_APPROVER_GROUP }}
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3

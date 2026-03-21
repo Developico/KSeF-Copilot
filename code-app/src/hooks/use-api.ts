@@ -86,6 +86,29 @@ import type {
   ApproverPerformanceReport,
   ProcessingPipelineReport,
   AppNotification,
+  // Self-Billing
+  Supplier,
+  SupplierListParams,
+  SupplierListResponse,
+  SupplierDetailStats,
+  SbAgreement,
+  SbAgreementListResponse,
+  SbTemplate,
+  SbTemplateListResponse,
+  SelfBillingInvoice,
+  SelfBillingInvoiceListParams,
+  SelfBillingInvoiceListResponse,
+  SelfBillingGenerateRequest,
+  SelfBillingGenerateResponse,
+  SelfBillingConfirmRequest,
+  SelfBillingBatchResult,
+  BatchActionResult,
+  SelfBillingImportResult,
+  SelfBillingImportConfirmResult,
+  SbImportEnrichedRow,
+  SupplierImportResult,
+  SupplierImportConfirmResult,
+  SupplierImportEnrichedRow,
 } from '@/lib/types'
 
 // ─── Health ──────────────────────────────────────────────────────
@@ -435,6 +458,84 @@ export function useCreateManualInvoice(
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data) => api.invoices.createManual(data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['invoices'] })
+    },
+    ...options,
+  })
+}
+
+// ─── Invoice Batch Hooks ─────────────────────────────────────────
+
+export function useBatchMarkPaidInvoices(
+  options?: UseMutationOptions<BatchActionResult, Error, string[]>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (invoiceIds) => api.invoices.batchMarkPaid(invoiceIds),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['invoices'] })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+    ...options,
+  })
+}
+
+export function useBatchMarkUnpaidInvoices(
+  options?: UseMutationOptions<BatchActionResult, Error, string[]>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (invoiceIds) => api.invoices.batchMarkUnpaid(invoiceIds),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['invoices'] })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+    ...options,
+  })
+}
+
+export function useBatchApproveInvoices(
+  options?: UseMutationOptions<BatchActionResult, Error, string[]>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (invoiceIds) => api.invoices.batchApprove(invoiceIds),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['invoices'] })
+      void qc.invalidateQueries({ queryKey: ['approvals'] })
+      void qc.invalidateQueries({ queryKey: ['notifications'] })
+    },
+    ...options,
+  })
+}
+
+export function useBatchRejectInvoices(
+  options?: UseMutationOptions<
+    BatchActionResult,
+    Error,
+    { invoiceIds: string[]; comment: string }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ invoiceIds, comment }) =>
+      api.invoices.batchReject(invoiceIds, comment),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['invoices'] })
+      void qc.invalidateQueries({ queryKey: ['approvals'] })
+      void qc.invalidateQueries({ queryKey: ['notifications'] })
+    },
+    ...options,
+  })
+}
+
+export function useBatchDeleteInvoices(
+  options?: UseMutationOptions<BatchActionResult, Error, string[]>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (invoiceIds) => api.invoices.batchDelete(invoiceIds),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['invoices'] })
     },
@@ -1334,6 +1435,44 @@ export function useDeactivateMpkCenter(
   })
 }
 
+export function useApplyApproval(
+  options?: UseMutationOptions<
+    { updated: number; skipped: number; autoApproved: number; total: number; dryRun: boolean },
+    Error,
+    { id: string; scope: 'unprocessed' | 'decided' | 'all'; dryRun?: boolean }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, scope, dryRun }) => api.mpkCenters.applyApproval(id, scope, dryRun),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['mpk-centers'] })
+      void qc.invalidateQueries({ queryKey: ['invoices'] })
+      void qc.invalidateQueries({ queryKey: ['approvals'] })
+    },
+    ...options,
+  })
+}
+
+export function useRevokeApproval(
+  options?: UseMutationOptions<
+    { updated: number; skipped: number; autoApproved: number; total: number; dryRun: boolean },
+    Error,
+    { id: string; scope: 'pending' | 'decided' | 'all'; dryRun?: boolean }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, scope, dryRun }) => api.mpkCenters.revokeApproval(id, scope, dryRun),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['mpk-centers'] })
+      void qc.invalidateQueries({ queryKey: ['invoices'] })
+      void qc.invalidateQueries({ queryKey: ['approvals'] })
+    },
+    ...options,
+  })
+}
+
 export function useMpkApprovers(
   mpkCenterId: string,
   options?: Partial<
@@ -1389,6 +1528,16 @@ export function useDvUsers(
     queryFn: () => api.users.list(settingId),
     enabled: !!settingId,
     ...options,
+  })
+}
+
+// ─── Approver Overview ───────────────────────────────────────────
+
+export function useApproverOverview(settingId?: string) {
+  return useQuery({
+    queryKey: queryKeys.approverOverview(settingId!),
+    queryFn: () => api.approverOverview.get(settingId!),
+    enabled: !!settingId,
   })
 }
 
@@ -1567,6 +1716,20 @@ export function useDismissNotification(
   })
 }
 
+export function useMarkAllNotificationsRead(
+  settingId: string,
+  options?: UseMutationOptions<{ success: boolean; marked: number }, Error, void>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.notifications.markAllRead(settingId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['notifications'] })
+    },
+    ...options,
+  })
+}
+
 // ─── Reports ─────────────────────────────────────────────────────
 
 export function useReportBudgetUtilization(
@@ -1623,3 +1786,793 @@ export function useReportInvoiceProcessing(
     ...options,
   })
 }
+
+// ─── Suppliers ───────────────────────────────────────────────────
+
+export function useSuppliers(
+  params?: SupplierListParams,
+  options?: Partial<UseQueryOptions<SupplierListResponse>>
+) {
+  return useQuery({
+    queryKey: queryKeys.suppliers(params),
+    queryFn: () => api.suppliers.list(params),
+    ...options,
+  })
+}
+
+export function useSupplier(
+  id: string,
+  options?: Partial<UseQueryOptions<{ supplier: Supplier }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.supplier(id),
+    queryFn: () => api.suppliers.get(id),
+    enabled: !!id,
+    ...options,
+  })
+}
+
+export function useSupplierStats(
+  id: string,
+  options?: Partial<UseQueryOptions<{ stats: SupplierDetailStats }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.supplierStats(id),
+    queryFn: () => api.suppliers.stats(id),
+    enabled: !!id,
+    ...options,
+  })
+}
+
+export function useSupplierInvoices(
+  id: string,
+  options?: Partial<UseQueryOptions<{ invoices: SelfBillingInvoice[]; count: number }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.supplierInvoices(id),
+    queryFn: () => api.suppliers.invoices(id),
+    enabled: !!id,
+    ...options,
+  })
+}
+
+export function useCreateSupplier(
+  options?: UseMutationOptions<{ supplier: Supplier }, Error, Partial<Supplier>>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: Partial<Supplier>) => api.suppliers.create(data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+    ...options,
+  })
+}
+
+export function useUpdateSupplier(
+  options?: UseMutationOptions<
+    { supplier: Supplier },
+    Error,
+    { id: string; data: Partial<Supplier> }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }) => api.suppliers.update(id, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+    ...options,
+  })
+}
+
+export function useDeleteSupplier(
+  options?: UseMutationOptions<{ message: string }, Error, string>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.suppliers.delete(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+    ...options,
+  })
+}
+
+// ─── Supplier Batch Hooks ────────────────────────────────────────
+
+export function useBatchDeactivateSuppliers(
+  options?: UseMutationOptions<BatchActionResult, Error, string[]>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (supplierIds) => api.suppliers.batchDeactivate(supplierIds),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+    ...options,
+  })
+}
+
+export function useBatchReactivateSuppliers(
+  options?: UseMutationOptions<BatchActionResult, Error, string[]>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (supplierIds) => api.suppliers.batchReactivate(supplierIds),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+    ...options,
+  })
+}
+
+export function useRefreshSupplierVat(
+  options?: UseMutationOptions<{ supplier: Supplier; vatStatus?: string }, Error, string>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.suppliers.refreshVat(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+    ...options,
+  })
+}
+
+export function useCreateSupplierFromVat(
+  options?: UseMutationOptions<{ supplier: Supplier }, Error, string>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (nip: string) => api.suppliers.createFromVat(nip),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+    ...options,
+  })
+}
+
+export function useImportSuppliers(
+  options?: UseMutationOptions<SupplierImportResult, Error, { file: File; settingId: string }>
+) {
+  return useMutation({
+    mutationFn: (data) => api.suppliers.import(data.file, data.settingId),
+    ...options,
+  })
+}
+
+export function useConfirmSupplierImport(
+  options?: UseMutationOptions<SupplierImportConfirmResult, Error, { settingId: string; rows: SupplierImportEnrichedRow[] }>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.suppliers.confirmImport(data.settingId, data.rows),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+    ...options,
+  })
+}
+
+// ─── Self-Billing Agreements ─────────────────────────────────────
+
+export function useSbAgreements(
+  params?: { settingId?: string; supplierId?: string; status?: string },
+  options?: Partial<UseQueryOptions<SbAgreementListResponse>>
+) {
+  return useQuery({
+    queryKey: queryKeys.sbAgreements(params),
+    queryFn: () => api.sbAgreements.list(params),
+    ...options,
+  })
+}
+
+export function useSbAgreement(
+  id: string,
+  options?: Partial<UseQueryOptions<{ data: SbAgreement }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.sbAgreement(id),
+    queryFn: () => api.sbAgreements.get(id),
+    enabled: !!id,
+    ...options,
+  })
+}
+
+export function useCreateSbAgreement(
+  options?: UseMutationOptions<{ data: SbAgreement }, Error, Partial<SbAgreement>>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: Partial<SbAgreement>) => api.sbAgreements.create(data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sbAgreements'] })
+    },
+    ...options,
+  })
+}
+
+export function useUpdateSbAgreement(
+  options?: UseMutationOptions<
+    { data: SbAgreement },
+    Error,
+    { id: string; data: Partial<SbAgreement> }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }) => api.sbAgreements.update(id, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sbAgreements'] })
+    },
+    ...options,
+  })
+}
+
+export function useTerminateSbAgreement(
+  options?: UseMutationOptions<{ data: SbAgreement }, Error, string>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.sbAgreements.terminate(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sbAgreements'] })
+    },
+    ...options,
+  })
+}
+
+// ─── Self-Billing Templates ─────────────────────────────────────
+
+export function useSbTemplates(
+  params?: { settingId?: string; agreementId?: string },
+  options?: Partial<UseQueryOptions<SbTemplateListResponse>>
+) {
+  return useQuery({
+    queryKey: queryKeys.sbTemplates(params),
+    queryFn: () => api.sbTemplates.list(params),
+    ...options,
+  })
+}
+
+export function useSbTemplate(
+  id: string,
+  options?: Partial<UseQueryOptions<{ data: SbTemplate }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.sbTemplate(id),
+    queryFn: () => api.sbTemplates.get(id),
+    enabled: !!id,
+    ...options,
+  })
+}
+
+export function useCreateSbTemplate(
+  options?: UseMutationOptions<{ data: SbTemplate }, Error, Partial<SbTemplate>>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: Partial<SbTemplate>) => api.sbTemplates.create(data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sbTemplates'] })
+    },
+    ...options,
+  })
+}
+
+export function useUpdateSbTemplate(
+  options?: UseMutationOptions<
+    { data: SbTemplate },
+    Error,
+    { id: string; data: Partial<SbTemplate> }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }) => api.sbTemplates.update(id, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sbTemplates'] })
+    },
+    ...options,
+  })
+}
+
+export function useDeleteSbTemplate(
+  options?: UseMutationOptions<{ success: boolean }, Error, string>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.sbTemplates.delete(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sbTemplates'] })
+    },
+    ...options,
+  })
+}
+
+export function useDuplicateSbTemplate(
+  options?: UseMutationOptions<{ data: SbTemplate }, Error, string>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.sbTemplates.duplicate(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sbTemplates'] })
+    },
+    ...options,
+  })
+}
+
+// ─── Self-Billing Invoices ──────────────────────────────────────
+
+export function useSelfBillingInvoices(
+  params?: SelfBillingInvoiceListParams,
+  options?: Partial<UseQueryOptions<SelfBillingInvoiceListResponse>>
+) {
+  return useQuery({
+    queryKey: queryKeys.selfBillingInvoices(params),
+    queryFn: () => api.selfBillingInvoices.list(params),
+    ...options,
+  })
+}
+
+export function useSelfBillingInvoice(
+  id: string,
+  options?: Partial<UseQueryOptions<{ data: SelfBillingInvoice }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.selfBillingInvoice(id),
+    queryFn: () => api.selfBillingInvoices.get(id),
+    enabled: !!id,
+    ...options,
+  })
+}
+
+export function useCreateSelfBillingInvoice(
+  options?: UseMutationOptions<
+    { data: SelfBillingInvoice },
+    Error,
+    Partial<SelfBillingInvoice>
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: Partial<SelfBillingInvoice>) =>
+      api.selfBillingInvoices.create(data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['selfBillingInvoices'] })
+    },
+    ...options,
+  })
+}
+
+export function useGenerateSelfBilling(
+  options?: UseMutationOptions<
+    { data: SelfBillingGenerateResponse },
+    Error,
+    SelfBillingGenerateRequest
+  >
+) {
+  return useMutation({
+    mutationFn: (request: SelfBillingGenerateRequest) =>
+      api.selfBillingInvoices.generate(request),
+    ...options,
+  })
+}
+
+export function useConfirmGeneratedSelfBilling(
+  options?: UseMutationOptions<{ data: SelfBillingBatchResult }, Error, SelfBillingConfirmRequest>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (request: SelfBillingConfirmRequest) =>
+      api.selfBillingInvoices.confirmGenerated(request),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['selfBillingInvoices'] })
+    },
+    ...options,
+  })
+}
+
+export function useSubmitSelfBillingForReview(
+  options?: UseMutationOptions<{ data: SelfBillingInvoice }, Error, string>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.selfBillingInvoices.submit(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['selfBillingInvoices'] })
+    },
+    ...options,
+  })
+}
+
+export function useApproveSelfBillingInvoice(
+  options?: UseMutationOptions<{ data: SelfBillingInvoice }, Error, { id: string; comment?: string; invoiceNumber?: string }>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, comment, invoiceNumber }: { id: string; comment?: string; invoiceNumber?: string }) =>
+      api.selfBillingInvoices.approve(id, comment, invoiceNumber),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['selfBillingInvoices'] })
+    },
+    ...options,
+  })
+}
+
+export function useRejectSelfBillingInvoice(
+  options?: UseMutationOptions<
+    { data: SelfBillingInvoice },
+    Error,
+    { id: string; reason: string }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, reason }) =>
+      api.selfBillingInvoices.reject(id, reason),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['selfBillingInvoices'] })
+    },
+    ...options,
+  })
+}
+
+export function useSendSelfBillingToKsef(
+  options?: UseMutationOptions<{ data: SelfBillingInvoice }, Error, string>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.selfBillingInvoices.sendToKsef(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['selfBillingInvoices'] })
+    },
+    ...options,
+  })
+}
+
+export function useRevertSelfBillingToDraft(
+  options?: UseMutationOptions<
+    { data: SelfBillingInvoice },
+    Error,
+    { id: string; reason: string }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, reason }) =>
+      api.selfBillingInvoices.revertToDraft(id, reason),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['selfBillingInvoices'] })
+      void qc.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+    ...options,
+  })
+}
+
+// ─── Self-Billing Batch Actions ─────────────────────────────────
+
+export function useBatchSubmitSelfBilling() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) => api.selfBillingInvoices.batchSubmit(ids),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['selfBillingInvoices'] }) },
+  })
+}
+
+export function useBatchApproveSelfBilling() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) => api.selfBillingInvoices.batchApprove(ids),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['selfBillingInvoices'] }) },
+  })
+}
+
+export function useBatchRejectSelfBilling() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ invoiceIds, reason }: { invoiceIds: string[]; reason: string }) =>
+      api.selfBillingInvoices.batchReject(invoiceIds, reason),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['selfBillingInvoices'] }) },
+  })
+}
+
+export function useBatchSendToKsef() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) => api.selfBillingInvoices.batchSendToKsef(ids),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['selfBillingInvoices'] }) },
+  })
+}
+
+export function useBatchDeleteSelfBilling() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) => api.selfBillingInvoices.batchDelete(ids),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['selfBillingInvoices'] }) },
+  })
+}
+
+// ─── Self-Billing Invoice Notes ─────────────────────────────────
+
+export function useSbInvoiceNotes(
+  sbInvoiceId: string,
+  options?: Partial<UseQueryOptions<{ notes: Note[]; count: number }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.selfBillingInvoiceNotes(sbInvoiceId),
+    queryFn: () => api.selfBillingInvoices.listNotes(sbInvoiceId),
+    enabled: !!sbInvoiceId,
+    ...options,
+  })
+}
+
+export function useCreateSbInvoiceNote(
+  options?: UseMutationOptions<
+    Note,
+    Error,
+    { sbInvoiceId: string; data: NoteCreate }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ sbInvoiceId, data }) =>
+      api.selfBillingInvoices.createNote(sbInvoiceId, data),
+    onSuccess: (_, { sbInvoiceId }) => {
+      void qc.invalidateQueries({
+        queryKey: queryKeys.selfBillingInvoiceNotes(sbInvoiceId),
+      })
+    },
+    ...options,
+  })
+}
+
+// ─── Supplier Notes ─────────────────────────────────────────────
+
+export function useSupplierNotes(
+  supplierId: string,
+  options?: Partial<UseQueryOptions<{ notes: Note[]; count: number }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.supplierNotes(supplierId),
+    queryFn: () => api.suppliers.listNotes(supplierId),
+    enabled: !!supplierId,
+    ...options,
+  })
+}
+
+export function useCreateSupplierNote(
+  options?: UseMutationOptions<
+    Note,
+    Error,
+    { supplierId: string; data: NoteCreate }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ supplierId, data }) =>
+      api.suppliers.createNote(supplierId, data),
+    onSuccess: (_, { supplierId }) => {
+      void qc.invalidateQueries({
+        queryKey: queryKeys.supplierNotes(supplierId),
+      })
+    },
+    ...options,
+  })
+}
+
+// ─── Supplier Attachments ───────────────────────────────────────
+
+export function useSupplierAttachments(
+  supplierId: string,
+  options?: Partial<UseQueryOptions<{ attachments: Attachment[]; count: number }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.supplierAttachments(supplierId),
+    queryFn: () => api.suppliers.listAttachments(supplierId),
+    enabled: !!supplierId,
+    ...options,
+  })
+}
+
+export function useUploadSupplierAttachment(
+  options?: UseMutationOptions<
+    Attachment,
+    Error,
+    { supplierId: string; data: AttachmentUpload }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ supplierId, data }) =>
+      api.suppliers.uploadAttachment(supplierId, data),
+    onSuccess: (_, { supplierId }) => {
+      void qc.invalidateQueries({
+        queryKey: queryKeys.supplierAttachments(supplierId),
+      })
+    },
+    ...options,
+  })
+}
+
+export function useDeleteSupplierAttachment(
+  options?: UseMutationOptions<
+    { success: boolean },
+    Error,
+    { attachmentId: string; supplierId: string }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ attachmentId }) =>
+      api.suppliers.deleteAttachment(attachmentId),
+    onSuccess: (_, { supplierId }) => {
+      void qc.invalidateQueries({
+        queryKey: queryKeys.supplierAttachments(supplierId),
+      })
+    },
+    ...options,
+  })
+}
+
+export function useUpdateSupplierNote(
+  options?: UseMutationOptions<
+    Note,
+    Error,
+    { noteId: string; data: NoteUpdate; supplierId: string }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ noteId, data }) =>
+      api.suppliers.updateNote(noteId, data),
+    onSuccess: (_, { supplierId }) => {
+      void qc.invalidateQueries({
+        queryKey: queryKeys.supplierNotes(supplierId),
+      })
+    },
+    ...options,
+  })
+}
+
+export function useDeleteSupplierNote(
+  options?: UseMutationOptions<
+    { success: boolean },
+    Error,
+    { noteId: string; supplierId: string }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ noteId }) =>
+      api.suppliers.deleteNote(noteId),
+    onSuccess: (_, { supplierId }) => {
+      void qc.invalidateQueries({
+        queryKey: queryKeys.supplierNotes(supplierId),
+      })
+    },
+    ...options,
+  })
+}
+
+export function useUpdateSbInvoiceNote(
+  options?: UseMutationOptions<
+    Note,
+    Error,
+    { noteId: string; data: NoteUpdate; sbInvoiceId: string }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ noteId, data }) =>
+      api.selfBillingInvoices.updateNote(noteId, data),
+    onSuccess: (_, { sbInvoiceId }) => {
+      void qc.invalidateQueries({
+        queryKey: queryKeys.selfBillingInvoiceNotes(sbInvoiceId),
+      })
+    },
+    ...options,
+  })
+}
+
+export function useDeleteSbInvoiceNote(
+  options?: UseMutationOptions<
+    { success: boolean },
+    Error,
+    { noteId: string; sbInvoiceId: string }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ noteId }) =>
+      api.selfBillingInvoices.deleteNote(noteId),
+    onSuccess: (_, { sbInvoiceId }) => {
+      void qc.invalidateQueries({
+        queryKey: queryKeys.selfBillingInvoiceNotes(sbInvoiceId),
+      })
+    },
+    ...options,
+  })
+}
+
+// ─── Self-Billing Import ────────────────────────────────────────
+
+export function useImportSelfBilling(
+  options?: UseMutationOptions<
+    SelfBillingImportResult,
+    Error,
+    { file: File; settingId: string }
+  >
+) {
+  return useMutation({
+    mutationFn: (data) => api.sbImport.import(data.file, data.settingId),
+    ...options,
+  })
+}
+
+export function useConfirmSelfBillingImport(
+  options?: UseMutationOptions<SelfBillingImportConfirmResult, Error, { settingId: string; rows: SbImportEnrichedRow[] }>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.sbImport.confirm(data.settingId, data.rows),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['selfBillingInvoices'] })
+    },
+    ...options,
+  })
+}
+
+// ─── Supplier Stats Refresh ─────────────────────────────────────
+
+export function useRefreshSupplierStats(
+  options?: UseMutationOptions<{ message: string }, Error, string>
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.suppliers.refreshStats(id),
+    onSuccess: (_data, id) => {
+      void qc.invalidateQueries({ queryKey: queryKeys.supplier(id) })
+      void qc.invalidateQueries({ queryKey: queryKeys.supplierStats(id) })
+    },
+    ...options,
+  })
+}
+
+// ─── SB Agreement Attachments ───────────────────────────────────
+
+export function useListSbAgreementAttachments(
+  agreementId: string,
+  options?: Omit<UseQueryOptions<{ data: Attachment[] }>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: ['sbAgreements', agreementId, 'attachments'],
+    queryFn: () => api.sbAgreements.listAttachments(agreementId),
+    enabled: !!agreementId,
+    ...options,
+  })
+}
+
+export function useUploadSbAgreementAttachment(
+  options?: UseMutationOptions<
+    { data: Attachment },
+    Error,
+    { agreementId: string; data: { fileName: string; content: string; contentType: string } }
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ agreementId, data }) =>
+      api.sbAgreements.uploadAttachment(agreementId, data),
+    onSuccess: (_data, { agreementId }) => {
+      void qc.invalidateQueries({
+        queryKey: ['sbAgreements', agreementId, 'attachments'],
+      })
+    },
+    ...options,
+  })
+}
+
+// ─── SB Import Template Download (removed — templates are now generated client-side) ───

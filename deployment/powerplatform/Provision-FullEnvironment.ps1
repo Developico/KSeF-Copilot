@@ -740,10 +740,48 @@ New-GlobalOptionSet -Name "${PublisherPrefix}_notificationtype" `
         (New-OptionItem -Value 4 -LabelEN 'Approval Decided'   -LabelPL 'Decyzja podjęta'           -Color '#4CAF50')
     )
 
+# 18. dvlp_supplierstatus (Self-Billing new)
+New-GlobalOptionSet -Name "${PublisherPrefix}_supplierstatus" `
+    -DisplayName 'Supplier Status' -Description 'Status of the supplier in the registry' `
+    -Options @(
+        (New-OptionItem -Value 100000001 -LabelEN 'Active'   -LabelPL 'Aktywny'       -Color '#4CAF50')
+        (New-OptionItem -Value 100000002 -LabelEN 'Inactive' -LabelPL 'Nieaktywny'    -Color '#9E9E9E')
+        (New-OptionItem -Value 100000003 -LabelEN 'Blocked'  -LabelPL 'Zablokowany'   -Color '#F44336')
+    )
+
+# 19. dvlp_suppliersource (Self-Billing new)
+New-GlobalOptionSet -Name "${PublisherPrefix}_suppliersource" `
+    -DisplayName 'Supplier Source' -Description 'How the supplier was added to the registry' `
+    -Options @(
+        (New-OptionItem -Value 100000001 -LabelEN 'KSeF Sync' -LabelPL 'Synchronizacja KSeF')
+        (New-OptionItem -Value 100000002 -LabelEN 'Manual'    -LabelPL 'Ręczne')
+        (New-OptionItem -Value 100000003 -LabelEN 'VAT API'   -LabelPL 'API VIES')
+    )
+
+# 20. dvlp_sbagreementstatus (Self-Billing new)
+New-GlobalOptionSet -Name "${PublisherPrefix}_sbagreementstatus" `
+    -DisplayName 'SB Agreement Status' -Description 'Status of the Self-Billing Agreement' `
+    -Options @(
+        (New-OptionItem -Value 100000001 -LabelEN 'Active'     -LabelPL 'Aktywna'       -Color '#4CAF50')
+        (New-OptionItem -Value 100000002 -LabelEN 'Expired'    -LabelPL 'Wygasła'       -Color '#FF9800')
+        (New-OptionItem -Value 100000003 -LabelEN 'Terminated' -LabelPL 'Rozwiązana'    -Color '#F44336')
+    )
+
+# 21. dvlp_selfbillingstatus (Self-Billing new)
+New-GlobalOptionSet -Name "${PublisherPrefix}_selfbillingstatus" `
+    -DisplayName 'Self-Billing Status' -Description 'Workflow status of a self-billing invoice' `
+    -Options @(
+        (New-OptionItem -Value 100000001 -LabelEN 'Draft'           -LabelPL 'Wersja robocza'       -Color '#9E9E9E')
+        (New-OptionItem -Value 100000002 -LabelEN 'Pending Seller'  -LabelPL 'Oczekuje sprzedawcy'  -Color '#FF9800')
+        (New-OptionItem -Value 100000003 -LabelEN 'Seller Approved' -LabelPL 'Zatwierdzona'         -Color '#4CAF50')
+        (New-OptionItem -Value 100000004 -LabelEN 'Seller Rejected' -LabelPL 'Odrzucona'            -Color '#F44336')
+        (New-OptionItem -Value 100000005 -LabelEN 'Sent to KSeF'    -LabelPL 'Wysłana do KSeF'      -Color '#1565C0')
+    )
+
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 2 — Tables (9 total: 5 existing + 4 MPK new)
+# STEP 2 — Tables (12 total: 5 existing + 4 MPK + 3 Self-Billing new)
 # ═══════════════════════════════════════════════════════════════════════════════
-Write-Host "`n─── Step 2: Tables (9) ───" -ForegroundColor White
+Write-Host "`n─── Step 2: Tables (12) ───" -ForegroundColor White
 
 # --- Existing tables ---
 
@@ -843,6 +881,63 @@ New-EntityDefinition `
     -Description 'Webhook subscriptions for push notifications from the KSeF connector' `
     -PrimaryNameAttr "${PublisherPrefix}_name" -PrimaryNameMaxLen 200 `
     -ChangeTracking $true -Auditing $true -DuplicateDetection $true `
+    -Color '#1565C0'
+
+# --- Self-Billing new tables ---
+
+# 2j. dvlp_ksefsupplier
+New-EntityDefinition `
+    -SchemaName "${PublisherPrefix}_ksefsupplier" `
+    -DisplayName 'KSeF Supplier' -DisplayNamePL 'Dostawca KSeF' `
+    -PluralName 'KSeF Suppliers' `
+    -Description 'Supplier registry for self-billing invoice management' `
+    -PrimaryNameAttr "${PublisherPrefix}_name" -PrimaryNameMaxLen 255 `
+    -ChangeTracking $true -Auditing $true -DuplicateDetection $true `
+    -HasNotes $true -QuickCreate $true `
+    -Color '#00897B'
+
+# 2k. dvlp_ksefsbagrement
+New-EntityDefinition `
+    -SchemaName "${PublisherPrefix}_ksefsbagrement" `
+    -DisplayName 'KSeF SB Agreement' -DisplayNamePL 'Umowa samofakturowania KSeF' `
+    -PluralName 'KSeF SB Agreements' `
+    -Description 'Self-billing agreements between buyer and supplier' `
+    -PrimaryNameAttr "${PublisherPrefix}_name" -PrimaryNameMaxLen 255 `
+    -ChangeTracking $true -Auditing $true -DuplicateDetection $false `
+    -HasNotes $true -QuickCreate $false `
+    -Color '#00897B'
+
+# 2l. dvlp_ksefselfbillingtemplate
+New-EntityDefinition `
+    -SchemaName "${PublisherPrefix}_ksefselfbillingtemplate" `
+    -DisplayName 'KSeF SB Template' -DisplayNamePL 'Szablon samofakturowania KSeF' `
+    -PluralName 'KSeF SB Templates' `
+    -Description 'Templates for automatic self-billing invoice generation' `
+    -PrimaryNameAttr "${PublisherPrefix}_name" -PrimaryNameMaxLen 255 `
+    -ChangeTracking $false -Auditing $true -DuplicateDetection $false `
+    -HasNotes $false -QuickCreate $true `
+    -Color '#00897B'
+
+# 2m. dvlp_ksefselfbillinginvoice
+New-EntityDefinition `
+    -SchemaName "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -DisplayName 'KSeF Self-Billing Invoice' -DisplayNamePL 'Samofaktura KSeF' `
+    -PluralName 'KSeF Self-Billing Invoices' `
+    -Description 'Dedicated table for self-billing invoices (buyer-issued)' `
+    -PrimaryNameAttr "${PublisherPrefix}_name" -PrimaryNameMaxLen 200 `
+    -ChangeTracking $true -Auditing $true -DuplicateDetection $false `
+    -HasNotes $false -QuickCreate $false `
+    -Color '#1565C0'
+
+# 2n. dvlp_ksefselfbillinglineitem
+New-EntityDefinition `
+    -SchemaName "${PublisherPrefix}_ksefselfbillinglineitem" `
+    -DisplayName 'KSeF Self-Billing Line Item' -DisplayNamePL 'Pozycja samofaktury KSeF' `
+    -PluralName 'KSeF Self-Billing Line Items' `
+    -Description 'Line items for self-billing invoices' `
+    -PrimaryNameAttr "${PublisherPrefix}_name" -PrimaryNameMaxLen 500 `
+    -ChangeTracking $false -Auditing $true -DuplicateDetection $false `
+    -HasNotes $false -QuickCreate $false `
     -Color '#1565C0'
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1425,6 +1520,352 @@ Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefwebhooksub" `
     -MaxLength 100 -Description 'Optional HMAC secret for payload signing'
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# STEP 4b — Columns on Self-Billing new tables (non-lookup)
+# ═══════════════════════════════════════════════════════════════════════════════
+Write-Host "`n─── Step 4b: Columns on Self-Billing tables ───" -ForegroundColor White
+
+# --- dvlp_ksefsupplier ---
+Write-Host "  -- dvlp_ksefsupplier --" -ForegroundColor DarkCyan
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_nip" -DisplayNameEN 'NIP' `
+    -MaxLength 10 -RequiredLevel 'ApplicationRequired' -Searchable $true -Audit $true `
+    -Description 'Supplier tax identification number (NIP)'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_shortname" -DisplayNameEN 'Short Name' `
+    -MaxLength 100 -Searchable $true `
+    -Description 'Short display name for supplier'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_regon" -DisplayNameEN 'REGON' `
+    -MaxLength 14 `
+    -Description 'REGON number'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_krs" -DisplayNameEN 'KRS' `
+    -MaxLength 10 `
+    -Description 'KRS number'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_street" -DisplayNameEN 'Street' `
+    -MaxLength 250 `
+    -Description 'Street address'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_city" -DisplayNameEN 'City' `
+    -MaxLength 100 `
+    -Description 'City'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_postalcode" -DisplayNameEN 'Postal Code' `
+    -MaxLength 10 `
+    -Description 'Postal code'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_country" -DisplayNameEN 'Country' `
+    -MaxLength 100 `
+    -Description 'Country'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_email" -DisplayNameEN 'Email' `
+    -MaxLength 200 -Format 'Email' `
+    -Description 'Contact email'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_phone" -DisplayNameEN 'Phone' `
+    -MaxLength 20 -Format 'Phone' `
+    -Description 'Contact phone'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_bankaccount" -DisplayNameEN 'Bank Account' `
+    -MaxLength 50 `
+    -Description 'Bank account number (IBAN)'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_vatstatus" -DisplayNameEN 'VAT Status' `
+    -MaxLength 50 `
+    -Description 'VAT payer status from MF API'
+
+Add-DateTimeColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_vatstatusdate" -DisplayNameEN 'VAT Status Date' `
+    -Format 'DateOnly' `
+    -Description 'Date of last VAT status check'
+
+Add-IntegerColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_paymenttermsdays" -DisplayNameEN 'Payment Terms (days)' `
+    -MinValue 0 -MaxValue 365 `
+    -Description 'Default payment terms in days'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_defaultcategory" -DisplayNameEN 'Default Category' `
+    -MaxLength 100 `
+    -Description 'Default cost category for this supplier'
+
+Add-MemoColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_notes" -DisplayNameEN 'Notes' `
+    -MaxLength 10000 `
+    -Description 'Free-text notes about the supplier'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_tags" -DisplayNameEN 'Tags' `
+    -MaxLength 500 `
+    -Description 'Comma-separated tags for filtering'
+
+Add-BooleanColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_hasselfbillingagreement" -DisplayNameEN 'Has SB Agreement' `
+    -DefaultValue $false -Audit $true `
+    -Description 'True when an active self-billing agreement exists'
+
+Add-DateTimeColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_selfbillingagreementdate" -DisplayNameEN 'SB Agreement Date' `
+    -Format 'DateOnly' `
+    -Description 'Date of the self-billing agreement'
+
+Add-DateTimeColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_selfbillingagreementexpiry" -DisplayNameEN 'SB Agreement Expiry' `
+    -Format 'DateOnly' `
+    -Description 'Expiry date of the self-billing agreement'
+
+Add-DateTimeColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_firstinvoicedate" -DisplayNameEN 'First Invoice Date' `
+    -Format 'DateOnly' `
+    -Description 'Date of the earliest invoice from this supplier'
+
+Add-DateTimeColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_lastinvoicedate" -DisplayNameEN 'Last Invoice Date' `
+    -Format 'DateOnly' `
+    -Description 'Date of the most recent invoice from this supplier'
+
+Add-IntegerColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_totalinvoicecount" -DisplayNameEN 'Total Invoice Count' `
+    -MinValue 0 -MaxValue 2147483647 `
+    -Description 'Cached total number of invoices from this supplier'
+
+Add-DecimalColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_totalgrossamount" -DisplayNameEN 'Total Gross Amount' `
+    -Precision 2 -MinValue 0 -MaxValue 999999999999.99 `
+    -Description 'Cached total gross amount of all invoices'
+
+Add-PicklistColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_status" -DisplayNameEN 'Status' `
+    -GlobalOptionSetName "${PublisherPrefix}_supplierstatus" `
+    -RequiredLevel 'ApplicationRequired' -Audit $true `
+    -Description 'Supplier lifecycle status: Active/Inactive/Blocked'
+
+Add-PicklistColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_source" -DisplayNameEN 'Source' `
+    -GlobalOptionSetName "${PublisherPrefix}_suppliersource" `
+    -Description 'How the supplier was added: KSeF Sync/Manual/VAT API'
+
+# --- dvlp_ksefsbagrement ---
+Write-Host "  -- dvlp_ksefsbagrement --" -ForegroundColor DarkCyan
+
+Add-DateTimeColumn -EntityLogicalName "${PublisherPrefix}_ksefsbagrement" `
+    -SchemaName "${PublisherPrefix}_agreementdate" -DisplayNameEN 'Agreement Date' `
+    -Format 'DateOnly' -RequiredLevel 'ApplicationRequired' -Audit $true `
+    -Description 'Date the self-billing agreement was signed'
+
+Add-DateTimeColumn -EntityLogicalName "${PublisherPrefix}_ksefsbagrement" `
+    -SchemaName "${PublisherPrefix}_validfrom" -DisplayNameEN 'Valid From' `
+    -Format 'DateOnly' -RequiredLevel 'ApplicationRequired' `
+    -Description 'Agreement validity start date'
+
+Add-DateTimeColumn -EntityLogicalName "${PublisherPrefix}_ksefsbagrement" `
+    -SchemaName "${PublisherPrefix}_validto" -DisplayNameEN 'Valid To' `
+    -Format 'DateOnly' `
+    -Description 'Agreement validity end date (null = indefinite)'
+
+Add-DateTimeColumn -EntityLogicalName "${PublisherPrefix}_ksefsbagrement" `
+    -SchemaName "${PublisherPrefix}_renewaldate" -DisplayNameEN 'Renewal Date' `
+    -Format 'DateOnly' `
+    -Description 'Next renewal date'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsbagrement" `
+    -SchemaName "${PublisherPrefix}_approvalprocedure" -DisplayNameEN 'Approval Procedure' `
+    -MaxLength 500 `
+    -Description 'Description of the approval procedure between buyer and seller'
+
+Add-PicklistColumn -EntityLogicalName "${PublisherPrefix}_ksefsbagrement" `
+    -SchemaName "${PublisherPrefix}_status" -DisplayNameEN 'Status' `
+    -GlobalOptionSetName "${PublisherPrefix}_sbagreementstatus" `
+    -RequiredLevel 'ApplicationRequired' -Audit $true `
+    -Description 'Agreement lifecycle status: Active/Expired/Terminated'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsbagrement" `
+    -SchemaName "${PublisherPrefix}_credentialreference" -DisplayNameEN 'Credential Reference' `
+    -MaxLength 200 `
+    -Description 'Reference to authorization credential or certificate for this agreement'
+
+Add-MemoColumn -EntityLogicalName "${PublisherPrefix}_ksefsbagrement" `
+    -SchemaName "${PublisherPrefix}_notes" -DisplayNameEN 'Notes' `
+    -MaxLength 10000 `
+    -Description 'Notes about the agreement'
+
+Add-BooleanColumn -EntityLogicalName "${PublisherPrefix}_ksefsbagrement" `
+    -SchemaName "${PublisherPrefix}_hasdocument" -DisplayNameEN 'Has Document' `
+    -DefaultValue $false `
+    -Description 'True when a signed agreement document has been uploaded'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsbagrement" `
+    -SchemaName "${PublisherPrefix}_documentfilename" -DisplayNameEN 'Document Filename' `
+    -MaxLength 255 `
+    -Description 'Filename of the uploaded agreement document'
+
+Add-BooleanColumn -EntityLogicalName "${PublisherPrefix}_ksefsbagrement" `
+    -SchemaName "${PublisherPrefix}_autoapprove" -DisplayNameEN 'Auto-Approve Invoices' `
+    -DefaultValue $false -Audit $true `
+    -Description 'When true, self-billing invoices skip seller approval and are automatically approved on submit'
+
+# --- dvlp_ksefselfbillingtemplate ---
+Write-Host "  -- dvlp_ksefselfbillingtemplate --" -ForegroundColor DarkCyan
+
+Add-MemoColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillingtemplate" `
+    -SchemaName "${PublisherPrefix}_description" -DisplayNameEN 'Description' `
+    -MaxLength 2000 `
+    -Description 'Template description or notes'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillingtemplate" `
+    -SchemaName "${PublisherPrefix}_itemdescription" -DisplayNameEN 'Item Description' `
+    -MaxLength 500 -RequiredLevel 'ApplicationRequired' `
+    -Description 'Default line item description for invoices created from this template'
+
+Add-DecimalColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillingtemplate" `
+    -SchemaName "${PublisherPrefix}_quantity" -DisplayNameEN 'Quantity' `
+    -Precision 4 -MinValue 0 -MaxValue 999999.9999 `
+    -Description 'Default item quantity'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillingtemplate" `
+    -SchemaName "${PublisherPrefix}_unit" -DisplayNameEN 'Unit' `
+    -MaxLength 20 `
+    -Description 'Unit of measure (e.g. szt., godz., usł.)'
+
+Add-DecimalColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillingtemplate" `
+    -SchemaName "${PublisherPrefix}_unitprice" -DisplayNameEN 'Unit Price' `
+    -Precision 2 -MinValue 0 -MaxValue 999999999.99 `
+    -Description 'Default unit price (net)'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillingtemplate" `
+    -SchemaName "${PublisherPrefix}_vatrate" -DisplayNameEN 'VAT Rate' `
+    -MaxLength 10 `
+    -Description 'VAT rate code (e.g. 23, 8, 5, 0, zw, np)'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillingtemplate" `
+    -SchemaName "${PublisherPrefix}_currency" -DisplayNameEN 'Currency' `
+    -MaxLength 3 `
+    -Description 'Currency code (ISO 4217, e.g. PLN, EUR)'
+
+Add-BooleanColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillingtemplate" `
+    -SchemaName "${PublisherPrefix}_isactive" -DisplayNameEN 'Active' `
+    -DefaultValue $true -RequiredLevel 'ApplicationRequired' -Audit $true `
+    -Description 'Inactive templates are hidden from selection'
+
+Add-IntegerColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillingtemplate" `
+    -SchemaName "${PublisherPrefix}_sortorder" -DisplayNameEN 'Sort Order' `
+    -MinValue 0 -MaxValue 9999 `
+    -Description 'Display order within supplier template list'
+
+# --- dvlp_ksefselfbillinginvoice ---
+Write-Host "  -- dvlp_ksefselfbillinginvoice --" -ForegroundColor DarkCyan
+
+Add-DateTimeColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -SchemaName "${PublisherPrefix}_invoicedate" -DisplayNameEN 'Invoice Date' `
+    -Format 'DateOnly' -RequiredLevel 'ApplicationRequired' -Audit $true `
+    -Description 'Invoice issue date'
+
+Add-DateTimeColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -SchemaName "${PublisherPrefix}_duedate" -DisplayNameEN 'Due Date' `
+    -Format 'DateOnly' -Audit $true `
+    -Description 'Payment due date'
+
+Add-DecimalColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -SchemaName "${PublisherPrefix}_netamount" -DisplayNameEN 'Net Amount' `
+    -Precision 2 -MinValue 0 -MaxValue 999999999.99 `
+    -Description 'Total net amount'
+
+Add-DecimalColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -SchemaName "${PublisherPrefix}_vatamount" -DisplayNameEN 'VAT Amount' `
+    -Precision 2 -MinValue 0 -MaxValue 999999999.99 `
+    -Description 'Total VAT amount'
+
+Add-DecimalColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -SchemaName "${PublisherPrefix}_grossamount" -DisplayNameEN 'Gross Amount' `
+    -Precision 2 -MinValue 0 -MaxValue 999999999.99 `
+    -Description 'Total gross amount'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -SchemaName "${PublisherPrefix}_currency" -DisplayNameEN 'Currency' `
+    -MaxLength 3 -Description 'Currency code (default PLN)'
+
+Add-PicklistColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -SchemaName "${PublisherPrefix}_status" -DisplayNameEN 'Status' `
+    -GlobalOptionSetName "${PublisherPrefix}_selfbillingstatus" -DefaultValue 100000001 `
+    -RequiredLevel 'ApplicationRequired' -Audit $true `
+    -Description 'Self-billing invoice workflow status'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -SchemaName "${PublisherPrefix}_sellerrejectionreason" -DisplayNameEN 'Seller Rejection Reason' `
+    -MaxLength 1000 -Audit $true `
+    -Description 'Reason provided by seller when rejecting a self-billing invoice'
+
+Add-DateTimeColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -SchemaName "${PublisherPrefix}_sentdate" -DisplayNameEN 'Sent Date' `
+    -Audit $true -Description 'Date when self-billing invoice was sent to KSeF'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -SchemaName "${PublisherPrefix}_ksefreferencenumber" -DisplayNameEN 'KSeF Reference Number' `
+    -MaxLength 100 -Searchable $true `
+    -Description 'KSeF reference number assigned after submission'
+
+# --- dvlp_ksefselfbillinglineitem ---
+Write-Host "  -- dvlp_ksefselfbillinglineitem --" -ForegroundColor DarkCyan
+
+Add-DecimalColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinglineitem" `
+    -SchemaName "${PublisherPrefix}_quantity" -DisplayNameEN 'Quantity' `
+    -Precision 3 -MinValue 0 -MaxValue 999999.999 -RequiredLevel 'ApplicationRequired' `
+    -Description 'Quantity'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinglineitem" `
+    -SchemaName "${PublisherPrefix}_unit" -DisplayNameEN 'Unit' `
+    -MaxLength 20 -RequiredLevel 'ApplicationRequired' `
+    -Description 'Unit of measure'
+
+Add-DecimalColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinglineitem" `
+    -SchemaName "${PublisherPrefix}_unitprice" -DisplayNameEN 'Unit Price' `
+    -Precision 2 -MinValue 0 -MaxValue 999999.99 -RequiredLevel 'ApplicationRequired' `
+    -Description 'Unit price (net)'
+
+Add-IntegerColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinglineitem" `
+    -SchemaName "${PublisherPrefix}_vatrate" -DisplayNameEN 'VAT Rate' `
+    -MinValue -1 -MaxValue 100 -RequiredLevel 'ApplicationRequired' `
+    -Description 'VAT rate in percent (23, 8, 5, 0, -1=exempt)'
+
+Add-DecimalColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinglineitem" `
+    -SchemaName "${PublisherPrefix}_netamount" -DisplayNameEN 'Net Amount' `
+    -Precision 2 -MinValue 0 -MaxValue 999999999.99 `
+    -Description 'Line net amount'
+
+Add-DecimalColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinglineitem" `
+    -SchemaName "${PublisherPrefix}_vatamount" -DisplayNameEN 'VAT Amount' `
+    -Precision 2 -MinValue 0 -MaxValue 999999999.99 `
+    -Description 'Line VAT amount'
+
+Add-DecimalColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinglineitem" `
+    -SchemaName "${PublisherPrefix}_grossamount" -DisplayNameEN 'Gross Amount' `
+    -Precision 2 -MinValue 0 -MaxValue 999999999.99 `
+    -Description 'Line gross amount'
+
+Add-IntegerColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinglineitem" `
+    -SchemaName "${PublisherPrefix}_paymenttermsdays" -DisplayNameEN 'Payment Terms (days)' `
+    -MinValue 0 -MaxValue 365 `
+    -Description 'Payment terms for this line item'
+
+Add-IntegerColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinglineitem" `
+    -SchemaName "${PublisherPrefix}_sortorder" -DisplayNameEN 'Sort Order' `
+    -MinValue 0 -MaxValue 999 `
+    -Description 'Display order of the line item'
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # STEP 5 — Lookup Relationships (existing tables)
 # ═══════════════════════════════════════════════════════════════════════════════
 Write-Host "`n─── Step 5: Lookup Relationships (existing tables) ───" -ForegroundColor White
@@ -1605,6 +2046,145 @@ Add-LookupRelationship `
     -Description 'Dynamic MPK Center assignment. Replaces legacy dvlp_costcenter OptionSet.'
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# STEP 6b — Lookup Relationships (Self-Billing tables)
+# ═══════════════════════════════════════════════════════════════════════════════
+Write-Host "`n─── Step 6b: Lookup Relationships (Self-Billing tables) ───" -ForegroundColor White
+
+# dvlp_ksefsupplier -> dvlp_ksefsetting
+Add-LookupRelationship `
+    -SchemaName "${PublisherPrefix}_ksefsetting_suppliers" `
+    -ReferencingEntity "${PublisherPrefix}_ksefsupplier" `
+    -ReferencingAttribute "${PublisherPrefix}_settingid" `
+    -ReferencedEntity "${PublisherPrefix}_ksefsetting" `
+    -DisplayNameEN 'Setting' -RequiredLevel 'ApplicationRequired' `
+    -CascadeDelete 'Restrict' `
+    -Description 'Tenant isolation via Lookup to setting'
+
+# dvlp_ksefsupplier -> dvlp_ksefmpkcenter (default MPK)
+Add-LookupRelationship `
+    -SchemaName "${PublisherPrefix}_ksefmpkcenter_suppliers" `
+    -ReferencingEntity "${PublisherPrefix}_ksefsupplier" `
+    -ReferencingAttribute "${PublisherPrefix}_defaultmpkid" `
+    -ReferencedEntity "${PublisherPrefix}_ksefmpkcenter" `
+    -DisplayNameEN 'Default MPK' `
+    -CascadeDelete 'RemoveLink' `
+    -Description 'Default MPK Center for invoices from this supplier'
+
+# dvlp_ksefsbagrement -> dvlp_ksefsupplier
+Add-LookupRelationship `
+    -SchemaName "${PublisherPrefix}_ksefsupplier_sbagrements" `
+    -ReferencingEntity "${PublisherPrefix}_ksefsbagrement" `
+    -ReferencingAttribute "${PublisherPrefix}_supplierid" `
+    -ReferencedEntity "${PublisherPrefix}_ksefsupplier" `
+    -DisplayNameEN 'Supplier' -RequiredLevel 'ApplicationRequired' `
+    -CascadeDelete 'Cascade' `
+    -Description 'Supplier this agreement belongs to'
+
+# dvlp_ksefsbagrement -> dvlp_ksefsetting
+Add-LookupRelationship `
+    -SchemaName "${PublisherPrefix}_ksefsetting_sbagrements" `
+    -ReferencingEntity "${PublisherPrefix}_ksefsbagrement" `
+    -ReferencingAttribute "${PublisherPrefix}_settingid" `
+    -ReferencedEntity "${PublisherPrefix}_ksefsetting" `
+    -DisplayNameEN 'Setting' -RequiredLevel 'ApplicationRequired' `
+    -CascadeDelete 'Restrict' `
+    -Description 'Tenant isolation via Lookup to setting'
+
+# dvlp_ksefselfbillingtemplate -> dvlp_ksefsupplier
+Add-LookupRelationship `
+    -SchemaName "${PublisherPrefix}_ksefsupplier_sbtemplates" `
+    -ReferencingEntity "${PublisherPrefix}_ksefselfbillingtemplate" `
+    -ReferencingAttribute "${PublisherPrefix}_supplierid" `
+    -ReferencedEntity "${PublisherPrefix}_ksefsupplier" `
+    -DisplayNameEN 'Supplier' -RequiredLevel 'ApplicationRequired' `
+    -CascadeDelete 'Cascade' `
+    -Description 'Supplier this template belongs to'
+
+# dvlp_ksefselfbillingtemplate -> dvlp_ksefsetting
+Add-LookupRelationship `
+    -SchemaName "${PublisherPrefix}_ksefsetting_sbtemplates" `
+    -ReferencingEntity "${PublisherPrefix}_ksefselfbillingtemplate" `
+    -ReferencingAttribute "${PublisherPrefix}_settingid" `
+    -ReferencedEntity "${PublisherPrefix}_ksefsetting" `
+    -DisplayNameEN 'Setting' -RequiredLevel 'ApplicationRequired' `
+    -CascadeDelete 'Restrict' `
+    -Description 'Tenant isolation via Lookup to setting'
+
+# --- dvlp_ksefselfbillinginvoice lookups ---
+
+# dvlp_ksefselfbillinginvoice -> dvlp_ksefsetting (Required, Restrict)
+Add-LookupRelationship `
+    -SchemaName "${PublisherPrefix}_ksefsetting_sbinvoices" `
+    -ReferencingEntity "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -ReferencingAttribute "${PublisherPrefix}_settingid" `
+    -ReferencedEntity "${PublisherPrefix}_ksefsetting" `
+    -DisplayNameEN 'Setting' -RequiredLevel 'ApplicationRequired' `
+    -CascadeDelete 'Restrict' `
+    -Description 'Tenant isolation via Lookup to setting'
+
+# dvlp_ksefselfbillinginvoice -> dvlp_ksefsupplier (Required, Restrict)
+Add-LookupRelationship `
+    -SchemaName "${PublisherPrefix}_ksefsupplier_sbinvoices" `
+    -ReferencingEntity "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -ReferencingAttribute "${PublisherPrefix}_supplierid" `
+    -ReferencedEntity "${PublisherPrefix}_ksefsupplier" `
+    -DisplayNameEN 'Supplier' -RequiredLevel 'ApplicationRequired' `
+    -CascadeDelete 'Restrict' `
+    -Description 'Supplier this self-billing invoice is issued to'
+
+# dvlp_ksefselfbillinginvoice -> dvlp_ksefsbagrement (Optional, RemoveLink)
+Add-LookupRelationship `
+    -SchemaName "${PublisherPrefix}_ksefsbagrement_sbinvoices" `
+    -ReferencingEntity "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -ReferencingAttribute "${PublisherPrefix}_sbagreementid" `
+    -ReferencedEntity "${PublisherPrefix}_ksefsbagrement" `
+    -DisplayNameEN 'Self-Billing Agreement' `
+    -CascadeDelete 'RemoveLink' `
+    -Description 'Self-billing agreement this invoice was created under'
+
+# dvlp_ksefselfbillinginvoice -> dvlp_ksefinvoice (Optional, RemoveLink)
+Add-LookupRelationship `
+    -SchemaName "${PublisherPrefix}_ksefinvoice_sbinvoices" `
+    -ReferencingEntity "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -ReferencingAttribute "${PublisherPrefix}_kseFinvoiceid" `
+    -ReferencedEntity "${PublisherPrefix}_ksefinvoice" `
+    -DisplayNameEN 'KSeF Invoice' `
+    -CascadeDelete 'RemoveLink' `
+    -Description 'Link to the corresponding KSeF invoice record after submission'
+
+# dvlp_ksefselfbillinginvoice -> dvlp_ksefmpkcenter (Optional, RemoveLink)
+Add-LookupRelationship `
+    -SchemaName "${PublisherPrefix}_ksefmpkcenter_sbinvoices" `
+    -ReferencingEntity "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -ReferencingAttribute "${PublisherPrefix}_mpkcenterid" `
+    -ReferencedEntity "${PublisherPrefix}_ksefmpkcenter" `
+    -DisplayNameEN 'MPK Center' `
+    -CascadeDelete 'RemoveLink' `
+    -Description 'MPK Center for cost allocation'
+
+# --- dvlp_ksefselfbillinglineitem lookups ---
+
+# dvlp_ksefselfbillinglineitem -> dvlp_ksefselfbillinginvoice (Required, Cascade)
+Add-LookupRelationship `
+    -SchemaName "${PublisherPrefix}_ksefselfbillinginvoice_lineitems" `
+    -ReferencingEntity "${PublisherPrefix}_ksefselfbillinglineitem" `
+    -ReferencingAttribute "${PublisherPrefix}_sbinvoiceid" `
+    -ReferencedEntity "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -DisplayNameEN 'Self-Billing Invoice' -RequiredLevel 'ApplicationRequired' `
+    -CascadeDelete 'Cascade' `
+    -Description 'Parent self-billing invoice'
+
+# dvlp_ksefselfbillinglineitem -> dvlp_ksefselfbillingtemplate (Optional, RemoveLink)
+Add-LookupRelationship `
+    -SchemaName "${PublisherPrefix}_ksefselfbillingtemplate_lineitems" `
+    -ReferencingEntity "${PublisherPrefix}_ksefselfbillinglineitem" `
+    -ReferencingAttribute "${PublisherPrefix}_templateid" `
+    -ReferencedEntity "${PublisherPrefix}_ksefselfbillingtemplate" `
+    -DisplayNameEN 'Template' `
+    -CascadeDelete 'RemoveLink' `
+    -Description 'Template this line item was created from (for traceability)'
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # STEP 7 — Alternate Keys
 # ═══════════════════════════════════════════════════════════════════════════════
 Write-Host "`n─── Step 7: Alternate Keys ───" -ForegroundColor White
@@ -1644,6 +2224,20 @@ Add-AlternateKey `
     -DisplayNameEN 'One approver per MPK Center' `
     -KeyAttributes @("${PublisherPrefix}_mpkcenterid", "${PublisherPrefix}_systemuserid")
 
+# dvlp_ksefsupplier — unique NIP per tenant
+Add-AlternateKey `
+    -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_supplier_nip_setting" `
+    -DisplayNameEN 'Unique supplier NIP per tenant' `
+    -KeyAttributes @("${PublisherPrefix}_nip", "${PublisherPrefix}_settingid")
+
+# dvlp_ksefsbagrement — unique name per supplier
+Add-AlternateKey `
+    -EntityLogicalName "${PublisherPrefix}_ksefsbagrement" `
+    -SchemaName "${PublisherPrefix}_sbagrement_name_supplier" `
+    -DisplayNameEN 'Unique SB agreement name per supplier' `
+    -KeyAttributes @("${PublisherPrefix}_name", "${PublisherPrefix}_supplierid")
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # STEP 8 — Publish customizations
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1661,6 +2255,11 @@ if (-not $DryRun) {
         "${PublisherPrefix}_ksefmpkapprover"
         "${PublisherPrefix}_ksefnotification"
         "${PublisherPrefix}_ksefwebhooksub"
+        "${PublisherPrefix}_ksefsupplier"
+        "${PublisherPrefix}_ksefsbagrement"
+        "${PublisherPrefix}_ksefselfbillingtemplate"
+        "${PublisherPrefix}_ksefselfbillinginvoice"
+        "${PublisherPrefix}_ksefselfbillinglineitem"
     )
     $entityXml = ($allEntities | ForEach-Object { "<entity>$_</entity>" }) -join ''
     $publishBody = @{
@@ -1688,11 +2287,11 @@ Write-Host "══════════════════════�
 Write-Host @"
 
 Summary:
-  - 17 Global OptionSets
-  - 9 Tables (5 existing + 4 MPK)
+  - 21 Global OptionSets (17 existing + 4 Self-Billing new)
+  - 14 Tables (5 existing + 4 MPK + 5 Self-Billing)
   - All columns (String, Boolean, Integer, Decimal, DateTime, Memo, Picklist, File)
   - All Lookup relationships with cascade configuration
-  - 5 Alternate Keys
+  - 7 Alternate Keys
 
 Next steps (manual):
   1. Verify tables in Power Apps Maker Portal

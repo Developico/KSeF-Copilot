@@ -3,7 +3,7 @@ import { InvoiceEntity, PaymentStatusValues, MpkValues, InvoiceSourceValues, Inv
 import { escapeOData } from './odata-utils'
 import { mapDvCurrencyToApp, mapAppCurrencyToDv } from './mappers'
 import { Invoice, InvoiceCreate, InvoiceUpdate, InvoiceListParams, ManualInvoiceCreate, InvoiceSource, ApprovalStatus } from '../../types/invoice'
-import { APPROVAL_STATUS } from './config'
+import { APPROVAL_STATUS, DV } from './config'
 import { logDataverseInfo } from './logger'
 
 /**
@@ -309,7 +309,7 @@ export async function findParentInvoice(
     }
   }
 
-  // Fallback: search by invoice number (may not be unique across settings)
+  // Fallback: search by invoice number scoped to setting
   if (invoiceNumber) {
     let filter = `${InvoiceEntity.fields.invoiceNumber} eq '${escapeOData(invoiceNumber)}'`
     if (settingId) {
@@ -322,7 +322,65 @@ export async function findParentInvoice(
     }
   }
 
+  // Broader fallback: search by invoice number WITHOUT settingId constraint
+  if (invoiceNumber && settingId) {
+    const path = `${InvoiceEntity.entitySet}?$filter=${InvoiceEntity.fields.invoiceNumber} eq '${escapeOData(invoiceNumber)}'&$select=${InvoiceEntity.fields.id}&$top=1&$orderby=${InvoiceEntity.fields.invoiceDate} desc`
+    const response = await dataverseRequest<{ value: Array<Record<string, unknown>> }>(path)
+    if (response.value.length > 0) {
+      return response.value[0][InvoiceEntity.fields.id] as string
+    }
+  }
+
   return undefined
+}
+
+/**
+ * Link unlinked correction invoices to a newly created parent invoice.
+ * Called after creating a non-correction invoice to retroactively link
+ * any corrections that reference it.
+ */
+export async function linkOrphanedCorrections(
+  parentId: string,
+  ksefReference: string,
+  invoiceNumber: string,
+  settingId?: string,
+  parentMpkCenterId?: string,
+  parentCategory?: string,
+): Promise<number> {
+  const f = InvoiceEntity.fields
+  // Find correction invoices that have correctedInvoiceNumber matching this invoice
+  // but no parentInvoiceId set
+  let filter = `${f.correctedInvoiceNumber} eq '${escapeOData(invoiceNumber)}' and ${f.parentInvoiceId} eq null`
+  if (settingId) {
+    filter += ` and _dvlp_settingid_value eq ${settingId}`
+  }
+  const path = `${InvoiceEntity.entitySet}?$filter=${filter}&$select=${f.id}`
+  const response = await dataverseRequest<{ value: Array<Record<string, unknown>> }>(path)
+
+  let linked = 0
+  for (const record of response.value) {
+    const correctionId = record[f.id] as string
+    try {
+      const patchBody: Record<string, unknown> = {
+        [f.parentInvoiceIdBind]: `/dvlp_ksefinvoices(${parentId})`,
+      }
+      // Copy MPK and category from parent
+      if (parentMpkCenterId) {
+        patchBody[f.mpkCenterIdBind] = `/dvlp_ksefmpkcenters(${parentMpkCenterId})`
+      }
+      if (parentCategory) {
+        patchBody[f.category] = parentCategory
+      }
+      await dataverseRequest(`${InvoiceEntity.entitySet}(${correctionId})`, {
+        method: 'PATCH',
+        body: patchBody,
+      })
+      linked++
+    } catch {
+      // Log but don't fail — best-effort linking
+    }
+  }
+  return linked
 }
 
 /**
@@ -445,6 +503,15 @@ export async function updateInvoice(id: string, data: InvoiceUpdate): Promise<In
   }
   if (data.grossAmountPln !== undefined) {
     body[InvoiceEntity.fields.grossAmountPln] = data.grossAmountPln
+  }
+
+  // Parent invoice link (for correction invoices)
+  if (data.parentInvoiceId !== undefined) {
+    if (data.parentInvoiceId === null) {
+      body[InvoiceEntity.fields.parentInvoiceIdBind] = null
+    } else {
+      body[InvoiceEntity.fields.parentInvoiceIdBind] = `/dvlp_ksefinvoices(${data.parentInvoiceId})`
+    }
   }
 
   logDataverseInfo('updateInvoice', `PATCH body for invoice ${id}`, {
@@ -607,6 +674,8 @@ function mapFromDataverse(record: DataverseInvoice): Invoice {
     mpkCenterName: (record[`${f.mpkCenterId}@OData.Community.Display.V1.FormattedValue`] as string | undefined)
       // Fallback: try to resolve from legacy mpk name if no lookup set yet
       || (getMpkKey(record[f.mpk] as number) as string | undefined),
+    // Self-billing flag
+    isSelfBilling: !!record[f.isSelfBilling],
     // Approval workflow fields
     approvalStatus: mapDvApprovalStatusToApp(record[f.approvalStatus] as number | undefined),
     approvedBy: record[f.approvedBy] as string | undefined,
@@ -697,6 +766,11 @@ function mapToDataverse(data: InvoiceCreate): Record<string, unknown> {
   // Parent invoice lookup binding
   if (data.parentInvoiceId) {
     result[f.parentInvoiceIdBind] = `/dvlp_ksefinvoices(${data.parentInvoiceId})`
+  }
+
+  // Self-billing flag
+  if (data.isSelfBilling !== undefined) {
+    result[f.isSelfBilling] = data.isSelfBilling
   }
 
   return result

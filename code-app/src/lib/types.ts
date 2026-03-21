@@ -327,6 +327,8 @@ export interface Invoice {
   parentInvoiceId?: string
   correctedInvoiceNumber?: string
   correctionReason?: string
+  // Self-billing
+  isSelfBilling?: boolean
 }
 
 export interface InvoiceListResponse {
@@ -973,6 +975,7 @@ export interface MpkCenter {
   isActive: boolean
   approvalRequired: boolean
   approvalSlaHours?: number
+  approvalEffectiveFrom?: string
   budgetAmount?: number
   budgetPeriod?: BudgetPeriod
   budgetStartDate?: string
@@ -986,6 +989,7 @@ export interface MpkCenterCreate {
   description?: string
   approvalRequired?: boolean
   approvalSlaHours?: number
+  approvalEffectiveFrom?: string | null
   budgetAmount?: number
   budgetPeriod?: BudgetPeriod
   budgetStartDate?: string
@@ -996,6 +1000,7 @@ export interface MpkCenterUpdate {
   description?: string
   approvalRequired?: boolean
   approvalSlaHours?: number
+  approvalEffectiveFrom?: string | null
   budgetAmount?: number
   budgetPeriod?: BudgetPeriod
   budgetStartDate?: string
@@ -1139,6 +1144,7 @@ export type NotificationType =
   | 'BudgetWarning80'
   | 'BudgetExceeded'
   | 'ApprovalDecided'
+  | 'SbApprovalRequested'
 
 export interface AppNotification {
   id: string
@@ -1189,4 +1195,316 @@ export interface KsefCleanupResponse {
   failed?: number
   errors?: string[]
   message?: string
+}
+
+// ─── Suppliers ────────────────────────────────────────────────────
+
+export type SupplierStatusType = 'Active' | 'Inactive' | 'Blocked'
+export type SupplierSourceType = 'KSeF' | 'Manual' | 'VatApi'
+
+export interface Supplier {
+  id: string
+  nip: string
+  name: string
+  shortName?: string | null
+  regon?: string | null
+  krs?: string | null
+  street?: string | null
+  city?: string | null
+  postalCode?: string | null
+  country?: string | null
+  email?: string | null
+  phone?: string | null
+  bankAccount?: string | null
+  vatStatus?: string | null
+  vatStatusDate?: string | null
+  paymentTermsDays?: number | null
+  defaultMpkId?: string | null
+  defaultCategory?: string | null
+  notes?: string | null
+  tags?: string | null
+  hasSelfBillingAgreement: boolean
+  selfBillingAgreementDate?: string | null
+  selfBillingAgreementExpiry?: string | null
+  firstInvoiceDate?: string | null
+  lastInvoiceDate?: string | null
+  totalInvoiceCount: number
+  totalGrossAmount: number
+  status: SupplierStatusType
+  source: SupplierSourceType
+  settingId: string
+  createdOn: string
+  modifiedOn: string
+}
+
+export interface SupplierListParams {
+  settingId: string
+  status?: SupplierStatusType
+  search?: string
+  hasSelfBillingAgreement?: boolean
+  top?: number
+  skip?: number
+}
+
+export interface SupplierListResponse {
+  suppliers: Supplier[]
+  total: number
+}
+
+export interface SupplierDetailStats {
+  invoiceCount: number
+  totalGross: number
+  avgInvoiceAmount: number
+  lastInvoiceDate: string | null
+  pendingPayments: number
+  overduePayments: number
+  selfBillingInvoiceCount: number
+  selfBillingPendingCount: number
+}
+
+// ─── Self-Billing Agreements ──────────────────────────────────────
+
+export type SbAgreementStatusType = 'Active' | 'Expired' | 'Terminated'
+
+export interface SbAgreement {
+  id: string
+  name: string
+  supplierId: string
+  agreementDate: string
+  validFrom: string
+  validTo?: string | null
+  renewalDate?: string | null
+  approvalProcedure?: string | null
+  status: SbAgreementStatusType
+  credentialReference?: string | null
+  notes?: string | null
+  hasDocument: boolean
+  documentFilename?: string | null
+  autoApprove: boolean
+  settingId: string
+  createdOn: string
+  modifiedOn: string
+}
+
+export interface SbAgreementListResponse {
+  agreements: SbAgreement[]
+  total: number
+}
+
+// ─── Self-Billing Templates ──────────────────────────────────────
+
+export interface SbTemplate {
+  id: string
+  supplierId: string
+  settingId: string
+  name: string
+  description?: string | null
+  itemDescription: string
+  quantity: number
+  unit: string
+  unitPrice: number
+  vatRate: number
+  currency: string
+  isActive: boolean
+  sortOrder: number
+  createdOn: string
+  modifiedOn: string
+}
+
+export interface SbTemplateListResponse {
+  templates: SbTemplate[]
+  total: number
+}
+
+// ─── Self-Billing Invoices ───────────────────────────────────────
+
+export type SelfBillingInvoiceStatusType =
+  | 'Draft'
+  | 'PendingSeller'
+  | 'SellerApproved'
+  | 'SellerRejected'
+  | 'SentToKsef'
+
+export interface SelfBillingInvoiceItem {
+  templateId?: string
+  itemDescription: string
+  quantity: number
+  unit: string
+  unitPrice: number
+  vatRate: number
+  netAmount?: number
+  vatAmount?: number
+  grossAmount?: number
+}
+
+export interface SelfBillingInvoice {
+  id: string
+  invoiceNumber: string
+  agreementId?: string
+  supplierId?: string
+  supplierName?: string
+  supplierNip?: string
+  mpkId?: string
+  invoiceDate: string
+  dueDate?: string
+  netAmount: number
+  vatAmount: number
+  grossAmount: number
+  currency: string
+  status: SelfBillingInvoiceStatusType
+  ksefReferenceNumber?: string
+  rejectionReason?: string
+  approvedAt?: string
+  items: SelfBillingInvoiceItem[]
+  settingId: string
+  createdOn: string
+  modifiedOn: string
+}
+
+export interface SelfBillingInvoiceListParams {
+  settingId: string
+  supplierId?: string
+  status?: SelfBillingInvoiceStatusType
+  dateFrom?: string
+  dateTo?: string
+  top?: number
+  skip?: number
+}
+
+export interface SelfBillingInvoiceListResponse {
+  invoices: SelfBillingInvoice[]
+  total: number
+}
+
+export interface SelfBillingGenerateRequest {
+  settingId: string
+  period: { month: number; year: number }
+  supplierIds?: string[]
+}
+
+export interface SelfBillingGeneratePreview {
+  supplierId: string
+  supplierName: string
+  supplierNip: string
+  agreementId: string
+  items: Array<{
+    templateId: string
+    templateName: string
+    itemDescription: string
+    quantity: number
+    unit: string
+    unitPrice: number
+    vatRate: number
+    netAmount: number
+    vatAmount: number
+    grossAmount: number
+  }>
+  totals: {
+    netAmount: number
+    vatAmount: number
+    grossAmount: number
+  }
+}
+
+export interface SelfBillingGenerateResponse {
+  previews: SelfBillingGeneratePreview[]
+  totals: {
+    supplierCount: number
+    invoiceCount: number
+    netAmount: number
+    vatAmount: number
+    grossAmount: number
+  }
+}
+
+export interface SelfBillingConfirmRequest {
+  settingId: string
+  previews: SelfBillingGeneratePreview[]
+}
+
+export interface SelfBillingBatchResult {
+  total: number
+  created: number
+  failed: number
+  invoices: Array<{
+    id: string
+    invoiceNumber: string
+    supplierName: string
+    grossAmount: number
+    status: 'created' | 'failed'
+  }>
+  errors: Array<{ index: number; error: string }>
+}
+
+export interface BatchActionResult {
+  total: number
+  succeeded: number
+  failed: number
+  results: Array<{ id: string; success: boolean; error?: string }>
+}
+
+export interface SbImportEnrichedRow {
+  supplierNip: string
+  supplierName: string | null
+  supplierId: string | null
+  hasAgreement: boolean
+  itemDescription: string
+  quantity: number
+  unit: string
+  unitPrice: number
+  vatRate: number
+  invoiceDate: string
+  dueDate?: string
+  netAmount: number
+  vatAmount: number
+  grossAmount: number
+  valid: boolean
+  error?: string
+}
+
+export interface SelfBillingImportResult {
+  rows: SbImportEnrichedRow[]
+  parseErrors: Array<{ row: number; message: string }>
+  totalRows: number
+  validRows: number
+  invalidRows: number
+}
+
+export interface SelfBillingImportConfirmResult {
+  created: number
+  failed: number
+  results: Array<{ supplierNip: string; invoiceId?: string; error?: string }>
+}
+
+// ── Supplier Import Types ──
+
+export interface SupplierImportEnrichedRow {
+  nip: string
+  sbAgreement: boolean
+  name: string | null
+  regon: string | null
+  krs: string | null
+  street: string | null
+  city: string | null
+  postalCode: string | null
+  vatStatus: string | null
+  bankAccount: string | null
+  exists: boolean
+  existingId: string | null
+  valid: boolean
+  error?: string
+}
+
+export interface SupplierImportResult {
+  rows: SupplierImportEnrichedRow[]
+  parseErrors: Array<{ row: number; message: string }>
+  totalRows: number
+  validRows: number
+  invalidRows: number
+}
+
+export interface SupplierImportConfirmResult {
+  created: number
+  failed: number
+  results: Array<{ nip: string; supplierId?: string; agreementId?: string; error?: string }>
 }

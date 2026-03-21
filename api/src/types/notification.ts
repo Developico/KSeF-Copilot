@@ -8,6 +8,8 @@ export type NotificationType =
   | 'BudgetWarning80'
   | 'BudgetExceeded'
   | 'ApprovalDecided'
+  | 'SbApprovalRequested'
+  | 'SbApprovalDecided'
 
 export interface Notification {
   id: string

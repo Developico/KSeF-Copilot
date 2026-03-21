@@ -43,6 +43,7 @@ import {
 } from 'lucide-react'
 import { useContextForecastMonthly, useForecastAlgorithms } from '@/hooks/use-api'
 import type { ForecastAlgorithm, ForecastHorizon, ForecastResult } from '@/lib/api'
+import { formatCurrencyCompact as formatCurrencyShort } from '@/lib/format'
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -50,13 +51,6 @@ function formatMonth(month: string): string {
   const [year, m] = month.split('-')
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
   return `${months[parseInt(m) - 1]} ${year.slice(2)}`
-}
-
-function formatCurrencyShort(amount: number): string {
-  return new Intl.NumberFormat('pl-PL', {
-    style: 'currency', currency: 'PLN',
-    minimumFractionDigits: 0, maximumFractionDigits: 0,
-  }).format(amount)
 }
 
 function TrendIcon({ trend }: { trend: string }) {

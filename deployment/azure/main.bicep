@@ -25,7 +25,8 @@ var functionAppName = 'ksef-api-${environment}-${uniqueSuffix}'
 var hostingPlanName = 'asp-ksef-${environment}'
 var storageAccountName = 'stksef${environment}${uniqueSuffix}'
 var keyVaultName = 'kv-ksef-${environment}'
-var staticWebAppName = 'swa-ksef-${environment}'
+var webAppName = 'app-ksef-web-${environment}-${uniqueSuffix}'
+var webAppPlanName = 'asp-ksef-web-${environment}'
 var appInsightsName = 'ai-ksef-${environment}'
 var logAnalyticsName = 'la-ksef-${environment}'
 
@@ -111,7 +112,7 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
     serverFarmId: hostingPlan.id
     httpsOnly: true
     siteConfig: {
-      linuxFxVersion: 'NODE|20'
+      linuxFxVersion: 'NODE|22'
       appSettings: [
         {
           name: 'FUNCTIONS_EXTENSION_VERSION'
@@ -156,7 +157,7 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
       ]
       cors: {
         allowedOrigins: [
-          'https://${staticWebAppName}.azurestaticapps.net'
+          'https://${webAppName}.azurewebsites.net'
         ]
         supportCredentials: true
       }
@@ -175,18 +176,55 @@ resource keyVaultSecretUserRole 'Microsoft.Authorization/roleAssignments@2022-04
   }
 }
 
-// Static Web App
-resource staticWebApp 'Microsoft.Web/staticSites@2023-01-01' = {
-  name: staticWebAppName
-  location: location // Note: SWA has limited region support
+// App Service Plan for Web App
+resource webAppPlan 'Microsoft.Web/serverfarms@2023-01-01' = {
+  name: webAppPlanName
+  location: location
   sku: {
-    name: 'Free'
-    tier: 'Free'
+    name: 'B1'
+    tier: 'Basic'
   }
   properties: {
-    buildProperties: {
-      appLocation: '/'
-      outputLocation: 'out'
+    reserved: true // Linux
+  }
+}
+
+// Web App (Next.js standalone)
+resource webApp 'Microsoft.Web/sites@2023-01-01' = {
+  name: webAppName
+  location: location
+  kind: 'app,linux'
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    serverFarmId: webAppPlan.id
+    httpsOnly: true
+    siteConfig: {
+      linuxFxVersion: 'NODE|22'
+      appCommandLine: 'node server.js'
+      appSettings: [
+        {
+          name: 'WEBSITE_RUN_FROM_PACKAGE'
+          value: '1'
+        }
+        {
+          name: 'NEXT_PUBLIC_API_URL'
+          value: 'https://${functionAppName}.azurewebsites.net/api'
+        }
+        {
+          name: 'NEXT_PUBLIC_AZURE_CLIENT_ID'
+          value: '' // Set after deployment
+        }
+        {
+          name: 'NEXT_PUBLIC_AZURE_TENANT_ID'
+          value: tenant().tenantId
+        }
+        {
+          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+          value: appInsights.properties.ConnectionString
+        }
+      ]
     }
   }
 }
@@ -196,7 +234,7 @@ output functionAppName string = functionApp.name
 output functionAppUrl string = 'https://${functionApp.properties.defaultHostName}'
 output keyVaultName string = keyVault.name
 output keyVaultUrl string = keyVault.properties.vaultUri
-output staticWebAppName string = staticWebApp.name
-output staticWebAppUrl string = 'https://${staticWebApp.properties.defaultHostname}'
+output webAppName string = webApp.name
+output webAppUrl string = 'https://${webApp.properties.defaultHostName}'
 output appInsightsName string = appInsights.name
 output appInsightsConnectionString string = appInsights.properties.ConnectionString

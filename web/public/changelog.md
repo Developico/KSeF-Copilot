@@ -6,6 +6,68 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.9.2] - 2026-03-21
+
+### 🌐 i18n — wybór miesiąca
+
+- **Komponent `MonthPicker`** — natywny `<input type="month">` w dialogu generowania samofaktur zastąpiony własnym komponentem z pełną lokalizacją (nazwy miesięcy, przyciski „Wyczyść" / „Bieżący miesiąc" w języku aplikacji)
+- **Nowe klucze i18n** — `common.monthPicker.*` (placeholder, clear, thisMonth, nazwy miesięcy) w `pl.json` i `en.json`
+
+### 🐛 Poprawki
+
+- **Zakładka Akceptujący** — nazwy i adresy e-mail członków grupy Entra ID wyświetlane poprawnie (fallback na dane Dataverse gdy Graph API zwraca puste pola)
+
+---
+
+## [0.9.1] - 2026-03-19
+
+### 📋 Samofakturowanie — ulepszenia akceptacji
+
+- **Edycja numeru faktury przy akceptacji SB** — dialog akceptacji z polem numeru faktury i komentarzem (endpoint API, warstwa serwisowa, UI)
+- **Dialog akceptacji na stronach list** — strony `/approvals` i `/self-billing` wyświetlają dialog z polem numeru faktury zamiast bezpośredniego wywołania API
+- **Auto-przełączanie na zakładkę SB** — gdy brak zwykłych faktur oczekujących, automatyczne otwarcie zakładki samofakturowania
+
+### 🔔 Powiadomienia — nowe funkcje
+
+- **Scrollowanie panelu** — naprawiony overflow dla dużej liczby powiadomień (zamiana ScrollArea na natywne `overflow-y-auto` z `maxHeight`)
+- **Filtrowanie powiadomień** — przyciski „Wszystkie" / „Nowe" z badge liczbą nieprzeczytanych
+- **Oznacz wszystkie jako przeczytane** — przycisk z ikoną CheckCheck + nowy endpoint `POST /api/notifications/mark-all-read`
+- **Typy powiadomień SB** — obsługa `SbApprovalRequested` (5) i `SbApprovalDecided` (6) w Dataverse option set
+
+### 🐛 Poprawki
+
+- **Sygnatura `RowActions`** — komponent przyjmuje obiekt faktury (`SelfBillingInvoice`) zamiast samego ID
+
+---
+
+## [0.9.0] - 2026-03-24
+
+### 📋 Samofakturowanie (Self-Billing)
+
+#### Dostawcy
+- **Strona dostawców** — `/suppliers` z listą dostawców, filtrowaniem po statusie, wyszukiwaniem i paginacją
+- **Szczegóły dostawcy** — `/suppliers/[id]` z danymi kontaktowymi, statystykami, kartą umowy SB i sekcją szablonów
+- **Szablony SB per dostawca** — komponent CRUD z dialogiem dodawania/edycji (nazwa, opis pozycji, ilość, jednostka, cena, stawka VAT, waluta)
+
+#### Umowy samofakturowania
+- **Karta umowy** na stronie dostawcy — aktywna umowa z datami obowiązywania i statusem
+- **Załączniki umów** — przesyłanie i lista załączników do umów SB
+
+#### Faktury samofakturowania
+- **Strona samofakturowania** — `/self-billing` z listą faktur SB, filtrami statusu i wyszukiwaniem
+- **Generowanie faktur** — dialog z wyborem okresu, podglądem faktur do wygenerowania i potwierdzeniem
+- **Import z pliku** — dialog importu z pobieraniem szablonu (CSV/XLSX), przesyłaniem pliku i dwuetapową walidacją
+- **Akcje wierszowe** — podgląd, wysyłka do KSeF, akceptacja/odrzucenie z komentarzem — zależne od statusu faktury
+
+#### Dashboard
+- **Kafelki KPI samofakturowania** — nowe karty: wysłane w bieżącym miesiącu, wygasające umowy (≤30 dni)
+
+#### Architektura
+- **Ekstrakcja komponentów** — `StatusBadge`, `RowActions`, `GenerateDialog`, `ImportDialog` wyodrębnione z pliku strony do `components/self-billing/`
+- **Ekstrakcja szablonów dostawcy** — `SupplierSbTemplates` wyodrębniony do `components/suppliers/`
+
+---
+
 ## [0.8.0] - 2026-03-10
 
 ### 🏢 Zarządzanie MPK — migracja na encje

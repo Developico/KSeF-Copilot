@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { RefreshCw, AlertTriangle, Info } from 'lucide-react'
 import { format } from 'date-fns'
 import { pl } from 'date-fns/locale'
+import { formatCurrency } from '@/lib/format'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -310,11 +311,7 @@ export function InvoiceAmountCell({
 // ============================================================================
 
 function formatAmount(amount: number, currency: string): string {
-  return new Intl.NumberFormat('pl-PL', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-  }).format(amount)
+  return formatCurrency(amount, currency)
 }
 
 function formatDate(date: string): string {

@@ -2,9 +2,9 @@
 
 Dokument opisuje proces przygotowania, przeprowadzenia i weryfikacji wdrożenia aplikacji webowej (`your-webapp-name` web) na platformę Azure App Service w trybie Next.js standalone.
 
-**Data wdrożenia:** 2026-02-09  
-**Wersja:** 1.1  
-**Ostatnia aktualizacja dokumentu:** 2026-02-21  
+**Data wdrożenia:** 2026-03-20  
+**Wersja:** 1.2  
+**Ostatnia aktualizacja dokumentu:** 2026-03-20  
 
 > **Uwaga — placeholdery:** W całym dokumencie występują nazwy zaczynające się od `your-` (np. `your-webapp-name`, `your-resource-group`). Zamień je na rzeczywiste nazwy swoich zasobów Azure. Przykład: `your-webapp-name` → `app-ksef-prod`.
 
@@ -570,7 +570,7 @@ az webapp log tail --name your-webapp-name --resource-group rg-ksef
 # ✓ Ready in Xms
 ```
 
-### 5. Wynik weryfikacji z 2026-02-21
+### 5. Wynik weryfikacji z 2026-03-20
 
 ```
 ✅ HTTP Status:       200 OK
@@ -660,6 +660,9 @@ PORT=8080 node server.js   # Ręczne uruchomienie serwera
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | Monitoring Azure |
 | `AZURE_CLIENT_ID` | Entra ID — Client ID |
 | `AZURE_TENANT_ID` | Entra ID — Tenant ID |
+| `NEXT_PUBLIC_ADMIN_GROUP` | Object ID grupy Administratorzy |
+| `NEXT_PUBLIC_USER_GROUP` | Object ID grupy Użytkownicy |
+| `NEXT_PUBLIC_APPROVER_GROUP` | Object ID grupy Akceptanci (samofakturowanie) |
 
 ### Plik `.env.production`
 
@@ -692,6 +695,6 @@ Jeśli istnieje w `web/`, jest kopiowany do `.deploy/` przez `build-deploy.mjs`.
 
 ---
 
-**Ostatnia aktualizacja:** 2026-02-21  
-**Wersja:** 1.1  
+**Ostatnia aktualizacja:** 2026-03-20  
+**Wersja:** 1.2  
 **Opiekun:** dvlp-dev team

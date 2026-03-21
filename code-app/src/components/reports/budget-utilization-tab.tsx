@@ -20,15 +20,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('pl-PL', {
-    style: 'currency',
-    currency: 'PLN',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
+import { formatCurrencyCompact as formatCurrency } from '@/lib/format'
 
 function formatDate(dateStr: string) {
   if (!dateStr) return '—'

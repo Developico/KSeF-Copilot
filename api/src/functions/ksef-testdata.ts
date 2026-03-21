@@ -477,8 +477,13 @@ app.http('ksef-testdata-environments', {
 // Import for cleanup and generation functionality
 import { listAllInvoices, bulkDeleteInvoices, countInvoices, createInvoice, updateInvoice } from '../lib/dataverse/invoices'
 import { settingService } from '../lib/dataverse/services/setting-service'
+import { supplierService } from '../lib/dataverse/services/supplier-service'
+import { sbAgreementService } from '../lib/dataverse/services/sb-agreement-service'
+import { sbTemplateService } from '../lib/dataverse/services/sb-template-service'
 import { generateInvoices, calculateSummary, type GenerateInvoicesOptions, type GeneratedInvoice } from '../lib/testdata'
 import { InvoiceSource, PaymentStatus } from '../types/invoice'
+import { SupplierStatus, SupplierSource, type SupplierCreate } from '../types/supplier'
+import { SbAgreementStatus, type SbAgreementCreate, type SbTemplateCreate } from '../types/self-billing'
 
 /**
  * Cleanup test invoices from Dataverse (TEST and DEMO environments only)
@@ -946,6 +951,171 @@ app.http('ksef-testdata-generate', {
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error',
         },
+      }
+    }
+  },
+})
+
+// ============================================================
+// Test Suppliers & Self-Billing data
+// ============================================================
+
+const TEST_SUPPLIERS: Array<{ nip: string; name: string; shortName: string; status: SupplierStatus; source: SupplierSource; hasSb: boolean }> = [
+  { nip: '5260250995', name: 'Testowy Dostawca Alfa Sp. z o.o.', shortName: 'Alfa', status: SupplierStatus.Active, source: SupplierSource.Manual, hasSb: true },
+  { nip: '5270103391', name: 'Beta Logistics S.A.', shortName: 'Beta', status: SupplierStatus.Active, source: SupplierSource.KSeF, hasSb: true },
+  { nip: '6340128700', name: 'Gamma Consulting Sp.j.', shortName: 'Gamma', status: SupplierStatus.Active, source: SupplierSource.VatApi, hasSb: false },
+  { nip: '8981012407', name: 'Delta Transport Sp. z o.o.', shortName: 'Delta', status: SupplierStatus.Inactive, source: SupplierSource.Manual, hasSb: false },
+]
+
+const TEMPLATE_SETS: Array<Array<Omit<SbTemplateCreate, 'supplierId' | 'settingId'>>> = [
+  // Templates for first supplier with SB
+  [
+    { name: 'Usługa IT - rozwój', itemDescription: 'Usługi programistyczne — rozwój oprogramowania', quantity: 160, unit: 'h', unitPrice: 150, vatRate: 23, currency: 'PLN', isActive: true, sortOrder: 1 },
+    { name: 'Hosting serwerów', itemDescription: 'Hosting dedykowany — serwery aplikacyjne', quantity: 1, unit: 'szt', unitPrice: 2500, vatRate: 23, currency: 'PLN', isActive: true, sortOrder: 2 },
+  ],
+  // Templates for second supplier with SB
+  [
+    { name: 'Transport krajowy', itemDescription: 'Usługi transportowe — przesyłki krajowe', quantity: 50, unit: 'szt', unitPrice: 45, vatRate: 23, currency: 'PLN', isActive: true, sortOrder: 1 },
+    { name: 'Magazynowanie', itemDescription: 'Wynajem powierzchni magazynowej', quantity: 100, unit: 'm2', unitPrice: 12, vatRate: 23, currency: 'PLN', isActive: true, sortOrder: 2 },
+    { name: 'Opakowania', itemDescription: 'Materiały opakowaniowe — kartony i folie', quantity: 200, unit: 'szt', unitPrice: 3.5, vatRate: 23, currency: 'PLN', isActive: true, sortOrder: 3 },
+  ],
+]
+
+/**
+ * Generate test suppliers, SB agreements and templates in Dataverse
+ * POST /api/ksef/testdata/generate-sb
+ *
+ * Body: {
+ *   nip: string,         // Required: NIP of the company (settingId lookup)
+ *   companyId?: string,   // Optional: KsefSetting ID
+ * }
+ *
+ * Creates:
+ *  - 4 suppliers (2 with SB agreements, 2 without)
+ *  - 2 SB agreements (1 Active, 1 Expired)
+ *  - 2-3 SB templates per agreement
+ */
+app.http('ksef-testdata-generate-sb', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  route: 'ksef/testdata/generate-sb',
+  handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    try {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      const roleCheck = requireRole(auth.user, 'Admin')
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Admin role required' } }
+      }
+
+      const body = await request.json() as { nip: string; companyId?: string }
+      if (!body.nip) {
+        return { status: 400, jsonBody: { error: 'NIP is required' } }
+      }
+
+      // Resolve company setting
+      const settings = await settingService.getAll()
+      const companySetting = body.companyId
+        ? settings.find(s => s.id === body.companyId)
+        : settings.find(s => s.nip === body.nip)
+
+      if (!companySetting) {
+        return { status: 404, jsonBody: { error: `Company with NIP ${body.nip} not found in settings` } }
+      }
+
+      const envLower = companySetting.environment?.toLowerCase()
+      if (envLower !== 'test' && envLower !== 'demo') {
+        return {
+          status: 400,
+          jsonBody: { error: `SB test data generation is only allowed for test/demo environments (current: ${companySetting.environment})` },
+        }
+      }
+
+      context.log(`Generating SB test data for NIP: ${body.nip}, settingId: ${companySetting.id}`)
+
+      const results = { suppliers: 0, agreements: 0, templates: 0, errors: [] as string[] }
+      let sbSupplierIndex = 0
+
+      for (const tpl of TEST_SUPPLIERS) {
+        try {
+          const supplierData: SupplierCreate = {
+            nip: tpl.nip,
+            name: tpl.name,
+            shortName: tpl.shortName,
+            status: tpl.status,
+            source: tpl.source,
+            country: 'PL',
+            hasSelfBillingAgreement: tpl.hasSb,
+            settingId: companySetting.id,
+          }
+          const supplier = await supplierService.create(supplierData)
+          results.suppliers++
+          context.log(`Created supplier: ${supplier.name} (${supplier.id})`)
+
+          if (tpl.hasSb) {
+            // Create SB agreement
+            const isExpired = sbSupplierIndex === 1
+            const now = new Date()
+            const agreementData: SbAgreementCreate = {
+              supplierId: supplier.id,
+              name: `Umowa SF — ${tpl.shortName}`,
+              agreementDate: '2024-01-15',
+              validFrom: '2024-02-01',
+              validTo: isExpired ? '2024-12-31' : undefined,
+              settingId: companySetting.id,
+              notes: isExpired ? 'Umowa wygasła — dane testowe' : 'Aktywna umowa — dane testowe',
+            }
+            const agreement = await sbAgreementService.create(agreementData)
+            results.agreements++
+            context.log(`Created SB agreement: ${agreement.name} (${agreement.id})`)
+
+            // Create templates for this supplier
+            const templateDefs = TEMPLATE_SETS[sbSupplierIndex] || TEMPLATE_SETS[0]
+            for (const tmpl of templateDefs) {
+              try {
+                const templateData: SbTemplateCreate = {
+                  ...tmpl,
+                  supplierId: supplier.id,
+                  settingId: companySetting.id,
+                }
+                const created = await sbTemplateService.create(templateData)
+                results.templates++
+                context.log(`Created SB template: ${created.name} (${created.id})`)
+              } catch (err) {
+                const msg = err instanceof Error ? err.message : 'Unknown error'
+                results.errors.push(`Template "${tmpl.name}": ${msg}`)
+                context.error(`Failed to create template "${tmpl.name}":`, err)
+              }
+            }
+
+            sbSupplierIndex++
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Unknown error'
+          results.errors.push(`Supplier "${tpl.name}": ${msg}`)
+          context.error(`Failed to create supplier "${tpl.name}":`, err)
+        }
+      }
+
+      context.log(`SB generation completed: ${results.suppliers} suppliers, ${results.agreements} agreements, ${results.templates} templates`)
+
+      return {
+        status: 200,
+        jsonBody: {
+          success: true,
+          environment: companySetting.environment,
+          nip: body.nip,
+          summary: results,
+        },
+      }
+    } catch (error) {
+      context.error('Failed to generate SB test data:', error)
+      return {
+        status: 500,
+        jsonBody: { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       }
     }
   },

@@ -16,6 +16,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { mpkCenterService } from '../lib/dataverse/services/mpk-center-service'
+import { approvalService, type ApplyApprovalScope, type RevokeApprovalScope } from '../lib/dataverse/services/approval-service'
 import { MpkCenterCreateSchema, MpkCenterUpdateSchema, SetApproversSchema } from '../types/mpk'
 
 /**
@@ -332,6 +333,113 @@ app.http('mpk-centers-approvers-set', {
       return {
         status: 500,
         jsonBody: { error: 'Failed to set approvers' },
+      }
+    }
+  },
+})
+
+const VALID_SCOPES: ApplyApprovalScope[] = ['unprocessed', 'decided', 'all']
+const VALID_REVOKE_SCOPES: RevokeApprovalScope[] = ['pending', 'decided', 'all']
+
+/**
+ * POST /api/mpk-centers/:id/apply-approval - Apply approval workflow to existing invoices (Admin)
+ */
+app.http('mpk-centers-apply-approval', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  route: 'mpk-centers/{id}/apply-approval',
+  handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    try {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      const roleCheck = requireRole(auth.user, 'Admin')
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: 'Forbidden — requires Admin role' } }
+      }
+
+      const id = request.params.id
+      if (!id) {
+        return { status: 400, jsonBody: { error: 'Missing id parameter' } }
+      }
+
+      const body = await request.json() as Record<string, unknown>
+      const scope = (body.scope as string) || 'unprocessed'
+      const dryRun = body.dryRun === true
+
+      if (!VALID_SCOPES.includes(scope as ApplyApprovalScope)) {
+        return {
+          status: 400,
+          jsonBody: { error: `Invalid scope. Must be one of: ${VALID_SCOPES.join(', ')}` },
+        }
+      }
+
+      const result = await approvalService.applyApprovalToMpk(id, scope as ApplyApprovalScope, dryRun)
+
+      return {
+        status: 200,
+        jsonBody: { ...result, dryRun },
+      }
+    } catch (error) {
+      context.error('Failed to apply approval:', error)
+      const message = error instanceof Error ? error.message : 'Failed to apply approval'
+      return {
+        status: 500,
+        jsonBody: { error: message },
+      }
+    }
+  },
+})
+
+/**
+ * POST /api/mpk-centers/:id/revoke-approval - Revoke approval from existing invoices (Admin)
+ */
+app.http('mpk-centers-revoke-approval', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  route: 'mpk-centers/{id}/revoke-approval',
+  handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    try {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      const roleCheck = requireRole(auth.user, 'Admin')
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: 'Forbidden — requires Admin role' } }
+      }
+
+      const id = request.params.id
+      if (!id) {
+        return { status: 400, jsonBody: { error: 'Missing id parameter' } }
+      }
+
+      const body = await request.json() as Record<string, unknown>
+      const scope = (body.scope as string) || 'pending'
+      const dryRun = body.dryRun === true
+
+      if (!VALID_REVOKE_SCOPES.includes(scope as RevokeApprovalScope)) {
+        return {
+          status: 400,
+          jsonBody: { error: `Invalid scope. Must be one of: ${VALID_REVOKE_SCOPES.join(', ')}` },
+        }
+      }
+
+      const result = await approvalService.revokeApprovalFromMpk(id, scope as RevokeApprovalScope, dryRun)
+
+      return {
+        status: 200,
+        jsonBody: { ...result, dryRun },
+      }
+    } catch (error) {
+      context.error('Failed to revoke approval:', error)
+      const message = error instanceof Error ? error.message : 'Failed to revoke approval'
+      return {
+        status: 500,
+        jsonBody: { error: message },
       }
     }
   },

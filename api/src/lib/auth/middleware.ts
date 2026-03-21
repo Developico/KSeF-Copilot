@@ -152,7 +152,7 @@ export async function verifyAuthWithRateLimit(
  */
 export function requireRole(
   user: AuthUser | undefined,
-  requiredRole: 'Admin' | 'Reader'
+  requiredRole: 'Admin' | 'Reader' | 'Approver'
 ): RoleCheckResult {
   if (!user) {
     return { success: false, error: 'User not authenticated' }
@@ -173,7 +173,42 @@ export function requireRole(
     return { success: true }
   }
 
+  // Approver can access if Approver role is required
+  if (requiredRole === 'Approver' && user.roles.includes('Approver')) {
+    return { success: true }
+  }
+
   return { success: false, error: `Role '${requiredRole}' required` }
+}
+
+/**
+ * Check if user has ANY of the required roles
+ * Useful for endpoints accessible to multiple parallel roles (e.g., Reader + Approver)
+ */
+export function requireAnyRole(
+  user: AuthUser | undefined,
+  requiredRoles: Array<'Admin' | 'Reader' | 'Approver'>
+): RoleCheckResult {
+  if (!user) {
+    return { success: false, error: 'User not authenticated' }
+  }
+
+  if (!user.roles || user.roles.length === 0) {
+    return { success: false, error: 'No role assigned — contact your administrator' }
+  }
+
+  // Admin has access to everything
+  if (user.roles.includes('Admin')) {
+    return { success: true }
+  }
+
+  for (const role of requiredRoles) {
+    if (user.roles.includes(role)) {
+      return { success: true }
+    }
+  }
+
+  return { success: false, error: `One of roles '${requiredRoles.join(', ')}' required` }
 }
 
 // =============================================================================
@@ -181,17 +216,21 @@ export function requireRole(
 // =============================================================================
 
 // Security group to role mapping (from environment)
-const GROUP_ROLE_MAPPING: Record<string, 'Admin' | 'Reader'> = {}
+const GROUP_ROLE_MAPPING: Record<string, 'Admin' | 'Reader' | 'Approver'> = {}
 
 // Initialize group mapping from environment
 const ADMIN_GROUP_ID = process.env.ADMIN_GROUP_ID || process.env.NEXT_PUBLIC_ADMIN_GROUP
 const USER_GROUP_ID = process.env.USER_GROUP_ID || process.env.NEXT_PUBLIC_USER_GROUP
+const APPROVER_GROUP_ID = process.env.APPROVER_GROUP_ID || process.env.NEXT_PUBLIC_APPROVER_GROUP
 
 if (ADMIN_GROUP_ID) {
   GROUP_ROLE_MAPPING[ADMIN_GROUP_ID] = 'Admin'
 }
 if (USER_GROUP_ID) {
   GROUP_ROLE_MAPPING[USER_GROUP_ID] = 'Reader'
+}
+if (APPROVER_GROUP_ID) {
+  GROUP_ROLE_MAPPING[APPROVER_GROUP_ID] = 'Approver'
 }
 
 /**

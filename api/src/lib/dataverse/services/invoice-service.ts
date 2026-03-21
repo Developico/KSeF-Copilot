@@ -215,7 +215,11 @@ export class InvoiceService {
 
       const result = await dataverseClient.create<DvInvoice>(this.entitySet, payload)
       
-      // Fetch the created record to return full data
+      // Dataverse may return full entity (Prefer: return=representation) or { id } (204)
+      const dvIdField = DV.invoice.id
+      if (result && dvIdField in (result as unknown as Record<string, unknown>)) {
+        return mapDvInvoiceToApp(result as unknown as DvInvoice)
+      }
       if (result && 'id' in result) {
         const created = await this.getById((result as { id: string }).id)
         if (created) return created

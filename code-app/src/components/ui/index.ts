@@ -37,6 +37,7 @@ export {
 } from './sheet'
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs'
 export { Textarea } from './textarea'
+export { MonthPicker } from './month-picker'
 export {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from './tooltip'

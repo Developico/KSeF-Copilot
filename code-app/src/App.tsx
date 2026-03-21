@@ -13,6 +13,10 @@ import { SyncPage } from './pages/sync'
 import { SettingsPage } from './pages/settings'
 import { ManualInvoicePage } from './pages/manual-invoice'
 import { ApprovalsPage } from './pages/approvals'
+import { SuppliersPage } from './pages/suppliers'
+import { SupplierDetailPage } from './pages/supplier-detail'
+import { SelfBillingPage } from './pages/self-billing'
+import { SelfBillingDetailPage } from './pages/self-billing-detail'
 
 // ── Error Boundary ───────────────────────────────────────────────
 
@@ -95,6 +99,10 @@ export function App() {
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/approvals" element={<ApprovalsPage />} />
               <Route path="/forecast" element={<ForecastPage />} />
+              <Route path="/suppliers" element={<SuppliersPage />} />
+              <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
+              <Route path="/self-billing" element={<SelfBillingPage />} />
+              <Route path="/self-billing/:id" element={<SelfBillingDetailPage />} />
               <Route path="/sync" element={<SyncPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>

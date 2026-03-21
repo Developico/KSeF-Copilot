@@ -34,6 +34,8 @@ function mapNotificationTypeToApp(value: number | undefined): NotificationType {
     case NOTIFICATION_TYPE.BUDGET_WARNING_80: return 'BudgetWarning80'
     case NOTIFICATION_TYPE.BUDGET_EXCEEDED: return 'BudgetExceeded'
     case NOTIFICATION_TYPE.APPROVAL_DECIDED: return 'ApprovalDecided'
+    case NOTIFICATION_TYPE.SB_APPROVAL_REQUESTED: return 'SbApprovalRequested'
+    case NOTIFICATION_TYPE.SB_APPROVAL_DECIDED: return 'SbApprovalDecided'
     default: return 'ApprovalRequested'
   }
 }
@@ -45,6 +47,8 @@ function mapNotificationTypeToDv(type: NotificationType): number {
     case 'BudgetWarning80': return NOTIFICATION_TYPE.BUDGET_WARNING_80
     case 'BudgetExceeded': return NOTIFICATION_TYPE.BUDGET_EXCEEDED
     case 'ApprovalDecided': return NOTIFICATION_TYPE.APPROVAL_DECIDED
+    case 'SbApprovalRequested': return NOTIFICATION_TYPE.SB_APPROVAL_REQUESTED
+    case 'SbApprovalDecided': return NOTIFICATION_TYPE.SB_APPROVAL_DECIDED
   }
 }
 
@@ -189,6 +193,39 @@ export class NotificationService {
 
     const records = await dataverseClient.listAll<DvNotification>(n.entitySet, query)
     return records.length
+  }
+
+  /**
+   * Mark all unread notifications as read for a recipient.
+   */
+  async markAllRead(recipientOid: string, settingId: string): Promise<number> {
+    const n = DV.notification
+    const conditions = [
+      `${n.recipientLookup} eq ${escapeOData(recipientOid)}`,
+      `${n.settingLookup} eq ${escapeOData(settingId)}`,
+      `${n.isDismissed} eq false`,
+      `${n.isRead} eq false`,
+    ]
+    const query = `$filter=${conditions.join(' and ')}&$select=${n.id}`
+    const records = await dataverseClient.listAll<DvNotification>(n.entitySet, query)
+
+    let marked = 0
+    for (const record of records) {
+      try {
+        const id = (record as unknown as Record<string, unknown>)[n.id] as string
+        await dataverseClient.update(n.entitySet, id, { [n.isRead]: true })
+        marked++
+      } catch (error) {
+        logDataverseError('NotificationService.markAllRead', error)
+      }
+    }
+
+    logDataverseInfo('NotificationService.markAllRead', `Marked ${marked}/${records.length} as read`, {
+      recipientOid,
+      settingId,
+    })
+
+    return marked
   }
 }
 

@@ -7,11 +7,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { RefreshCw, CheckCircle, AlertCircle, XCircle, Loader2 } from 'lucide-react'
 import { useHealthDetailed } from '@/hooks/use-api'
 import { useSelectedCompany } from '@/contexts/company-context'
+import { useTranslations } from 'next-intl'
 
 export function HealthStatusPanel() {
   const { selectedCompany } = useSelectedCompany()
   const environment = selectedCompany?.environment
   const { data: health, isLoading, refetch, isFetching } = useHealthDetailed(environment)
+  const t = useTranslations('systemStatus')
 
   const getStatusIcon = (status: 'healthy' | 'degraded' | 'unhealthy') => {
     switch (status) {
@@ -24,20 +26,19 @@ export function HealthStatusPanel() {
     }
   }
 
+  const getStatusLabel = (status: 'healthy' | 'degraded' | 'unhealthy') => {
+    return t(status)
+  }
+
   const getStatusBadge = (status: 'healthy' | 'degraded' | 'unhealthy') => {
     const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
       healthy: 'default',
       degraded: 'secondary',
       unhealthy: 'destructive',
     }
-    const labels = {
-      healthy: 'Healthy',
-      degraded: 'Degraded',
-      unhealthy: 'Unhealthy',
-    }
     return (
       <Badge variant={variants[status]} className="ml-auto">
-        {labels[status]}
+        {getStatusLabel(status)}
       </Badge>
     )
   }
@@ -46,8 +47,8 @@ export function HealthStatusPanel() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>System Status</CardTitle>
-          <CardDescription>Checking system health...</CardDescription>
+          <CardTitle>{t('title')}</CardTitle>
+          <CardDescription>{t('checking')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -70,16 +71,16 @@ export function HealthStatusPanel() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>System Status</CardTitle>
-          <CardDescription>Unable to fetch system health</CardDescription>
+          <CardTitle>{t('title')}</CardTitle>
+          <CardDescription>{t('cannotConnect')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center p-8">
             <XCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
-            <p className="text-sm text-muted-foreground">Failed to connect to health endpoint</p>
+            <p className="text-sm text-muted-foreground">{t('failedToConnect')}</p>
             <Button variant="outline" size="sm" className="mt-4" onClick={() => refetch()}>
               <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
+              {t('retry')}
             </Button>
           </div>
         </CardContent>
@@ -93,11 +94,11 @@ export function HealthStatusPanel() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              System Status
+              {t('title')}
               {getStatusIcon(health.status)}
             </CardTitle>
             <CardDescription>
-              Last checked: {new Date(health.timestamp).toLocaleTimeString()}
+              {t('lastChecked', { time: new Date(health.timestamp).toLocaleTimeString() })}
             </CardDescription>
           </div>
           <Button
@@ -119,9 +120,9 @@ export function HealthStatusPanel() {
         <div className="p-4 rounded-lg bg-muted/50 border">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold">Overall Status</h3>
+              <h3 className="font-semibold">{t('overallStatus')}</h3>
               <p className="text-sm text-muted-foreground">
-                {health.summary.healthy} of {health.summary.total} services healthy
+                {t('servicesHealthy', { healthy: health.summary.healthy, total: health.summary.total })}
               </p>
             </div>
             {getStatusBadge(health.status)}
@@ -147,7 +148,7 @@ export function HealthStatusPanel() {
                     )}
                     {service.responseTime !== undefined && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Response time: {service.responseTime}ms
+                        {t('responseTime', { ms: service.responseTime })}
                       </p>
                     )}
                     {service.details && (
@@ -178,19 +179,19 @@ export function HealthStatusPanel() {
             <div className="text-2xl font-bold text-green-600">
               {health.summary.healthy}
             </div>
-            <div className="text-xs text-muted-foreground">Healthy</div>
+            <div className="text-xs text-muted-foreground">{t('healthy')}</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-yellow-600">
               {health.summary.degraded}
             </div>
-            <div className="text-xs text-muted-foreground">Degraded</div>
+            <div className="text-xs text-muted-foreground">{t('degraded')}</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-red-600">
               {health.summary.unhealthy}
             </div>
-            <div className="text-xs text-muted-foreground">Unhealthy</div>
+            <div className="text-xs text-muted-foreground">{t('unhealthy')}</div>
           </div>
         </div>
       </CardContent>

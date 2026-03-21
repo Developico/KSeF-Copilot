@@ -356,13 +356,11 @@ export function InvoiceFilters({
                 value={filters.supplierName || filters.supplierNip || ''}
                 onChange={(e) => {
                   const value = e.target.value
-                  // If it looks like NIP (digits only), set as NIP
+                  // If it looks like NIP (digits only), set as NIP; otherwise as name
                   if (/^\d+$/.test(value)) {
-                    updateFilter('supplierNip', value || undefined)
-                    updateFilter('supplierName', undefined)
+                    onChange({ ...filters, supplierNip: value || undefined, supplierName: undefined })
                   } else {
-                    updateFilter('supplierName', value || undefined)
-                    updateFilter('supplierNip', undefined)
+                    onChange({ ...filters, supplierName: value || undefined, supplierNip: undefined })
                   }
                 }}
               />

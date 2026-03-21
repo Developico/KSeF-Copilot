@@ -3,21 +3,22 @@ import { useIntl } from 'react-intl'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Card, CardContent, CardHeader, CardTitle,
-  Badge, Skeleton, Button,
+  Badge, Skeleton, Button, Input, Checkbox,
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
   AlertDialogTitle, AlertDialogTrigger,
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   DropdownMenuTrigger,
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui'
 import {
   FileText, AlertCircle, ArrowUpDown, ChevronUp, ChevronDown,
   RefreshCw, Eye, Plus, ScanLine, Download,
   MoreHorizontal, CheckCircle, XCircle, Trash2,
-  Paperclip, StickyNote, CornerDownRight,
+  Paperclip, StickyNote, CornerDownRight, Ban,
 } from 'lucide-react'
-import { useInvoices, useMarkInvoiceAsPaid, useUpdateInvoice, useDeleteInvoice } from '@/hooks/use-api'
+import { useInvoices, useMarkInvoiceAsPaid, useUpdateInvoice, useDeleteInvoice, useBatchMarkPaidInvoices, useBatchMarkUnpaidInvoices, useBatchApproveInvoices, useBatchRejectInvoices, useBatchDeleteInvoices } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { exportInvoicesToCsv } from '@/lib/export'
@@ -31,7 +32,7 @@ import { DocumentScannerModal } from '@/components/invoices/document-scanner-mod
 import { ApprovalStatusBadge } from '@/components/invoices/approval-status-badge'
 import { InvoicePagination } from '@/components/invoices/invoice-pagination'
 import { toast } from 'sonner'
-import type { Invoice, InvoiceListParams } from '@/lib/types'
+import type { Invoice, InvoiceListParams, BatchActionResult } from '@/lib/types'
 
 type SortField = 'invoiceDate' | 'grossAmount' | 'supplierName' | 'dueDate'
 type SortDir = 'asc' | 'desc'
@@ -251,6 +252,37 @@ export function InvoicesPage() {
     },
   })
 
+  // Bulk action mutations
+  const batchMarkPaidMutation = useBatchMarkPaidInvoices()
+  const batchMarkUnpaidMutation = useBatchMarkUnpaidInvoices()
+  const batchApproveMutation = useBatchApproveInvoices()
+  const batchRejectMutation = useBatchRejectInvoices()
+  const batchDeleteMutation = useBatchDeleteInvoices()
+
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkConfirmAction, setBulkConfirmAction] = useState<'markPaid' | 'markUnpaid' | 'approve' | 'delete' | null>(null)
+  const [bulkRejectOpen, setBulkRejectOpen] = useState(false)
+  const [bulkRejectReason, setBulkRejectReason] = useState('')
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), [])
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll(list: Invoice[]) {
+    const ids = list.map(inv => inv.id)
+    const allSelected = ids.length > 0 && ids.every(id => selectedIds.has(id))
+    if (allSelected) clearSelection()
+    else setSelectedIds(new Set(ids))
+  }
+
   // Client-side filtering (supplier search + description status + corrections)
   const allInvoices = data?.invoices ?? []
   
@@ -341,6 +373,82 @@ export function InvoicesPage() {
   const handleDelete = (invoiceId: string) => {
     deleteInvoiceMutation.mutate(invoiceId)
   }
+
+  // ── Bulk action helpers ─────────────────────────────────
+
+  const selectedInvoices = useMemo(() =>
+    allInvoices.filter(inv => selectedIds.has(inv.id)),
+    [allInvoices, selectedIds],
+  )
+
+  const eligibleCounts = useMemo(() => {
+    const sel = selectedInvoices
+    return {
+      markPaid: sel.filter(inv => inv.paymentStatus !== 'paid').length,
+      markUnpaid: sel.filter(inv => inv.paymentStatus === 'paid').length,
+      approve: sel.filter(inv => inv.approvalStatus === 'Pending' || inv.approvalStatus === 'Draft').length,
+      reject: sel.filter(inv => inv.approvalStatus === 'Pending' || inv.approvalStatus === 'Draft').length,
+      delete: sel.length,
+    }
+  }, [selectedInvoices])
+
+  const isBulkBusy = batchMarkPaidMutation.isPending || batchMarkUnpaidMutation.isPending ||
+    batchApproveMutation.isPending || batchRejectMutation.isPending || batchDeleteMutation.isPending
+
+  function handleBatchResult(result: BatchActionResult) {
+    clearSelection()
+    void refetch()
+    if (result.failed === 0) {
+      toast.success(intl.formatMessage({ id: 'invoices.bulk.resultSuccess' }, { count: result.succeeded }))
+    } else {
+      toast.warning(intl.formatMessage({ id: 'invoices.bulk.resultPartial' }, {
+        succeeded: result.succeeded,
+        total: result.total,
+        failed: result.failed,
+      }))
+    }
+  }
+
+  const executeBulkAction = useCallback((action: 'markPaid' | 'markUnpaid' | 'approve' | 'delete') => {
+    const ids = selectedInvoices
+      .filter(inv => {
+        if (action === 'markPaid') return inv.paymentStatus !== 'paid'
+        if (action === 'markUnpaid') return inv.paymentStatus === 'paid'
+        if (action === 'approve') return inv.approvalStatus === 'Pending' || inv.approvalStatus === 'Draft'
+        if (action === 'delete') return true
+        return false
+      })
+      .map(inv => inv.id)
+
+    if (ids.length === 0) return
+    setBulkConfirmAction(null)
+
+    const opts = {
+      onSuccess: (result: BatchActionResult) => handleBatchResult(result),
+      onError: (err: Error) => toast.error(err.message),
+    }
+
+    if (action === 'markPaid') batchMarkPaidMutation.mutate(ids, opts)
+    else if (action === 'markUnpaid') batchMarkUnpaidMutation.mutate(ids, opts)
+    else if (action === 'approve') batchApproveMutation.mutate(ids, opts)
+    else if (action === 'delete') batchDeleteMutation.mutate(ids, opts)
+  }, [selectedInvoices, batchMarkPaidMutation, batchMarkUnpaidMutation, batchApproveMutation, batchDeleteMutation])
+
+  const executeBulkReject = useCallback(() => {
+    if (!bulkRejectReason.trim()) return
+    const ids = selectedInvoices
+      .filter(inv => inv.approvalStatus === 'Pending' || inv.approvalStatus === 'Draft')
+      .map(inv => inv.id)
+    if (ids.length === 0) return
+    setBulkRejectOpen(false)
+    batchRejectMutation.mutate(
+      { invoiceIds: ids, comment: bulkRejectReason.trim() },
+      {
+        onSuccess: (result) => handleBatchResult(result),
+        onError: (err) => toast.error(err.message),
+      },
+    )
+  }, [selectedInvoices, bulkRejectReason, batchRejectMutation])
 
   return (
     <div className="space-y-6">
@@ -484,6 +592,13 @@ export function InvoicesPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
+                      <th className="p-3 w-10">
+                        <Checkbox
+                          checked={group.invoices.length > 0 && group.invoices.every(inv => selectedIds.has(inv.id))}
+                          onCheckedChange={() => toggleSelectAll(group.invoices)}
+                          aria-label={intl.formatMessage({ id: 'invoices.bulk.selectAll' })}
+                        />
+                      </th>
                       <th className="text-left p-3 font-medium">
                         <button onClick={() => toggleSort('invoiceDate')} className="inline-flex items-center hover:text-foreground">
                           {intl.formatMessage({ id: 'invoices.invoiceDate' })}
@@ -514,6 +629,9 @@ export function InvoicesPage() {
                       <th className="text-left p-3 font-medium">
                         {intl.formatMessage({ id: 'invoices.approvalColumn' })}
                       </th>
+                      <th className="text-center p-3 font-medium whitespace-nowrap">
+                        {intl.formatMessage({ id: 'invoices.selfBillingColumn' })}
+                      </th>
                       <th className="text-center p-3 font-medium">
                         {intl.formatMessage({ id: 'invoices.paymentStatus' })}
                       </th>
@@ -524,7 +642,14 @@ export function InvoicesPage() {
                   </thead>
                   <tbody>
                     {nestCorrections(group.invoices).map(({ invoice: inv, isCorrection }) => (
-                      <tr key={inv.id} className={`border-b hover:bg-muted/30 transition-colors cursor-pointer ${isCorrection ? 'bg-orange-50/40 dark:bg-orange-950/20 border-l-2 border-l-orange-300 dark:border-l-orange-700' : ''}`} onDoubleClick={() => navigate(`/invoices/${inv.id}`)}>
+                      <tr key={inv.id} className={`border-b hover:bg-muted/30 transition-colors cursor-pointer ${isCorrection ? 'bg-orange-50/40 dark:bg-orange-950/20 border-l-2 border-l-orange-300 dark:border-l-orange-700' : ''} ${selectedIds.has(inv.id) ? 'bg-primary/5' : ''}`} onDoubleClick={() => navigate(`/invoices/${inv.id}`)}>
+                        <td className="p-3 w-10" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedIds.has(inv.id)}
+                            onCheckedChange={() => toggleSelect(inv.id)}
+                            aria-label={inv.invoiceNumber}
+                          />
+                        </td>
                         <td className="p-3 whitespace-nowrap">{formatDate(inv.invoiceDate)}</td>
                         <td className="p-3 font-mono text-xs">
                           <div className="flex items-center gap-1.5">
@@ -577,6 +702,13 @@ export function InvoicesPage() {
                         <td className="p-3 text-muted-foreground">{inv.category ?? '—'}</td>
                         <td className="p-3">
                           <ApprovalStatusBadge status={inv.approvalStatus} />
+                        </td>
+                        <td className="p-3 text-center">
+                          {inv.isSelfBilling && (
+                            <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800 text-[10px] px-1.5 py-0 leading-tight font-sans">
+                              {intl.formatMessage({ id: 'invoices.selfBillingColumn' })}
+                            </Badge>
+                          )}
                         </td>
                         <td className="p-3 text-center">
                           <PaymentBadge status={inv.paymentStatus} dueDate={inv.dueDate} />
@@ -656,13 +788,18 @@ export function InvoicesPage() {
                           />
                         </div>
                       </div>
-                      {(inv.mpkCenterName || inv.mpk || inv.category) && (
+                      {(inv.mpkCenterName || inv.mpk || inv.category || inv.isSelfBilling) && (
                         <div className="flex gap-2 mt-2">
                           {(inv.mpkCenterName || inv.mpk) && (
                             <Badge variant="outline" className="text-xs">{inv.mpkCenterName || inv.mpk}</Badge>
                           )}
                           {inv.category && (
                             <Badge variant="outline" className="text-xs">{inv.category}</Badge>
+                          )}
+                          {inv.isSelfBilling && (
+                            <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800 text-xs">
+                              {intl.formatMessage({ id: 'invoices.selfBillingColumn' })}
+                            </Badge>
                           )}
                         </div>
                       )}
@@ -688,6 +825,136 @@ export function InvoicesPage() {
 
       {/* Document Scanner Modal */}
       <DocumentScannerModal open={scannerOpen} onOpenChange={setScannerOpen} />
+
+      {/* Bulk action floating toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-background border rounded-lg shadow-lg px-4 py-3 flex items-center gap-3 flex-wrap max-w-[95vw]">
+          <span className="text-sm font-medium whitespace-nowrap">
+            {intl.formatMessage({ id: 'invoices.bulk.selected' }, { count: selectedIds.size })}
+          </span>
+          <div className="h-4 w-px bg-border" />
+          {eligibleCounts.markPaid > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isBulkBusy}
+              onClick={() => setBulkConfirmAction('markPaid')}
+            >
+              <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+              {intl.formatMessage({ id: 'invoices.bulk.markPaid' }, { count: eligibleCounts.markPaid })}
+            </Button>
+          )}
+          {eligibleCounts.markUnpaid > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isBulkBusy}
+              onClick={() => setBulkConfirmAction('markUnpaid')}
+            >
+              <Ban className="h-3.5 w-3.5 mr-1.5" />
+              {intl.formatMessage({ id: 'invoices.bulk.markUnpaid' }, { count: eligibleCounts.markUnpaid })}
+            </Button>
+          )}
+          {eligibleCounts.approve > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isBulkBusy}
+              onClick={() => setBulkConfirmAction('approve')}
+            >
+              <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+              {intl.formatMessage({ id: 'invoices.bulk.approve' }, { count: eligibleCounts.approve })}
+            </Button>
+          )}
+          {eligibleCounts.reject > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isBulkBusy}
+              onClick={() => { setBulkRejectReason(''); setBulkRejectOpen(true) }}
+            >
+              <XCircle className="h-3.5 w-3.5 mr-1.5" />
+              {intl.formatMessage({ id: 'invoices.bulk.reject' }, { count: eligibleCounts.reject })}
+            </Button>
+          )}
+          {eligibleCounts.delete > 0 && (
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={isBulkBusy}
+              onClick={() => setBulkConfirmAction('delete')}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              {intl.formatMessage({ id: 'invoices.bulk.delete' }, { count: eligibleCounts.delete })}
+            </Button>
+          )}
+          <div className="h-4 w-px bg-border" />
+          <Button size="sm" variant="ghost" onClick={clearSelection}>
+            {intl.formatMessage({ id: 'invoices.bulk.deselectAll' })}
+          </Button>
+          {isBulkBusy && (
+            <span className="text-xs text-muted-foreground animate-pulse">
+              {intl.formatMessage({ id: 'invoices.bulk.processing' })}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Bulk confirm dialog */}
+      <Dialog open={bulkConfirmAction !== null} onOpenChange={(open) => { if (!open) setBulkConfirmAction(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{intl.formatMessage({ id: 'invoices.bulk.confirmTitle' })}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm">
+            {bulkConfirmAction === 'markPaid' && intl.formatMessage({ id: 'invoices.bulk.confirmMarkPaid' }, { count: eligibleCounts.markPaid })}
+            {bulkConfirmAction === 'markUnpaid' && intl.formatMessage({ id: 'invoices.bulk.confirmMarkUnpaid' }, { count: eligibleCounts.markUnpaid })}
+            {bulkConfirmAction === 'approve' && intl.formatMessage({ id: 'invoices.bulk.confirmApprove' }, { count: eligibleCounts.approve })}
+            {bulkConfirmAction === 'delete' && intl.formatMessage({ id: 'invoices.bulk.confirmDelete' }, { count: eligibleCounts.delete })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkConfirmAction(null)}>
+              {intl.formatMessage({ id: 'common.cancel' })}
+            </Button>
+            <Button
+              variant={bulkConfirmAction === 'delete' ? 'destructive' : 'default'}
+              onClick={() => bulkConfirmAction && executeBulkAction(bulkConfirmAction)}
+              disabled={isBulkBusy}
+            >
+              {isBulkBusy ? intl.formatMessage({ id: 'invoices.bulk.processing' }) : intl.formatMessage({ id: 'common.confirm' })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk reject dialog */}
+      <Dialog open={bulkRejectOpen} onOpenChange={setBulkRejectOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{intl.formatMessage({ id: 'invoices.bulk.confirmTitle' })}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <p className="text-sm">{intl.formatMessage({ id: 'invoices.bulk.confirmReject' }, { count: eligibleCounts.reject })}</p>
+            <Input
+              placeholder={intl.formatMessage({ id: 'invoices.bulk.rejectReasonPlaceholder' })}
+              value={bulkRejectReason}
+              onChange={(e) => setBulkRejectReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkRejectOpen(false)}>
+              {intl.formatMessage({ id: 'common.cancel' })}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={executeBulkReject}
+              disabled={isBulkBusy || !bulkRejectReason.trim()}
+            >
+              {isBulkBusy ? intl.formatMessage({ id: 'invoices.bulk.processing' }) : intl.formatMessage({ id: 'invoices.bulk.reject' }, { count: eligibleCounts.reject })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

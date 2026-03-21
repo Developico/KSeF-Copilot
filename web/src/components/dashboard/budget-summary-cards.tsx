@@ -8,15 +8,7 @@ import { DollarSign, AlertTriangle, TrendingUp } from 'lucide-react'
 import { useContextBudgetSummary, useContextPendingApprovals } from '@/hooks/use-api'
 import { AnimatedCardWrapper, AnimatedKpiCard, AnimatedCardGrid } from './animated-kpi-card'
 import type { BudgetStatus } from '@/lib/api'
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('pl-PL', {
-    style: 'currency',
-    currency: 'PLN',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
+import { formatCurrencyCompact as formatCurrency } from '@/lib/format'
 
 export function BudgetSummaryCards() {
   const t = useTranslations('dashboard.budget')

@@ -21,6 +21,24 @@ import {
   type PendingApproval,
   type BudgetUtilizationReport,
   type ApprovalHistoryReport,
+  type Supplier,
+  type SupplierCreate,
+  type SupplierListParams,
+  type SupplierDetailStats,
+  type SbAgreement,
+  type SbAgreementCreate,
+  type SbTemplate,
+  type SbTemplateCreate,
+  type SelfBillingInvoice,
+  type SelfBillingInvoiceListParams,
+  type SelfBillingGenerateRequest,
+  type SelfBillingGenerateResponse,
+  type SelfBillingConfirmRequest,
+  type SelfBillingBatchResult,
+  type SelfBillingImportResult,
+  type SbImportEnrichedRow,
+  type SelfBillingInvoiceCreateData,
+  type SelfBillingInvoiceUpdateData,
 } from '../lib/api'
 import { FALLBACK_FORECAST_META, FALLBACK_ANOMALY_META } from '../lib/forecast-metadata'
 import { useCompanyContext } from '@/contexts/company-context'
@@ -213,6 +231,61 @@ export function useMarkAsPaid() {
       api.invoices.markAsPaid(id, paymentDate),
     onSuccess: (updatedInvoice) => {
       queryClient.setQueryData(queryKeys.invoice(updatedInvoice.id), updatedInvoice)
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+  })
+}
+
+// ── Invoice Batch Hooks ──
+
+export function useBatchMarkPaidInvoices() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (invoiceIds: string[]) => api.invoices.batchMarkPaid(invoiceIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+  })
+}
+
+export function useBatchMarkUnpaidInvoices() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (invoiceIds: string[]) => api.invoices.batchMarkUnpaid(invoiceIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+  })
+}
+
+export function useBatchApproveInvoices() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (invoiceIds: string[]) => api.invoices.batchApprove(invoiceIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['approvals'] })
+    },
+  })
+}
+
+export function useBatchRejectInvoices() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ invoiceIds, comment }: { invoiceIds: string[]; comment: string }) =>
+      api.invoices.batchReject(invoiceIds, comment),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['approvals'] })
+    },
+  })
+}
+
+export function useBatchDeleteInvoices() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (invoiceIds: string[]) => api.invoices.batchDelete(invoiceIds),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
     },
   })
@@ -564,6 +637,22 @@ export function useContextDashboardStats(params?: { fromDate?: string; toDate?: 
     queryFn: () => api.dashboard.stats({ 
       ...params, 
       settingId: selectedCompany?.id 
+    }),
+    enabled: !companyLoading && Boolean(selectedCompany),
+  })
+}
+
+/**
+ * Hook for unified activity feed for currently selected company.
+ */
+export function useContextDashboardActivity(params?: { top?: number; types?: string }) {
+  const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+
+  return useQuery({
+    queryKey: ['dashboard', 'activity', 'context', selectedCompany?.id, params],
+    queryFn: () => api.dashboard.activity({
+      ...params,
+      settingId: selectedCompany?.id,
     }),
     enabled: !companyLoading && Boolean(selectedCompany),
   })
@@ -959,6 +1048,34 @@ export function useDeactivateMpkCenter() {
   })
 }
 
+export function useApplyApproval() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, scope, dryRun }: { id: string; scope: 'unprocessed' | 'decided' | 'all'; dryRun?: boolean }) =>
+      api.mpkCenters.applyApproval(id, scope, dryRun),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mpk-centers'] })
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['approvals'] })
+    },
+  })
+}
+
+export function useRevokeApproval() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, scope, dryRun }: { id: string; scope: 'pending' | 'decided' | 'all'; dryRun?: boolean }) =>
+      api.mpkCenters.revokeApproval(id, scope, dryRun),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mpk-centers'] })
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['approvals'] })
+    },
+  })
+}
+
 // ============================================================================
 // MPK Approvers
 // ============================================================================
@@ -1010,6 +1127,23 @@ export function useDvUsers(settingId?: string) {
 export function useContextDvUsers() {
   const { selectedCompany } = useCompanyContext()
   return useDvUsers(selectedCompany?.id)
+}
+
+// ============================================================================
+// Approver Overview
+// ============================================================================
+
+export function useApproverOverview(settingId?: string) {
+  return useQuery({
+    queryKey: queryKeys.approverOverview(settingId!),
+    queryFn: () => api.approverOverview.get(settingId!),
+    enabled: Boolean(settingId),
+  })
+}
+
+export function useContextApproverOverview() {
+  const { selectedCompany } = useCompanyContext()
+  return useApproverOverview(selectedCompany?.id)
 }
 
 // ============================================================================
@@ -1170,6 +1304,22 @@ export function useDismissNotification() {
   })
 }
 
+export function useMarkAllNotificationsRead() {
+  const queryClient = useQueryClient()
+  const { selectedCompany } = useCompanyContext()
+
+  return useMutation({
+    mutationFn: () => {
+      const settingId = selectedCompany?.id
+      if (!settingId) throw new Error('No company selected')
+      return api.notifications.markAllRead(settingId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    },
+  })
+}
+
 // ============================================================================
 // Reports
 // ============================================================================
@@ -1233,4 +1383,552 @@ export function useInvoiceProcessingReport(settingId?: string) {
 export function useContextInvoiceProcessingReport() {
   const { selectedCompany } = useCompanyContext()
   return useInvoiceProcessingReport(selectedCompany?.id)
+}
+
+// ============================================================================
+// Suppliers
+// ============================================================================
+
+export function useSuppliers(params?: SupplierListParams, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.suppliers(params),
+    queryFn: () => api.suppliers.list(params),
+    enabled: options?.enabled,
+  })
+}
+
+export function useContextSuppliers(
+  overrides?: Partial<SupplierListParams>,
+  options?: { enabled?: boolean }
+) {
+  const { selectedCompany } = useCompanyContext()
+  const params: SupplierListParams | undefined = selectedCompany?.id
+    ? { settingId: selectedCompany.id, ...overrides }
+    : undefined
+  return useSuppliers(params, { enabled: Boolean(selectedCompany?.id) && (options?.enabled ?? true) })
+}
+
+export function useSupplier(id: string) {
+  return useQuery({
+    queryKey: queryKeys.supplier(id),
+    queryFn: () => api.suppliers.get(id),
+    enabled: Boolean(id),
+  })
+}
+
+export function useSupplierStats(id: string) {
+  return useQuery({
+    queryKey: queryKeys.supplierStats(id),
+    queryFn: () => api.suppliers.stats(id),
+    enabled: Boolean(id),
+  })
+}
+
+export function useSupplierInvoices(id: string) {
+  return useQuery({
+    queryKey: queryKeys.supplierInvoices(id),
+    queryFn: () => api.suppliers.invoices(id),
+    enabled: Boolean(id),
+  })
+}
+
+export function useCreateSupplier() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: SupplierCreate) => api.suppliers.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+  })
+}
+
+export function useUpdateSupplier() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Supplier> }) =>
+      api.suppliers.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+  })
+}
+
+export function useDeleteSupplier() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.suppliers.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+  })
+}
+
+// ── Supplier Batch Hooks ──
+
+export function useBatchDeactivateSuppliers() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (supplierIds: string[]) => api.suppliers.batchDeactivate(supplierIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+  })
+}
+
+export function useBatchReactivateSuppliers() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (supplierIds: string[]) => api.suppliers.batchReactivate(supplierIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+  })
+}
+
+export function useRefreshSupplierVat() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.suppliers.refreshVat(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.supplier(id) })
+    },
+  })
+}
+
+export function useCreateSupplierFromVat() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ nip, settingId }: { nip: string; settingId: string }) =>
+      api.suppliers.createFromVat(nip, settingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+  })
+}
+
+export function useImportSuppliers() {
+  return useMutation({
+    mutationFn: (data: { file: File; settingId: string }) =>
+      api.suppliers.import(data.file, data.settingId),
+  })
+}
+
+export function useConfirmSupplierImport() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { settingId: string; rows: import('@/lib/api').SupplierImportEnrichedRow[] }) =>
+      api.suppliers.confirmImport(data.settingId, data.rows),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+  })
+}
+
+// ============================================================================
+// Self-Billing Agreements
+// ============================================================================
+
+export function useSbAgreements(params?: { settingId?: string; supplierId?: string }) {
+  return useQuery({
+    queryKey: queryKeys.sbAgreements(params),
+    queryFn: () => api.sbAgreements.list(params),
+    enabled: Boolean(params?.settingId),
+  })
+}
+
+export function useContextSbAgreements(supplierId?: string) {
+  const { selectedCompany } = useCompanyContext()
+  return useSbAgreements(
+    selectedCompany?.id ? { settingId: selectedCompany.id, supplierId } : undefined
+  )
+}
+
+export function useSbAgreement(id: string) {
+  return useQuery({
+    queryKey: queryKeys.sbAgreement(id),
+    queryFn: () => api.sbAgreements.get(id),
+    enabled: Boolean(id),
+  })
+}
+
+export function useCreateSbAgreement() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: SbAgreementCreate) => api.sbAgreements.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sb-agreements'] })
+    },
+  })
+}
+
+export function useUpdateSbAgreement() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<SbAgreement> }) =>
+      api.sbAgreements.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sb-agreements'] })
+    },
+  })
+}
+
+export function useTerminateSbAgreement() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.sbAgreements.terminate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sb-agreements'] })
+    },
+  })
+}
+
+// ============================================================================
+// Self-Billing Templates
+// ============================================================================
+
+export function useSbTemplates(params?: { settingId?: string; supplierId?: string }) {
+  return useQuery({
+    queryKey: queryKeys.sbTemplates(params),
+    queryFn: () => api.sbTemplates.list(params),
+    enabled: Boolean(params?.settingId),
+  })
+}
+
+export function useContextSbTemplates(supplierId?: string) {
+  const { selectedCompany } = useCompanyContext()
+  return useSbTemplates(
+    selectedCompany?.id ? { settingId: selectedCompany.id, supplierId } : undefined
+  )
+}
+
+export function useSbTemplate(id: string) {
+  return useQuery({
+    queryKey: queryKeys.sbTemplate(id),
+    queryFn: () => api.sbTemplates.get(id),
+    enabled: Boolean(id),
+  })
+}
+
+export function useCreateSbTemplate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: SbTemplateCreate) => api.sbTemplates.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sb-templates'] })
+    },
+  })
+}
+
+export function useUpdateSbTemplate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<SbTemplate> }) =>
+      api.sbTemplates.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sb-templates'] })
+    },
+  })
+}
+
+export function useDeleteSbTemplate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.sbTemplates.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sb-templates'] })
+    },
+  })
+}
+
+export function useDuplicateSbTemplate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.sbTemplates.duplicate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sb-templates'] })
+    },
+  })
+}
+
+// ============================================================================
+// Self-Billing Invoices
+// ============================================================================
+
+export function useSelfBillingInvoices(
+  params?: SelfBillingInvoiceListParams,
+  options?: { enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: queryKeys.selfBillingInvoices(params),
+    queryFn: () => api.selfBilling.list(params),
+    enabled: options?.enabled ?? Boolean(params?.settingId),
+  })
+}
+
+export function useContextSelfBillingInvoices(
+  overrides?: Partial<SelfBillingInvoiceListParams>,
+  options?: { enabled?: boolean }
+) {
+  const { selectedCompany } = useCompanyContext()
+  const params: SelfBillingInvoiceListParams | undefined = selectedCompany?.id
+    ? { settingId: selectedCompany.id, ...overrides }
+    : undefined
+  return useSelfBillingInvoices(params, { enabled: Boolean(selectedCompany?.id) && (options?.enabled ?? true) })
+}
+
+export function useSelfBillingInvoice(id: string) {
+  return useQuery({
+    queryKey: queryKeys.selfBillingInvoice(id),
+    queryFn: () => api.selfBilling.get(id),
+    enabled: Boolean(id),
+  })
+}
+
+export function useCreateSelfBillingInvoice() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: SelfBillingInvoiceCreateData) => api.selfBilling.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+export function useUpdateSelfBillingInvoice() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: SelfBillingInvoiceUpdateData }) =>
+      api.selfBilling.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+export function useDeleteSelfBillingInvoice() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.selfBilling.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+export function usePreviewSelfBilling() {
+  return useMutation({
+    mutationFn: (data: SelfBillingGenerateRequest) => api.selfBilling.preview(data),
+  })
+}
+
+export function useGenerateSelfBilling() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: SelfBillingGenerateRequest) => api.selfBilling.generate(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+export function useConfirmGeneratedSelfBilling() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: SelfBillingConfirmRequest) => api.selfBilling.confirmGenerated(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+export function useSubmitSelfBillingForReview() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.selfBilling.submit(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+export function useApproveSelfBillingInvoice() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, comment, invoiceNumber }: { id: string; comment?: string; invoiceNumber?: string }) =>
+      api.selfBilling.approve(id, comment, invoiceNumber),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+export function useRejectSelfBillingInvoice() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+      api.selfBilling.reject(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+export function useSendSelfBillingToKsef() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.selfBilling.sendToKsef(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+export function useRevertSelfBillingToDraft() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => api.selfBilling.revertToDraft(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+export function useImportSelfBilling() {
+  return useMutation({
+    mutationFn: (data: { file: File; settingId: string }) =>
+      api.selfBilling.import(data.file, data.settingId),
+  })
+}
+
+export function useConfirmSelfBillingImport() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { settingId: string; rows: SbImportEnrichedRow[] }) =>
+      api.selfBilling.confirmImport(data.settingId, data.rows),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+// ── SB Batch Action Hooks ──────────────────────────────────────────
+
+export function useBatchSubmitSelfBilling() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (invoiceIds: string[]) => api.selfBilling.batchSubmit(invoiceIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+export function useBatchApproveSelfBilling() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (invoiceIds: string[]) => api.selfBilling.batchApprove(invoiceIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+export function useBatchRejectSelfBilling() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ invoiceIds, reason }: { invoiceIds: string[]; reason: string }) =>
+      api.selfBilling.batchReject(invoiceIds, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+export function useBatchSendToKsef() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (invoiceIds: string[]) => api.selfBilling.batchSendToKsef(invoiceIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+export function useBatchDeleteSelfBilling() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (invoiceIds: string[]) => api.selfBilling.batchDelete(invoiceIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-billing'] })
+    },
+  })
+}
+
+export function usePendingSbApprovals(settingId?: string, all?: boolean) {
+  return useQuery({
+    queryKey: queryKeys.sbPendingApprovals(settingId),
+    queryFn: () => api.selfBilling.pendingApprovals(settingId, all),
+    enabled: Boolean(settingId),
+  })
+}
+
+export function useContextPendingSbApprovals(all?: boolean) {
+  const { selectedCompany } = useCompanyContext()
+  return usePendingSbApprovals(selectedCompany?.id, all)
+}
+
+// ── SB Invoice Notes ─────────────────────────────────────────────
+
+export function useSbInvoiceNotes(sbInvoiceId: string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.selfBillingInvoiceNotes(sbInvoiceId),
+    queryFn: () => api.selfBilling.listNotes(sbInvoiceId),
+    enabled: Boolean(sbInvoiceId) && enabled,
+  })
+}
+
+export function useCreateSbInvoiceNote(sbInvoiceId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { subject?: string; noteText: string }) =>
+      api.selfBilling.createNote(sbInvoiceId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.selfBillingInvoiceNotes(sbInvoiceId) })
+    },
+  })
+}
+
+// ── SB Agreement Attachments ─────────────────────────────────────
+
+export function useSbAgreementAttachments(agreementId: string) {
+  return useQuery({
+    queryKey: ['sb-agreements', agreementId, 'attachments'] as const,
+    queryFn: () => api.sbAgreements.listAttachments(agreementId),
+    enabled: !!agreementId,
+  })
+}
+
+export function useUploadSbAgreementAttachment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ agreementId, data }: {
+      agreementId: string
+      data: { fileName: string; content: string; contentType: string }
+    }) => api.sbAgreements.uploadAttachment(agreementId, data),
+    onSuccess: (_data, { agreementId }) => {
+      queryClient.invalidateQueries({
+        queryKey: ['sb-agreements', agreementId, 'attachments'],
+      })
+    },
+  })
+}
+
+// ── SB Import Template Download ──────────────────────────────────
+
+export function useDownloadSbImportTemplate() {
+  return useQuery({
+    queryKey: ['self-billing', 'import-template'] as const,
+    queryFn: () => api.selfBilling.downloadTemplate(),
+    enabled: false,
+  })
 }

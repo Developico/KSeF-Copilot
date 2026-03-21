@@ -187,6 +187,13 @@ export function InvoiceMobileCard({
             {/* Description status */}
             {getDescriptionBadge()}
 
+            {/* Self-billing indicator */}
+            {invoice.isSelfBilling && (
+              <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 gap-1">
+                SB
+              </Badge>
+            )}
+
             {/* Attachments indicator */}
             {invoice.hasAttachments && (
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 gap-1">

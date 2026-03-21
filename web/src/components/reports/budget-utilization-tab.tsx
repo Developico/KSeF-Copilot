@@ -26,14 +26,10 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
+import { formatCurrencyCompact } from '@/lib/format'
 
 function formatCurrency(amount: number, locale: string) {
-  return new Intl.NumberFormat(locale === 'pl' ? 'pl-PL' : 'en-US', {
-    style: 'currency',
-    currency: 'PLN',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
+  return formatCurrencyCompact(amount, 'PLN', locale === 'pl' ? 'pl-PL' : 'en-US')
 }
 
 function formatDate(dateStr: string, locale: string) {

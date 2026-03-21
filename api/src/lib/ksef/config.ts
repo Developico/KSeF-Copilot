@@ -46,12 +46,18 @@ export interface KsefConfig {
 /**
  * Get KSeF configuration for a specific NIP from Dataverse
  */
-export async function getKsefConfigForNip(nip: string): Promise<KsefConfig> {
+export async function getKsefConfigForNip(nip: string, settingId?: string): Promise<KsefConfig> {
   // Import settingService dynamically to avoid circular dependency
   const { settingService } = await import('../dataverse')
   
-  const settings = await settingService.getAll(true)
-  const setting = settings.find(s => s.nip === nip)
+  let setting: { nip: string; environment: string; keyVaultSecretName?: string; tokenExpiresAt?: string; companyName?: string } | undefined
+  if (settingId) {
+    setting = await settingService.getById(settingId) as typeof setting
+  }
+  if (!setting) {
+    const settings = await settingService.getAll(true)
+    setting = settings.find(s => s.nip === nip)
+  }
   
   if (!setting) {
     throw new Error(`No active company found for NIP: ${nip}`)

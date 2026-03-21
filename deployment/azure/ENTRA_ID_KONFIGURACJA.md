@@ -164,12 +164,22 @@ Projekt KSeF używa **MSAL (Microsoft Authentication Library)** zamiast NextAuth
 | Group description | `Użytkownicy integracji KSeF — dostęp tylko do odczytu` |
 | Membership type | **Assigned** |
 
-3. Po utworzeniu, skopiuj **Object ID** obu grup:
+#### Grupa Akceptantów (Approvers)
+
+| Pole | Wartość |
+|------|---------||
+| Group type | **Security** |
+| Group name | `your-webapp-name-Approvers` |
+| Group description | `Akceptanci samofakturowania — mogą zatwierdzać i odrzucać faktury SB` |
+| Membership type | **Assigned** |
+
+3. Po utworzeniu, skopiuj **Object ID** grup:
 
 | Grupa | Object ID |
-|-------|-----------|
+|-------|-----------||
 | `your-webapp-name-Administrators` | `________________________________` |
 | `your-webapp-name-Users` | `________________________________` |
+| `your-webapp-name-Approvers` | `________________________________` |
 
 4. Dodaj członków do grup (**Members** → **"+ Add members"**)
 
@@ -198,20 +208,23 @@ Groups claim
 | Rola | Grupa | Uprawnienia |
 |------|-------|-------------|
 | **Admin** | `your-webapp-name-Administrators` | Pełny: sync, ustawienia, AI, usuwanie |
+| **Approver** | `your-webapp-name-Approvers` | Akceptacja/odrzucanie faktur samofakturowania |
 | **User** | `your-webapp-name-Users` | Odczyt: faktury, raporty, eksport |
 | **Brak** | — | Odmowa dostępu |
 
 ### Mapowanie uprawnień
 
-| Funkcja | Admin | User |
-|---------|-------|------|
-| Przeglądanie faktur | ✅ | ✅ |
-| Eksport CSV | ✅ | ✅ |
-| Raporty / dashboard | ✅ | ✅ |
-| Synchronizacja KSeF | ✅ | ❌ |
-| Kategoryzacja AI | ✅ | ❌ |
-| Ustawienia | ✅ | ❌ |
-| Usuwanie danych | ✅ | ❌ |
+| Funkcja | Admin | Approver | User |
+|---------|-------|----------|------|
+| Przeglądanie faktur | ✅ | ✅ | ✅ |
+| Eksport CSV | ✅ | ✅ | ✅ |
+| Raporty / dashboard | ✅ | ✅ | ✅ |
+| Akceptacja faktur SB | ✅ | ✅ | ❌ |
+| Odrzucanie faktur SB | ✅ | ✅ | ❌ |
+| Synchronizacja KSeF | ✅ | ❌ | ❌ |
+| Kategoryzacja AI | ✅ | ❌ | ❌ |
+| Ustawienia | ✅ | ❌ | ❌ |
+| Usuwanie danych | ✅ | ❌ | ❌ |
 
 ---
 
@@ -261,7 +274,8 @@ Groups claim
     "AZURE_CLIENT_SECRET": "<client-secret>",
     "DATAVERSE_URL": "https://[org].crm4.dynamics.com",
     "ADMIN_GROUP_ID": "<object-id-your-webapp-name-Administrators>",
-    "USER_GROUP_ID": "<object-id-your-webapp-name-Users>"
+    "USER_GROUP_ID": "<object-id-your-webapp-name-Users>",
+    "APPROVER_GROUP_ID": "<object-id-your-webapp-name-Approvers>"
   }
 }
 ```
@@ -274,6 +288,7 @@ NEXT_PUBLIC_AZURE_TENANT_ID=<tenant-id>
 NEXT_PUBLIC_API_SCOPE=api://<client-id>/.default
 NEXT_PUBLIC_ADMIN_GROUP=<object-id-your-webapp-name-Administrators>
 NEXT_PUBLIC_USER_GROUP=<object-id-your-webapp-name-Users>
+NEXT_PUBLIC_APPROVER_GROUP=<object-id-your-webapp-name-Approvers>
 ```
 
 > Pełna lista zmiennych: [Zmienne środowiskowe](./ZMIENNE_SRODOWISKOWE.md)
@@ -343,8 +358,8 @@ Write-Host "OK! Rekordów: $($result.value.Count)"
 - [ ] App Registration utworzona w Entra ID
 - [ ] Client Secret utworzony i zapisany
 - [ ] Uprawnienia Dataverse dodane + Admin consent
-- [ ] Grupy `your-webapp-name-Administrators` i `your-webapp-name-Users` utworzone
-- [ ] Object ID grup skopiowane do env vars
+- [ ] Grupy `your-webapp-name-Administrators`, `your-webapp-name-Users` i `your-webapp-name-Approvers` utworzone
+- [ ] Object ID grup skopiowane do env vars (ADMIN_GROUP_ID, USER_GROUP_ID, APPROVER_GROUP_ID)
 - [ ] Groups claim dodany do Token configuration
 - [ ] Rola `your-webapp-name Application` utworzona w Dataverse
 - [ ] Application User utworzony w Dataverse z przypisaną rolą

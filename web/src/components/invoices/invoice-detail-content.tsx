@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { pl } from 'date-fns/locale'
 import { useTranslations } from 'next-intl'
+import { formatCurrency } from '@/lib/format'
 import {
   ArrowLeft,
   FileText,
@@ -71,6 +73,17 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -108,14 +121,6 @@ const VAT_RATES = [
 // Helpers
 // ============================================================================
 
-function formatCurrency(amount: number, currency = 'PLN'): string {
-  return new Intl.NumberFormat('pl-PL', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-  }).format(amount)
-}
-
 function formatDate(date: string | undefined): string {
   if (!date) return '-'
   return format(new Date(date), 'dd MMM yyyy', { locale: pl })
@@ -152,6 +157,9 @@ function getConfidenceLabel(confidence: number): string {
 
 interface InvoiceDetailContentProps {
   invoiceId: string
+  /** Override back href (e.g. when opened from supplier detail) */
+  backHref?: string
+  backLabel?: string
 }
 
 // ============================================================================
@@ -160,9 +168,25 @@ interface InvoiceDetailContentProps {
 
 export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   const queryClient = useQueryClient()
+  const router = useRouter()
   const { toast } = useToast()
   const t = useTranslations('invoices')
+  const tCommon = useTranslations('common')
   const isAdmin = useHasRole('Admin')
+  const searchParams = useSearchParams()
+
+  // Determine back navigation from query params
+  const backHref = useMemo(() => {
+    const from = searchParams.get('from')
+    const supplierId = searchParams.get('supplierId')
+    if (from === 'supplier' && supplierId) return `/suppliers/${supplierId}`
+    return '/invoices'
+  }, [searchParams])
+  const backLabel = useMemo(() => {
+    const from = searchParams.get('from')
+    if (from === 'supplier') return tCommon('backToSupplier')
+    return tCommon('backToList')
+  }, [searchParams, tCommon])
   const { data: mpkCentersData } = useContextMpkCenters()
   const mpkOptions: MpkCenterOption[] = mpkCentersData?.mpkCenters?.map(mc => ({ id: mc.id, name: mc.name }))
     ?? DEFAULT_MPK_OPTIONS.map(name => ({ id: name, name }))
@@ -412,7 +436,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
 
   // Start editing classification
   function startEditingClassification() {
-    setEditMpk(invoice?.mpkCenterName || invoice?.mpk || '')
+    setEditMpk(invoice?.mpkCenterId || '')
     setEditCategory(invoice?.category || '')
     setEditDescription(invoice?.description || '')
     setIsEditingClassification(true)
@@ -420,10 +444,8 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
 
   // Save classification
   function saveClassification() {
-    // Resolve MPK name to center ID
-    const selectedCenter = mpkOptions.find(o => o.name === editMpk)
     updateClassificationMutation.mutate({
-      mpkCenterId: selectedCenter?.id || undefined,
+      mpkCenterId: editMpk || undefined,
       category: editCategory || undefined,
       description: editDescription || undefined,
     })
@@ -436,7 +458,11 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
 
   // Apply AI suggestions and enter edit mode
   function applyAiToEdit() {
-    setEditMpk(invoice?.aiMpkSuggestion || editMpk)
+    // AI suggestion is a name — resolve to mpkCenterId
+    const aiCenter = invoice?.aiMpkSuggestion
+      ? mpkOptions.find(o => o.name === invoice.aiMpkSuggestion)
+      : undefined
+    setEditMpk(aiCenter?.id || editMpk)
     setEditCategory(invoice?.aiCategorySuggestion || editCategory)
     // Also apply AI description if available
     if (invoice?.aiDescription) {
@@ -488,6 +514,61 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
       toast({
         title: 'Błąd zapisu faktury',
         description: error.message || 'Nie udało się zaktualizować faktury',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  // Link / unlink parent invoice for correction invoices
+  const [parentSearchQuery, setParentSearchQuery] = useState('')
+  const [isSearchingParent, setIsSearchingParent] = useState(false)
+  const { data: parentSearchResults, isFetching: parentSearchFetching } = useQuery({
+    queryKey: ['invoices', 'parent-search', parentSearchQuery],
+    queryFn: () => api.invoices.list({ search: parentSearchQuery, top: 5, invoiceType: 'VAT' }),
+    enabled: parentSearchQuery.length >= 2 && isSearchingParent,
+  })
+
+  const linkParentMutation = useMutation({
+    mutationFn: async (parentId: string | null) => {
+      // When linking (not unlinking), fetch parent to copy MPK and category
+      const updateData: Record<string, unknown> = { parentInvoiceId: parentId }
+      if (parentId) {
+        const parent = await api.invoices.get(parentId)
+        if (parent.mpkCenterId) updateData.mpkCenterId = parent.mpkCenterId
+        if (parent.category) updateData.category = parent.category
+      }
+      return api.invoices.update(invoiceId, updateData)
+    },
+    onSuccess: (updatedInvoice) => {
+      queryClient.setQueryData(['invoice', invoiceId], updatedInvoice)
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      setIsSearchingParent(false)
+      setParentSearchQuery('')
+      toast({
+        title: updatedInvoice?.parentInvoiceId ? t('parentLinked') : t('parentUnlinked'),
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t('parentLinkError'),
+        description: error.message,
+        variant: 'destructive',
+      })
+    },
+  })
+
+  // Delete invoice mutation
+  const deleteInvoiceMutation = useMutation({
+    mutationFn: () => api.invoices.delete(invoiceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      toast({ title: t('deleteSuccess') })
+      router.push(backHref)
+    },
+    onError: (error: Error) => {
+      toast({
+        title: tCommon('error'),
+        description: error.message,
         variant: 'destructive',
       })
     },
@@ -718,10 +799,10 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-3 sm:gap-4">
-        <Link href="/invoices">
+        <Link href={backHref}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Powrót do listy</span>
+            <span className="hidden sm:inline">{backLabel}</span>
           </Button>
         </Link>
         <div className="min-w-0">
@@ -811,6 +892,48 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
             </>
           )}
         </div>
+
+        {/* Delete Invoice */}
+        {isAdmin && (
+          <>
+            <Separator orientation="vertical" className="hidden sm:block h-6" />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  {tCommon('delete')}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t('deleteConfirmDesc', { number: invoice.invoiceNumber })}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteInvoiceMutation.mutate()}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    disabled={deleteInvoiceMutation.isPending}
+                  >
+                    {deleteInvoiceMutation.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    )}
+                    {tCommon('delete')}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
+        )}
       </div>
 
       {/* Main Layout: Left content + Right AI Panel */}
@@ -1237,38 +1360,116 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                     <span className="text-xs">{t('loading')}...</span>
                   </div>
                 ) : parentInvoice ? (
-                  <Link
-                    href={`/invoices/${invoice.parentInvoiceId}`}
-                    className="block rounded-md border border-orange-200 dark:border-orange-800 bg-white dark:bg-background p-3 hover:bg-orange-50 dark:hover:bg-orange-950/40 transition-colors group"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{parentInvoice.invoiceNumber}</span>
-                          <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="space-y-2">
+                    <Link
+                      href={`/invoices/${invoice.parentInvoiceId}`}
+                      className="block rounded-md border border-orange-200 dark:border-orange-800 bg-white dark:bg-background p-3 hover:bg-orange-50 dark:hover:bg-orange-950/40 transition-colors group"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{parentInvoice.invoiceNumber}</span>
+                            <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Building2 className="h-3 w-3" />
+                              {parentInvoice.supplierName}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {formatDate(parentInvoice.invoiceDate)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Building2 className="h-3 w-3" />
-                            {parentInvoice.supplierName}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(parentInvoice.invoiceDate)}
-                          </span>
+                        <div className="text-right shrink-0">
+                          <div className="font-medium">{formatCurrency(parentInvoice.grossAmount, parentInvoice.currency)}</div>
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <div className="font-medium">{formatCurrency(parentInvoice.grossAmount, parentInvoice.currency)}</div>
-                      </div>
-                    </div>
-                  </Link>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-muted-foreground h-6 px-2"
+                      onClick={() => linkParentMutation.mutate(null)}
+                      disabled={linkParentMutation.isPending}
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      {t('unlinkParent')}
+                    </Button>
+                  </div>
                 ) : (
                   <span className="text-muted-foreground italic text-xs">{t('noParentInvoice')}</span>
                 )
               ) : (
-                <span className="text-muted-foreground italic text-xs">{t('noParentInvoice')}</span>
+                <div className="space-y-2">
+                  {isSearchingParent ? (
+                    <div className="space-y-2">
+                      <Input
+                        placeholder={t('searchParentInvoice')}
+                        value={parentSearchQuery}
+                        onChange={(e) => setParentSearchQuery(e.target.value)}
+                        className="h-8 text-xs"
+                        autoFocus
+                      />
+                      {parentSearchFetching && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <span className="text-xs">{t('loading')}...</span>
+                        </div>
+                      )}
+                      {parentSearchResults && parentSearchResults.invoices.length > 0 && (
+                        <div className="space-y-1 max-h-48 overflow-y-auto">
+                          {parentSearchResults.invoices
+                            .filter((inv) => inv.id !== invoice.id)
+                            .map((inv) => (
+                            <button
+                              key={inv.id}
+                              className="w-full text-left rounded-md border border-muted bg-white dark:bg-background p-2 hover:bg-orange-50 dark:hover:bg-orange-950/40 transition-colors text-xs"
+                              onClick={() => linkParentMutation.mutate(inv.id)}
+                              disabled={linkParentMutation.isPending}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <span className="font-medium">{inv.invoiceNumber}</span>
+                                  <span className="text-muted-foreground ml-2">{inv.supplierName}</span>
+                                </div>
+                                <span className="shrink-0 font-medium">{formatCurrency(inv.grossAmount, inv.currency)}</span>
+                              </div>
+                              <div className="text-muted-foreground mt-0.5">{formatDate(inv.invoiceDate)}</div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {parentSearchResults && parentSearchResults.invoices.length === 0 && parentSearchQuery.length >= 2 && (
+                        <span className="text-muted-foreground text-xs">{t('noResults')}</span>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs h-6 px-2"
+                        onClick={() => { setIsSearchingParent(false); setParentSearchQuery('') }}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        {tCommon('cancel')}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground italic text-xs">{t('noParentInvoice')}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-6 px-2 border-orange-200 text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-300 dark:hover:bg-orange-950/40"
+                        onClick={() => setIsSearchingParent(true)}
+                      >
+                        <Search className="h-3 w-3 mr-1" />
+                        {t('linkParentInvoice')}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </Card>
@@ -1365,7 +1566,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                       </SelectTrigger>
                       <SelectContent>
                         {mpkOptions.map((option) => (
-                          <SelectItem key={option.id} value={option.name}>
+                          <SelectItem key={option.id} value={option.id}>
                             {option.name}
                           </SelectItem>
                         ))}
@@ -1397,7 +1598,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
                 <div className="grid grid-cols-4 gap-3">
                   <div>
                     <span className="text-muted-foreground text-xs">MPK</span>
-                    <p className="font-medium text-sm">{invoice.mpk || '-'}</p>
+                    <p className="font-medium text-sm">{invoice.mpkCenterName || invoice.mpk || '-'}</p>
                   </div>
                   <div className="col-span-2">
                     <span className="text-muted-foreground text-xs">Kategoria</span>

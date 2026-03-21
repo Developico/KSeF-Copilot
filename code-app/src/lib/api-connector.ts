@@ -5,7 +5,7 @@
  * DVLP-KSeF-PP-Connector (Power Platform custom connector) via SDK.
  * When running standalone, falls back to direct fetch (MSAL auth).
  *
- * The connector covers ~15 core operations. Operations without a
+ * The connector covers ~45 core operations. Operations without a
  * connector match throw a descriptive error.
  */
 
@@ -456,5 +456,255 @@ export const connectorApi = {
 
     convert: (_amount: number, _currency: string, _date?: string) =>
       notAvailable('exchangeRates.convert'),
+  },
+
+  // ── Suppliers ──
+  suppliers: {
+    list: (params: {
+      settingId: string
+      status?: string
+      search?: string
+      hasSelfBillingAgreement?: boolean
+      top?: number
+      skip?: number
+    }) =>
+      safeCall('ListSuppliers', () =>
+        DVLP_KSeF_PP_ConnectorService.ListSuppliers(
+          params.settingId,
+          params.status,
+          params.search,
+          params.hasSelfBillingAgreement,
+          params.top,
+          params.skip
+        )
+      ),
+
+    get: (id: string) =>
+      safeCall('GetSupplier', () =>
+        DVLP_KSeF_PP_ConnectorService.GetSupplier(id)
+      ),
+
+    create: (data: Record<string, unknown>) =>
+      safeCall('CreateSupplier', () =>
+        DVLP_KSeF_PP_ConnectorService.CreateSupplier(data)
+      ),
+
+    update: (id: string, data: Record<string, unknown>) =>
+      safeCall('UpdateSupplier', () =>
+        DVLP_KSeF_PP_ConnectorService.UpdateSupplier(id, data)
+      ),
+
+    delete: (id: string) =>
+      safeCall('DeleteSupplier', () =>
+        DVLP_KSeF_PP_ConnectorService.DeleteSupplier(id)
+      ),
+
+    stats: (id: string) =>
+      safeCall('GetSupplierStats', () =>
+        DVLP_KSeF_PP_ConnectorService.GetSupplierStats(id)
+      ),
+
+    refreshStats: (id: string) =>
+      safeCall('RefreshSupplierStats', () =>
+        DVLP_KSeF_PP_ConnectorService.RefreshSupplierStats(id)
+      ),
+
+    invoices: (id: string) =>
+      safeCall('GetSupplierInvoices', () =>
+        DVLP_KSeF_PP_ConnectorService.GetSupplierInvoices(id)
+      ),
+
+    refreshVat: (id: string) =>
+      safeCall('RefreshSupplierVat', () =>
+        DVLP_KSeF_PP_ConnectorService.RefreshSupplierVat(id)
+      ),
+
+    createFromVat: (data: { nip: string; settingId: string }) =>
+      safeCall('CreateSupplierFromVat', () =>
+        DVLP_KSeF_PP_ConnectorService.CreateSupplierFromVat(data)
+      ),
+  },
+
+  // ── Self-Billing Agreements ──
+  sbAgreements: {
+    list: (params: {
+      settingId: string
+      supplierId?: string
+      status?: string
+      top?: number
+      skip?: number
+    }) =>
+      safeCall('ListSbAgreements', () =>
+        DVLP_KSeF_PP_ConnectorService.ListSbAgreements(
+          params.settingId,
+          params.supplierId,
+          params.status,
+          params.top,
+          params.skip
+        )
+      ),
+
+    get: (id: string) =>
+      safeCall('GetSbAgreement', () =>
+        DVLP_KSeF_PP_ConnectorService.GetSbAgreement(id)
+      ),
+
+    create: (data: Record<string, unknown>) =>
+      safeCall('CreateSbAgreement', () =>
+        DVLP_KSeF_PP_ConnectorService.CreateSbAgreement(data)
+      ),
+
+    update: (id: string, data: Record<string, unknown>) =>
+      safeCall('UpdateSbAgreement', () =>
+        DVLP_KSeF_PP_ConnectorService.UpdateSbAgreement(id, data)
+      ),
+
+    terminate: (id: string) =>
+      safeCall('TerminateSbAgreement', () =>
+        DVLP_KSeF_PP_ConnectorService.TerminateSbAgreement(id)
+      ),
+
+    listAttachments: (id: string) =>
+      safeCall('ListSbAgreementAttachments', () =>
+        DVLP_KSeF_PP_ConnectorService.ListSbAgreementAttachments(id)
+      ),
+
+    uploadAttachment: (id: string, data: Record<string, unknown>) =>
+      safeCall('UploadSbAgreementAttachment', () =>
+        DVLP_KSeF_PP_ConnectorService.UploadSbAgreementAttachment(id, data)
+      ),
+  },
+
+  // ── Self-Billing Templates ──
+  sbTemplates: {
+    list: (params: {
+      settingId: string
+      supplierId?: string
+      isActive?: boolean
+    }) =>
+      safeCall('ListSbTemplates', () =>
+        DVLP_KSeF_PP_ConnectorService.ListSbTemplates(
+          params.settingId,
+          params.supplierId,
+          params.isActive
+        )
+      ),
+
+    get: (id: string) =>
+      safeCall('GetSbTemplate', () =>
+        DVLP_KSeF_PP_ConnectorService.GetSbTemplate(id)
+      ),
+
+    create: (data: Record<string, unknown>) =>
+      safeCall('CreateSbTemplate', () =>
+        DVLP_KSeF_PP_ConnectorService.CreateSbTemplate(data)
+      ),
+
+    update: (id: string, data: Record<string, unknown>) =>
+      safeCall('UpdateSbTemplate', () =>
+        DVLP_KSeF_PP_ConnectorService.UpdateSbTemplate(id, data)
+      ),
+
+    delete: (id: string) =>
+      safeCall('DeleteSbTemplate', () =>
+        DVLP_KSeF_PP_ConnectorService.DeleteSbTemplate(id)
+      ),
+
+    duplicate: (data: { templateId: string; targetSupplierId: string }) =>
+      safeCall('DuplicateSbTemplate', () =>
+        DVLP_KSeF_PP_ConnectorService.DuplicateSbTemplate(data)
+      ),
+  },
+
+  // ── Self-Billing Invoices ──
+  selfBillingInvoices: {
+    list: (params: {
+      settingId: string
+      supplierId?: string
+      status?: string
+      dateFrom?: string
+      dateTo?: string
+      top?: number
+      skip?: number
+    }) =>
+      safeCall('ListSelfBillingInvoices', () =>
+        DVLP_KSeF_PP_ConnectorService.ListSelfBillingInvoices(
+          params.settingId,
+          params.supplierId,
+          params.status,
+          params.dateFrom,
+          params.dateTo,
+          params.top,
+          params.skip
+        )
+      ),
+
+    create: (data: Record<string, unknown>) =>
+      safeCall('CreateSelfBillingInvoice', () =>
+        DVLP_KSeF_PP_ConnectorService.CreateSelfBillingInvoice(data)
+      ),
+
+    preview: (data: Record<string, unknown>) =>
+      safeCall('PreviewSelfBillingInvoice', () =>
+        DVLP_KSeF_PP_ConnectorService.PreviewSelfBillingInvoice(data)
+      ),
+
+    generate: (data: Record<string, unknown>) =>
+      safeCall('GenerateSelfBillingInvoices', () =>
+        DVLP_KSeF_PP_ConnectorService.GenerateSelfBillingInvoices(data)
+      ),
+
+    confirmGenerated: (data: Record<string, unknown>) =>
+      safeCall('ConfirmGeneratedSelfBilling', () =>
+        DVLP_KSeF_PP_ConnectorService.ConfirmGeneratedSelfBilling(data)
+      ),
+
+    batch: (data: Record<string, unknown>) =>
+      safeCall('BatchCreateSelfBillingInvoices', () =>
+        DVLP_KSeF_PP_ConnectorService.BatchCreateSelfBillingInvoices(data)
+      ),
+
+    updateStatus: (id: string, data: { status: string }) =>
+      safeCall('UpdateSelfBillingStatus', () =>
+        DVLP_KSeF_PP_ConnectorService.UpdateSelfBillingStatus(id, data)
+      ),
+
+    submit: (id: string) =>
+      safeCall('SubmitForSellerReview', () =>
+        DVLP_KSeF_PP_ConnectorService.SubmitForSellerReview(id)
+      ),
+
+    approve: (id: string) =>
+      safeCall('SellerApproveInvoice', () =>
+        DVLP_KSeF_PP_ConnectorService.SellerApproveInvoice(id)
+      ),
+
+    reject: (id: string, data: { reason: string }) =>
+      safeCall('SellerRejectInvoice', () =>
+        DVLP_KSeF_PP_ConnectorService.SellerRejectInvoice(id, data)
+      ),
+
+    sendToKsef: (id: string) =>
+      safeCall('SendSelfBillingToKsef', () =>
+        DVLP_KSeF_PP_ConnectorService.SendSelfBillingToKsef(id)
+      ),
+  },
+
+  // ── Self-Billing Import ──
+  sbImport: {
+    import: (settingId: string, data: Record<string, unknown>) =>
+      safeCall('ImportSelfBillingFile', () =>
+        DVLP_KSeF_PP_ConnectorService.ImportSelfBillingFile(settingId, data)
+      ),
+
+    confirm: (data: { importId: string }) =>
+      safeCall('ConfirmSelfBillingImport', () =>
+        DVLP_KSeF_PP_ConnectorService.ConfirmSelfBillingImport(data)
+      ),
+
+    downloadTemplate: (format?: string) =>
+      safeCall('DownloadSelfBillingTemplate', () =>
+        DVLP_KSeF_PP_ConnectorService.DownloadSelfBillingTemplate(format)
+      ),
   },
 }

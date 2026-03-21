@@ -58,6 +58,17 @@ export interface BulkApproveResult {
   errors: Array<{ invoiceId: string; error: string }>
 }
 
+export type ApplyApprovalScope = 'unprocessed' | 'decided' | 'all'
+
+export type RevokeApprovalScope = 'pending' | 'decided' | 'all'
+
+export interface ApplyApprovalResult {
+  updated: number
+  skipped: number
+  autoApproved: number
+  total: number
+}
+
 export interface PendingInvoice {
   id: string
   invoiceNumber: string
@@ -113,7 +124,7 @@ export class ApprovalService {
     const select = [
       inv.id, inv.name,
       inv.mpkCenterLookup, inv.approvalStatus, inv.invoiceType,
-      inv.settingLookup,
+      inv.settingLookup, inv.invoiceDate,
     ].join(',')
 
     const record = await dataverseClient.getById<DvInvoice>(
@@ -144,6 +155,20 @@ export class ApprovalService {
       return {
         invoiceId,
         approvalStatus: 'Draft',
+      }
+    }
+
+    // D21: check approvalEffectiveFrom — skip invoices issued before that date
+    if (mpk.approvalEffectiveFrom) {
+      const invoiceDate = r[inv.invoiceDate] as string | undefined
+      if (invoiceDate && invoiceDate < mpk.approvalEffectiveFrom) {
+        if (currentStatus !== APPROVAL_STATUS.DRAFT) {
+          await this.setApprovalStatus(invoiceId, APPROVAL_STATUS.DRAFT)
+        }
+        return {
+          invoiceId,
+          approvalStatus: 'Draft',
+        }
       }
     }
 
@@ -316,7 +341,7 @@ export class ApprovalService {
         await notificationService.createForRecipients(recipientIds, {
           settingId,
           type: 'ApprovalRequested',
-          message: `Faktura ${label} wymaga akceptacji`,
+          message: `Invoice ${label} requires approval`,
           invoiceId,
           mpkCenterId,
         })
@@ -679,6 +704,173 @@ export class ApprovalService {
       mpkCenterId: (r[inv.mpkCenterLookup] as string) || null,
       invoiceType: r[inv.invoiceType] as number | undefined,
     }
+  }
+
+  /**
+   * Apply approval workflow to existing invoices for an MPK center (D21).
+   * Scope controls which invoices are affected:
+   *  - unprocessed: null / Draft status only
+   *  - decided: Approved / Rejected / Cancelled only (reset)
+   *  - all: both groups
+   * Respects approvalEffectiveFrom date when set on MPK.
+   * Corrective invoices (KOR) are auto-approved.
+   */
+  async applyApprovalToMpk(
+    mpkCenterId: string,
+    scope: ApplyApprovalScope,
+    dryRun: boolean = false
+  ): Promise<ApplyApprovalResult> {
+    logDataverseInfo('ApprovalService.applyApprovalToMpk', 'Applying approval', {
+      mpkCenterId, scope, dryRun,
+    })
+
+    const mpk = await mpkCenterService.getById(mpkCenterId)
+    if (!mpk) throw new Error('MPK center not found')
+    if (!mpk.approvalRequired) throw new Error('MPK center does not require approval')
+
+    const inv = DV.invoice
+    const select = [inv.id, inv.approvalStatus, inv.invoiceType, inv.name, inv.settingLookup].join(',')
+
+    // Build filter: invoices for this MPK
+    const conditions: string[] = [
+      `${inv.mpkCenterLookup} eq ${escapeOData(mpkCenterId)}`,
+    ]
+
+    // Scope filter
+    if (scope === 'unprocessed') {
+      conditions.push(`(${inv.approvalStatus} eq null or ${inv.approvalStatus} eq ${APPROVAL_STATUS.DRAFT})`)
+    } else if (scope === 'decided') {
+      conditions.push(`(${inv.approvalStatus} eq ${APPROVAL_STATUS.APPROVED} or ${inv.approvalStatus} eq ${APPROVAL_STATUS.REJECTED} or ${inv.approvalStatus} eq ${APPROVAL_STATUS.CANCELLED})`)
+    }
+    // 'all' → no status filter
+
+    // Effective date filter
+    if (mpk.approvalEffectiveFrom) {
+      conditions.push(`${inv.invoiceDate} ge ${mpk.approvalEffectiveFrom}`)
+    }
+
+    const filter = `$filter=${conditions.join(' and ')}`
+    const query = `${filter}&$select=${select}`
+
+    const records = await dataverseClient.listAll<DvInvoice>(inv.entitySet, query)
+
+    const result: ApplyApprovalResult = { updated: 0, skipped: 0, autoApproved: 0, total: 0 }
+
+    for (const record of records) {
+      const r = record as unknown as Record<string, unknown>
+      const id = r[inv.id] as string
+      const currentStatus = r[inv.approvalStatus] as number | undefined
+      const invoiceType = r[inv.invoiceType] as number | undefined
+
+      result.total++
+
+      // Skip already pending
+      if (currentStatus === APPROVAL_STATUS.PENDING) {
+        result.skipped++
+        continue
+      }
+
+      if (invoiceType === INVOICE_TYPE.CORRECTIVE) {
+        // Auto-approve corrective invoices
+        if (!dryRun) {
+          await this.setApprovalStatus(id, APPROVAL_STATUS.APPROVED, {
+            approvedBy: 'System (auto-approved KOR)',
+            approvedByOid: '',
+            approvedAt: new Date().toISOString(),
+            approvalComment: 'Auto-approved: corrective invoice (batch apply)',
+          })
+        }
+        result.autoApproved++
+      } else {
+        // Set to Pending
+        if (!dryRun) {
+          await this.setApprovalStatus(id, APPROVAL_STATUS.PENDING)
+          this.fireApprovalRequestedNotifications(
+            id,
+            mpkCenterId,
+            r[inv.settingLookup] as string | undefined,
+            r[inv.name] as string | undefined,
+          )
+        }
+        result.updated++
+      }
+    }
+
+    logDataverseInfo('ApprovalService.applyApprovalToMpk', 'Apply completed', {
+      mpkCenterId, scope, dryRun, ...result,
+    })
+
+    return result
+  }
+
+  /**
+   * Revoke approval from existing invoices for a given MPK center.
+   * Sets invoices back to Draft status (= not required).
+   */
+  async revokeApprovalFromMpk(
+    mpkCenterId: string,
+    scope: RevokeApprovalScope,
+    dryRun: boolean = false
+  ): Promise<ApplyApprovalResult> {
+    logDataverseInfo('ApprovalService.revokeApprovalFromMpk', 'Revoking approval', {
+      mpkCenterId, scope, dryRun,
+    })
+
+    const mpk = await mpkCenterService.getById(mpkCenterId)
+    if (!mpk) throw new Error('MPK center not found')
+
+    const inv = DV.invoice
+    const select = [inv.id, inv.approvalStatus].join(',')
+
+    const conditions: string[] = [
+      `${inv.mpkCenterLookup} eq ${escapeOData(mpkCenterId)}`,
+    ]
+
+    if (scope === 'pending') {
+      conditions.push(`${inv.approvalStatus} eq ${APPROVAL_STATUS.PENDING}`)
+    } else if (scope === 'decided') {
+      conditions.push(`(${inv.approvalStatus} eq ${APPROVAL_STATUS.APPROVED} or ${inv.approvalStatus} eq ${APPROVAL_STATUS.REJECTED} or ${inv.approvalStatus} eq ${APPROVAL_STATUS.CANCELLED})`)
+    } else {
+      // 'all' — everything that is not already Draft
+      conditions.push(`${inv.approvalStatus} ne null and ${inv.approvalStatus} ne ${APPROVAL_STATUS.DRAFT}`)
+    }
+
+    const filter = `$filter=${conditions.join(' and ')}`
+    const query = `${filter}&$select=${select}`
+
+    const records = await dataverseClient.listAll<DvInvoice>(inv.entitySet, query)
+
+    const result: ApplyApprovalResult = { updated: 0, skipped: 0, autoApproved: 0, total: 0 }
+
+    for (const record of records) {
+      const r = record as unknown as Record<string, unknown>
+      const id = r[inv.id] as string
+      const currentStatus = r[inv.approvalStatus] as number | undefined
+
+      result.total++
+
+      if (currentStatus === APPROVAL_STATUS.DRAFT || currentStatus == null) {
+        result.skipped++
+        continue
+      }
+
+      if (!dryRun) {
+        await this.setApprovalStatus(id, APPROVAL_STATUS.DRAFT, {
+          approvedBy: null,
+          approvedByOid: null,
+          approvedAt: null,
+          approvalComment: null,
+        })
+      }
+
+      result.updated++
+    }
+
+    logDataverseInfo('ApprovalService.revokeApprovalFromMpk', 'Revoke completed', {
+      mpkCenterId, scope, dryRun, ...result,
+    })
+
+    return result
   }
 
   private async setApprovalStatus(
