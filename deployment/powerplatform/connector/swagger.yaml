@@ -1,4 +1,4 @@
-﻿swagger: '2.0'
+swagger: '2.0'
 info:
   title: DVLP-KSeF-PP-Connector
   description: >-
@@ -8,7 +8,7 @@ info:
     /EN/: Developico Connector for the KSeF API — invoice management,
     synchronization with KSeF, dashboard, VAT White List (Biała Lista) lookup.
   version: '1.0'
-host: YOUR_FUNCTION_APP.azurewebsites.net
+host: dvlp-ksef-func-hmh7hvhcc6bhazcd.polandcentral-01.azurewebsites.net
 basePath: /api
 schemes:
   - https
@@ -506,6 +506,49 @@ paths:
           description: Dashboard statistics
           schema:
             $ref: '#/definitions/DashboardStats'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+  /dashboard/activity:
+    get:
+      operationId: GetDashboardActivity
+      summary: Dashboard Activity Feed
+      description: >-
+        /PL/: Ostatnia aktywność — faktury, akceptacje, samofakturowanie, synchronizacja.
+        /EN/: Recent activity feed — invoices, approvals, self-billing, sync.
+      x-ms-visibility: important
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Company setting ID (UUID)
+        - name: top
+          in: query
+          type: integer
+          required: false
+          description: Max results (1-50, default 20)
+        - name: types
+          in: query
+          type: string
+          required: false
+          description: >-
+            Comma-separated type filter: invoice,approval,selfbilling,sync
+      responses:
+        '200':
+          description: Activity feed
+          schema:
+            type: object
+            properties:
+              items:
+                type: array
+                items:
+                  $ref: '#/definitions/ActivityItem'
+              count:
+                type: integer
+        '400':
+          description: settingId query parameter is required
         '401':
           description: Unauthorized
         '403':
@@ -2116,6 +2159,87 @@ paths:
         '403':
           description: Forbidden — requires Reader role
 
+  /mpk-centers/{id}/apply-approval:
+    post:
+      operationId: ApplyApprovalToMpk
+      summary: Apply Approval Workflow to MPK
+      description: >-
+        /PL/: Zastosuj workflow akceptacji do faktur w centrum MPK.
+        /EN/: Apply approval workflow to invoices in this MPK center.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: MPK Center ID (GUID)
+        - name: body
+          in: body
+          required: false
+          schema:
+            type: object
+            properties:
+              scope:
+                type: string
+                enum:
+                  - unprocessed
+                  - decided
+                  - all
+                default: unprocessed
+              dryRun:
+                type: boolean
+                default: false
+      responses:
+        '200':
+          description: Approval workflow applied
+          schema:
+            $ref: '#/definitions/BatchResult'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: MPK center not found
+  /mpk-centers/{id}/revoke-approval:
+    post:
+      operationId: RevokeApprovalFromMpk
+      summary: Revoke Approval from MPK
+      description: >-
+        /PL/: Cofnij workflow akceptacji z faktur w centrum MPK.
+        /EN/: Revoke approval workflow from invoices in this MPK center.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: MPK Center ID (GUID)
+        - name: body
+          in: body
+          required: false
+          schema:
+            type: object
+            properties:
+              scope:
+                type: string
+                enum:
+                  - pending
+                  - decided
+                  - all
+                default: pending
+              dryRun:
+                type: boolean
+                default: false
+      responses:
+        '200':
+          description: Approval revoked
+          schema:
+            $ref: '#/definitions/BatchResult'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: MPK center not found
+
   /mpk-centers/{id}/budget-status:
     get:
       operationId: GetMpkBudgetStatus
@@ -2280,6 +2404,36 @@ paths:
         '403':
           description: Forbidden — requires Reader role
 
+  /notifications/mark-all-read:
+    post:
+      operationId: MarkAllNotificationsRead
+      summary: Mark All Notifications as Read
+      description: >-
+        /PL/: Oznacza wszystkie powiadomienia bieżącego użytkownika jako przeczytane.
+        /EN/: Mark all notifications for the current user as read.
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Setting/company UUID
+      responses:
+        '200':
+          description: All notifications marked as read
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              marked:
+                type: integer
+        '400':
+          description: settingId query parameter is required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+
   /notifications/unread-count:
     get:
       operationId: GetUnreadNotificationCount
@@ -2406,6 +2560,66 @@ paths:
             properties:
               data:
                 $ref: '#/definitions/ApprovalHistoryReport'
+        '400':
+          description: settingId query parameter is required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+
+  /reports/approver-performance:
+    get:
+      operationId: GetApproverPerformanceReport
+      summary: Approver Performance Report
+      description: >-
+        Returns approver performance metrics — response times, approval rates,
+        and workload distribution.
+      x-ms-visibility: important
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Setting/company UUID
+      responses:
+        '200':
+          description: Approver performance report
+          schema:
+            type: object
+            properties:
+              data:
+                type: object
+                description: Approver performance data
+        '400':
+          description: settingId query parameter is required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+
+  /reports/invoice-processing:
+    get:
+      operationId: GetInvoiceProcessingReport
+      summary: Invoice Processing Report
+      description: >-
+        Returns invoice processing statistics — volumes, average processing
+        time, status distribution over time.
+      x-ms-visibility: important
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Setting/company UUID
+      responses:
+        '200':
+          description: Invoice processing report
+          schema:
+            type: object
+            properties:
+              data:
+                type: object
+                description: Invoice processing data
         '400':
           description: settingId query parameter is required
         '401':
@@ -2695,6 +2909,414 @@ paths:
           description: Forbidden — requires Admin role
         '409':
           description: Supplier with this NIP already exists
+
+  /suppliers/extract-from-invoices:
+    post:
+      operationId: ExtractSuppliersFromInvoices
+      summary: Extract Suppliers from Invoices
+      description: >-
+        Scans all KSeF invoices for the setting, extracts unique seller NIPs,
+        and creates Supplier records for those not already existing.
+      x-ms-visibility: advanced
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - settingId
+            properties:
+              settingId:
+                type: string
+                format: uuid
+                description: Company setting ID
+      responses:
+        '200':
+          description: Extraction result
+          schema:
+            type: object
+            properties:
+              created:
+                type: integer
+              skipped:
+                type: integer
+              errors:
+                type: integer
+              total:
+                type: integer
+              suppliers:
+                type: array
+                items:
+                  $ref: '#/definitions/Supplier'
+              errorDetails:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    nip:
+                      type: string
+                    error:
+                      type: string
+        '400':
+          description: settingId is required
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+
+  /suppliers/{id}/attachments:
+    get:
+      operationId: ListSupplierAttachments
+      summary: List Supplier Attachments
+      description: Returns all attachments for a supplier.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Supplier ID (UUID)
+      responses:
+        '200':
+          description: Attachment list
+          schema:
+            type: object
+            properties:
+              attachments:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    fileName:
+                      type: string
+                    mimeType:
+                      type: string
+                    description:
+                      type: string
+                    createdAt:
+                      type: string
+              count:
+                type: integer
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Supplier not found
+    post:
+      operationId: UploadSupplierAttachment
+      summary: Upload Supplier Attachment
+      description: Uploads a base64-encoded file attachment to a supplier.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Supplier ID (UUID)
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - fileName
+              - mimeType
+              - content
+            properties:
+              fileName:
+                type: string
+                description: File name
+              mimeType:
+                type: string
+                description: MIME type of the file
+              content:
+                type: string
+                description: Base64-encoded file content
+              description:
+                type: string
+                description: Optional description (max 500 chars)
+      responses:
+        '201':
+          description: Attachment created
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              fileName:
+                type: string
+        '400':
+          description: Invalid request body
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Supplier not found
+
+  /suppliers/{id}/notes:
+    get:
+      operationId: ListSupplierNotes
+      summary: List Supplier Notes
+      description: Returns all notes for a supplier.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Supplier ID (UUID)
+      responses:
+        '200':
+          description: Note list
+          schema:
+            type: object
+            properties:
+              notes:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    subject:
+                      type: string
+                    noteText:
+                      type: string
+                    createdAt:
+                      type: string
+                    createdBy:
+                      type: string
+              count:
+                type: integer
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Supplier not found
+    post:
+      operationId: CreateSupplierNote
+      summary: Create Supplier Note
+      description: Creates a note on a supplier record.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Supplier ID (UUID)
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - noteText
+            properties:
+              subject:
+                type: string
+                description: Optional subject (max 500 chars)
+              noteText:
+                type: string
+                description: Note text (1-10000 chars)
+      responses:
+        '201':
+          description: Note created
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              subject:
+                type: string
+              noteText:
+                type: string
+        '400':
+          description: Invalid request body
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Supplier not found
+
+  /suppliers/import:
+    post:
+      operationId: ImportSuppliers
+      summary: Import Suppliers from File
+      description: >-
+        Imports suppliers from CSV or Excel file. Returns a preview with
+        validation results for confirmation.
+      x-ms-visibility: advanced
+      consumes:
+        - text/csv
+        - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: true
+          description: Company setting ID (UUID)
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: string
+            format: binary
+            description: CSV or Excel file content
+      responses:
+        '200':
+          description: Import preview
+          schema:
+            type: object
+            properties:
+              rows:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    nip:
+                      type: string
+                    sbAgreement:
+                      type: boolean
+                    name:
+                      type: string
+                    vatStatus:
+                      type: string
+                    exists:
+                      type: boolean
+                    existingId:
+                      type: string
+                    valid:
+                      type: boolean
+                    error:
+                      type: string
+              parseErrors:
+                type: array
+                items:
+                  type: string
+              totalRows:
+                type: integer
+              validRows:
+                type: integer
+              invalidRows:
+                type: integer
+        '400':
+          description: Invalid file or settingId missing
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+
+  /suppliers/import/confirm:
+    post:
+      operationId: ConfirmSupplierImport
+      summary: Confirm Supplier Import
+      description: >-
+        Confirms and executes the supplier import based on previously
+        validated rows.
+      x-ms-visibility: advanced
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - settingId
+              - rows
+            properties:
+              settingId:
+                type: string
+                format: uuid
+                description: Company setting ID
+              rows:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - nip
+                    - sbAgreement
+                  properties:
+                    nip:
+                      type: string
+                      description: NIP (10 digits)
+                    sbAgreement:
+                      type: boolean
+                      description: Whether to create self-billing agreement
+                    name:
+                      type: string
+                    regon:
+                      type: string
+                    krs:
+                      type: string
+                    street:
+                      type: string
+                    city:
+                      type: string
+                    postalCode:
+                      type: string
+                    vatStatus:
+                      type: string
+                    bankAccount:
+                      type: string
+      responses:
+        '200':
+          description: Import result
+          schema:
+            type: object
+            properties:
+              created:
+                type: integer
+              failed:
+                type: integer
+              results:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    nip:
+                      type: string
+                    supplierId:
+                      type: string
+                    agreementId:
+                      type: string
+                    error:
+                      type: string
+        '400':
+          description: Invalid request body
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+
+  /suppliers/import/template:
+    get:
+      operationId: GetSupplierImportTemplate
+      summary: Download Supplier Import Template
+      description: >-
+        Downloads a blank CSV or Excel template for supplier import.
+      x-ms-visibility: advanced
+      produces:
+        - text/csv
+        - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      parameters:
+        - name: format
+          in: query
+          type: string
+          required: false
+          description: Template format (csv or xlsx, default csv)
+          enum:
+            - csv
+            - xlsx
+      responses:
+        '200':
+          description: Template file
+          schema:
+            type: file
+        '401':
+          description: Unauthorized
 
   # ================================================================
   # Self-Billing: Agreements
@@ -3075,7 +3697,7 @@ paths:
   # ================================================================
   # Self-Billing: Invoices & Workflow
   # ================================================================
-  /invoices/self-billing:
+  /self-billing/invoices:
     get:
       operationId: ListSelfBillingInvoices
       summary: List Self-Billing Invoices
@@ -3160,7 +3782,7 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden — requires Admin role
-  /invoices/self-billing/preview:
+  /self-billing/invoices/preview:
     post:
       operationId: PreviewSelfBillingInvoice
       summary: Preview Self-Billing Invoice
@@ -3184,7 +3806,7 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden — requires Reader role
-  /invoices/self-billing/generate:
+  /self-billing/invoices/generate:
     post:
       operationId: GenerateSelfBillingInvoices
       summary: Generate Self-Billing Invoices
@@ -3229,7 +3851,7 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden — requires Admin role
-  /invoices/self-billing/generate/confirm:
+  /self-billing/invoices/generate/confirm:
     post:
       operationId: ConfirmGeneratedSelfBilling
       summary: Confirm Generated Self-Billing Invoices
@@ -3264,7 +3886,7 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden — requires Admin role
-  /invoices/self-billing/batch:
+  /self-billing/invoices/batch:
     post:
       operationId: BatchCreateSelfBillingInvoices
       summary: Batch Create Self-Billing Invoices
@@ -3300,7 +3922,7 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden — requires Admin role
-  /invoices/self-billing/{id}/status:
+  /self-billing/invoices/{id}/status:
     patch:
       operationId: UpdateSelfBillingStatus
       summary: Update Self-Billing Invoice Status
@@ -3339,7 +3961,7 @@ paths:
           description: Forbidden — requires Admin role
         '404':
           description: Invoice not found
-  /invoices/self-billing/{id}/submit:
+  /self-billing/invoices/{id}/submit:
     post:
       operationId: SubmitForSellerReview
       summary: Submit Self-Billing Invoice for Seller Review
@@ -3366,7 +3988,7 @@ paths:
           description: Forbidden — requires Admin role
         '404':
           description: Invoice not found
-  /invoices/self-billing/{id}/approve:
+  /self-billing/invoices/{id}/approve:
     post:
       operationId: SellerApproveInvoice
       summary: Seller Approve Self-Billing Invoice
@@ -3393,7 +4015,7 @@ paths:
           description: Forbidden — requires Admin role
         '404':
           description: Invoice not found
-  /invoices/self-billing/{id}/reject:
+  /self-billing/invoices/{id}/reject:
     post:
       operationId: SellerRejectInvoice
       summary: Seller Reject Self-Billing Invoice
@@ -3431,7 +4053,7 @@ paths:
           description: Forbidden — requires Admin role
         '404':
           description: Invoice not found
-  /invoices/self-billing/{id}/send-ksef:
+  /self-billing/invoices/{id}/send-ksef:
     post:
       operationId: SendSelfBillingToKsef
       summary: Send Self-Billing Invoice to KSeF
@@ -3466,10 +4088,252 @@ paths:
         '404':
           description: Invoice not found
 
+  /self-billing/invoices/{id}:
+    get:
+      operationId: GetSelfBillingInvoice
+      summary: Get Self-Billing Invoice
+      description: >-
+        Returns a single self-billing invoice by ID.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (UUID)
+      responses:
+        '200':
+          description: Invoice details
+          schema:
+            $ref: '#/definitions/SelfBillingInvoice'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Invoice not found
+    patch:
+      operationId: UpdateSelfBillingInvoice
+      summary: Update Self-Billing Invoice
+      description: >-
+        Updates a draft self-billing invoice. Only invoices with Draft status
+        can be modified.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (UUID)
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              invoiceNumber:
+                type: string
+                description: Invoice number (1-50 chars)
+              invoiceDate:
+                type: string
+                description: Invoice date (ISO 8601)
+              dueDate:
+                type: string
+                description: Due date (ISO 8601)
+              items:
+                type: array
+                description: Line items (replaces all existing items, min 1)
+                items:
+                  type: object
+                  required:
+                    - itemDescription
+                    - quantity
+                    - unit
+                    - unitPrice
+                    - vatRate
+                  properties:
+                    templateId:
+                      type: string
+                      format: uuid
+                    itemDescription:
+                      type: string
+                    quantity:
+                      type: number
+                    unit:
+                      type: string
+                    unitPrice:
+                      type: number
+                    vatRate:
+                      type: integer
+                      description: VAT rate (-1 to 100)
+                    paymentTermDays:
+                      type: integer
+                      description: Payment term in days (0-365)
+      responses:
+        '200':
+          description: Updated invoice
+          schema:
+            $ref: '#/definitions/SelfBillingInvoice'
+        '400':
+          description: Invoice is not in Draft status or invalid body
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Invoice not found
+    delete:
+      operationId: DeleteSelfBillingInvoice
+      summary: Delete Self-Billing Invoice
+      description: >-
+        Deletes a self-billing invoice. Only Draft or SellerRejected invoices
+        can be deleted.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (UUID)
+      responses:
+        '204':
+          description: Invoice deleted
+        '400':
+          description: Invoice status does not allow deletion
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Invoice not found
+
+  /self-billing/invoices/{id}/revert:
+    post:
+      operationId: RevertSelfBillingInvoice
+      summary: Revert Self-Billing Invoice
+      description: >-
+        Reverts a self-billing invoice back to Draft status. Cannot revert
+        Draft or SentToKsef invoices.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (UUID)
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - reason
+            properties:
+              reason:
+                type: string
+                description: Reason for revert (1-2000 chars)
+      responses:
+        '200':
+          description: Reverted invoice
+          schema:
+            type: object
+            properties:
+              invoice:
+                $ref: '#/definitions/SelfBillingInvoice'
+        '400':
+          description: Invalid status for revert
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+        '404':
+          description: Invoice not found
+
+  /self-billing/invoices/{id}/notes:
+    get:
+      operationId: ListSbInvoiceNotes
+      summary: List Self-Billing Invoice Notes
+      description: Returns all notes for a self-billing invoice.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (UUID)
+      responses:
+        '200':
+          description: Note list
+          schema:
+            type: object
+            properties:
+              notes:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    subject:
+                      type: string
+                    noteText:
+                      type: string
+                    createdAt:
+                      type: string
+                    createdBy:
+                      type: string
+              count:
+                type: integer
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Invoice not found
+    post:
+      operationId: CreateSbInvoiceNote
+      summary: Create Self-Billing Invoice Note
+      description: Creates a note on a self-billing invoice.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Invoice ID (UUID)
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - noteText
+            properties:
+              subject:
+                type: string
+                description: Optional subject (max 500 chars)
+              noteText:
+                type: string
+                description: Note text (1-10000 chars)
+      responses:
+        '201':
+          description: Note created
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              subject:
+                type: string
+              noteText:
+                type: string
+        '400':
+          description: Invalid request body
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Invoice not found
+
   # ================================================================
   # Self-Billing: Import
   # ================================================================
-  /invoices/self-billing/import:
+  /self-billing/invoices/import:
     post:
       operationId: ImportSelfBillingFile
       summary: Import Self-Billing Invoices from File
@@ -3501,7 +4365,7 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden — requires Admin role
-  /invoices/self-billing/import/confirm:
+  /self-billing/invoices/import/confirm:
     post:
       operationId: ConfirmSelfBillingImport
       summary: Confirm Self-Billing Import
@@ -3531,7 +4395,7 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden — requires Admin role
-  /invoices/self-billing/import/template:
+  /self-billing/invoices/import/template:
     get:
       operationId: DownloadSelfBillingTemplate
       summary: Download Self-Billing Import Template
@@ -3559,6 +4423,496 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden — requires Reader role
+
+  # ================================================================
+  # Self-Billing: Batch Operations
+  # ================================================================
+  /self-billing/batch/submit:
+    post:
+      operationId: SbBatchSubmit
+      summary: Batch Submit Self-Billing Invoices
+      description: >-
+        Submits multiple draft invoices for seller approval. Invoices with
+        auto-approve agreements move directly to SellerApproved.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - invoiceIds
+            properties:
+              invoiceIds:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                description: Invoice IDs (1-200)
+      responses:
+        '200':
+          description: Batch result
+          schema:
+            $ref: '#/definitions/BatchResult'
+        '400':
+          description: Invalid request body
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+
+  /self-billing/batch/approve:
+    post:
+      operationId: SbBatchApprove
+      summary: Batch Approve Self-Billing Invoices
+      description: >-
+        Approves multiple PendingSeller invoices (seller approval).
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - invoiceIds
+            properties:
+              invoiceIds:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                description: Invoice IDs (1-200)
+      responses:
+        '200':
+          description: Batch result
+          schema:
+            $ref: '#/definitions/BatchResult'
+        '400':
+          description: Invalid request body
+        '401':
+          description: Unauthorized
+
+  /self-billing/batch/reject:
+    post:
+      operationId: SbBatchReject
+      summary: Batch Reject Self-Billing Invoices
+      description: >-
+        Rejects multiple PendingSeller invoices with a reason.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - invoiceIds
+              - reason
+            properties:
+              invoiceIds:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                description: Invoice IDs (1-200)
+              reason:
+                type: string
+                description: Rejection reason (1-1000 chars)
+      responses:
+        '200':
+          description: Batch result
+          schema:
+            $ref: '#/definitions/BatchResult'
+        '400':
+          description: Invalid request body
+        '401':
+          description: Unauthorized
+
+  /self-billing/batch/send-ksef:
+    post:
+      operationId: SbBatchSendKsef
+      summary: Batch Send to KSeF
+      description: >-
+        Sends multiple SellerApproved invoices to KSeF.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - invoiceIds
+            properties:
+              invoiceIds:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                description: Invoice IDs (1-200)
+      responses:
+        '200':
+          description: Batch result
+          schema:
+            $ref: '#/definitions/BatchResult'
+        '400':
+          description: Invalid request body
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+
+  /self-billing/batch/delete:
+    post:
+      operationId: SbBatchDelete
+      summary: Batch Delete Self-Billing Invoices
+      description: >-
+        Deletes multiple Draft or SellerRejected invoices.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - invoiceIds
+            properties:
+              invoiceIds:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                description: Invoice IDs (1-200)
+      responses:
+        '200':
+          description: Batch result
+          schema:
+            $ref: '#/definitions/BatchResult'
+        '400':
+          description: Invalid request body
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+
+  # ================================================================
+  # Self-Billing: Approvals
+  # ================================================================
+  /self-billing/approvals/pending:
+    get:
+      operationId: GetSbApprovalsPending
+      summary: Pending Self-Billing Approvals
+      description: >-
+        Returns self-billing invoices pending seller approval. Non-admin
+        users only see invoices for suppliers where they are the contact.
+      x-ms-visibility: important
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: false
+          description: Filter by setting/company UUID
+        - name: all
+          in: query
+          type: string
+          required: false
+          description: >-
+            Set to "true" to show all pending invoices (Admin only)
+          enum:
+            - "true"
+      responses:
+        '200':
+          description: Pending invoices
+          schema:
+            type: object
+            properties:
+              invoices:
+                type: array
+                items:
+                  $ref: '#/definitions/SelfBillingInvoice'
+              count:
+                type: integer
+        '401':
+          description: Unauthorized
+
+  # ================================================================
+  # Supplier Batch Operations
+  # ================================================================
+  /supplier-batch/deactivate:
+    post:
+      operationId: SupplierBatchDeactivate
+      summary: Batch Deactivate Suppliers
+      description: Deactivates multiple suppliers in bulk.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - supplierIds
+            properties:
+              supplierIds:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                description: Supplier IDs to deactivate (1-200)
+      responses:
+        '200':
+          description: Batch result
+          schema:
+            $ref: '#/definitions/BatchResult'
+        '400':
+          description: Invalid request body
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+
+  /supplier-batch/reactivate:
+    post:
+      operationId: SupplierBatchReactivate
+      summary: Batch Reactivate Suppliers
+      description: Reactivates multiple suppliers in bulk.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - supplierIds
+            properties:
+              supplierIds:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                description: Supplier IDs to reactivate (1-200)
+      responses:
+        '200':
+          description: Batch result
+          schema:
+            $ref: '#/definitions/BatchResult'
+        '400':
+          description: Invalid request body
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+
+  # ================================================================
+  # Invoice Batch Operations
+  # ================================================================
+  /invoice-batch/mark-paid:
+    post:
+      operationId: InvoiceBatchMarkPaid
+      summary: Batch Mark Invoices as Paid
+      description: Mark multiple invoices as paid in bulk.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/BatchIdsRequest'
+      responses:
+        '200':
+          description: Batch result
+          schema:
+            $ref: '#/definitions/BatchResult'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+  /invoice-batch/mark-unpaid:
+    post:
+      operationId: InvoiceBatchMarkUnpaid
+      summary: Batch Mark Invoices as Unpaid
+      description: Revert payment status of multiple invoices in bulk.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/BatchIdsRequest'
+      responses:
+        '200':
+          description: Batch result
+          schema:
+            $ref: '#/definitions/BatchResult'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+  /invoice-batch/approve:
+    post:
+      operationId: InvoiceBatchApprove
+      summary: Batch Approve Invoices
+      description: Approve multiple invoices in bulk.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/BatchIdsRequest'
+      responses:
+        '200':
+          description: Batch result
+          schema:
+            $ref: '#/definitions/BatchResult'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+  /invoice-batch/reject:
+    post:
+      operationId: InvoiceBatchReject
+      summary: Batch Reject Invoices
+      description: Reject multiple invoices in bulk with a comment.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - invoiceIds
+              - comment
+            properties:
+              invoiceIds:
+                type: array
+                maxItems: 200
+                items:
+                  type: string
+                  format: uuid
+              comment:
+                type: string
+                maxLength: 1000
+      responses:
+        '200':
+          description: Batch result
+          schema:
+            $ref: '#/definitions/BatchResult'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+  /invoice-batch/delete:
+    post:
+      operationId: InvoiceBatchDelete
+      summary: Batch Delete Invoices
+      description: Delete multiple invoices in bulk.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/BatchIdsRequest'
+      responses:
+        '200':
+          description: Batch result
+          schema:
+            $ref: '#/definitions/BatchResult'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
+
+  # ================================================================
+  # Settings (additional endpoints)
+  # ================================================================
+  /settings/{id}/test-token:
+    post:
+      operationId: TestSettingToken
+      summary: Test KSeF Token Connectivity
+      description: >-
+        /PL/: Testuje połączenie tokena KSeF — sprawdza Key Vault i dostęp do API.
+        /EN/: Test KSeF token connectivity — checks Key Vault and KSeF API access.
+      parameters:
+        - name: id
+          in: path
+          type: string
+          required: true
+          description: Setting ID (GUID)
+      responses:
+        '200':
+          description: Token test result
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              secretName:
+                type: string
+              tokenExists:
+                type: boolean
+              tokenLength:
+                type: integer
+              keyVaultConnected:
+                type: boolean
+              ksefApiConnected:
+                type: boolean
+              ksefEnvironment:
+                type: string
+              error:
+                type: string
+              details:
+                type: string
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Reader role
+        '404':
+          description: Setting not found
+
+  # ================================================================
+  # Approver Overview
+  # ================================================================
+  /approvers/overview:
+    get:
+      operationId: GetApproversOverview
+      summary: Approvers Overview
+      description: >-
+        /PL/: Przegląd zatwierdzających z Entra ID z danymi o przypisanych centrach MPK.
+        /EN/: Overview of approvers from Entra ID with assigned MPK center data.
+      parameters:
+        - name: settingId
+          in: query
+          type: string
+          required: false
+          description: Company setting ID (UUID)
+      responses:
+        '200':
+          description: Approvers overview
+          schema:
+            type: object
+            properties:
+              members:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    displayName:
+                      type: string
+                    email:
+                      type: string
+                    hasDataverseAccount:
+                      type: boolean
+                    mpkCenterNames:
+                      type: array
+                      items:
+                        type: string
+                    supplierCount:
+                      type: integer
+              configured:
+                type: boolean
+              count:
+                type: integer
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires Admin role
 
 definitions:
   VatLookupResult:
@@ -5902,6 +7256,69 @@ definitions:
               type: array
               items:
                 type: string
+
+  ActivityItem:
+    type: object
+    properties:
+      id:
+        type: string
+      type:
+        type: string
+        enum:
+          - invoice
+          - approval
+          - selfbilling
+          - sync
+      title:
+        type: string
+      description:
+        type: string
+      amount:
+        type: number
+      currency:
+        type: string
+      date:
+        type: string
+      link:
+        type: string
+
+  BatchIdsRequest:
+    type: object
+    required:
+      - invoiceIds
+    properties:
+      invoiceIds:
+        type: array
+        maxItems: 200
+        items:
+          type: string
+          format: uuid
+        description: Invoice IDs to process (1-200)
+
+  BatchResult:
+    type: object
+    properties:
+      total:
+        type: integer
+        description: Total items in batch
+      succeeded:
+        type: integer
+        description: Successfully processed
+      failed:
+        type: integer
+        description: Failed to process
+      results:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            success:
+              type: boolean
+            error:
+              type: string
 
 parameters: {}
 responses: {}

@@ -1355,6 +1355,7 @@ export interface SelfBillingInvoice {
   ksefReferenceNumber?: string
   rejectionReason?: string
   approvedAt?: string
+  approvedByUserId?: string
   items: SelfBillingInvoiceItem[]
   settingId: string
   createdOn: string

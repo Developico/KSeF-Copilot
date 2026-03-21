@@ -504,4 +504,606 @@ export class DVLP_KSeF_PP_ConnectorService {
       });
     return result;
   }
+
+  // ── Suppliers ──
+
+  /**
+   * List Suppliers
+   */
+  public static async ListSuppliers(settingId: string, status?: string, search?: string, hasSelfBillingAgreement?: boolean, top?: number, skip?: number): Promise<IOperationResult<void>> {
+    const params: { settingId: string, status?: string, search?: string, hasSelfBillingAgreement?: boolean, top?: number, skip?: number } = { settingId, status, search, hasSelfBillingAgreement, top, skip };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ListSuppliers',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Supplier
+   */
+  public static async GetSupplier(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetSupplier',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Create Supplier
+   */
+  public static async CreateSupplier(body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'CreateSupplier',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Update Supplier
+   */
+  public static async UpdateSupplier(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { id: string, body: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'UpdateSupplier',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Delete Supplier
+   */
+  public static async DeleteSupplier(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'DeleteSupplier',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Supplier Stats
+   */
+  public static async GetSupplierStats(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetSupplierStats',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Refresh Supplier Stats
+   */
+  public static async RefreshSupplierStats(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'RefreshSupplierStats',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Supplier Invoices
+   */
+  public static async GetSupplierInvoices(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetSupplierInvoices',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Refresh Supplier VAT
+   */
+  public static async RefreshSupplierVat(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'RefreshSupplierVat',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Create Supplier from VAT
+   */
+  public static async CreateSupplierFromVat(body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'CreateSupplierFromVat',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  // ── Self-Billing Agreements ──
+
+  /**
+   * List Self-Billing Agreements
+   */
+  public static async ListSbAgreements(settingId: string, supplierId?: string, status?: string, top?: number, skip?: number): Promise<IOperationResult<void>> {
+    const params: { settingId: string, supplierId?: string, status?: string, top?: number, skip?: number } = { settingId, supplierId, status, top, skip };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ListSbAgreements',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Self-Billing Agreement
+   */
+  public static async GetSbAgreement(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetSbAgreement',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Create Self-Billing Agreement
+   */
+  public static async CreateSbAgreement(body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'CreateSbAgreement',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Update Self-Billing Agreement
+   */
+  public static async UpdateSbAgreement(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { id: string, body: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'UpdateSbAgreement',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Terminate Self-Billing Agreement
+   */
+  public static async TerminateSbAgreement(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'TerminateSbAgreement',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * List Self-Billing Agreement Attachments
+   */
+  public static async ListSbAgreementAttachments(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ListSbAgreementAttachments',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Upload Self-Billing Agreement Attachment
+   */
+  public static async UploadSbAgreementAttachment(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { id: string, body: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'UploadSbAgreementAttachment',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  // ── Self-Billing Templates ──
+
+  /**
+   * List Self-Billing Templates
+   */
+  public static async ListSbTemplates(settingId: string, supplierId?: string, isActive?: boolean): Promise<IOperationResult<void>> {
+    const params: { settingId: string, supplierId?: string, isActive?: boolean } = { settingId, supplierId, isActive };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ListSbTemplates',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Self-Billing Template
+   */
+  public static async GetSbTemplate(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetSbTemplate',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Create Self-Billing Template
+   */
+  public static async CreateSbTemplate(body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'CreateSbTemplate',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Update Self-Billing Template
+   */
+  public static async UpdateSbTemplate(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { id: string, body: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'UpdateSbTemplate',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Delete Self-Billing Template
+   */
+  public static async DeleteSbTemplate(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'DeleteSbTemplate',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Duplicate Self-Billing Template
+   */
+  public static async DuplicateSbTemplate(body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'DuplicateSbTemplate',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  // ── Self-Billing Invoices ──
+
+  /**
+   * List Self-Billing Invoices
+   */
+  public static async ListSelfBillingInvoices(settingId: string, supplierId?: string, status?: string, dateFrom?: string, dateTo?: string, top?: number, skip?: number): Promise<IOperationResult<void>> {
+    const params: { settingId: string, supplierId?: string, status?: string, dateFrom?: string, dateTo?: string, top?: number, skip?: number } = { settingId, supplierId, status, dateFrom, dateTo, top, skip };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ListSelfBillingInvoices',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Create Self-Billing Invoice
+   */
+  public static async CreateSelfBillingInvoice(body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'CreateSelfBillingInvoice',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Preview Self-Billing Invoice
+   */
+  public static async PreviewSelfBillingInvoice(body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'PreviewSelfBillingInvoice',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Generate Self-Billing Invoices
+   */
+  public static async GenerateSelfBillingInvoices(body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GenerateSelfBillingInvoices',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Confirm Generated Self-Billing
+   */
+  public static async ConfirmGeneratedSelfBilling(body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ConfirmGeneratedSelfBilling',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Create Self-Billing Invoices
+   */
+  public static async BatchCreateSelfBillingInvoices(body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'BatchCreateSelfBillingInvoices',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Update Self-Billing Status
+   */
+  public static async UpdateSelfBillingStatus(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { id: string, body: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'UpdateSelfBillingStatus',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Submit for Seller Review
+   */
+  public static async SubmitForSellerReview(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'SubmitForSellerReview',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Seller Approve Invoice
+   */
+  public static async SellerApproveInvoice(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'SellerApproveInvoice',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Seller Reject Invoice
+   */
+  public static async SellerRejectInvoice(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { id: string, body: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'SellerRejectInvoice',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Send Self-Billing to KSeF
+   */
+  public static async SendSelfBillingToKsef(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'SendSelfBillingToKsef',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  // ── Self-Billing Import ──
+
+  /**
+   * Import Self-Billing File
+   */
+  public static async ImportSelfBillingFile(settingId: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { settingId: string, body: Record<string, unknown> } = { settingId, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ImportSelfBillingFile',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Confirm Self-Billing Import
+   */
+  public static async ConfirmSelfBillingImport(body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ConfirmSelfBillingImport',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Download Self-Billing Template
+   */
+  public static async DownloadSelfBillingTemplate(format?: string): Promise<IOperationResult<void>> {
+    const params: { format?: string } = { format };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'DownloadSelfBillingTemplate',
+          parameters: params
+        },
+      });
+    return result;
+  }
 }

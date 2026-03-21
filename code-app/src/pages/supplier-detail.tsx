@@ -185,7 +185,7 @@ function InvoiceRowActions({ invoice, intl, onMarkAsPaid, onMarkAsUnpaid, onDele
   )
 }
 
-function DetailRow({ label, value, mono }: { label: string; value: string | undefined | null; mono?: boolean }) {
+function DetailRow({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
     <div className="flex justify-between py-2 text-sm">
       <span className="text-muted-foreground">{label}</span>

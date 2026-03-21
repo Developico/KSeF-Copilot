@@ -1,6 +1,6 @@
 # Screenshots
 
-Katalog zawiera zrzuty ekranu aplikacji KSeF Copilot (45 plików). Konwencja nazewnictwa: `sekcja-opis.png`.
+Katalog zawiera zrzuty ekranu aplikacji KSeF Copilot (48 plików). Konwencja nazewnictwa: `sekcja-opis.png`.
 
 ## Dashboard
 
@@ -75,6 +75,12 @@ Katalog zawiera zrzuty ekranu aplikacji KSeF Copilot (45 plików). Konwencja naz
 ## Powiadomienia
 
 - `powiadomienia.png` — lista powiadomień
+
+## Power Platform
+
+- `powerplatform-code-app.png` — KSeF Copilot jako Code App w Power Apps
+- `powerplatform-model-driven-app.png` — KSeF Copilot jako Model-Driven App z widokiem faktur
+- `powerplatform-agent-AI.png` — KSeF Asystent Finansowy — agent AI w Copilot Studio
 
 ## Wygląd
 
