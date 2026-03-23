@@ -765,6 +765,7 @@ This data is used to build context in AI prompts (few-shot learning).
 | `dvlp_hasselfbillingagreement` | Has SB Agreement | Boolean | ❌ | True when an active SB agreement exists |
 | `dvlp_selfbillingagreementdate` | SB Agreement Date | Date | ❌ | Self-billing agreement date |
 | `dvlp_selfbillingagreementexpiry` | SB Agreement Expiry | Date | ❌ | Self-billing agreement expiry date |
+| `dvlp_sbinvoicenumbertemplate` | SB Invoice Number Template | String(200) | ❌ | Invoice numbering template. Variables: {YYYY}, {MM}, {NNN}, {NNNN}, {SUPPLIER}, {NIP}. Default: `SF/{YYYY}/{MM}/{NNN}` |
 | `dvlp_firstinvoicedate` | First Invoice Date | Date | ❌ | Cached: earliest invoice date |
 | `dvlp_lastinvoicedate` | Last Invoice Date | Date | ❌ | Cached: latest invoice date |
 | `dvlp_totalinvoicecount` | Total Invoice Count | Integer | ❌ | Cached: total number of invoices |

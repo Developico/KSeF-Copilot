@@ -586,13 +586,65 @@ export class SbInvoiceService {
   }
 
   /**
-   * Get the next sequential invoice number for a given prefix.
-   * Queries existing invoices matching `SF/{YYYY}/{MM}/` and returns the next number.
-   * E.g. if SF/2026/03/002 is the highest, returns SF/2026/03/003.
+   * Build an invoice number from a template string.
+   * Supported variables: {YYYY}, {MM}, {NNN}, {NNNN}, {SUPPLIER}, {NIP}
+   * Default template: SF/{YYYY}/{MM}/{NNN}
    */
-  async getNextInvoiceNumber(settingId: string, year: number, month: number): Promise<string> {
+  buildInvoiceNumber(
+    template: string,
+    year: number,
+    month: number,
+    seq: number,
+    supplierShortName?: string | null,
+    supplierNip?: string | null,
+  ): string {
+    const supplierTag = (supplierShortName || '').replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 20)
+    return template
+      .replace(/\{YYYY\}/g, String(year))
+      .replace(/\{MM\}/g, String(month).padStart(2, '0'))
+      .replace(/\{NNN\}/g, String(seq).padStart(3, '0'))
+      .replace(/\{NNNN\}/g, String(seq).padStart(4, '0'))
+      .replace(/\{SUPPLIER\}/g, supplierTag)
+      .replace(/\{NIP\}/g, supplierNip || '')
+  }
+
+  /**
+   * Extract the static prefix from a template (everything before the first sequence variable).
+   * Used for querying existing invoices to determine the next number.
+   */
+  private getTemplatePrefix(template: string, year: number, month: number, supplierShortName?: string | null, supplierNip?: string | null): string {
+    const supplierTag = (supplierShortName || '').replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 20)
+    // Replace known static variables first
+    let prefix = template
+      .replace(/\{YYYY\}/g, String(year))
+      .replace(/\{MM\}/g, String(month).padStart(2, '0'))
+      .replace(/\{SUPPLIER\}/g, supplierTag)
+      .replace(/\{NIP\}/g, supplierNip || '')
+    // Cut at the sequence variable
+    const seqIdx = prefix.search(/\{N{3,4}\}/)
+    if (seqIdx >= 0) {
+      prefix = prefix.substring(0, seqIdx)
+    }
+    return prefix
+  }
+
+  /**
+   * Get the next sequential invoice number for a given setting/period.
+   * Optionally accepts a template and supplier info for per-supplier numbering.
+   */
+  async getNextInvoiceNumber(
+    settingId: string,
+    year: number,
+    month: number,
+    template?: string | null,
+    supplierShortName?: string | null,
+    supplierNip?: string | null,
+  ): Promise<string> {
     const s = DV.sbInvoice
-    const prefix = `SF/${year}/${String(month).padStart(2, '0')}/`
+    const tpl = template || 'SF/{YYYY}/{MM}/{NNN}'
+    const prefix = this.getTemplatePrefix(tpl, year, month, supplierShortName, supplierNip)
+    const seqLen = tpl.includes('{NNNN}') ? 4 : 3
+
     const filter = `${s.stateCode} eq 0 and ${s.settingLookup} eq ${escapeOData(settingId)} and startswith(${s.name},'${prefix}')`
     const query = `$filter=${filter}&$select=${s.name}&$orderby=${s.name} desc&$top=1`
 
@@ -600,11 +652,13 @@ export class SbInvoiceService {
       const response = await dataverseClient.list<DvSbInvoice>(this.entitySet, query)
       const records = response?.value ?? []
       if (records.length === 0) {
-        return `${prefix}001`
+        return this.buildInvoiceNumber(tpl, year, month, 1, supplierShortName, supplierNip)
       }
       const lastName = records[0][s.name as keyof DvSbInvoice] as string
-      const lastSeq = parseInt(lastName.split('/').pop() || '0', 10)
-      return `${prefix}${String(lastSeq + 1).padStart(3, '0')}`
+      // Extract the sequence number (last numeric segment after the prefix)
+      const seqStr = lastName.substring(prefix.length).replace(/^[^0-9]*/, '').replace(/[^0-9].*$/, '')
+      const lastSeq = parseInt(seqStr || '0', 10)
+      return this.buildInvoiceNumber(tpl, year, month, lastSeq + 1, supplierShortName, supplierNip)
     } catch (error) {
       logDataverseError('SbInvoiceService.getNextInvoiceNumber', error)
       throw error

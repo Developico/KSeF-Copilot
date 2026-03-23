@@ -1468,6 +1468,16 @@
       "statusExpired": "Wygasła",
       "statusTerminated": "Rozwiązana"
     },
+    "invoiceNumberTemplate": "Szablon numeracji faktury",
+    "invoiceNumberTemplateUpdated": "Szablon numeracji zaktualizowany",
+    "invoiceNumberTemplateHelp": "Dostępne zmienne w szablonie numeracji:",
+    "templateVarYear": "Rok (4 cyfry)",
+    "templateVarMonth": "Miesiąc (2 cyfry, z zerem wiodącym)",
+    "templateVarSeq3": "Numer sekwencyjny (3 cyfry)",
+    "templateVarSeq4": "Numer sekwencyjny (4 cyfry)",
+    "templateVarSupplier": "Skrócona nazwa dostawcy",
+    "templateVarNip": "NIP dostawcy",
+    "templateVarDefault": "Domyślny",
     "templates": {
       "title": "Szablony faktur",
       "name": "Nazwa szablonu",

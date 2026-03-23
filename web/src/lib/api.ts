@@ -957,6 +957,7 @@ export interface Supplier {
   selfBillingAgreementDate?: string | null
   selfBillingAgreementExpiry?: string | null
   sbContactUserId?: string | null
+  sbInvoiceNumberTemplate?: string | null
   firstInvoiceDate?: string | null
   lastInvoiceDate?: string | null
   totalInvoiceCount: number

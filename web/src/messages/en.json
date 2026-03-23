@@ -1470,6 +1470,16 @@
       "statusExpired": "Expired",
       "statusTerminated": "Terminated"
     },
+    "invoiceNumberTemplate": "Invoice number template",
+    "invoiceNumberTemplateUpdated": "Invoice numbering template updated",
+    "invoiceNumberTemplateHelp": "Available variables for the numbering template:",
+    "templateVarYear": "Year (4 digits)",
+    "templateVarMonth": "Month (2 digits, zero-padded)",
+    "templateVarSeq3": "Sequential number (3 digits)",
+    "templateVarSeq4": "Sequential number (4 digits)",
+    "templateVarSupplier": "Supplier short name",
+    "templateVarNip": "Supplier NIP",
+    "templateVarDefault": "Default",
     "templates": {
       "title": "Invoice Templates",
       "name": "Template name",

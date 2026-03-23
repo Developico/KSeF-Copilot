@@ -995,6 +995,16 @@
       "autoApproveOff": "Wyłączone",
       "autoApproveHint": "Faktury pomijają zatwierdzenie sprzedawcy przy wysyłce"
     },
+    "invoiceNumberTemplate": "Szablon numeracji faktury",
+    "invoiceNumberTemplateUpdated": "Szablon numeracji faktury zaktualizowany",
+    "invoiceNumberTemplateHelp": "Dostępne zmienne szablonu:",
+    "templateVarYear": "Rok (4 cyfry)",
+    "templateVarMonth": "Miesiąc (2 cyfry)",
+    "templateVarSeq3": "Numer sekwencyjny (3 cyfry)",
+    "templateVarSeq4": "Numer sekwencyjny (4 cyfry)",
+    "templateVarSupplier": "Skrócona nazwa dostawcy",
+    "templateVarNip": "NIP dostawcy",
+    "templateVarDefault": "Domyślny",
     "templates": {
       "title": "Szablony faktur",
       "name": "Nazwa szablonu",

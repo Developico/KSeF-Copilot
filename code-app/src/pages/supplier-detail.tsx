@@ -703,6 +703,50 @@ export function SupplierDetailPage() {
                   </Badge>
                 }
               />
+              <Separator />
+              <div className="py-2 space-y-1.5">
+                <label className="text-sm text-muted-foreground">{intl.formatMessage({ id: 'suppliers.invoiceNumberTemplate' })}</label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    key={supplier.sbInvoiceNumberTemplate ?? ''}
+                    className="h-8 text-sm font-mono max-w-xs"
+                    defaultValue={supplier.sbInvoiceNumberTemplate ?? ''}
+                    placeholder="SF/{YYYY}/{MM}/{NNN}"
+                    onBlur={(e) => {
+                      const val = e.target.value.trim() || null
+                      if (!id) return
+                      if (val !== (supplier.sbInvoiceNumberTemplate ?? null)) {
+                        updateMutation.mutate(
+                          { id, data: { sbInvoiceNumberTemplate: val } },
+                          {
+                            onSuccess: () => toast.success(intl.formatMessage({ id: 'suppliers.invoiceNumberTemplateUpdated' })),
+                            onError: (err) => toast.error(err.message),
+                          }
+                        )
+                      }
+                    }}
+                  />
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-muted-foreground cursor-help text-xs">ⓘ</span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-sm text-xs">
+                        <p className="font-medium mb-1">{intl.formatMessage({ id: 'suppliers.invoiceNumberTemplateHelp' })}</p>
+                        <ul className="space-y-0.5">
+                          <li><code className="font-mono">{'{YYYY}'}</code> — {intl.formatMessage({ id: 'suppliers.templateVarYear' })}</li>
+                          <li><code className="font-mono">{'{MM}'}</code> — {intl.formatMessage({ id: 'suppliers.templateVarMonth' })}</li>
+                          <li><code className="font-mono">{'{NNN}'}</code> — {intl.formatMessage({ id: 'suppliers.templateVarSeq3' })}</li>
+                          <li><code className="font-mono">{'{NNNN}'}</code> — {intl.formatMessage({ id: 'suppliers.templateVarSeq4' })}</li>
+                          <li><code className="font-mono">{'{SUPPLIER}'}</code> — {intl.formatMessage({ id: 'suppliers.templateVarSupplier' })}</li>
+                          <li><code className="font-mono">{'{NIP}'}</code> — {intl.formatMessage({ id: 'suppliers.templateVarNip' })}</li>
+                        </ul>
+                        <p className="mt-1 text-muted-foreground">{intl.formatMessage({ id: 'suppliers.templateVarDefault' })}: <code className="font-mono">SF/{'{YYYY}'}/{'{MM}'}/{'{NNN}'}</code></p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </div>
               <div className="flex justify-end gap-2 pt-3">
                 <Button
                   variant="outline"

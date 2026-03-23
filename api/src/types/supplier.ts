@@ -58,6 +58,7 @@ export interface Supplier {
   selfBillingAgreementDate?: string | null
   selfBillingAgreementExpiry?: string | null
   sbContactUserId?: string | null
+  sbInvoiceNumberTemplate?: string | null
   // Cached statistics
   firstInvoiceDate?: string | null
   lastInvoiceDate?: string | null
@@ -127,6 +128,7 @@ export const SupplierCreateSchema = z.object({
   selfBillingAgreementDate: z.string().datetime().optional(),
   selfBillingAgreementExpiry: z.string().datetime().optional(),
   sbContactUserId: z.string().uuid().optional(),
+  sbInvoiceNumberTemplate: z.string().max(200).optional(),
   status: z.nativeEnum(SupplierStatus).default(SupplierStatus.Active),
   source: z.nativeEnum(SupplierSource).default(SupplierSource.Manual),
   settingId: z.string().uuid(),
@@ -157,6 +159,7 @@ export const SupplierUpdateSchema = z.object({
   selfBillingAgreementDate: z.string().datetime().nullable().optional(),
   selfBillingAgreementExpiry: z.string().datetime().nullable().optional(),
   sbContactUserId: z.string().uuid().nullable().optional(),
+  sbInvoiceNumberTemplate: z.string().max(200).nullable().optional(),
   status: z.nativeEnum(SupplierStatus).optional(),
   source: z.nativeEnum(SupplierSource).optional(),
 })

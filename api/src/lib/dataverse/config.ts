@@ -312,6 +312,7 @@ export const DV = {
     selfBillingAgreementExpiry: 'dvlp_selfbillingagreementexpiry',
     sbContactUserLookup: '_dvlp_sbcontactuserid_value',
     sbContactUserBind: 'dvlp_sbcontactuserid@odata.bind',
+    sbInvoiceNumberTemplate: 'dvlp_sbinvoicenumbertemplate',
     firstInvoiceDate: 'dvlp_firstinvoicedate',
     lastInvoiceDate: 'dvlp_lastinvoicedate',
     totalInvoiceCount: 'dvlp_totalinvoicecount',

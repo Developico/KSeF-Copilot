@@ -1226,6 +1226,7 @@ export interface Supplier {
   hasSelfBillingAgreement: boolean
   selfBillingAgreementDate?: string | null
   selfBillingAgreementExpiry?: string | null
+  sbInvoiceNumberTemplate?: string | null
   firstInvoiceDate?: string | null
   lastInvoiceDate?: string | null
   totalInvoiceCount: number

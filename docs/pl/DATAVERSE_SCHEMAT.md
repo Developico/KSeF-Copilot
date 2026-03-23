@@ -850,6 +850,7 @@ Te dane są wykorzystywane do budowania kontekstu w promptach AI (few-shot learn
 | `dvlp_hasselfbillingagreement` | Ma umowę SB | Boolean | ❌ | Prawda gdy istnieje aktywna umowa samofakturowania |
 | `dvlp_selfbillingagreementdate` | Data umowy SB | Date | ❌ | Data umowy samofakturowania |
 | `dvlp_selfbillingagreementexpiry` | Wygaśnięcie umowy SB | Date | ❌ | Data wygaśnięcia umowy |
+| `dvlp_sbinvoicenumbertemplate` | Szablon numeru faktury SB | String(200) | ❌ | Szablon numeracji faktur. Zmienne: {YYYY}, {MM}, {NNN}, {NNNN}, {SUPPLIER}, {NIP}. Domyślnie: `SF/{YYYY}/{MM}/{NNN}` |
 | `dvlp_firstinvoicedate` | Data pierwszej faktury | Date | ❌ | Cache: data najwcześniejszej faktury |
 | `dvlp_lastinvoicedate` | Data ostatniej faktury | Date | ❌ | Cache: data najnowszej faktury |
 | `dvlp_totalinvoicecount` | Liczba faktur | Integer | ❌ | Cache: łączna liczba faktur |

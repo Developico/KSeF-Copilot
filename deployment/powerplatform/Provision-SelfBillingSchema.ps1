@@ -718,6 +718,10 @@ Add-DateTimeColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
     -SchemaName "${PublisherPrefix}_selfbillingagreementexpiry" -DisplayNameEN 'SB Agreement Expiry' `
     -Format 'DateOnly' -Description 'Expiry date of the self-billing agreement'
 
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
+    -SchemaName "${PublisherPrefix}_sbinvoicenumbertemplate" -DisplayNameEN 'SB Invoice Number Template' `
+    -MaxLength 200 -Description 'Invoice numbering template for self-billing. Variables: {YYYY}, {MM}, {NNN}, {NNNN}, {SUPPLIER}, {NIP}. Default: SF/{YYYY}/{MM}/{NNN}'
+
 # Cached statistics
 Add-DateTimeColumn -EntityLogicalName "${PublisherPrefix}_ksefsupplier" `
     -SchemaName "${PublisherPrefix}_firstinvoicedate" -DisplayNameEN 'First Invoice Date' `

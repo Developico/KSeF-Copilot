@@ -20,7 +20,7 @@ import {
   ArrowDownToLine, ArrowUp, ArrowDown, Calendar, CheckCircle,
   Sparkles, FileQuestion, FileCheck, Eye, CornerDownRight,
   ChevronDown, ChevronUp, ChevronRight, Plus, Pencil, Trash2, Upload, Folder, Tag,
-  ChevronsUpDown, UserCheck, X, Power,
+  ChevronsUpDown, UserCheck, X, Power, Info,
 } from 'lucide-react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -46,6 +46,7 @@ import { useHasRole } from '@/components/auth/auth-provider'
 import { useToast } from '@/hooks/use-toast'
 import { Invoice, api } from '@/lib/api'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { InvoiceAmountCell } from '@/components/invoices/currency-amount'
 import { ApprovalStatusBadge } from '@/components/invoices/invoice-approval-section'
 import { SupplierSbTemplates } from '@/components/suppliers'
@@ -918,6 +919,55 @@ export default function SupplierDetailPage({ params }: PageProps) {
                     </dd>
                   </div>
                 </dl>
+                {/* Invoice Number Template */}
+                <div className="flex items-center gap-3 pt-2 border-t text-sm">
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground whitespace-nowrap">{t('invoiceNumberTemplate')}:</span>
+                  {isAdmin ? (
+                    <div className="flex items-center gap-2 flex-1">
+                      <Input
+                        key={supplier.sbInvoiceNumberTemplate ?? ''}
+                        className="h-8 text-sm font-mono max-w-xs"
+                        defaultValue={supplier.sbInvoiceNumberTemplate ?? ''}
+                        placeholder="SF/{YYYY}/{MM}/{NNN}"
+                        onBlur={(e) => {
+                          const val = e.target.value.trim() || null
+                          if (val !== (supplier.sbInvoiceNumberTemplate ?? null)) {
+                            updateSupplierMutation.mutate(
+                              { id, data: { sbInvoiceNumberTemplate: val } },
+                              {
+                                onSuccess: () => toast({ description: t('invoiceNumberTemplateUpdated') }),
+                                onError: (error) => toast({ variant: 'destructive', description: error instanceof Error ? error.message : String(error) }),
+                              }
+                            )
+                          }
+                        }}
+                      />
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help shrink-0" />
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="max-w-sm text-xs">
+                            <p className="font-medium mb-1">{t('invoiceNumberTemplateHelp')}</p>
+                            <ul className="space-y-0.5">
+                              <li><code className="font-mono">{'{YYYY}'}</code> — {t('templateVarYear')}</li>
+                              <li><code className="font-mono">{'{MM}'}</code> — {t('templateVarMonth')}</li>
+                              <li><code className="font-mono">{'{NNN}'}</code> — {t('templateVarSeq3')}</li>
+                              <li><code className="font-mono">{'{NNNN}'}</code> — {t('templateVarSeq4')}</li>
+                              <li><code className="font-mono">{'{SUPPLIER}'}</code> — {t('templateVarSupplier')}</li>
+                              <li><code className="font-mono">{'{NIP}'}</code> — {t('templateVarNip')}</li>
+                            </ul>
+                            <p className="mt-1 text-muted-foreground">{t('templateVarDefault')}: <code className="font-mono">SF/{'{YYYY}'}/{'{MM}'}/{'{NNN}'}</code></p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  ) : (
+                    <span className="font-mono">{supplier.sbInvoiceNumberTemplate || 'SF/{YYYY}/{MM}/{NNN}'}</span>
+                  )}
+                  {updateSupplierMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                </div>
                 {/* SB Contact User (Approver) Picker */}
                 <div className="flex items-center gap-3 pt-2 border-t text-sm">
                   <UserCheck className="h-4 w-4 text-muted-foreground shrink-0" />

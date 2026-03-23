@@ -995,6 +995,16 @@
       "autoApproveOff": "Disabled",
       "autoApproveHint": "Invoices skip seller approval when submitted"
     },
+    "invoiceNumberTemplate": "Invoice number template",
+    "invoiceNumberTemplateUpdated": "Invoice number template updated",
+    "invoiceNumberTemplateHelp": "Available template variables:",
+    "templateVarYear": "Year (4 digits)",
+    "templateVarMonth": "Month (2 digits)",
+    "templateVarSeq3": "Sequence number (3 digits)",
+    "templateVarSeq4": "Sequence number (4 digits)",
+    "templateVarSupplier": "Supplier short name",
+    "templateVarNip": "Supplier NIP",
+    "templateVarDefault": "Default",
     "templates": {
       "title": "Invoice Templates",
       "name": "Template name",

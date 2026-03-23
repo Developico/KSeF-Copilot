@@ -6,6 +6,19 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.9.3] - 2026-03-23
+
+### 📋 Samofakturowanie
+
+- **Szablon numeru faktury SB per dostawca** — nowe pole `sbInvoiceNumberTemplate` na stronie szczegółów dostawcy umożliwiające konfigurację szablonu numeracji faktur samofakturowania. Dostępne zmienne: `{YYYY}`, `{MM}`, `{NNN}`, `{NNNN}`, `{SUPPLIER}`, `{NIP}`. Domyślny szablon: `SF/{YYYY}/{MM}/{NNN}`.
+- **Tooltip z opisem zmiennych** — ikona pomocy obok pola szablonu wyświetlająca listę wszystkich dostępnych zmiennych z opisami
+
+### 🌐 i18n
+
+- **Nowe klucze tłumaczeń** — `suppliers.invoiceNumberTemplate`, `suppliers.invoiceNumberTemplateHelp`, `suppliers.templateVar*` w `pl.json` i `en.json`
+
+---
+
 ## [0.9.2] - 2026-03-21
 
 ### 🌐 i18n — wybór miesiąca

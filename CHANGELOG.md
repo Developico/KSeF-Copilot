@@ -16,6 +16,22 @@ Projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.0.1] — 2026-03-23
+
+### Dodane
+
+- **Szablon numeru faktury SB per dostawca** — nowa kolumna `dvlp_sbinvoicenumbertemplate` (String, MaxLength 200) w tabeli `dvlp_ksefsupplier`
+- `PATCH /suppliers/{id}` obsługuje pole `sbInvoiceNumberTemplate`
+- Generowanie numerów faktur SB na podstawie szablonu dostawcy (zmienne: `{YYYY}`, `{MM}`, `{NNN}`, `{NNNN}`, `{SUPPLIER}`, `{NIP}`)
+- Nowy skrypt PowerShell `Provision-SelfBillingSchema.ps1` tworzy kolumnę w Dataverse
+
+### Eksport solucji
+
+- `DevelopicoKSeF_0_3_0_1.zip` — solucja Dataverse z definicją kolumny `dvlp_sbinvoicenumbertemplate` na tabeli `dvlp_ksefsupplier`
+- `KSeFCopilotCustomConnectorbyDevelopico_0_3_0_1.zip` — Custom Connector zsynchronizowany z solucją
+
+---
+
 ## [0.3.0] — 2026-03-20
 
 ### Dodane — Samofakturowanie (Self-Billing)

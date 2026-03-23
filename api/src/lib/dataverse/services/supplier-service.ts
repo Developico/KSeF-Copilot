@@ -91,6 +91,7 @@ function mapDvSupplierToApp(raw: DvSupplier): Supplier {
     selfBillingAgreementDate: raw[s.selfBillingAgreementDate as keyof DvSupplier] as string | undefined,
     selfBillingAgreementExpiry: raw[s.selfBillingAgreementExpiry as keyof DvSupplier] as string | undefined,
     sbContactUserId: raw[s.sbContactUserLookup as keyof DvSupplier] as string | undefined,
+    sbInvoiceNumberTemplate: raw[s.sbInvoiceNumberTemplate as keyof DvSupplier] as string | undefined,
     firstInvoiceDate: raw[s.firstInvoiceDate as keyof DvSupplier] as string | undefined,
     lastInvoiceDate: raw[s.lastInvoiceDate as keyof DvSupplier] as string | undefined,
     totalInvoiceCount: (raw[s.totalInvoiceCount as keyof DvSupplier] as number) ?? 0,
@@ -126,6 +127,7 @@ function mapAppSupplierToDv(data: SupplierCreate | SupplierUpdate, isCreate: boo
   if (data.notes !== undefined) payload[s.notes] = data.notes ?? null
   if (data.tags !== undefined) payload[s.tags] = data.tags ?? null
   if (data.hasSelfBillingAgreement !== undefined) payload[s.hasSelfBillingAgreement] = data.hasSelfBillingAgreement
+  if ('sbInvoiceNumberTemplate' in data && data.sbInvoiceNumberTemplate !== undefined) payload[s.sbInvoiceNumberTemplate] = data.sbInvoiceNumberTemplate ?? null
   if (data.selfBillingAgreementDate !== undefined) payload[s.selfBillingAgreementDate] = data.selfBillingAgreementDate ?? null
   if (data.selfBillingAgreementExpiry !== undefined) payload[s.selfBillingAgreementExpiry] = data.selfBillingAgreementExpiry ?? null
   if (data.sbContactUserId !== undefined) {

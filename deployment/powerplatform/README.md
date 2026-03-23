@@ -11,10 +11,17 @@ powerplatform/
 ├── README.md                              ← Ten plik
 ├── DevelopicoKSeF_0_1_0_0.zip                          # Solucja v0.1.0 — unmanaged
 ├── DevelopicoKSeF_0_2_0_0.zip                          # Solucja v0.2.0 — unmanaged
+├── DevelopicoKSeF_0_3_0_0.zip                          # Solucja v0.3.0 — unmanaged (samofakturowanie)
+├── DevelopicoKSeF_0_3_0_1.zip                          # Solucja v0.3.0.1 — szablon numeracji faktur SB
 ├── KSeFCopilotCustomConnectorbyDevelopico_0_1_0_0.zip  # Custom Connector v0.1.0 — unmanaged
 ├── KSeFCopilotCustomConnectorbyDevelopico_0_2_0_0.zip  # Custom Connector v0.2.0 — unmanaged
+├── KSeFCopilotCustomConnectorbyDevelopico_0_3_0_0.zip  # Custom Connector v0.3.0 — endpointy SB
+├── KSeFCopilotCustomConnectorbyDevelopico_0_3_0_1.zip  # Custom Connector v0.3.0.1 — sync z solucją
 ├── Provision-FullEnvironment.ps1          # Skrypt provisioningu środowiska
 ├── Provision-MpkSchema.ps1                # Skrypt provisioningu schematu MPK
+├── Provision-SelfBillingSchema.ps1         # Skrypt provisioningu kolumn SB (szablon numeracji)
+├── Provision-SbApprovalColumns.ps1         # Skrypt provisioningu kolumn akceptacji SB
+├── Grant-SelfBillingPrivileges.ps1         # Skrypt nadawania uprawnień SB
 ├── CODE_APPS_DEPLOYMENT.md                # Plan wdrożenia Code Apps
 ├── CODE_APPS_WDROZENIE.md                 # Instrukcja wdrożenia Code Apps (pac code push)
 ├── welcome.html                           # Strona powitalna Code App

@@ -128,12 +128,15 @@ app.http('self-billing-invoices-create', {
         { netAmount: 0, vatAmount: 0, grossAmount: 0 }
       )
 
-      // Generate invoice number: SF/{YYYY}/{MM}/{NNN}
+      // Generate invoice number using supplier template
       const now = new Date()
       const invoiceNumber = await sbInvoiceService.getNextInvoiceNumber(
         data.settingId,
         now.getFullYear(),
         now.getMonth() + 1,
+        supplier.sbInvoiceNumberTemplate,
+        supplier.shortName || supplier.name,
+        supplier.nip,
       )
 
       // Create invoice with line items via dedicated SB invoice service
@@ -262,14 +265,24 @@ app.http('self-billing-invoices-generate', {
       const results: Array<{ supplierId: string; invoiceId?: string; error?: string }> = []
 
       // Get starting invoice number for this period (accounts for existing invoices)
-      const startingNumber = await sbInvoiceService.getNextInvoiceNumber(settingId, period.year, period.month)
-      const startingSeq = parseInt(startingNumber.split('/').pop() || '1', 10)
+      // When generating, we need per-supplier templates so generate numbers inside the loop
+      const defaultTemplate = 'SF/{YYYY}/{MM}/{NNN}'
 
       for (const preview of previews) {
         try {
           const invoiceDate = `${period.year}-${String(period.month).padStart(2, '0')}-${String(new Date(period.year, period.month, 0).getDate()).padStart(2, '0')}`
-          const seq = startingSeq + results.filter(r => r.invoiceId).length
-          const invoiceNumber = `SF/${period.year}/${String(period.month).padStart(2, '0')}/${String(seq).padStart(3, '0')}`
+
+          // Look up supplier to get template
+          const previewSupplier = await supplierService.getById(preview.supplierId)
+          const template = previewSupplier?.sbInvoiceNumberTemplate || defaultTemplate
+          const invoiceNumber = await sbInvoiceService.getNextInvoiceNumber(
+            settingId,
+            period.year,
+            period.month,
+            template,
+            previewSupplier?.shortName || previewSupplier?.name,
+            previewSupplier?.nip,
+          )
 
           // Compute dueDate from the max paymentTermDays across items
           const maxPaymentTermDays = preview.items.reduce((max, item) => {
