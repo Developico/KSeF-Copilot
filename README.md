@@ -16,6 +16,10 @@ EN [English version](README.en.md)
 
 [![KSeF Copilot v0.2.0 — wideo promocyjne](https://img.youtube.com/vi/dzGFUU8Y_JE/maxresdefault.jpg)](https://youtu.be/dzGFUU8Y_JE)
 
+## 🎬 Co nowego w v0.3.0
+
+[![KSeF Copilot v0.3.0 — nowości](https://img.youtube.com/vi/JXMyhx1slTY/maxresdefault.jpg)](https://youtu.be/JXMyhx1slTY)
+
 ---
 
 > Otwarte rozwiązanie do integracji z Krajowym Systemem e-Faktur (KSeF), zbudowane w filozofii **API-First**. REST API (Azure Functions) stanowi rdzeń produktu — każdy klient HTTP może z niego korzystać. Repozytorium zawiera referencyjne implementacje frontendowe (Next.js, React SPA, Model-Driven App), ale prawdziwym produktem jest API. Priorytetem architektonicznym jest wykorzystanie **Power Platform i Microsoft Dataverse** jako backendu. Gotowe do wdrożenia w chmurze Azure.
