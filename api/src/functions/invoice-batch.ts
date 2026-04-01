@@ -10,7 +10,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { verifyAuth, requireRole } from '../lib/auth/middleware'
+import { verifyAuth, verifyAuthWithRateLimit, requireRole } from '../lib/auth/middleware'
 import { getInvoiceById, updateInvoice, deleteInvoice } from '../lib/dataverse/invoices'
 import { approvalService } from '../lib/dataverse/services'
 import { z } from 'zod'
@@ -104,8 +104,11 @@ app.http('invoice-batch-mark-unpaid', {
   route: 'invoice-batch/mark-unpaid',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await verifyAuth(request)
+      const auth = await verifyAuthWithRateLimit(request, { windowMs: 60_000, maxRequests: 20 })
       if (!auth.success || !auth.user) {
+        if (auth.retryAfterMs) {
+          return { status: 429, jsonBody: { error: 'Rate limit exceeded' }, headers: { 'Retry-After': String(Math.ceil(auth.retryAfterMs / 1000)) } }
+        }
         return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
       const roleCheck = requireRole(auth.user, 'Admin')
@@ -156,8 +159,11 @@ app.http('invoice-batch-approve', {
   route: 'invoice-batch/approve',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await verifyAuth(request)
+      const auth = await verifyAuthWithRateLimit(request, { windowMs: 60_000, maxRequests: 20 })
       if (!auth.success || !auth.user) {
+        if (auth.retryAfterMs) {
+          return { status: 429, jsonBody: { error: 'Rate limit exceeded' }, headers: { 'Retry-After': String(Math.ceil(auth.retryAfterMs / 1000)) } }
+        }
         return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
       const roleCheck = requireRole(auth.user, 'Reader')
@@ -194,8 +200,11 @@ app.http('invoice-batch-reject', {
   route: 'invoice-batch/reject',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await verifyAuth(request)
+      const auth = await verifyAuthWithRateLimit(request, { windowMs: 60_000, maxRequests: 20 })
       if (!auth.success || !auth.user) {
+        if (auth.retryAfterMs) {
+          return { status: 429, jsonBody: { error: 'Rate limit exceeded' }, headers: { 'Retry-After': String(Math.ceil(auth.retryAfterMs / 1000)) } }
+        }
         return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
       const roleCheck = requireRole(auth.user, 'Reader')
@@ -237,8 +246,11 @@ app.http('invoice-batch-delete', {
   route: 'invoice-batch/delete',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await verifyAuth(request)
+      const auth = await verifyAuthWithRateLimit(request, { windowMs: 60_000, maxRequests: 20 })
       if (!auth.success || !auth.user) {
+        if (auth.retryAfterMs) {
+          return { status: 429, jsonBody: { error: 'Rate limit exceeded' }, headers: { 'Retry-After': String(Math.ceil(auth.retryAfterMs / 1000)) } }
+        }
         return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
       const roleCheck = requireRole(auth.user, 'Admin')

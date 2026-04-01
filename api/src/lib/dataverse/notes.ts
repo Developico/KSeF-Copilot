@@ -7,6 +7,7 @@
 
 import { dataverseRequest } from './client'
 import { InvoiceEntity } from './entities'
+import { isValidGuid } from './odata-utils'
 
 // ============================================================================
 // Types
@@ -85,6 +86,9 @@ export async function createNote(data: NoteCreate): Promise<Note> {
  * List notes for an invoice (ordered by creation date, newest first)
  */
 export async function listNotes(invoiceId: string): Promise<Note[]> {
+  if (!isValidGuid(invoiceId)) {
+    throw new Error('Invalid invoice ID format')
+  }
   const path = `annotations?$filter=_objectid_value eq ${invoiceId} and isdocument eq false&$select=annotationid,subject,notetext,createdon,modifiedon&$orderby=createdon desc`
 
   const response = await dataverseRequest<{
@@ -183,6 +187,9 @@ export async function deleteNote(noteId: string): Promise<void> {
  * Count notes for an invoice
  */
 export async function countNotes(invoiceId: string): Promise<number> {
+  if (!isValidGuid(invoiceId)) {
+    throw new Error('Invalid invoice ID format')
+  }
   const path = `annotations?$filter=_objectid_value eq ${invoiceId} and isdocument eq false&$count=true&$top=1&$select=annotationid`
 
   const response = await dataverseRequest<{

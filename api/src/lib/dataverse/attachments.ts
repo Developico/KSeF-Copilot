@@ -7,6 +7,7 @@
 
 import { dataverseRequest } from './client'
 import { InvoiceEntity } from './entities'
+import { isValidGuid } from './odata-utils'
 
 /**
  * Attachment configuration
@@ -192,6 +193,9 @@ export async function uploadAttachment(data: AttachmentCreate): Promise<Attachme
  * List attachments for an invoice
  */
 export async function listAttachments(invoiceId: string): Promise<Attachment[]> {
+  if (!isValidGuid(invoiceId)) {
+    throw new Error('Invalid invoice ID format')
+  }
   const path = `annotations?$filter=_objectid_value eq ${invoiceId} and isdocument eq true&$select=annotationid,filename,mimetype,filesize,createdon`
 
   const response = await dataverseRequest<{

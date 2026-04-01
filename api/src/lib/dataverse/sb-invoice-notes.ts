@@ -7,6 +7,7 @@
 
 import { dataverseRequest } from './client'
 import { Note } from './notes'
+import { isValidGuid } from './odata-utils'
 
 const SB_INVOICE_ENTITY_SET = 'dvlp_ksefselfbillinginvoices'
 const SB_INVOICE_ENTITY_LOGICAL_NAME = 'dvlp_ksefselfbillinginvoice'
@@ -47,6 +48,9 @@ export async function createSbInvoiceNote(data: { sbInvoiceId: string; subject?:
 }
 
 export async function listSbInvoiceNotes(sbInvoiceId: string): Promise<Note[]> {
+  if (!isValidGuid(sbInvoiceId)) {
+    throw new Error('Invalid self-billing invoice ID format')
+  }
   const path = `annotations?$filter=_objectid_value eq ${sbInvoiceId} and isdocument eq false&$select=annotationid,subject,notetext,createdon,modifiedon&$orderby=createdon desc`
 
   const response = await dataverseRequest<{

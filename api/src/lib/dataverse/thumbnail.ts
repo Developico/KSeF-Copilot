@@ -9,6 +9,7 @@
 
 import { dataverseRequest } from './client'
 import { InvoiceEntity } from './entities'
+import { isValidGuid } from './odata-utils'
 
 /** Subject used to identify thumbnail annotations */
 const THUMBNAIL_SUBJECT = 'dvlp_doc_thumbnail'
@@ -30,6 +31,9 @@ export async function saveThumbnail(
   base64Content: string,
   mimeType: string = 'image/png'
 ): Promise<void> {
+  if (!isValidGuid(invoiceId)) {
+    throw new Error('Invalid invoice ID format')
+  }
   // Delete existing thumbnail first
   await deleteThumbnail(invoiceId)
 
@@ -56,6 +60,9 @@ export async function saveThumbnail(
  * Returns null if no thumbnail exists.
  */
 export async function getThumbnail(invoiceId: string): Promise<DocumentThumbnail | null> {
+  if (!isValidGuid(invoiceId)) {
+    throw new Error('Invalid invoice ID format')
+  }
   const filter = `_objectid_value eq ${invoiceId} and subject eq '${THUMBNAIL_SUBJECT}' and isdocument eq true`
   const path = `annotations?$filter=${filter}&$select=documentbody,mimetype&$top=1`
 
@@ -81,6 +88,9 @@ export async function getThumbnail(invoiceId: string): Promise<DocumentThumbnail
  * Delete thumbnail for an invoice document.
  */
 export async function deleteThumbnail(invoiceId: string): Promise<void> {
+  if (!isValidGuid(invoiceId)) {
+    throw new Error('Invalid invoice ID format')
+  }
   const filter = `_objectid_value eq ${invoiceId} and subject eq '${THUMBNAIL_SUBJECT}'`
   const path = `annotations?$filter=${filter}&$select=annotationid`
 

@@ -1,6 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { initSession, terminateSession, getActiveSession, getActiveSessionAsync, getSessionStatus } from '../lib/ksef/session'
-import { verifyAuth, requireRole } from '../lib/auth/middleware'
+import { verifyAuth, verifyAuthWithRateLimit, requireRole } from '../lib/auth/middleware'
 
 /**
  * Start a new KSeF session
@@ -13,8 +13,11 @@ app.http('ksef-session-start', {
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
       // Validate authentication
-      const auth = await verifyAuth(request)
+      const auth = await verifyAuthWithRateLimit(request, { windowMs: 60_000, maxRequests: 10 })
       if (!auth.success || !auth.user) {
+        if (auth.retryAfterMs) {
+          return { status: 429, jsonBody: { error: 'Rate limit exceeded' }, headers: { 'Retry-After': String(Math.ceil(auth.retryAfterMs / 1000)) } }
+        }
         return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
       
@@ -71,8 +74,11 @@ app.http('ksef-session-status', {
   route: 'ksef/session',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await verifyAuth(request)
+      const auth = await verifyAuthWithRateLimit(request, { windowMs: 60_000, maxRequests: 10 })
       if (!auth.success || !auth.user) {
+        if (auth.retryAfterMs) {
+          return { status: 429, jsonBody: { error: 'Rate limit exceeded' }, headers: { 'Retry-After': String(Math.ceil(auth.retryAfterMs / 1000)) } }
+        }
         return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
 
@@ -121,8 +127,11 @@ app.http('ksef-session-terminate', {
   route: 'ksef/session',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await verifyAuth(request)
+      const auth = await verifyAuthWithRateLimit(request, { windowMs: 60_000, maxRequests: 10 })
       if (!auth.success || !auth.user) {
+        if (auth.retryAfterMs) {
+          return { status: 429, jsonBody: { error: 'Rate limit exceeded' }, headers: { 'Retry-After': String(Math.ceil(auth.retryAfterMs / 1000)) } }
+        }
         return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
       

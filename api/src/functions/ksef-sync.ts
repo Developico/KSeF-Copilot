@@ -1,5 +1,5 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { verifyAuth, requireRole } from '../lib/auth/middleware'
+import { verifyAuth, verifyAuthWithRateLimit, requireRole } from '../lib/auth/middleware'
 import { queryInvoices, getInvoice } from '../lib/ksef/invoices'
 import { parseInvoiceXml } from '../lib/ksef/parser'
 import { createInvoice, invoiceExistsByReference, findParentInvoice, linkOrphanedCorrections, getInvoiceById } from '../lib/dataverse/invoices'
@@ -51,9 +51,12 @@ app.http('ksef-sync', {
     let syncLogId: string | undefined
     let settingId: string | undefined
     try {
-      // Verify authentication
-      const auth = await verifyAuth(request)
+      // Verify authentication with rate limiting (sync is expensive)
+      const auth = await verifyAuthWithRateLimit(request, { windowMs: 60_000, maxRequests: 10 })
       if (!auth.success || !auth.user) {
+        if (auth.retryAfterMs) {
+          return { status: 429, jsonBody: { error: 'Rate limit exceeded' }, headers: { 'Retry-After': String(Math.ceil(auth.retryAfterMs / 1000)) } }
+        }
         return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
 
@@ -362,8 +365,11 @@ app.http('ksef-sync-preview', {
   route: 'ksef/sync/preview',
   handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const auth = await verifyAuth(request)
+      const auth = await verifyAuthWithRateLimit(request, { windowMs: 60_000, maxRequests: 10 })
       if (!auth.success || !auth.user) {
+        if (auth.retryAfterMs) {
+          return { status: 429, jsonBody: { error: 'Rate limit exceeded' }, headers: { 'Retry-After': String(Math.ceil(auth.retryAfterMs / 1000)) } }
+        }
         return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
 
@@ -450,8 +456,11 @@ app.http('ksef-sync-import', {
     let syncLogId: string | undefined
     let settingId: string | undefined
     try {
-      const auth = await verifyAuth(request)
+      const auth = await verifyAuthWithRateLimit(request, { windowMs: 60_000, maxRequests: 10 })
       if (!auth.success || !auth.user) {
+        if (auth.retryAfterMs) {
+          return { status: 429, jsonBody: { error: 'Rate limit exceeded' }, headers: { 'Retry-After': String(Math.ceil(auth.retryAfterMs / 1000)) } }
+        }
         return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
       }
 

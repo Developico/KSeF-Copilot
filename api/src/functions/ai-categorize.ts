@@ -10,7 +10,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { verifyAuth, requireRole } from '../lib/auth/middleware'
+import { verifyAuth, verifyAuthWithRateLimit, requireRole } from '../lib/auth/middleware'
 import { categorizeInvoice, categorizeInvoicesBatch, testConnection } from '../lib/openai'
 import { invoiceService, mpkCenterService } from '../lib/dataverse'
 import { z } from 'zod'
@@ -61,9 +61,12 @@ export async function categorizeHandler(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   try {
-    // Auth check
-    const authResult = await verifyAuth(request)
+    // Auth check with rate limiting (AI calls are expensive)
+    const authResult = await verifyAuthWithRateLimit(request, { windowMs: 60_000, maxRequests: 30 })
     if (!authResult.success) {
+      if (authResult.retryAfterMs) {
+        return { status: 429, jsonBody: { error: 'Rate limit exceeded' }, headers: { 'Retry-After': String(Math.ceil(authResult.retryAfterMs / 1000)) } }
+      }
       return { status: 401, jsonBody: { error: 'Unauthorized' } }
     }
 
@@ -147,9 +150,12 @@ export async function batchCategorizeHandler(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   try {
-    // Auth check
-    const authResult = await verifyAuth(request)
+    // Auth check with rate limiting (AI batch calls are expensive)
+    const authResult = await verifyAuthWithRateLimit(request, { windowMs: 60_000, maxRequests: 10 })
     if (!authResult.success) {
+      if (authResult.retryAfterMs) {
+        return { status: 429, jsonBody: { error: 'Rate limit exceeded' }, headers: { 'Retry-After': String(Math.ceil(authResult.retryAfterMs / 1000)) } }
+      }
       return { status: 401, jsonBody: { error: 'Unauthorized' } }
     }
 

@@ -26,6 +26,7 @@ vi.mock('@azure/functions', () => ({
 
 vi.mock('../src/lib/auth/middleware', () => ({
   verifyAuth: vi.fn(),
+  verifyAuthWithRateLimit: vi.fn(),
   requireRole: vi.fn(),
 }))
 
@@ -45,7 +46,7 @@ vi.mock('../src/lib/dataverse', () => ({
   },
 }))
 
-import { verifyAuth, requireRole } from '../src/lib/auth/middleware'
+import { verifyAuth, verifyAuthWithRateLimit, requireRole } from '../src/lib/auth/middleware'
 import { categorizeInvoice } from '../src/lib/openai'
 import { invoiceService, mpkCenterService } from '../src/lib/dataverse'
 
@@ -77,7 +78,7 @@ describe('ai-categorize endpoint — dynamic MPK', () => {
   })
 
   it('should pass dynamic MPK names to categorizeInvoice', async () => {
-    ;(verifyAuth as any).mockResolvedValue({ success: true, user: { oid: 'user-1' } })
+    ;(verifyAuthWithRateLimit as any).mockResolvedValue({ success: true, user: { oid: 'user-1' } })
     ;(requireRole as any).mockReturnValue({ success: true })
     ;(invoiceService.getById as any).mockResolvedValue({
       id: UUID_1,
@@ -122,7 +123,7 @@ describe('ai-categorize endpoint — dynamic MPK', () => {
   })
 
   it('should fallback gracefully when mpkCenterService fails', async () => {
-    ;(verifyAuth as any).mockResolvedValue({ success: true, user: { oid: 'user-1' } })
+    ;(verifyAuthWithRateLimit as any).mockResolvedValue({ success: true, user: { oid: 'user-1' } })
     ;(requireRole as any).mockReturnValue({ success: true })
     ;(invoiceService.getById as any).mockResolvedValue({
       id: UUID_1,
@@ -153,7 +154,7 @@ describe('ai-categorize endpoint — dynamic MPK', () => {
   })
 
   it('should fallback when mpkCenterService returns empty list', async () => {
-    ;(verifyAuth as any).mockResolvedValue({ success: true, user: { oid: 'user-1' } })
+    ;(verifyAuthWithRateLimit as any).mockResolvedValue({ success: true, user: { oid: 'user-1' } })
     ;(requireRole as any).mockReturnValue({ success: true })
     ;(invoiceService.getById as any).mockResolvedValue({
       id: UUID_2,

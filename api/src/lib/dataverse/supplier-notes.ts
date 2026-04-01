@@ -7,6 +7,7 @@
 
 import { dataverseRequest } from './client'
 import { Note, NoteCreate, NoteUpdate } from './notes'
+import { isValidGuid } from './odata-utils'
 
 const SUPPLIER_ENTITY_SET = 'dvlp_ksefsuppliers'
 const SUPPLIER_ENTITY_LOGICAL_NAME = 'dvlp_ksefsupplier'
@@ -47,6 +48,9 @@ export async function createSupplierNote(data: { supplierId: string; subject?: s
 }
 
 export async function listSupplierNotes(supplierId: string): Promise<Note[]> {
+  if (!isValidGuid(supplierId)) {
+    throw new Error('Invalid supplier ID format')
+  }
   const path = `annotations?$filter=_objectid_value eq ${supplierId} and isdocument eq false&$select=annotationid,subject,notetext,createdon,modifiedon&$orderby=createdon desc`
 
   const response = await dataverseRequest<{

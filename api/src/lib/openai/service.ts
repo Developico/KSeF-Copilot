@@ -106,6 +106,7 @@ async function getOpenAIClient(): Promise<OpenAI> {
       apiKey: config.apiKey,
       defaultQuery: { 'api-version': config.apiVersion },
       defaultHeaders: { 'api-key': config.apiKey },
+      timeout: 30_000,
     })
 
     console.log('[OpenAI] Client initialized:', {

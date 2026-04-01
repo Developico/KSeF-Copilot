@@ -19,3 +19,15 @@
 export function escapeOData(value: string): string {
   return value.replace(/'/g, "''")
 }
+
+/**
+ * Validate that a string is a valid GUID/UUID format.
+ * Prevents OData injection when interpolating IDs into $filter expressions.
+ *
+ * @example
+ *   isValidGuid("a1b2c3d4-e5f6-7890-abcd-ef1234567890") // true
+ *   isValidGuid("abc or 1 eq 1")                          // false
+ */
+export function isValidGuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+}

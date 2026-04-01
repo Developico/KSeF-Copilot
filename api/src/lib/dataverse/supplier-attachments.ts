@@ -12,6 +12,7 @@ import {
   optimizeImage,
   Attachment,
 } from './attachments'
+import { isValidGuid } from './odata-utils'
 
 const SUPPLIER_ENTITY_SET = 'dvlp_ksefsuppliers'
 const SUPPLIER_ENTITY_LOGICAL_NAME = 'dvlp_ksefsupplier'
@@ -77,6 +78,9 @@ export async function uploadSupplierAttachment(data: SupplierAttachmentCreate): 
 }
 
 export async function listSupplierAttachments(supplierId: string): Promise<Attachment[]> {
+  if (!isValidGuid(supplierId)) {
+    throw new Error('Invalid supplier ID format')
+  }
   const path = `annotations?$filter=_objectid_value eq ${supplierId} and isdocument eq true&$select=annotationid,filename,mimetype,filesize,createdon`
 
   const response = await dataverseRequest<{

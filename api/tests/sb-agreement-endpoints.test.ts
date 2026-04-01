@@ -109,9 +109,10 @@ function roleFail() {
 
 const TEST_UUID = '7f000000-0000-0000-0000-000000000001'
 const SUPPLIER_UUID = '7f000000-0000-0000-0000-000000000010'
+const AGREEMENT_UUID = '7f000000-0000-0000-0000-000000000020'
 
 const sampleAgreement = {
-  id: 'agr-1',
+  id: AGREEMENT_UUID,
   name: 'Agreement for Acme',
   supplierId: SUPPLIER_UUID,
   settingId: TEST_UUID,
@@ -298,7 +299,7 @@ describe('GET /sb-agreements/:id (sb-agreements-get)', () => {
     vi.mocked(sbAgreementService.getById).mockResolvedValue(sampleAgreement)
 
     const res = await handler()(
-      mockRequest({ params: { id: 'agr-1' } }),
+      mockRequest({ params: { id: AGREEMENT_UUID } }),
       mockContext()
     )
 
@@ -332,7 +333,7 @@ describe('PATCH /sb-agreements/:id (sb-agreements-update)', () => {
     vi.mocked(sbAgreementService.update).mockResolvedValue(updated)
 
     const res = await handler()(
-      mockRequest({ params: { id: 'agr-1' }, body: { notes: 'updated' } }),
+      mockRequest({ params: { id: AGREEMENT_UUID }, body: { notes: 'updated' } }),
       mockContext()
     )
 
@@ -366,7 +367,7 @@ describe('POST /sb-agreements/:id/terminate (sb-agreements-terminate)', () => {
     vi.mocked(sbAgreementService.terminate).mockResolvedValue(undefined)
 
     const res = await handler()(
-      mockRequest({ params: { id: 'agr-1' } }),
+      mockRequest({ params: { id: AGREEMENT_UUID } }),
       mockContext()
     )
 
@@ -399,7 +400,7 @@ describe('POST /sb-agreements/:id/attachments (sb-agreements-attachment-upload)'
     vi.mocked(sbAgreementService.getById).mockResolvedValue(sampleAgreement)
 
     const res = await handler()(
-      mockRequest({ params: { id: 'agr-1' }, body: { fileName: '' } }),
+      mockRequest({ params: { id: AGREEMENT_UUID }, body: { fileName: '' } }),
       mockContext()
     )
 
@@ -413,7 +414,7 @@ describe('POST /sb-agreements/:id/attachments (sb-agreements-attachment-upload)'
 
     const res = await handler()(
       mockRequest({
-        params: { id: 'agr-1' },
+        params: { id: AGREEMENT_UUID },
         body: {
           fileName: 'doc.pdf',
           mimeType: 'application/pdf',
@@ -436,7 +437,7 @@ describe('POST /sb-agreements/:id/attachments (sb-agreements-attachment-upload)'
 
     const res = await handler()(
       mockRequest({
-        params: { id: 'agr-1' },
+        params: { id: AGREEMENT_UUID },
         body: {
           fileName: 'agreement.pdf',
           mimeType: 'application/pdf',
@@ -465,7 +466,7 @@ describe('GET /sb-agreements/:id/attachments (sb-agreements-attachment-list)', (
     vi.mocked(sbAgreementService.getById).mockResolvedValue(null)
 
     const res = await handler()(
-      mockRequest({ params: { id: 'nope' } }),
+      mockRequest({ params: { id: '00000000-0000-0000-0000-000000000000' } }),
       mockContext()
     )
 
@@ -488,7 +489,7 @@ describe('GET /sb-agreements/:id/attachments (sb-agreements-attachment-list)', (
     })
 
     const res = await handler()(
-      mockRequest({ params: { id: 'agr-1' } }),
+      mockRequest({ params: { id: AGREEMENT_UUID } }),
       mockContext()
     )
 

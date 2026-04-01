@@ -131,6 +131,7 @@ export class DataverseClient {
             ...headers,
           },
           body: body ? JSON.stringify(body) : undefined,
+          signal: AbortSignal.timeout(30_000),
         })
 
         // Handle 429 Too Many Requests with retry

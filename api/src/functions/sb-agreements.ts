@@ -20,6 +20,7 @@ import { supplierService } from '../lib/dataverse/services/supplier-service'
 import { dataverseRequest } from '../lib/dataverse/client'
 import { DV } from '../lib/dataverse/config'
 import { validateAttachment } from '../lib/dataverse/attachments'
+import { isValidGuid } from '../lib/dataverse/odata-utils'
 import { SbAgreementCreateSchema, SbAgreementUpdateSchema } from '../types/self-billing'
 import type { SbAgreementStatus } from '../types/self-billing'
 import { z } from 'zod'
@@ -400,8 +401,8 @@ app.http('sb-agreements-attachment-list', {
       }
 
       const id = request.params.id
-      if (!id) {
-        return { status: 400, jsonBody: { error: 'Missing id parameter' } }
+      if (!id || !isValidGuid(id)) {
+        return { status: 400, jsonBody: { error: 'Missing or invalid agreement ID' } }
       }
 
       const agreement = await sbAgreementService.getById(id)
