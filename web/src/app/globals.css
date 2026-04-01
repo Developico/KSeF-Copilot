@@ -188,3 +188,30 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Print styles for invoice preview */
+@media print {
+  body > *:not(.invoice-preview) {
+    visibility: hidden;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  .invoice-preview {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    visibility: visible;
+    font-size: 11pt;
+    color: #000;
+    background: #fff;
+  }
+
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+}

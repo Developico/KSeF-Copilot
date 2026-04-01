@@ -60,6 +60,45 @@ export async function sendInvoice(
 }
 
 /**
+ * Send pre-built XML directly to KSeF (for approved self-billing invoices)
+ */
+export async function sendInvoiceXml(
+  nip: string,
+  invoiceXml: string,
+  settingId?: string
+): Promise<KsefSendInvoiceResponse> {
+  const session = await ensureActiveSession(nip, settingId)
+  const config = await getKsefConfigForNip(nip, settingId)
+
+  const hash = await calculateInvoiceHash(invoiceXml)
+
+  console.log(`[KSEF] Sending pre-built XML to: ${config.baseUrl}/invoices`)
+
+  const response = await fetch(`${config.baseUrl}/invoices`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/xml',
+      Accept: 'application/json',
+      Authorization: `Bearer ${session.sessionToken}`,
+    },
+    body: invoiceXml,
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    console.error(`[KSEF] Send invoice XML failed:`, error.substring(0, 500))
+    throw new Error(`Failed to send invoice: ${response.status} - ${error.substring(0, 200)}`)
+  }
+
+  const result = await response.json() as KsefSendInvoiceResponse
+
+  return {
+    ...result,
+    invoiceHash: hash,
+  }
+}
+
+/**
  * Get invoice by KSeF reference number - API 2.0
  * GET /invoices/ksef/{ksefNumber}
  */

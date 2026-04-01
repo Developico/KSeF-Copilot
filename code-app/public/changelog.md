@@ -6,6 +6,36 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.4] - 2026-04-01
+
+### 📋 Samofakturowanie — zgodność XML z interpretacją KIS
+
+Implementacja wymagań interpretacji KIS z 27.02.2026 (0112-KDIL1-3.4012.874.2025.2.KK) — zatwierdzanie samofaktur na podstawie pliku XML przed wysyłką do KSeF.
+
+#### Backend (API)
+- **Generowanie XML przy składaniu do akceptacji** — endpoint `POST /submit` generuje XML via `buildInvoiceXml()`, oblicza hash SHA256 i zapisuje `xmlContent` + `xmlHash` na fakturze
+- **DodatkowyOpis w XML** — metadane zatwierdzenia (data, osoba, system, hash) dodawane po akceptacji sprzedawcy
+- **Stopka z informacją o zatwierdzeniu** — nota w sekcji `Stopka/StopkaFaktury`
+- **Endpoint `GET /xml`** — pobieranie pliku XML faktury samofakturowania
+- **Wysyłka do KSeF z zapisanego XML** — bez regeneracji, z walidacją hash
+- **Auto-approve** — umowy z flagą `autoApprove` pomijają etap PendingSeller
+- **Rozszerzony audit trail** — notatka po zatwierdzeniu z timestamp i hash XML
+
+#### Frontend
+- **Komponent `<InvoiceXmlPreview>`** — wizualizacja faktury w formacie tabelarycznym (sprzedawca, nabywca, pozycje, VAT, DodatkowyOpis, stopka)
+- **Podgląd XML dla faktur zsynchronizowanych z KSeF** — sekcja zwijalna w widoku szczegółów faktury z reużyciem `<InvoiceXmlPreview>` dla pola `rawXml`
+- **Naprawiony mapping pól** — ujednolicenie `rawXml` / `xmlContent` między API a frontendem
+
+#### Infrastruktura
+- **Nowe kolumny Dataverse** — `dvlp_xmlcontent` i `dvlp_xmlhash` na tabeli `dvlp_ksefselfbillinginvoice`
+- **Skrypt prowizji** — `Provision-SbApprovalColumns.ps1` rozszerzony o kolumny XML
+
+### 🌐 i18n
+
+- **Nowe klucze tłumaczeń** — `xmlPreview.*` (35+ kluczy) w `pl.json` i `en.json`
+
+---
+
 ## [0.9.3] - 2026-03-23
 
 ### 📋 Samofakturowanie

@@ -406,6 +406,9 @@ export const DV = {
     ksefInvoiceBind: 'dvlp_kseFinvoiceid@odata.bind',
     mpkCenterLookup: '_dvlp_mpkcenterid_value',
     mpkCenterBind: 'dvlp_mpkcenterid@odata.bind',
+    // XML content & hash (approval compliance)
+    xmlContent: 'dvlp_xmlcontent',
+    xmlHash: 'dvlp_xmlhash',
     // Audit: submit & approve
     submittedByUserLookup: '_dvlp_submittedbyuserid_value',
     submittedByUserBind: 'dvlp_submittedbyuserid@odata.bind',

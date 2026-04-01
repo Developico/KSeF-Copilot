@@ -14,6 +14,7 @@
  * - POST   /api/self-billing/invoices/:id/approve   - Seller approves
  * - POST   /api/self-billing/invoices/:id/reject    - Seller rejects
  * - POST   /api/self-billing/invoices/:id/send-ksef - Send to KSeF
+ * - GET    /api/self-billing/invoices/:id/xml      - Download invoice XML
  * - PATCH  /api/self-billing/invoices/:id           - Update draft SB invoice
  * - DELETE /api/self-billing/invoices/:id           - Delete draft SB invoice
  * - POST   /api/self-billing/invoices/batch         - Batch create invoices (max 100)
@@ -21,12 +22,14 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
+import { createHash } from 'crypto'
 import { verifyAuth, requireRole, requireAnyRole } from '../lib/auth/middleware'
 import { sbInvoiceService } from '../lib/dataverse/services/sb-invoice-service'
 import { supplierService } from '../lib/dataverse/services/supplier-service'
 import { sbAgreementService } from '../lib/dataverse/services/sb-agreement-service'
 import { sbTemplateService } from '../lib/dataverse/services/sb-template-service'
 import { sendInvoice } from '../lib/ksef/invoices'
+import { buildInvoiceXml } from '../lib/ksef/parser'
 import { mpkCenterService } from '../lib/dataverse/services/mpk-center-service'
 import { notificationService } from '../lib/dataverse/services/notification-service'
 import { createSbInvoiceNote } from '../lib/dataverse/sb-invoice-notes'
@@ -38,7 +41,81 @@ import {
 } from '../types/self-billing'
 import type { SelfBillingGeneratePreview } from '../types/self-billing'
 import type { KsefInvoice } from '../lib/ksef/types'
+import type { SbInvoice } from '../types/self-billing'
 import { z } from 'zod'
+
+/**
+ * Build a KsefInvoice object from SB invoice + supplier + setting data.
+ * Optionally includes additionalDescriptions for DodatkowyOpis metadata.
+ */
+async function buildKsefInvoiceFromSb(
+  invoice: SbInvoice,
+  options?: { additionalDescriptions?: { key: string; value: string }[]; approvalNote?: string }
+): Promise<KsefInvoice> {
+  const { supplierService: supSvc } = await import('../lib/dataverse/services/supplier-service')
+  const { settingService } = await import('../lib/dataverse/services/setting-service')
+
+  const supplier = await supSvc.getById(invoice.supplierId)
+  if (!supplier) throw new Error('Supplier not found')
+  const setting = await settingService.getById(invoice.settingId)
+  if (!setting) throw new Error('Setting not found')
+
+  const notes = options?.approvalNote || undefined
+
+  return {
+    invoiceNumber: invoice.invoiceNumber,
+    invoiceDate: invoice.invoiceDate,
+    dueDate: invoice.dueDate || undefined,
+    isSelfBilling: true,
+    seller: {
+      nip: supplier.nip,
+      name: supplier.name,
+      address: {
+        street: supplier.street || '',
+        buildingNumber: '',
+        postalCode: supplier.postalCode || '',
+        city: supplier.city || '',
+        country: supplier.country || 'PL',
+      },
+    },
+    buyer: {
+      nip: setting.nip,
+      name: setting.companyName || '',
+      address: {
+        street: '',
+        buildingNumber: '',
+        postalCode: '',
+        city: '',
+        country: 'PL',
+      },
+    },
+    issuer: {
+      nip: setting.nip,
+      name: setting.companyName || '',
+    },
+    items: invoice.items.map((item, idx) => ({
+      lineNumber: idx + 1,
+      description: item.itemDescription,
+      quantity: item.quantity,
+      unit: item.unit,
+      unitPrice: item.unitPrice,
+      netAmount: item.netAmount,
+      vatRate: item.vatRate,
+      vatAmount: item.vatAmount,
+      grossAmount: item.grossAmount,
+    })),
+    currency: invoice.currency || 'PLN',
+    notes,
+    additionalDescriptions: options?.additionalDescriptions,
+  }
+}
+
+/**
+ * Compute SHA256 hash of a string
+ */
+function computeXmlHash(xml: string): string {
+  return createHash('sha256').update(xml, 'utf8').digest('hex')
+}
 
 /**
  * POST /api/invoices/self-billing - Create single self-billing invoice
@@ -708,6 +785,11 @@ app.http('self-billing-invoices-submit', {
 
       const now = new Date().toISOString()
 
+      // Generate XML and compute hash at submit time (KIS compliance: approval based on XML)
+      const ksefInvoice = await buildKsefInvoiceFromSb(invoice)
+      const xmlContent = buildInvoiceXml(ksefInvoice)
+      const xmlHash = computeXmlHash(xmlContent)
+
       // Check if agreement has auto-approve enabled
       let autoApprove = false
       if (invoice.agreementId) {
@@ -719,11 +801,27 @@ app.http('self-billing-invoices-submit', {
 
       if (autoApprove) {
         // Auto-approve: skip PendingSeller, go directly to SellerApproved
+        // Add approval metadata to XML
+        const approvalDescriptions = [
+          { key: 'Data zatwierdzenia', value: now },
+          { key: 'Zatwierdzono przez', value: 'Auto-approve (agreement)' },
+          { key: 'System zatwierdzenia', value: 'KSeF Copilot by Developico' },
+          { key: 'Hash XML przy zatwierdzeniu', value: xmlHash },
+        ]
+        const approvedKsefInvoice = await buildKsefInvoiceFromSb(invoice, {
+          additionalDescriptions: approvalDescriptions,
+          approvalNote: `Zatwierdzona automatycznie dnia ${now.split('T')[0]} w systemie KSeF Copilot by Developico`,
+        })
+        const approvedXml = buildInvoiceXml(approvedKsefInvoice)
+        const approvedHash = computeXmlHash(approvedXml)
+
         const updated = await sbInvoiceService.update(id, {
           status: 'SellerApproved',
           submittedByUserId: dvUser.systemUserId,
           submittedAt: now,
           approvedAt: now,
+          xmlContent: approvedXml,
+          xmlHash: approvedHash,
         })
 
         // Create audit note for auto-approval
@@ -752,6 +850,8 @@ app.http('self-billing-invoices-submit', {
         status: 'PendingSeller',
         submittedByUserId: dvUser.systemUserId,
         submittedAt: now,
+        xmlContent,
+        xmlHash,
       })
 
       // Send notification to the supplier's SB contact user
@@ -768,8 +868,11 @@ app.http('self-billing-invoices-submit', {
 
       return { status: 200, jsonBody: { invoice: updated } }
     } catch (error) {
-      context.error('Failed to submit self-billing invoice:', error)
-      return { status: 500, jsonBody: { error: 'Failed to submit for review' } }
+      const errMsg = error instanceof Error ? error.message : String(error)
+      const errStack = error instanceof Error ? error.stack : undefined
+      context.error('Failed to submit self-billing invoice:', errMsg)
+      if (errStack) context.error('Stack:', errStack)
+      return { status: 500, jsonBody: { error: 'Failed to submit for review', details: errMsg } }
     }
   },
 })
@@ -852,10 +955,36 @@ app.http('self-billing-invoices-approve', {
         }
       }
 
+      // Regenerate XML with approval metadata in DodatkowyOpis
+      const approverName = dvUser.fullName || auth.user.name || 'Unknown'
+      const approverEmail = auth.user.email || auth.user.name || 'Unknown'
+      const originalXmlHash = invoice.xmlHash || ''
+
+      const approvalDescriptions = [
+        { key: 'Data zatwierdzenia', value: now },
+        { key: 'Zatwierdzono przez', value: `${approverName} (${approverEmail})` },
+        { key: 'System zatwierdzenia', value: 'KSeF Copilot by Developico' },
+        { key: 'Hash XML przy zatwierdzeniu', value: originalXmlHash },
+      ]
+
+      // If invoice number was changed, use the new one for XML generation
+      const invoiceForXml: SbInvoice = invoiceNumberChanged && newInvoiceNumber
+        ? { ...invoice, invoiceNumber: newInvoiceNumber }
+        : invoice
+
+      const approvedKsefInvoice = await buildKsefInvoiceFromSb(invoiceForXml, {
+        additionalDescriptions: approvalDescriptions,
+        approvalNote: `Zatwierdzona przez ${approverName} dnia ${now.split('T')[0]} w systemie KSeF Copilot by Developico`,
+      })
+      const approvedXml = buildInvoiceXml(approvedKsefInvoice)
+      const approvedHash = computeXmlHash(approvedXml)
+
       const updateData: Parameters<typeof sbInvoiceService.update>[1] = {
         status: 'SellerApproved',
         approvedByUserId: dvUser.systemUserId,
         approvedAt: now,
+        xmlContent: approvedXml,
+        xmlHash: approvedHash,
       }
       if (invoiceNumberChanged && newInvoiceNumber) {
         updateData.invoiceNumber = newInvoiceNumber
@@ -865,8 +994,7 @@ app.http('self-billing-invoices-approve', {
 
       // Auto-create annotation for approval decision
       try {
-        const approverName = dvUser.fullName || auth.user.name || 'Unknown'
-        const noteLines = [`✅ Approved by ${approverName}`]
+        const noteLines = [`✅ Approved by ${approverName} at ${now}. XML hash: ${approvedHash}. System: KSeF Copilot by Developico`]
         if (invoiceNumberChanged) {
           noteLines.push(`\nInvoice number changed: ${invoice.invoiceNumber} → ${newInvoiceNumber}`)
         }
@@ -898,6 +1026,57 @@ app.http('self-billing-invoices-approve', {
     } catch (error) {
       context.error('Failed to approve self-billing invoice:', error)
       return { status: 500, jsonBody: { error: 'Failed to approve invoice' } }
+    }
+  },
+})
+
+/**
+ * GET /api/self-billing/invoices/:id/xml - Download invoice XML
+ *
+ * Returns the stored XML content as an application/xml file.
+ * Available after submit (PendingSeller, SellerApproved, SentToKsef).
+ */
+app.http('self-billing-invoices-xml', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  route: 'self-billing/invoices/{id}/xml',
+  handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    try {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      const roleCheck = requireAnyRole(auth.user, ['Reader', 'Approver'])
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: 'Forbidden' } }
+      }
+
+      const id = request.params.id
+      if (!id) { return { status: 400, jsonBody: { error: 'Missing id parameter' } } }
+
+      const invoice = await sbInvoiceService.getById(id)
+      if (!invoice) {
+        return { status: 404, jsonBody: { error: 'Invoice not found' } }
+      }
+
+      if (!invoice.xmlContent) {
+        return { status: 404, jsonBody: { error: 'XML not yet generated — invoice must be submitted first' } }
+      }
+
+      const filename = `${invoice.invoiceNumber.replace(/[^a-zA-Z0-9_-]/g, '_')}.xml`
+
+      return {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/xml; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+        },
+        body: invoice.xmlContent,
+      }
+    } catch (error) {
+      context.error('Failed to download self-billing invoice XML:', error)
+      return { status: 500, jsonBody: { error: 'Failed to download XML' } }
     }
   },
 })
@@ -1059,6 +1238,8 @@ app.http('self-billing-invoices-revert', {
         approvedByUserId: null,
         approvedAt: null,
         sellerRejectionReason: '',
+        xmlContent: null,
+        xmlHash: null,
       })
 
       // Create note about revert
@@ -1111,65 +1292,28 @@ app.http('self-billing-invoices-send-ksef', {
         return { status: 400, jsonBody: { error: `Cannot send — invoice must be SellerApproved, current: ${invoice.status}` } }
       }
 
-      // Fetch supplier and setting for KSeF XML generation
-      const supplier = await supplierService.getById(invoice.supplierId)
-      if (!supplier) {
-        return { status: 404, jsonBody: { error: 'Supplier not found' } }
+      // Verify stored XML exists (should have been generated at submit/approve)
+      if (!invoice.xmlContent) {
+        return { status: 400, jsonBody: { error: 'No XML content found — invoice must be submitted and approved first' } }
       }
+
+      // Verify XML integrity
+      const currentHash = computeXmlHash(invoice.xmlContent)
+      if (invoice.xmlHash && currentHash !== invoice.xmlHash) {
+        context.warn(`XML hash mismatch for invoice ${id}: stored=${invoice.xmlHash}, computed=${currentHash}`)
+        return { status: 409, jsonBody: { error: 'XML integrity check failed — XML content may have been tampered with' } }
+      }
+
+      // Resolve setting NIP for KSeF session
       const { settingService } = await import('../lib/dataverse/services/setting-service')
       const setting = await settingService.getById(invoice.settingId)
       if (!setting) {
         return { status: 404, jsonBody: { error: 'Setting not found' } }
       }
 
-      // Build KSeF invoice object from dedicated SB data
-      const ksefInvoice: KsefInvoice = {
-        invoiceNumber: invoice.invoiceNumber,
-        invoiceDate: invoice.invoiceDate,
-        dueDate: invoice.dueDate || undefined,
-        isSelfBilling: true,
-        seller: {
-          nip: supplier.nip,
-          name: supplier.name,
-          address: {
-            street: supplier.street || '',
-            buildingNumber: '',
-            postalCode: supplier.postalCode || '',
-            city: supplier.city || '',
-            country: supplier.country || 'PL',
-          },
-        },
-        buyer: {
-          nip: setting.nip,
-          name: setting.companyName || '',
-          address: {
-            street: '',
-            buildingNumber: '',
-            postalCode: '',
-            city: '',
-            country: 'PL',
-          },
-        },
-        issuer: {
-          nip: setting.nip,
-          name: setting.companyName || '',
-        },
-        items: invoice.items.map((item, idx) => ({
-          lineNumber: idx + 1,
-          description: item.itemDescription,
-          quantity: item.quantity,
-          unit: item.unit,
-          unitPrice: item.unitPrice,
-          netAmount: item.netAmount,
-          vatRate: item.vatRate,
-          vatAmount: item.vatAmount,
-          grossAmount: item.grossAmount,
-        })),
-        currency: invoice.currency || 'PLN',
-      }
-
-      // Send to KSeF
-      const result = await sendInvoice(setting.nip, ksefInvoice, invoice.settingId)
+      // Send stored XML directly to KSeF (no regeneration — approved XML is sent as-is)
+      const { sendInvoiceXml } = await import('../lib/ksef/invoices')
+      const result = await sendInvoiceXml(setting.nip, invoice.xmlContent, invoice.settingId)
 
       // Update invoice with KSeF reference and status
       await sbInvoiceService.update(id, {

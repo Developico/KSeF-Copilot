@@ -16,6 +16,48 @@ Projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.5] — 2026-04-01
+
+### Dodane — Zgodność XML z interpretacją KIS (Self-Billing)
+
+Implementacja wymagań interpretacji KIS z 27.02.2026 (0112-KDIL1-3.4012.874.2025.2.KK) — zatwierdzanie samofaktur na podstawie pliku XML.
+
+#### Generowanie i przechowywanie XML
+- `POST /self-billing/invoices/{id}/submit` — generowanie XML na etapie submit (nie przy wysyłce do KSeF), zapis `xmlContent` + `xmlHash` (SHA256) na fakturze
+- `GET /self-billing/invoices/{id}/xml` — nowy endpoint pobierania pliku XML (`Content-Type: application/xml`)
+- `POST /self-billing/invoices/{id}/send-ksef` — korzysta z zapisanego XML (bez regeneracji), walidacja integralności hash
+- `POST /self-billing/invoices/{id}/revert` — czyszczenie `xmlContent` i `xmlHash` przy cofnięciu do Draft
+
+#### Metadane zatwierdzenia (DodatkowyOpis)
+- `POST /self-billing/invoices/{id}/approve` — regeneracja XML z sekcją `DodatkowyOpis`: data zatwierdzenia, osoba, system, hash
+- Stopka (`StopkaFaktury`) z notą zatwierdzenia
+- Rozszerzony audit trail — notatka z timestamp i hash XML
+- `SystemInfo` w nagłówku XML: „KSeF Copilot by Developico"
+
+#### Auto-approve
+- Umowy SB z flagą `autoApprove` — faktury automatycznie zatwierdzane przy submicie (pominięcie PendingSeller)
+
+#### Pole `additionalDescriptions` w interfejsie `KsefInvoice`
+- `api/src/lib/ksef/types.ts` — nowe opcjonalne pole `additionalDescriptions?: { key: string; value: string }[]`
+- `api/src/lib/ksef/parser.ts` — `buildInvoiceXml()` generuje elementy `DodatkowyOpis` z par klucz-wartość
+
+### Dodane — Infrastruktura Dataverse
+- Nowa kolumna `dvlp_xmlcontent` (Memo, max 1 048 576) na `dvlp_ksefselfbillinginvoice` — przechowywanie wygenerowanego XML
+- Nowa kolumna `dvlp_xmlhash` (String, max 100) na `dvlp_ksefselfbillinginvoice` — hash SHA256
+- `Provision-SbApprovalColumns.ps1` — rozszerzony o tworzenie kolumn XML (Step 5)
+
+### Dodane — UI (Web App + Code App)
+- Komponent `<InvoiceXmlPreview>` — wizualizacja faktury w formacie tabelarycznym (MF XSL-inspired)
+- Zakładki w widoku SB: „Dane" | „Podgląd faktury" | „XML"
+- Druk / PDF via `window.print()` z layoutem A4
+- Podgląd XML dla faktur zsynchronizowanych z KSeF (reużycie komponentu)
+- Nowe klucze i18n `xmlPreview.*` (35+ kluczy, PL + EN)
+
+### Naprawione
+- Mapping pól `rawXml` / `xmlContent` — API zwraca oba pola (backward-compatible alias)
+
+---
+
 ## [0.3.0.1] — 2026-03-23
 
 ### Dodane
@@ -157,7 +199,7 @@ Projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `GET /invoices/{id}/notes` (`ListInvoiceNotes`) — pobieranie notatek przypisanych do faktury
 - Nowe schematy odpowiedzi: `InvoiceListResponse`, `Note`, `KsefSyncResult`
 
-[Nieudostępnione]: https://github.com/Developico/KSeFCopilot/compare/v0.3.0...HEAD
+[Nieudostępnione]: https://github.com/Developico/KSeFCopilot/compare/v0.3.5...HEAD
 [0.3.0]: https://github.com/Developico/KSeFCopilot/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Developico/KSeFCopilot/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Developico/KSeFCopilot/releases/tag/v0.1.0

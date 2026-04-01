@@ -10,6 +10,7 @@ import {
   Building2,
   Calendar,
   CreditCard,
+  FileCode,
   FileText,
   HandCoins,
   Loader2,
@@ -52,9 +53,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { StatusBadge } from './status-badge'
 import { SbInvoiceNotesSection } from './sb-invoice-notes-section'
+import { InvoiceXmlPreview } from './invoice-xml-preview'
 import { formatCurrency } from '@/lib/format'
 
 interface SbInvoiceDetailContentProps {
@@ -212,6 +220,146 @@ export function SbInvoiceDetailContent({ sbInvoiceId }: SbInvoiceDetailContentPr
   const canSendToKsef = invoice.status === 'SellerApproved' && isAdmin
   const canRevert = isAdmin && invoice.status !== 'Draft' && invoice.status !== 'SentToKsef'
 
+  const renderDataContent = () => (
+      <>
+        {/* Invoice Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              {t('detail.invoiceInfo')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">{t('detail.invoiceDate')}:</span>
+                  <span className="font-medium">{fmtDate(invoice.invoiceDate)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">{t('detail.dueDate')}:</span>
+                  <span className="font-medium">{fmtDate(invoice.dueDate)}</span>
+                </div>
+                {invoice.ksefReferenceNumber && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">{t('detail.ksefRef')}:</span>
+                    <span className="font-medium font-mono text-xs">{invoice.ksefReferenceNumber}</span>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">{t('detail.supplier')}:</span>
+                  <span className="font-medium">{invoice.supplierName || '—'}</span>
+                </div>
+                {invoice.supplierNip && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground ml-6">NIP:</span>
+                    <span className="font-medium">{invoice.supplierNip}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Separator className="my-4" />
+
+            {/* Amounts */}
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-xs text-muted-foreground">{t('detail.netAmount')}</p>
+                <p className="font-semibold text-lg">{formatCurrency(invoice.netAmount)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t('detail.vatAmount')}</p>
+                <p className="font-semibold text-lg">{formatCurrency(invoice.vatAmount)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t('detail.grossAmount')}</p>
+                <p className="font-semibold text-lg text-primary">{formatCurrency(invoice.grossAmount)}</p>
+              </div>
+            </div>
+
+            {/* Rejection reason */}
+            {invoice.sellerRejectionReason && (
+              <>
+                <Separator className="my-4" />
+                <div className="rounded-md bg-red-50 dark:bg-red-950/30 p-3 text-sm">
+                  <p className="font-medium text-red-800 dark:text-red-200 mb-1">{t('detail.rejectionReason')}</p>
+                  <p className="text-red-700 dark:text-red-300">{invoice.sellerRejectionReason}</p>
+                </div>
+              </>
+            )}
+
+            {/* Approval info */}
+            {invoice.approvedAt && (
+              <>
+                <Separator className="my-4" />
+                <div className="text-sm text-muted-foreground">
+                  <span>{t('detail.decisionAt')}: </span>
+                  <span className="font-medium">{fmtDate(invoice.approvedAt)}</span>
+                  {invoice.status === 'SellerApproved' && !invoice.approvedByUserId && (
+                    <Badge className="ml-2 bg-amber-100 text-amber-800">{t('detail.autoApproved')}</Badge>
+                  )}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Line Items */}
+        {invoice.items && invoice.items.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                {t('detail.lineItems')}
+                <Badge variant="secondary" className="h-5 text-xs">{invoice.items.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('detail.itemDescription')}</TableHead>
+                    <TableHead className="text-right">{t('detail.quantity')}</TableHead>
+                    <TableHead>{t('detail.unit')}</TableHead>
+                    <TableHead className="text-right">{t('detail.unitPrice')}</TableHead>
+                    <TableHead className="text-right">{t('detail.vatRate')}</TableHead>
+                    <TableHead className="text-right">{t('detail.netAmountItem')}</TableHead>
+                    <TableHead className="text-right">{t('detail.grossAmountItem')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invoice.items.map((item, idx) => (
+                    <TableRow key={item.id || idx}>
+                      <TableCell className="max-w-[200px] truncate" title={item.itemDescription}>{item.itemDescription}</TableCell>
+                      <TableCell className="text-right">{item.quantity}</TableCell>
+                      <TableCell>{item.unit}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(item.unitPrice ?? 0)}</TableCell>
+                      <TableCell className="text-right">{item.vatRate}%</TableCell>
+                      <TableCell className="text-right">{formatCurrency(item.netAmount ?? 0)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(item.grossAmount ?? 0)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Notes Section */}
+        <SbInvoiceNotesSection
+          sbInvoiceId={sbInvoiceId}
+          defaultExpanded
+        />
+      </>
+  )
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       {/* Header */}
@@ -288,141 +436,49 @@ export function SbInvoiceDetailContent({ sbInvoiceId }: SbInvoiceDetailContentPr
         </div>
       </div>
 
-      {/* Invoice Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            {t('detail.invoiceInfo')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">{t('detail.invoiceDate')}:</span>
-                <span className="font-medium">{fmtDate(invoice.invoiceDate)}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">{t('detail.dueDate')}:</span>
-                <span className="font-medium">{fmtDate(invoice.dueDate)}</span>
-              </div>
-              {invoice.ksefReferenceNumber && (
-                <div className="flex items-center gap-2 text-sm">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">{t('detail.ksefRef')}:</span>
-                  <span className="font-medium font-mono text-xs">{invoice.ksefReferenceNumber}</span>
-                </div>
-              )}
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">{t('detail.supplier')}:</span>
-                <span className="font-medium">{invoice.supplierName || '—'}</span>
-              </div>
-              {invoice.supplierNip && (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground ml-6">NIP:</span>
-                  <span className="font-medium">{invoice.supplierNip}</span>
-                </div>
-              )}
-            </div>
-          </div>
+      {/* Tabs — only show when XML is available */}
+      {invoice.xmlContent ? (
+        <Tabs defaultValue={invoice.status === 'PendingSeller' ? 'invoicePreview' : 'data'}>
+          <TabsList className="w-full md:w-auto overflow-x-auto">
+            <TabsTrigger value="data">{t('tabs.data')}</TabsTrigger>
+            <TabsTrigger value="invoicePreview">{t('tabs.invoicePreview')}</TabsTrigger>
+            <TabsTrigger value="xml">
+              <FileCode className="h-3.5 w-3.5 mr-1" />
+              {t('tabs.xml')}
+            </TabsTrigger>
+          </TabsList>
 
-          <Separator className="my-4" />
+          <TabsContent value="data" className="space-y-6 mt-4">
+            {renderDataContent()}
+          </TabsContent>
 
-          {/* Amounts */}
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-xs text-muted-foreground">{t('detail.netAmount')}</p>
-              <p className="font-semibold text-lg">{formatCurrency(invoice.netAmount)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t('detail.vatAmount')}</p>
-              <p className="font-semibold text-lg">{formatCurrency(invoice.vatAmount)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t('detail.grossAmount')}</p>
-              <p className="font-semibold text-lg text-primary">{formatCurrency(invoice.grossAmount)}</p>
-            </div>
-          </div>
+          <TabsContent value="invoicePreview" className="mt-4">
+            <InvoiceXmlPreview
+              xml={invoice.xmlContent}
+              downloadUrl={`/api/self-billing/invoices/${encodeURIComponent(invoice.id)}/xml`}
+            />
+            {invoice.status === 'PendingSeller' && (
+              <p className="text-sm text-muted-foreground mt-4 italic">
+                {t('xmlPreview.approvalNote')}
+              </p>
+            )}
+          </TabsContent>
 
-          {/* Rejection reason */}
-          {invoice.sellerRejectionReason && (
-            <>
-              <Separator className="my-4" />
-              <div className="rounded-md bg-red-50 dark:bg-red-950/30 p-3 text-sm">
-                <p className="font-medium text-red-800 dark:text-red-200 mb-1">{t('detail.rejectionReason')}</p>
-                <p className="text-red-700 dark:text-red-300">{invoice.sellerRejectionReason}</p>
-              </div>
-            </>
-          )}
-
-          {/* Approval info */}
-          {invoice.approvedAt && (
-            <>
-              <Separator className="my-4" />
-              <div className="text-sm text-muted-foreground">
-                <span>{t('detail.decisionAt')}: </span>
-                <span className="font-medium">{fmtDate(invoice.approvedAt)}</span>
-                {invoice.status === 'SellerApproved' && !invoice.approvedByUserId && (
-                  <Badge className="ml-2 bg-amber-100 text-amber-800">{t('detail.autoApproved')}</Badge>
-                )}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Line Items */}
-      {invoice.items && invoice.items.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              {t('detail.lineItems')}
-              <Badge variant="secondary" className="h-5 text-xs">{invoice.items.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('detail.itemDescription')}</TableHead>
-                  <TableHead className="text-right">{t('detail.quantity')}</TableHead>
-                  <TableHead>{t('detail.unit')}</TableHead>
-                  <TableHead className="text-right">{t('detail.unitPrice')}</TableHead>
-                  <TableHead className="text-right">{t('detail.vatRate')}</TableHead>
-                  <TableHead className="text-right">{t('detail.netAmountItem')}</TableHead>
-                  <TableHead className="text-right">{t('detail.grossAmountItem')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invoice.items.map((item, idx) => (
-                  <TableRow key={item.id || idx}>
-                    <TableCell className="max-w-[200px] truncate" title={item.itemDescription}>{item.itemDescription}</TableCell>
-                    <TableCell className="text-right">{item.quantity}</TableCell>
-                    <TableCell>{item.unit}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(item.unitPrice ?? 0)}</TableCell>
-                    <TableCell className="text-right">{item.vatRate}%</TableCell>
-                    <TableCell className="text-right">{formatCurrency(item.netAmount ?? 0)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(item.grossAmount ?? 0)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+          <TabsContent value="xml" className="mt-4">
+            <Card>
+              <CardContent className="p-4">
+                <pre className="text-xs font-mono whitespace-pre-wrap break-all overflow-auto max-h-[600px] bg-muted/50 rounded-md p-4">
+                  {invoice.xmlContent}
+                </pre>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <div className="space-y-6">
+          {renderDataContent()}
+        </div>
       )}
-
-      {/* Notes Section */}
-      <SbInvoiceNotesSection
-        sbInvoiceId={sbInvoiceId}
-        defaultExpanded
-      />
 
       {/* Approve Dialog with optional comment */}
       <Dialog open={approveOpen} onOpenChange={setApproveOpen}>

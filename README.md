@@ -75,6 +75,7 @@ EN [English version](README.en.md)
 - 📤 **Wysyłka do KSeF** — integracja ze statusami KSeF
 - 📥 **Import faktur** — import z CSV/Excel z walidacją i podglądem
 - 🔄 **Workflow statusów** — Draft → PendingSeller → SellerApproved → SentToKsef
+- 📄 **Zgodność XML z interpretacją KIS** *(v0.3.5)* — zatwierdzanie na podstawie pliku XML, metadane DodatkowyOpis, podgląd faktury w formacie tabelarycznym, druk/PDF, auto-approve
 
 
 ## 🏗️ Architektura

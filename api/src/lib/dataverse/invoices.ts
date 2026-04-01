@@ -644,6 +644,7 @@ function mapFromDataverse(record: DataverseInvoice): Invoice {
     project: record[f.project] as string | undefined,
     tags: record[f.tags] ? JSON.parse(record[f.tags] as string) : undefined,
     rawXml: record[f.rawXml] as string | undefined,
+    xmlContent: record[f.rawXml] as string | undefined,
     importedAt: record[f.importedAt] as string,
     source: getInvoiceSourceKey(record[f.source] as number),
     // Description field

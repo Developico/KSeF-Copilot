@@ -404,6 +404,8 @@ export interface DvSbInvoice {
   dvlp_sellerrejectionreason?: string
   dvlp_sentdate?: string
   dvlp_ksefreferencenumber?: string
+  dvlp_xmlcontent?: string
+  dvlp_xmlhash?: string
   // Relations
   '_dvlp_settingid_value': string
   '_dvlp_supplierid_value': string

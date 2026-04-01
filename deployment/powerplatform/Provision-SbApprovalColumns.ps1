@@ -10,6 +10,8 @@
     4. dvlp_ksefselfbillinginvoice.dvlp_approvedbyuserid  — Lookup → systemuser
     5. dvlp_ksefselfbillinginvoice.dvlp_approvedat        — DateTime
     6. dvlp_ksefsbagrement.dvlp_autoapprove               — Boolean (default: false)
+    7. dvlp_ksefselfbillinginvoice.dvlp_xmlcontent        — Memo (max 1048576, XML content)
+    8. dvlp_ksefselfbillinginvoice.dvlp_xmlhash           — String (max 100, SHA256 hash)
 
     Prerequisites: Same as Provision-SelfBillingSchema.ps1
 
@@ -221,6 +223,56 @@ function Add-DateTimeColumn {
         -Body $body -Description "DateTime: $EntityLogicalName.$SchemaName"
 }
 
+function Add-StringColumn {
+    param([string]$EntityLogicalName, [string]$SchemaName, [string]$DisplayNameEN,
+          [int]$MaxLength = 100, [string]$RequiredLevel = 'None', [bool]$Searchable = $false,
+          [bool]$Audit = $false, [string]$Description = '', [string]$Format = 'Text')
+
+    $body = @{
+        '@odata.type'       = '#Microsoft.Dynamics.CRM.StringAttributeMetadata'
+        SchemaName          = $SchemaName
+        DisplayName         = @{ '@odata.type' = '#Microsoft.Dynamics.CRM.Label'; LocalizedLabels = @(
+            @{ '@odata.type' = '#Microsoft.Dynamics.CRM.LocalizedLabel'; Label = $DisplayNameEN; LanguageCode = 1033 }
+        )}
+        Description         = @{ '@odata.type' = '#Microsoft.Dynamics.CRM.Label'; LocalizedLabels = @(
+            @{ '@odata.type' = '#Microsoft.Dynamics.CRM.LocalizedLabel'; Label = $Description; LanguageCode = 1033 }
+        )}
+        RequiredLevel       = @{ Value = $RequiredLevel }
+        MaxLength           = $MaxLength
+        FormatName          = @{ Value = $Format }
+        IsAuditEnabled      = @{ Value = $Audit }
+        IsGlobalFilterEnabled = @{ Value = $Searchable }
+    }
+
+    Invoke-DvRequest -Method POST `
+        -Uri "$baseUri/EntityDefinitions(LogicalName='$EntityLogicalName')/Attributes" `
+        -Body $body -Description "String: $EntityLogicalName.$SchemaName"
+}
+
+function Add-MemoColumn {
+    param([string]$EntityLogicalName, [string]$SchemaName, [string]$DisplayNameEN,
+          [int]$MaxLength = 10000, [string]$RequiredLevel = 'None', [bool]$Audit = $false,
+          [string]$Description = '')
+
+    $body = @{
+        '@odata.type'       = '#Microsoft.Dynamics.CRM.MemoAttributeMetadata'
+        SchemaName          = $SchemaName
+        DisplayName         = @{ '@odata.type' = '#Microsoft.Dynamics.CRM.Label'; LocalizedLabels = @(
+            @{ '@odata.type' = '#Microsoft.Dynamics.CRM.LocalizedLabel'; Label = $DisplayNameEN; LanguageCode = 1033 }
+        )}
+        Description         = @{ '@odata.type' = '#Microsoft.Dynamics.CRM.Label'; LocalizedLabels = @(
+            @{ '@odata.type' = '#Microsoft.Dynamics.CRM.LocalizedLabel'; Label = $Description; LanguageCode = 1033 }
+        )}
+        RequiredLevel       = @{ Value = $RequiredLevel }
+        MaxLength           = $MaxLength
+        IsAuditEnabled      = @{ Value = $Audit }
+    }
+
+    Invoke-DvRequest -Method POST `
+        -Uri "$baseUri/EntityDefinitions(LogicalName='$EntityLogicalName')/Attributes" `
+        -Body $body -Description "Memo: $EntityLogicalName.$SchemaName"
+}
+
 function Add-BooleanColumn {
     param([string]$EntityLogicalName, [string]$SchemaName, [string]$DisplayNameEN,
           [bool]$DefaultValue = $false, [string]$RequiredLevel = 'None', [bool]$Audit = $false,
@@ -340,9 +392,28 @@ Add-BooleanColumn `
     -Description 'When true, self-billing invoices skip seller approval and are automatically approved on submit'
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 5 — Publish customizations
+# STEP 5 — SB Invoice XML content & hash (approval compliance)
 # ═══════════════════════════════════════════════════════════════════════════════
-Write-Host "`n--- Step 5: Publishing customizations ---" -ForegroundColor White
+Write-Host "`n--- Step 5: SB Invoice XML Content & Hash ---" -ForegroundColor White
+
+Add-MemoColumn `
+    -EntityLogicalName "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -SchemaName "${PublisherPrefix}_xmlcontent" `
+    -DisplayNameEN 'XML Content' `
+    -MaxLength 1048576 -Audit $true `
+    -Description 'Generated KSeF XML content of the invoice (stored at submit time for approval compliance)'
+
+Add-StringColumn `
+    -EntityLogicalName "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -SchemaName "${PublisherPrefix}_xmlhash" `
+    -DisplayNameEN 'XML Hash' `
+    -MaxLength 100 -Audit $true `
+    -Description 'SHA256 hash of the XML content (integrity verification for approval workflow)'
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 6 — Publish customizations
+# ═══════════════════════════════════════════════════════════════════════════════
+Write-Host "`n--- Step 6: Publishing customizations ---" -ForegroundColor White
 
 if (-not $DryRun) {
     Invoke-DvRequest -Method POST `

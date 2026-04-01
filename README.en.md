@@ -61,6 +61,7 @@
 - 📤 **Send to KSeF** — integration with KSeF statuses
 - 📥 **Invoice import** — import from CSV/Excel with validation and preview
 - 🔄 **Status workflow** — Draft → PendingSeller → SellerApproved → SentToKsef
+- 📄 **KIS interpretation XML compliance** *(v0.3.5)* — approval based on XML file, DodatkowyOpis metadata, tabular invoice preview, print/PDF, auto-approve
 
 ## 🏗️ Architecture
 

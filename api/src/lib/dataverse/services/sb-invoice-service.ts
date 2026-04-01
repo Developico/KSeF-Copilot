@@ -83,6 +83,8 @@ function mapDvInvoiceToApp(raw: DvSbInvoice, items: SbLineItem[] = []): SbInvoic
     sellerRejectionReason: raw[s.sellerRejectionReason as keyof DvSbInvoice] as string | undefined,
     sentDate: raw[s.sentDate as keyof DvSbInvoice] as string | undefined,
     ksefReferenceNumber: raw[s.ksefReferenceNumber as keyof DvSbInvoice] as string | undefined,
+    xmlContent: raw[s.xmlContent as keyof DvSbInvoice] as string | undefined,
+    xmlHash: raw[s.xmlHash as keyof DvSbInvoice] as string | undefined,
     settingId: raw[s.settingLookup as keyof DvSbInvoice] as string,
     supplierId: raw[s.supplierLookup as keyof DvSbInvoice] as string,
     agreementId: raw[s.sbAgreementLookup as keyof DvSbInvoice] as string | undefined,
@@ -391,6 +393,8 @@ export class SbInvoiceService {
     ksefReferenceNumber: string
     ksefInvoiceId: string | null
     mpkCenterId: string | null
+    xmlContent: string | null
+    xmlHash: string | null
     submittedByUserId: string | null
     submittedAt: string | null
     approvedByUserId: string | null
@@ -412,6 +416,8 @@ export class SbInvoiceService {
     if (data.sellerRejectionReason !== undefined) payload[s.sellerRejectionReason] = data.sellerRejectionReason
     if (data.sentDate !== undefined) payload[s.sentDate] = data.sentDate
     if (data.ksefReferenceNumber !== undefined) payload[s.ksefReferenceNumber] = data.ksefReferenceNumber
+    if (data.xmlContent !== undefined) payload[s.xmlContent] = data.xmlContent
+    if (data.xmlHash !== undefined) payload[s.xmlHash] = data.xmlHash
     if (data.ksefInvoiceId !== undefined) {
       payload[s.ksefInvoiceBind] = data.ksefInvoiceId
         ? `/dvlp_ksefinvoices(${data.ksefInvoiceId})`

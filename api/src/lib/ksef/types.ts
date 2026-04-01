@@ -267,6 +267,7 @@ export interface KsefInvoice {
   paymentMethod?: string
   bankAccount?: string
   notes?: string
+  additionalDescriptions?: { key: string; value: string }[]
 }
 
 /**

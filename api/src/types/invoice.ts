@@ -116,6 +116,8 @@ export interface Invoice {
   project?: string
   tags?: string[]
   rawXml?: string
+  /** Alias for rawXml — used by frontend components */
+  xmlContent?: string
   importedAt: string
   source: InvoiceSource
   // Invoice type & correction

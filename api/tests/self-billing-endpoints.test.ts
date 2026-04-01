@@ -58,6 +58,7 @@ vi.mock('../src/lib/dataverse/services/sb-template-service', () => ({
 
 vi.mock('../src/lib/ksef/invoices', () => ({
   sendInvoice: vi.fn(),
+  sendInvoiceXml: vi.fn(),
 }))
 
 vi.mock('../src/lib/dataverse/services/mpk-center-service', () => ({
@@ -130,7 +131,7 @@ import { verifyAuth, requireRole, requireAnyRole } from '../src/lib/auth/middlew
 import { sbInvoiceService } from '../src/lib/dataverse/services/sb-invoice-service'
 import { supplierService } from '../src/lib/dataverse/services/supplier-service'
 import { sbAgreementService } from '../src/lib/dataverse/services/sb-agreement-service'
-import { sendInvoice } from '../src/lib/ksef/invoices'
+import { sendInvoice, sendInvoiceXml } from '../src/lib/ksef/invoices'
 import { mpkCenterService } from '../src/lib/dataverse/services/mpk-center-service'
 import { notificationService } from '../src/lib/dataverse/services/notification-service'
 
@@ -562,15 +563,19 @@ describe('POST /invoices/self-billing/:id/send-ksef (self-billing-invoices-send-
 
   it('should return 200 and send to KSeF', async () => {
     authSuccess()
+    const sampleXml = '<?xml version="1.0"?><Faktura/>'
     vi.mocked(sbInvoiceService.getById).mockResolvedValue({
       ...sampleSbInvoice,
       status: 'SellerApproved',
+      xmlContent: sampleXml,
+      xmlHash: require('crypto').createHash('sha256').update(sampleXml, 'utf8').digest('hex'),
     })
-    vi.mocked(supplierService.getById).mockResolvedValue(sampleSupplier)
-    vi.mocked(sendInvoice).mockResolvedValue({
+    vi.mocked(sendInvoiceXml).mockResolvedValue({
       ksefReferenceNumber: 'KSEF-REF-001',
       elementReferenceNumber: 'ELEM-001',
       referenceNumber: 'REF-001',
+      timestamp: new Date().toISOString(),
+      invoiceHash: 'hash-abc',
     })
 
     const res = await handler()(
@@ -580,7 +585,67 @@ describe('POST /invoices/self-billing/:id/send-ksef (self-billing-invoices-send-
 
     expect(res.status).toBe(200)
     expect(res.jsonBody.ksefReferenceNumber).toBe('KSEF-REF-001')
-    expect(sendInvoice).toHaveBeenCalled()
+    expect(sendInvoiceXml).toHaveBeenCalledWith(expect.any(String), sampleXml, SETTING_UUID)
+  })
+
+  it('should return 400 when invoice has no xmlContent', async () => {
+    authSuccess()
+    vi.mocked(sbInvoiceService.getById).mockResolvedValue({
+      ...sampleSbInvoice,
+      status: 'SellerApproved',
+      xmlContent: null,
+    })
+
+    const res = await handler()(
+      mockRequest({ params: { id: 'inv-1' } }),
+      mockContext()
+    )
+
+    expect(res.status).toBe(400)
+    expect(res.jsonBody.error).toContain('No XML content')
+  })
+})
+
+// ============================================================================
+// GET /self-billing/invoices/:id/xml (download XML)
+// ============================================================================
+
+describe('GET /self-billing/invoices/:id/xml (self-billing-invoices-xml)', () => {
+  const handler = () => registeredHandlers['self-billing-invoices-xml']
+
+  it('should return 404 when invoice has no xmlContent', async () => {
+    authSuccess()
+    vi.mocked(sbInvoiceService.getById).mockResolvedValue({
+      ...sampleSbInvoice,
+      xmlContent: null,
+    })
+
+    const res = await handler()(
+      mockRequest({ params: { id: 'inv-1' } }),
+      mockContext()
+    )
+
+    expect(res.status).toBe(404)
+    expect(res.jsonBody.error).toContain('XML not yet generated')
+  })
+
+  it('should return 200 with XML content and correct headers', async () => {
+    authSuccess()
+    const sampleXml = '<?xml version="1.0"?><Faktura/>'
+    vi.mocked(sbInvoiceService.getById).mockResolvedValue({
+      ...sampleSbInvoice,
+      xmlContent: sampleXml,
+    })
+
+    const res = await handler()(
+      mockRequest({ params: { id: 'inv-1' } }),
+      mockContext()
+    )
+
+    expect(res.status).toBe(200)
+    expect(res.body).toBe(sampleXml)
+    expect(res.headers['Content-Type']).toContain('application/xml')
+    expect(res.headers['Content-Disposition']).toContain('attachment')
   })
 })
 

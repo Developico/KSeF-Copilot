@@ -661,6 +661,9 @@
       "resultPartial": "{succeeded} z {total} faktur przetworzonych, {failed} nie powiodło się",
       "resultFailed": "Akcja hurtowa nie powiodła się",
       "processing": "Przetwarzanie..."
+    },
+    "xmlPreview": {
+      "title": "Podgląd XML faktury"
     }
   },
   "approvals": {
@@ -1707,6 +1710,48 @@
       "cancel": "Anuluj",
       "deleting": "Usuwanie...",
       "delete": "Usuń"
+    },
+    "xmlPreview": {
+      "parseError": "Nie można odczytać XML faktury",
+      "print": "Drukuj / PDF",
+      "downloadXml": "Pobierz XML",
+      "invoiceTitle": "Faktura VAT",
+      "creationDate": "Utworzono",
+      "invoiceNumber": "Numer faktury",
+      "invoiceDate": "Data wystawienia",
+      "saleDate": "Data sprzedaży",
+      "seller": "Sprzedawca",
+      "buyer": "Nabywca",
+      "issuer": "Wystawca (samofakturowanie)",
+      "lineItems": "Pozycje faktury",
+      "colNr": "Lp.",
+      "colDescription": "Opis",
+      "colQty": "Ilość",
+      "colUnit": "Jedn.",
+      "colUnitPrice": "Cena jedn.",
+      "colVatRate": "Stawka VAT",
+      "colNet": "Netto",
+      "colVat": "VAT",
+      "colGross": "Brutto",
+      "vatSummary": "Podsumowanie VAT",
+      "grossTotal": "Razem (brutto)",
+      "annotations": "Adnotacje",
+      "selfBilling": "Samofakturowanie",
+      "splitPayment": "Mechanizm podzielonej płatności",
+      "reverseCharge": "Odwrotne obciążenie",
+      "payment": "Płatność",
+      "dueDate": "Termin płatności",
+      "paymentMethod": "Forma płatności",
+      "bankAccount": "Rachunek bankowy",
+      "additionalInfo": "Informacje dodatkowe",
+      "colKey": "Klucz",
+      "colValue": "Wartość",
+      "approvalNote": "Zatwierdzając, potwierdzasz poprawność treści faktury (XML) przedstawionej powyżej."
+    },
+    "tabs": {
+      "data": "Dane",
+      "invoicePreview": "Podgląd faktury",
+      "xml": "XML"
     }
   }
 }

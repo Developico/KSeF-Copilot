@@ -914,7 +914,8 @@ async function apiFetch<T>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }))
-    throw new Error(error.error || `API error: ${response.status}`)
+    const msg = error.error || `API error: ${response.status}`
+    throw new Error(error.details ? `${msg}: ${error.details}` : msg)
   }
 
   // Handle 204 No Content
@@ -1148,6 +1149,8 @@ export interface SelfBillingInvoice {
   approvedAt?: string
   items: SelfBillingInvoiceItem[]
   settingId: string
+  xmlContent?: string | null
+  xmlHash?: string | null
   createdOn: string
   modifiedOn: string
 }

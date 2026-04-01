@@ -243,6 +243,8 @@ export interface SbInvoice {
   sellerRejectionReason?: string | null
   sentDate?: string | null
   ksefReferenceNumber?: string | null
+  xmlContent?: string | null
+  xmlHash?: string | null
   // Audit: submit & approve
   submittedByUserId?: string | null
   submittedAt?: string | null

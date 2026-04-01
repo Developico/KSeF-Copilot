@@ -236,4 +236,106 @@ describe('Parser – self-billing', () => {
       expect(parsed.issuer?.name).toBe('Nabywca S.A.')
     })
   })
+
+  describe('buildInvoiceXml – DodatkowyOpis (additionalDescriptions)', () => {
+    const baseInvoice: KsefInvoice = {
+      seller: {
+        nip: '1111111111',
+        name: 'Dostawca Sp. z o.o.',
+        address: { street: 'Testowa 1', buildingNumber: '1', city: 'Warszawa', postalCode: '00-001', country: 'PL' },
+      },
+      buyer: {
+        nip: '2222222222',
+        name: 'Nabywca S.A.',
+        address: { street: 'Kupiecka 10', buildingNumber: '10', city: 'Kraków', postalCode: '00-002', country: 'PL' },
+      },
+      invoiceNumber: 'SB/2025/002',
+      invoiceDate: '2025-02-15',
+      currency: 'PLN',
+      isSelfBilling: true,
+      items: [
+        {
+          lineNumber: 1,
+          description: 'Consulting',
+          quantity: 10,
+          unit: 'godz.',
+          unitPrice: 200,
+          netAmount: 2000,
+          vatRate: 23,
+          vatAmount: 460,
+          grossAmount: 2460,
+        },
+      ],
+    }
+
+    it('should include DodatkowyOpis elements when additionalDescriptions provided', () => {
+      const xml = buildInvoiceXml({
+        ...baseInvoice,
+        additionalDescriptions: [
+          { key: 'Data zatwierdzenia', value: '2025-02-15T10:30:00Z' },
+          { key: 'Zatwierdzono przez', value: 'Jan Kowalski (jan@test.com)' },
+          { key: 'System zatwierdzenia', value: 'KSeF Copilot by Developico' },
+        ],
+      })
+
+      expect(xml).toContain('<DodatkowyOpis>')
+      expect(xml).toContain('<Klucz>Data zatwierdzenia</Klucz>')
+      expect(xml).toContain('<Wartosc>2025-02-15T10:30:00Z</Wartosc>')
+      expect(xml).toContain('<Klucz>Zatwierdzono przez</Klucz>')
+      expect(xml).toContain('<Wartosc>Jan Kowalski (jan@test.com)</Wartosc>')
+      expect(xml).toContain('<Klucz>System zatwierdzenia</Klucz>')
+      expect(xml).toContain('<Wartosc>KSeF Copilot by Developico</Wartosc>')
+    })
+
+    it('should not include DodatkowyOpis when additionalDescriptions is empty', () => {
+      const xml = buildInvoiceXml({
+        ...baseInvoice,
+        additionalDescriptions: [],
+      })
+
+      expect(xml).not.toContain('<DodatkowyOpis>')
+    })
+
+    it('should not include DodatkowyOpis when additionalDescriptions is undefined', () => {
+      const xml = buildInvoiceXml(baseInvoice)
+
+      expect(xml).not.toContain('<DodatkowyOpis>')
+    })
+  })
+
+  describe('buildInvoiceXml – SystemInfo branding', () => {
+    const baseInvoice: KsefInvoice = {
+      seller: {
+        nip: '1111111111',
+        name: 'Test Seller',
+        address: { street: 'Test 1', buildingNumber: '1', city: 'Warszawa', postalCode: '00-001', country: 'PL' },
+      },
+      buyer: {
+        nip: '2222222222',
+        name: 'Test Buyer',
+        address: { street: 'Test 2', buildingNumber: '2', city: 'Kraków', postalCode: '00-002', country: 'PL' },
+      },
+      invoiceNumber: 'FV/2025/001',
+      invoiceDate: '2025-01-01',
+      currency: 'PLN',
+      items: [
+        {
+          lineNumber: 1,
+          description: 'Service',
+          quantity: 1,
+          unit: 'szt.',
+          unitPrice: 100,
+          netAmount: 100,
+          vatRate: 23,
+          vatAmount: 23,
+          grossAmount: 123,
+        },
+      ],
+    }
+
+    it('should use KSeF Copilot by Developico as SystemInfo', () => {
+      const xml = buildInvoiceXml(baseInvoice)
+      expect(xml).toContain('<SystemInfo>KSeF Copilot by Developico</SystemInfo>')
+    })
+  })
 })

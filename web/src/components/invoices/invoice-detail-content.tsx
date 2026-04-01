@@ -32,6 +32,7 @@ import {
   Loader2,
   CornerDownRight,
   ExternalLink,
+  FileCode,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -40,6 +41,7 @@ import { useHasRole } from '@/components/auth/auth-provider'
 import { useContextMpkCenters, useMpkApprovers } from '@/hooks/use-api'
 import { InvoiceDocumentSidebar } from '@/components/documents'
 import { InvoiceNotesSection } from './invoice-notes-section'
+import { InvoiceXmlPreview } from '../self-billing/invoice-xml-preview'
 import { ApprovalStatusBadge, InvoiceApprovalActions } from './invoice-approval-section'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -201,6 +203,7 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
   
   // Full invoice editing state
   const [isEditingInvoice, setIsEditingInvoice] = useState(false)
+  const [xmlPreviewExpanded, setXmlPreviewExpanded] = useState(false)
   const [editSupplierName, setEditSupplierName] = useState('')
   const [editSupplierNip, setEditSupplierNip] = useState('')
   const [editSupplierAddress, setEditSupplierAddress] = useState('')
@@ -1753,6 +1756,28 @@ export function InvoiceDetailContent({ invoiceId }: InvoiceDetailContentProps) {
 
           {/* Notes Section */}
           <InvoiceNotesSection invoiceId={invoiceId} isReadOnly={!isAdmin} />
+
+          {/* XML Invoice Preview — only for KSeF invoices with XML content */}
+          {invoice.xmlContent && (
+            <Card>
+              <CardHeader className="cursor-pointer" onClick={() => setXmlPreviewExpanded(prev => !prev)}>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileCode className="h-4 w-4" />
+                  {t('xmlPreview.title')}
+                  {xmlPreviewExpanded ? (
+                    <ChevronUp className="h-4 w-4 ml-auto" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 ml-auto" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+              {xmlPreviewExpanded && (
+                <CardContent>
+                  <InvoiceXmlPreview xml={invoice.xmlContent} />
+                </CardContent>
+              )}
+            </Card>
+          )}
         </div>
 
         {/* Right Side - AI Panel + Document (sticky) */}

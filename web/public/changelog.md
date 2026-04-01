@@ -6,6 +6,49 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [0.9.4] - 2026-04-01
+
+### 📋 Samofakturowanie — zgodność XML z interpretacją KIS
+
+Implementacja wymagań interpretacji KIS z 27.02.2026 (0112-KDIL1-3.4012.874.2025.2.KK) — zatwierdzanie samofaktur na podstawie pliku XML przed wysyłką do KSeF.
+
+#### Backend (API)
+- **Generowanie XML przy składaniu do akceptacji** — endpoint `POST /submit` generuje XML via `buildInvoiceXml()`, oblicza hash SHA256 i zapisuje `xmlContent` + `xmlHash` na fakturze (wcześniej XML był generowany dopiero przy wysyłce do KSeF)
+- **DodatkowyOpis w XML** — metadane zatwierdzenia dodawane do XML po akceptacji sprzedawcy: data zatwierdzenia, osoba zatwierdzająca, system, hash XML
+- **Stopka z informacją o zatwierdzeniu** — nota w sekcji `Stopka/StopkaFaktury`: „Zatwierdzona przez {name} dnia {date} w systemie KSeF Copilot by Developico"
+- **Endpoint `GET /xml`** — pobieranie pliku XML faktury samofakturowania (`Content-Type: application/xml`)
+- **Wysyłka do KSeF z zapisanego XML** — endpoint `send-ksef` używa przechowywanego XML zamiast regeneracji, z walidacją integralności hash
+- **Czyszczenie XML przy cofaniu do Draft** — `revert-to-draft` kasuje `xmlContent` i `xmlHash` (XML musi być wygenerowany ponownie po edycji)
+- **Auto-approve** — umowy z flagą `autoApprove` pomijają etap PendingSeller, faktury są automatycznie zatwierdzane przy submicie
+- **Rozszerzony audit trail** — notatka po zatwierdzeniu zawiera timestamp i hash XML
+- **SystemInfo** — zmiana identyfikatora systemu w XML na „KSeF Copilot by Developico"
+
+#### Frontend
+- **Komponent `<InvoiceXmlPreview>`** — wizualizacja faktury w czytelnym formacie tabelarycznym inspirowanym oficjalnym XSL MF:
+  - Nagłówek: kod formularza, wariant, data wytworzenia
+  - Sprzedawca (Podmiot1) | Nabywca (Podmiot2) obok siebie
+  - Podmiot3 (wystawca) — dla samofakturowania
+  - Tabela pozycji: Nr | Nazwa | Ilość | Jm. | Cena netto | Stawka VAT | Kwota netto | Kwota brutto
+  - Podsumowanie VAT per stawka + kwota brutto ogółem
+  - Adnotacje, warunki płatności, rachunek bankowy
+  - DodatkowyOpis (tabela klucz-wartość z danymi zatwierdzenia)
+  - Stopka
+- **Zakładki w widoku szczegółów SB** — „Dane" | „Podgląd faktury" | „XML" (surowy, zwinięty domyślnie)
+- **Przycisk „Drukuj / Zapisz PDF"** — `window.print()` z dedykowanym layoutem druku (`@media print`, format A4)
+- **Przycisk „Pobierz XML"** — link do endpointu `/xml`
+- **Podgląd XML dla faktur zsynchronizowanych z KSeF** — reużycie `<InvoiceXmlPreview>` dla istniejącego pola `rawXml` na fakturach pobranych z KSeF (sekcja zwijalna w widoku szczegółów)
+- **Naprawiony mapping pól** — ujednolicenie nazw `rawXml` / `xmlContent` między API a frontendem
+
+#### Infrastruktura
+- **Nowe kolumny Dataverse** — `dvlp_xmlcontent` (Memo, max 1MB) i `dvlp_xmlhash` (String, max 100) na tabeli `dvlp_ksefselfbillinginvoice`
+- **Skrypt prowizji** — `Provision-SbApprovalColumns.ps1` rozszerzony o tworzenie kolumn XML
+
+### 🌐 i18n
+
+- **Nowe klucze tłumaczeń** — `xmlPreview.*` (35+ kluczy) w `pl.json` i `en.json` dla komponentu podglądu XML
+
+---
+
 ## [0.9.3] - 2026-03-23
 
 ### 📋 Samofakturowanie

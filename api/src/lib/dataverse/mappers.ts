@@ -134,6 +134,7 @@ export function mapDvInvoiceToApp(raw: DvInvoice): Invoice {
     category: raw[s.category as keyof DvInvoice] as string | undefined,
     description: raw[s.description as keyof DvInvoice] as string | undefined,
     rawXml: raw[s.ksefRawXml as keyof DvInvoice] as string | undefined,
+    xmlContent: raw[s.ksefRawXml as keyof DvInvoice] as string | undefined,
     importedAt: raw[s.createdOn as keyof DvInvoice] as string,
     source: mapDvSourceToApp(raw[s.source as keyof DvInvoice] as number | undefined),
     // Invoice type & correction fields

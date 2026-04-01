@@ -907,6 +907,16 @@ Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinginvoice" 
     -MaxLength 100 -Searchable $true `
     -Description 'KSeF reference number assigned after submission'
 
+Add-MemoColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -SchemaName "${PublisherPrefix}_xmlcontent" -DisplayNameEN 'XML Content' `
+    -MaxLength 1048576 `
+    -Description 'Generated FA(2) XML content for KSeF submission (stored at submit, updated at approval)'
+
+Add-StringColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinginvoice" `
+    -SchemaName "${PublisherPrefix}_xmlhash" -DisplayNameEN 'XML Hash' `
+    -MaxLength 128 `
+    -Description 'SHA256 hash of XML content for integrity verification'
+
 # --- dvlp_ksefselfbillinglineitem ---
 
 Add-DecimalColumn -EntityLogicalName "${PublisherPrefix}_ksefselfbillinglineitem" `

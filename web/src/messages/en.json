@@ -661,6 +661,9 @@
       "resultPartial": "{succeeded} of {total} invoices processed, {failed} failed",
       "resultFailed": "Bulk action failed",
       "processing": "Processing..."
+    },
+    "xmlPreview": {
+      "title": "Invoice XML Preview"
     }
   },
   "approvals": {
@@ -1709,6 +1712,48 @@
       "cancel": "Cancel",
       "deleting": "Deleting...",
       "delete": "Delete"
+    },
+    "xmlPreview": {
+      "parseError": "Unable to parse invoice XML",
+      "print": "Print / PDF",
+      "downloadXml": "Download XML",
+      "invoiceTitle": "VAT Invoice",
+      "creationDate": "Created",
+      "invoiceNumber": "Invoice Number",
+      "invoiceDate": "Invoice Date",
+      "saleDate": "Sale Date",
+      "seller": "Seller",
+      "buyer": "Buyer",
+      "issuer": "Issuer (Self-Billing)",
+      "lineItems": "Line Items",
+      "colNr": "#",
+      "colDescription": "Description",
+      "colQty": "Qty",
+      "colUnit": "Unit",
+      "colUnitPrice": "Unit Price",
+      "colVatRate": "VAT %",
+      "colNet": "Net",
+      "colVat": "VAT",
+      "colGross": "Gross",
+      "vatSummary": "VAT Summary",
+      "grossTotal": "Total (Gross)",
+      "annotations": "Annotations",
+      "selfBilling": "Self-Billing Invoice",
+      "splitPayment": "Split Payment",
+      "reverseCharge": "Reverse Charge",
+      "payment": "Payment",
+      "dueDate": "Due Date",
+      "paymentMethod": "Payment Method",
+      "bankAccount": "Bank Account",
+      "additionalInfo": "Additional Information",
+      "colKey": "Key",
+      "colValue": "Value",
+      "approvalNote": "By approving, you confirm the correctness of the invoice content (XML) shown above."
+    },
+    "tabs": {
+      "data": "Data",
+      "invoicePreview": "Invoice Preview",
+      "xml": "XML"
     }
   }
 }

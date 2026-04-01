@@ -32,6 +32,7 @@ import { AttachmentsSection } from '@/components/invoices/attachments-section'
 import { NotesSection } from '@/components/invoices/notes-section'
 import { InvoiceDocumentSidebar } from '@/components/invoices/invoice-document-sidebar'
 import { InvoiceApprovalSection } from '@/components/invoices/invoice-approval-section'
+import { InvoiceXmlPreview } from '@/components/invoices/invoice-xml-preview'
 import { ApprovalStatusBadge } from '@/components/invoices/approval-status-badge'
 import { SupplierLookupDialog } from '@/components/invoices/supplier-lookup-dialog'
 import type { SupplierData } from '@/components/invoices/supplier-lookup-dialog'
@@ -1010,6 +1011,15 @@ export function InvoiceDetailPage() {
 
       {/* Notes */}
       <NotesSection invoiceId={invoice.id} />
+
+      {/* XML Preview (KSeF) */}
+      {invoice.xmlContent && (
+        <InvoiceXmlPreview
+          xml={invoice.xmlContent}
+          collapsible
+          defaultExpanded={false}
+        />
+      )}
         </div>
 
         {/* Document sidebar */}

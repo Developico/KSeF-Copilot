@@ -246,6 +246,14 @@ export function validateParsedInvoice(invoice: ParsedInvoice): string[] {
 }
 
 /**
+ * Build Stopka lines — FA(2) allows up to 3 StopkaFaktury entries.
+ * Returns first entry or empty string.
+ */
+function buildStopkaLines(notes?: string): string {
+  return notes || ''
+}
+
+/**
  * Build FA(2) XML from invoice data for sending to KSeF
  */
 export function buildInvoiceXml(invoice: KsefInvoice): string {
@@ -265,7 +273,7 @@ export function buildInvoiceXml(invoice: KsefInvoice): string {
         },
         WariantFormularza: 2,
         DataWytworzeniaFa: today,
-        SystemInfo: 'KSeF Integration by Developico',
+        SystemInfo: 'KSeF Copilot by Developico',
       },
       Podmiot1: {
         DaneIdentyfikacyjne: {
@@ -315,11 +323,14 @@ export function buildInvoiceXml(invoice: KsefInvoice): string {
           P_23: 2, // Not simplified invoice
           P_PMarzy: 2, // Not margin procedure
         },
+        ...(invoice.additionalDescriptions && invoice.additionalDescriptions.length > 0
+          ? { DodatkowyOpis: invoice.additionalDescriptions.map(d => ({ Klucz: d.key, Wartosc: d.value })) }
+          : {}),
         FaWiersz: invoice.items.map((item, index) => buildLineItem(item, index + 1)),
       },
       Stopka: {
         Informacje: {
-          StopkaFaktury: invoice.notes || '',
+          StopkaFaktury: buildStopkaLines(invoice.notes),
         },
       },
     },
