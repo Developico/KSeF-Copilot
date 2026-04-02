@@ -56,6 +56,10 @@ Implementacja wymagań interpretacji KIS z 27.02.2026 (0112-KDIL1-3.4012.874.202
 ### Naprawione
 - Mapping pól `rawXml` / `xmlContent` — API zwraca oba pola (backward-compatible alias)
 
+### Eksport solucji
+- `DevelopicoKSeF_0_3_5_0.zip` — solucja Dataverse z kolumnami XML (`dvlp_xmlcontent`, `dvlp_xmlhash`)
+- `KSeFCopilotCustomConnectorbyDevelopico_0_3_5_0.zip` — Custom Connector zsynchronizowany z solucją v0.3.5
+
 ---
 
 ## [0.3.0.1] — 2026-03-23

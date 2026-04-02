@@ -4,6 +4,13 @@
  */
 
 import type { AiCategorizeResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { AnomalyResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { AnomalySummary } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { ApprovalActionResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { BatchCategorizeResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { BatchIdsRequest } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { BatchResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { BulkApproveResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { DashboardStats } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { DetailedHealth } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { EnvironmentsResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
@@ -13,10 +20,33 @@ import type { ForecastResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { GroupedForecastResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { IOperationResult } from '@microsoft/power-apps/data';
 import type { Invoice } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { InvoiceListResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { KsefEndSessionResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { KsefSessionGetResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { KsefSessionResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { KsefStatus } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { KsefSyncResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { MpkCenterCreate } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { MpkCenterUpdate } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SbAgreement } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SbAgreementCreate } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SbAgreementListResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SbAgreementUpdate } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SbTemplate } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SbTemplateCreate } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SbTemplateListResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SbTemplateUpdate } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SelfBillingBatchResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SelfBillingGenerateRequest } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SelfBillingImportResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SelfBillingInvoice } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SelfBillingInvoiceCreate } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SelfBillingInvoiceListResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { Supplier } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SupplierCreate } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SupplierListResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SupplierStats } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { SupplierUpdate } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { SyncImportResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { SyncPreviewResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { SyncResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
@@ -33,11 +63,12 @@ export class DVLP_KSeF_PP_ConnectorService {
   private static readonly client = getClient(dataSourcesInfo);
 
   /**
-   * Health Check (Detailed)
+   * Health Check (Basic)
+   * Returns basic system health status. For detailed health including service connectivity and response times, use GET /health/detailed.
    */
-  public static async HealthCheck(environment?: string): Promise<IOperationResult<DetailedHealth>> {
+  public static async HealthCheck(environment?: string): Promise<IOperationResult<Record<string, unknown>>> {
     const params: { environment?: string } = { environment };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ environment?: string }, DetailedHealth>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ environment?: string }, Record<string, unknown>>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -51,9 +82,9 @@ export class DVLP_KSeF_PP_ConnectorService {
   /**
    * List Invoices
    */
-  public static async ListInvoices(settingId?: string, tenantNip?: string, page?: number, pageSize?: number, search?: string, direction?: string, status?: string, dateFrom?: string, dateTo?: string): Promise<IOperationResult<void>> {
+  public static async ListInvoices(settingId?: string, tenantNip?: string, page?: number, pageSize?: number, search?: string, direction?: string, status?: string, dateFrom?: string, dateTo?: string): Promise<IOperationResult<InvoiceListResponse>> {
     const params: { settingId?: string, tenantNip?: string, page?: number, pageSize?: number, search?: string, direction?: string, status?: string, dateFrom?: string, dateTo?: string } = { settingId, tenantNip, page, pageSize, search, direction, status, dateFrom, dateTo };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId?: string, tenantNip?: string, page?: number, pageSize?: number, search?: string, direction?: string, status?: string, dateFrom?: string, dateTo?: string }, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId?: string, tenantNip?: string, page?: number, pageSize?: number, search?: string, direction?: string, status?: string, dateFrom?: string, dateTo?: string }, InvoiceListResponse>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -81,6 +112,23 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
+   * Delete Invoice
+   * Permanently delete an invoice by ID.
+   */
+  public static async DeleteInvoice(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'DeleteInvoice',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
    * Update Invoice
    * Partially update an existing invoice. All fields are optional.
    */
@@ -91,6 +139,40 @@ export class DVLP_KSeF_PP_ConnectorService {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
           operationName: 'UpdateInvoice',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * List Invoice Notes
+   * Returns all notes attached to an invoice.
+   */
+  public static async ListInvoiceNotes(id: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ListInvoiceNotes',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Add Note to Invoice
+   * Add a text note to an invoice for internal comments or audit trail.
+   */
+  public static async CreateInvoiceNote(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { id: string, body: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body: Record<string, unknown> }, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'CreateInvoiceNote',
           parameters: params
         },
       });
@@ -132,8 +214,25 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Start KSeF Sync
-   * Start synchronization of invoices from KSeF for a given company setting.
+   * Dashboard Activity Feed
+   * /PL/: Ostatnia aktywność — faktury, akceptacje, samofakturowanie, synchronizacja. /EN/: Recent activity feed — invoices, approvals, self-billing, sync.
+   */
+  public static async GetDashboardActivity(settingId: string, top?: number, types?: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { settingId: string, top?: number, types?: string } = { settingId, top, types };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string, top?: number, types?: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetDashboardActivity',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * [DEPRECATED] Start KSeF Sync (legacy)
+   * **DEPRECATED** — use POST /ksef/sync instead. Legacy synchronization endpoint. Will be removed in a future version. For new integrations and Copilot Studio agents, use StartKsefSync.
    */
   public static async StartSync(body: Record<string, unknown>): Promise<IOperationResult<SyncResult>> {
     const params: { body: Record<string, unknown> } = { body };
@@ -160,6 +259,72 @@ export class DVLP_KSeF_PP_ConnectorService {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
           operationName: 'GetSyncLogs',
           parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Start KSeF Invoice Sync
+   * Synchronize incoming invoices from KSeF for a given company (by NIP). Uses the native KSeF session-based sync. Imports invoices found in the specified date range directly from KSeF API.
+   */
+  public static async StartKsefSync(body?: Record<string, unknown>): Promise<IOperationResult<KsefSyncResult>> {
+    const params: { body?: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body?: Record<string, unknown> }, KsefSyncResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'StartKsefSync',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Invoice Anomalies
+   * Detect unusual invoice patterns: amount spikes, new suppliers, duplicate suspects, category shifts, and frequency changes.
+   */
+  public static async GetAnomalies(settingId?: string, tenantNip?: string, periodDays?: number, sensitivity?: number, enabledRules?: string): Promise<IOperationResult<AnomalyResult>> {
+    const params: { settingId?: string, tenantNip?: string, periodDays?: number, sensitivity?: number, enabledRules?: string } = { settingId, tenantNip, periodDays, sensitivity, enabledRules };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId?: string, tenantNip?: string, periodDays?: number, sensitivity?: number, enabledRules?: string }, AnomalyResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetAnomalies',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Anomaly Summary
+   * Returns anomaly counts grouped by type and severity for the selected period.
+   */
+  public static async GetAnomaliesSummary(settingId?: string, tenantNip?: string, periodDays?: number, sensitivity?: number, enabledRules?: string): Promise<IOperationResult<AnomalySummary>> {
+    const params: { settingId?: string, tenantNip?: string, periodDays?: number, sensitivity?: number, enabledRules?: string } = { settingId, tenantNip, periodDays, sensitivity, enabledRules };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId?: string, tenantNip?: string, periodDays?: number, sensitivity?: number, enabledRules?: string }, AnomalySummary>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetAnomaliesSummary',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Anomaly Detection Rules
+   * Returns available anomaly detection rules with their parameter descriptors and preset configurations.
+   */
+  public static async GetAnomalyRules(): Promise<IOperationResult<Record<string, unknown>>> {
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<void, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetAnomalyRules',
         },
       });
     return result;
@@ -249,6 +414,74 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
+   * AI Batch Categorize Invoices
+   * Use AI to suggest MPK and category for multiple invoices in one call. Processes all specified invoices and saves AI suggestions to Dataverse. If autoApply is enabled, also writes AI results to the actual invoice fields.
+   */
+  public static async AIBatchCategorize(body: Record<string, unknown>): Promise<IOperationResult<BatchCategorizeResult>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, BatchCategorizeResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'AIBatchCategorize',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * VAT White List Lookup
+   * Search for a subject in the White List of VAT Taxpayers (Biała Lista Podatników VAT) by NIP or REGON. Returns company details, VAT status, registered bank accounts.
+   */
+  public static async VatLookup(body: Record<string, unknown>): Promise<IOperationResult<VatLookupResult>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, VatLookupResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'VatLookup',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Validate NIP Checksum
+   * Offline NIP validation (checksum algorithm only, no API call). Returns whether the NIP number has a valid checksum.
+   */
+  public static async VatValidate(nip: string): Promise<IOperationResult<VatValidateResult>> {
+    const params: { nip: string } = { nip };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ nip: string }, VatValidateResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'VatValidate',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Check Bank Account in VAT White List
+   * Verify whether a bank account number is registered for a given NIP in the White List of VAT Taxpayers.
+   */
+  public static async VatCheckAccount(body: Record<string, unknown>): Promise<IOperationResult<VatCheckAccountResult>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, VatCheckAccountResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'VatCheckAccount',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
    * Get KSeF Environments
    * Returns available KSeF environments (test, demo, production) with their base URLs, descriptions, and available permissions.
    */
@@ -281,59 +514,8 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * VAT White List Lookup
-   * Search for a subject in the White List of VAT Taxpayers by NIP or REGON.
-   */
-  public static async VatLookup(body: Record<string, unknown>): Promise<IOperationResult<VatLookupResult>> {
-    const params: { body: Record<string, unknown> } = { body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, VatLookupResult>(
-      {
-        connectorOperation: {
-          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
-          operationName: 'VatLookup',
-          parameters: params
-        },
-      });
-    return result;
-  }
-
-  /**
-   * Validate NIP Checksum
-   * Offline NIP validation (checksum algorithm only, no API call).
-   */
-  public static async VatValidate(nip: string): Promise<IOperationResult<VatValidateResult>> {
-    const params: { nip: string } = { nip };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ nip: string }, VatValidateResult>(
-      {
-        connectorOperation: {
-          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
-          operationName: 'VatValidate',
-          parameters: params
-        },
-      });
-    return result;
-  }
-
-  /**
-   * Check Bank Account in VAT White List
-   * Verify whether a bank account number is registered for a given NIP.
-   */
-  public static async VatCheckAccount(body: Record<string, unknown>): Promise<IOperationResult<VatCheckAccountResult>> {
-    const params: { body: Record<string, unknown> } = { body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, VatCheckAccountResult>(
-      {
-        connectorOperation: {
-          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
-          operationName: 'VatCheckAccount',
-          parameters: params
-        },
-      });
-    return result;
-  }
-
-  /**
    * Get Monthly Expense Forecast
-   * Returns historical monthly expense data and AI-generated forecast.
+   * Returns historical monthly expense data and AI-generated forecast for future months using statistical methods (moving average, linear regression, seasonal adjustment).
    */
   public static async GetForecastMonthly(horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string): Promise<IOperationResult<ForecastResult>> {
     const params: { horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string } = { horizon, historyMonths, settingId, tenantNip };
@@ -350,7 +532,7 @@ export class DVLP_KSeF_PP_ConnectorService {
 
   /**
    * Get Forecast by Cost Center (MPK)
-   * Returns expense forecast grouped by cost center (MPK).
+   * Returns expense forecast grouped by cost center (MPK). Groups are sorted by total forecast amount descending.
    */
   public static async GetForecastByMpk(horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string): Promise<IOperationResult<GroupedForecastResponse>> {
     const params: { horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string } = { horizon, historyMonths, settingId, tenantNip };
@@ -367,7 +549,7 @@ export class DVLP_KSeF_PP_ConnectorService {
 
   /**
    * Get Forecast by Category
-   * Returns expense forecast grouped by expense category.
+   * Returns expense forecast grouped by expense category. Groups are sorted by total forecast amount descending.
    */
   public static async GetForecastByCategory(horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string): Promise<IOperationResult<GroupedForecastResponse>> {
     const params: { horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string } = { horizon, historyMonths, settingId, tenantNip };
@@ -384,7 +566,7 @@ export class DVLP_KSeF_PP_ConnectorService {
 
   /**
    * Get Forecast by Supplier
-   * Returns expense forecast for top-N suppliers by gross amount.
+   * Returns expense forecast for top-N suppliers by gross amount. Groups are sorted by total forecast amount descending.
    */
   public static async GetForecastBySupplier(horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string, top?: number): Promise<IOperationResult<GroupedForecastResponse>> {
     const params: { horizon?: number, historyMonths?: number, settingId?: string, tenantNip?: string, top?: number } = { horizon, historyMonths, settingId, tenantNip, top };
@@ -399,7 +581,20 @@ export class DVLP_KSeF_PP_ConnectorService {
     return result;
   }
 
-  // ── KSeF Session ──
+  /**
+   * Get Forecast Algorithms
+   * Returns available forecast algorithms with their parameter metadata and preset configurations.
+   */
+  public static async GetForecastAlgorithms(): Promise<IOperationResult<Record<string, unknown>>> {
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<void, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetForecastAlgorithms',
+        },
+      });
+    return result;
+  }
 
   /**
    * Get KSeF Status
@@ -413,6 +608,36 @@ export class DVLP_KSeF_PP_ConnectorService {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
           operationName: 'GetKsefStatus',
           parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get KSeF Session
+   * Returns the current active KSeF session, if any.
+   */
+  public static async GetKsefSession(): Promise<IOperationResult<KsefSessionGetResponse>> {
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<void, KsefSessionGetResponse>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetKsefSession',
+        },
+      });
+    return result;
+  }
+
+  /**
+   * End KSeF Session
+   * Terminates the current active KSeF session.
+   */
+  public static async EndKsefSession(): Promise<IOperationResult<KsefEndSessionResponse>> {
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<void, KsefEndSessionResponse>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'EndKsefSession',
         },
       });
     return result;
@@ -434,42 +659,6 @@ export class DVLP_KSeF_PP_ConnectorService {
       });
     return result;
   }
-
-  /**
-   * Get KSeF Session
-   * Returns the current active KSeF session, if any.
-   */
-  public static async GetKsefSession(): Promise<IOperationResult<KsefSessionGetResponse>> {
-    const params = {};
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<Record<string, never>, KsefSessionGetResponse>(
-      {
-        connectorOperation: {
-          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
-          operationName: 'GetKsefSession',
-          parameters: params
-        },
-      });
-    return result;
-  }
-
-  /**
-   * End KSeF Session
-   * Terminates the current active KSeF session.
-   */
-  public static async EndKsefSession(): Promise<IOperationResult<KsefEndSessionResponse>> {
-    const params = {};
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<Record<string, never>, KsefEndSessionResponse>(
-      {
-        connectorOperation: {
-          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
-          operationName: 'EndKsefSession',
-          parameters: params
-        },
-      });
-    return result;
-  }
-
-  // ── Sync Preview / Import ──
 
   /**
    * Get Sync Preview
@@ -505,14 +694,570 @@ export class DVLP_KSeF_PP_ConnectorService {
     return result;
   }
 
-  // ── Suppliers ──
+  /**
+   * List Invoice Attachments
+   * Returns all attachments for a given invoice.
+   */
+  public static async ListAttachments(id: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ListAttachments',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Upload Invoice Attachment
+   * Upload a file attachment to an invoice (PDF, image, etc.). Content must be Base64-encoded.
+   */
+  public static async UploadAttachment(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { id: string, body: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body: Record<string, unknown> }, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'UploadAttachment',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Download Attachment
+   * Returns the Base64-encoded content of an attachment.
+   */
+  public static async DownloadAttachment(id: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'DownloadAttachment',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Delete Attachment
+   * Permanently delete an attachment by ID.
+   */
+  public static async DeleteAttachment(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'DeleteAttachment',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Attachment Configuration
+   * Returns allowed file types, max size, and other attachment constraints.
+   */
+  public static async GetAttachmentConfig(): Promise<IOperationResult<Record<string, unknown>>> {
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<void, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetAttachmentConfig',
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Health Check (Detailed)
+   * Returns detailed system health status including Dataverse connectivity, Key Vault access, KSeF service availability, and response times.
+   */
+  public static async HealthCheckDetailed(environment?: string): Promise<IOperationResult<DetailedHealth>> {
+    const params: { environment?: string } = { environment };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ environment?: string }, DetailedHealth>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'HealthCheckDetailed',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * List MPK Centers
+   * Returns MPK cost centers for a given company setting.
+   */
+  public static async ListMpkCenters(settingId?: string, activeOnly?: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { settingId?: string, activeOnly?: string } = { settingId, activeOnly };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId?: string, activeOnly?: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ListMpkCenters',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Create MPK Center
+   * Creates a new MPK cost center. Requires Admin role.
+   */
+  public static async CreateMpkCenter(body: MpkCenterCreate): Promise<IOperationResult<void>> {
+    const params: { body: MpkCenterCreate } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: MpkCenterCreate }, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'CreateMpkCenter',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get MPK Center
+   * Returns a single MPK center by ID.
+   */
+  public static async GetMpkCenter(id: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetMpkCenter',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Deactivate MPK Center
+   * Soft-deletes an MPK center (sets isActive to false). Requires Admin role.
+   */
+  public static async DeactivateMpkCenter(id: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'DeactivateMpkCenter',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Update MPK Center
+   * Updates an existing MPK center. Requires Admin role.
+   */
+  public static async UpdateMpkCenter(id: string, body: MpkCenterUpdate): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string, body: MpkCenterUpdate } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body: MpkCenterUpdate }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'UpdateMpkCenter',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * List MPK Center Approvers
+   * Returns the list of approvers assigned to an MPK center.
+   */
+  public static async ListMpkApprovers(id: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ListMpkApprovers',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Set MPK Center Approvers
+   * Full-replace the approvers list for an MPK center. Requires Admin role.
+   */
+  public static async SetMpkApprovers(id: string, body: Record<string, unknown>): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string, body: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body: Record<string, unknown> }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'SetMpkApprovers',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * List System Users
+   * Returns active Dataverse system users for approver assignment. Requires Admin role.
+   */
+  public static async ListSystemUsers(): Promise<IOperationResult<Record<string, unknown>>> {
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<void, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ListSystemUsers',
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Approve Invoice
+   * Approve a pending invoice. User must be an authorized approver for the invoice's MPK center, or have Admin role (D2 fallback).
+   */
+  public static async ApproveInvoice(id: string, body?: Record<string, unknown>): Promise<IOperationResult<ApprovalActionResult>> {
+    const params: { id: string, body?: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body?: Record<string, unknown> }, ApprovalActionResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ApproveInvoice',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Reject Invoice
+   * Reject a pending invoice. Comment is required. User must be an authorized approver for the invoice's MPK center.
+   */
+  public static async RejectInvoice(id: string, body: Record<string, unknown>): Promise<IOperationResult<ApprovalActionResult>> {
+    const params: { id: string, body: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body: Record<string, unknown> }, ApprovalActionResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'RejectInvoice',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Cancel Approval
+   * Cancel a pending approval. Only Admin role can cancel (D16). Transitions from Pending → Cancelled.
+   */
+  public static async CancelApproval(id: string, body?: Record<string, unknown>): Promise<IOperationResult<ApprovalActionResult>> {
+    const params: { id: string, body?: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body?: Record<string, unknown> }, ApprovalActionResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'CancelApproval',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Refresh Invoice Approvers
+   * Refresh the approvers for an invoice's MPK center (D20). Returns the current number of approvers.
+   */
+  public static async RefreshApprovers(id: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'RefreshApprovers',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Bulk Approve Invoices
+   * Approve multiple pending invoices at once (D17). Processes each invoice independently — partial success is possible.
+   */
+  public static async BulkApproveInvoices(body: Record<string, unknown>): Promise<IOperationResult<BulkApproveResult>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, BulkApproveResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'BulkApproveInvoices',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * List Pending Approvals
+   * List invoices pending approval for the current user. Admin sees all pending invoices; non-Admin sees only invoices for MPK centers where they are an assigned approver.
+   */
+  public static async ListPendingApprovals(settingId: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { settingId: string } = { settingId };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ListPendingApprovals',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Apply Approval Workflow to MPK
+   * /PL/: Zastosuj workflow akceptacji do faktur w centrum MPK. /EN/: Apply approval workflow to invoices in this MPK center.
+   */
+  public static async ApplyApprovalToMpk(id: string, body?: Record<string, unknown>): Promise<IOperationResult<BatchResult>> {
+    const params: { id: string, body?: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body?: Record<string, unknown> }, BatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ApplyApprovalToMpk',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Revoke Approval from MPK
+   * /PL/: Cofnij workflow akceptacji z faktur w centrum MPK. /EN/: Revoke approval workflow from invoices in this MPK center.
+   */
+  public static async RevokeApprovalFromMpk(id: string, body?: Record<string, unknown>): Promise<IOperationResult<BatchResult>> {
+    const params: { id: string, body?: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body?: Record<string, unknown> }, BatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'RevokeApprovalFromMpk',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get MPK Budget Status
+   * Get budget utilization status for a specific MPK center. Returns current period utilization, remaining budget, and warning flags. Returns null data if no budget is configured for the MPK.
+   */
+  public static async GetMpkBudgetStatus(id: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetMpkBudgetStatus',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Budget Summary
+   * Get budget utilization summary for all MPK centers with budget configured in a given setting. Returns only MPKs that have budgetAmount, budgetPeriod, and budgetStartDate set.
+   */
+  public static async GetBudgetSummary(settingId: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { settingId: string } = { settingId };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetBudgetSummary',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * List Notifications
+   * List in-app notifications for the current user. Supports unreadOnly and top filters. The user is resolved from the Bearer token OID.
+   */
+  public static async GetNotifications(settingId: string, unreadOnly?: boolean, top?: number): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { settingId: string, unreadOnly?: boolean, top?: number } = { settingId, unreadOnly, top };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string, unreadOnly?: boolean, top?: number }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetNotifications',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Mark Notification as Read
+   * Marks a single notification as read.
+   */
+  public static async MarkNotificationRead(id: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'MarkNotificationRead',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Dismiss Notification
+   * Dismisses (soft-deletes) a notification so it no longer appears.
+   */
+  public static async DismissNotification(id: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'DismissNotification',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Mark All Notifications as Read
+   * /PL/: Oznacza wszystkie powiadomienia bieżącego użytkownika jako przeczytane. /EN/: Mark all notifications for the current user as read.
+   */
+  public static async MarkAllNotificationsRead(settingId: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { settingId: string } = { settingId };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'MarkAllNotificationsRead',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Unread Notification Count
+   * Returns the count of unread notifications for the current user. Useful for notification badge display.
+   */
+  public static async GetUnreadNotificationCount(settingId: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { settingId: string } = { settingId };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetUnreadNotificationCount',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Budget Utilization Report
+   * Generates a budget utilization report across all MPK centers (or a single MPK) for the current budget period. Includes totals rollup.
+   */
+  public static async GetBudgetUtilizationReport(settingId: string, mpkCenterId?: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { settingId: string, mpkCenterId?: string } = { settingId, mpkCenterId };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string, mpkCenterId?: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetBudgetUtilizationReport',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Approval History Report
+   * Returns approval history for invoices that have been through the workflow (non-Draft). Supports date range, MPK, and status filters.
+   */
+  public static async GetApprovalHistoryReport(settingId: string, dateFrom?: string, dateTo?: string, mpkCenterId?: string, status?: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { settingId: string, dateFrom?: string, dateTo?: string, mpkCenterId?: string, status?: string } = { settingId, dateFrom, dateTo, mpkCenterId, status };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string, dateFrom?: string, dateTo?: string, mpkCenterId?: string, status?: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetApprovalHistoryReport',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Approver Performance Report
+   * Returns approver performance metrics — response times, approval rates, and workload distribution.
+   */
+  public static async GetApproverPerformanceReport(settingId: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { settingId: string } = { settingId };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetApproverPerformanceReport',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Invoice Processing Report
+   * Returns invoice processing statistics — volumes, average processing time, status distribution over time.
+   */
+  public static async GetInvoiceProcessingReport(settingId: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { settingId: string } = { settingId };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetInvoiceProcessingReport',
+          parameters: params
+        },
+      });
+    return result;
+  }
 
   /**
    * List Suppliers
+   * /PL/: Lista dostawców z filtrowaniem. Wymagany parametr settingId. /EN/: List suppliers with filters. settingId query parameter is required.
    */
-  public static async ListSuppliers(settingId: string, status?: string, search?: string, hasSelfBillingAgreement?: boolean, top?: number, skip?: number): Promise<IOperationResult<void>> {
+  public static async ListSuppliers(settingId: string, status?: string, search?: string, hasSelfBillingAgreement?: boolean, top?: number, skip?: number): Promise<IOperationResult<SupplierListResponse>> {
     const params: { settingId: string, status?: string, search?: string, hasSelfBillingAgreement?: boolean, top?: number, skip?: number } = { settingId, status, search, hasSelfBillingAgreement, top, skip };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string, status?: string, search?: string, hasSelfBillingAgreement?: boolean, top?: number, skip?: number }, SupplierListResponse>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -524,27 +1269,12 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Get Supplier
-   */
-  public static async GetSupplier(id: string): Promise<IOperationResult<void>> {
-    const params: { id: string } = { id };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
-      {
-        connectorOperation: {
-          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
-          operationName: 'GetSupplier',
-          parameters: params
-        },
-      });
-    return result;
-  }
-
-  /**
    * Create Supplier
+   * /PL/: Tworzy nowego dostawcę. NIP musi mieć poprawną sumę kontrolną. /EN/: Create a new supplier. NIP must have a valid checksum.
    */
-  public static async CreateSupplier(body: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { body: Record<string, unknown> } = { body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+  public static async CreateSupplier(body: SupplierCreate): Promise<IOperationResult<void>> {
+    const params: { body: SupplierCreate } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: SupplierCreate }, void>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -556,15 +1286,15 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Update Supplier
+   * Get Supplier
    */
-  public static async UpdateSupplier(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { id: string, body: Record<string, unknown> } = { id, body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+  public static async GetSupplier(id: string): Promise<IOperationResult<Supplier>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Supplier>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
-          operationName: 'UpdateSupplier',
+          operationName: 'GetSupplier',
           parameters: params
         },
       });
@@ -576,7 +1306,7 @@ export class DVLP_KSeF_PP_ConnectorService {
    */
   public static async DeleteSupplier(id: string): Promise<IOperationResult<void>> {
     const params: { id: string } = { id };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, void>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -588,11 +1318,29 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Get Supplier Stats
+   * Update Supplier
+   * Partially update an existing supplier.
    */
-  public static async GetSupplierStats(id: string): Promise<IOperationResult<void>> {
+  public static async UpdateSupplier(id: string, body: SupplierUpdate): Promise<IOperationResult<Supplier>> {
+    const params: { id: string, body: SupplierUpdate } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body: SupplierUpdate }, Supplier>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'UpdateSupplier',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Supplier Stats
+   * /PL/: Statystyki dostawcy — liczba faktur, kwoty, zaległości. /EN/: Supplier statistics — invoice count, amounts, overdue payments.
+   */
+  public static async GetSupplierStats(id: string): Promise<IOperationResult<SupplierStats>> {
     const params: { id: string } = { id };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, SupplierStats>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -605,10 +1353,11 @@ export class DVLP_KSeF_PP_ConnectorService {
 
   /**
    * Refresh Supplier Stats
+   * Force recalculation of cached supplier statistics.
    */
-  public static async RefreshSupplierStats(id: string): Promise<IOperationResult<void>> {
+  public static async RefreshSupplierStats(id: string): Promise<IOperationResult<SupplierStats>> {
     const params: { id: string } = { id };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, SupplierStats>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -621,10 +1370,11 @@ export class DVLP_KSeF_PP_ConnectorService {
 
   /**
    * Get Supplier Invoices
+   * List invoices for a specific supplier.
    */
-  public static async GetSupplierInvoices(id: string): Promise<IOperationResult<void>> {
+  public static async GetSupplierInvoices(id: string): Promise<IOperationResult<InvoiceListResponse>> {
     const params: { id: string } = { id };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, InvoiceListResponse>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -636,11 +1386,12 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Refresh Supplier VAT
+   * Refresh Supplier VAT Data
+   * /PL/: Odświeża dane dostawcy z rejestru VAT (Biała Lista). /EN/: Refresh supplier data from VAT White List.
    */
-  public static async RefreshSupplierVat(id: string): Promise<IOperationResult<void>> {
+  public static async RefreshSupplierVat(id: string): Promise<IOperationResult<Supplier>> {
     const params: { id: string } = { id };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Supplier>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -652,11 +1403,12 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Create Supplier from VAT
+   * Create Supplier from VAT Registry
+   * /PL/: Tworzy dostawcę na podstawie danych z rejestru VAT. Podaj NIP i settingId. /EN/: Create a supplier using VAT White List data. Provide NIP and settingId.
    */
   public static async CreateSupplierFromVat(body: Record<string, unknown>): Promise<IOperationResult<void>> {
     const params: { body: Record<string, unknown> } = { body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, void>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -667,14 +1419,149 @@ export class DVLP_KSeF_PP_ConnectorService {
     return result;
   }
 
-  // ── Self-Billing Agreements ──
+  /**
+   * Extract Suppliers from Invoices
+   * Scans all KSeF invoices for the setting, extracts unique seller NIPs, and creates Supplier records for those not already existing.
+   */
+  public static async ExtractSuppliersFromInvoices(body: Record<string, unknown>): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ExtractSuppliersFromInvoices',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * List Supplier Attachments
+   * Returns all attachments for a supplier.
+   */
+  public static async ListSupplierAttachments(id: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ListSupplierAttachments',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Upload Supplier Attachment
+   * Uploads a base64-encoded file attachment to a supplier.
+   */
+  public static async UploadSupplierAttachment(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { id: string, body: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body: Record<string, unknown> }, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'UploadSupplierAttachment',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * List Supplier Notes
+   * Returns all notes for a supplier.
+   */
+  public static async ListSupplierNotes(id: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ListSupplierNotes',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Create Supplier Note
+   * Creates a note on a supplier record.
+   */
+  public static async CreateSupplierNote(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { id: string, body: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body: Record<string, unknown> }, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'CreateSupplierNote',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Import Suppliers from File
+   * Imports suppliers from CSV or Excel file. Returns a preview with validation results for confirmation.
+   */
+  public static async ImportSuppliers(settingId: string, body: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { settingId: string, body: string } = { settingId, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string, body: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ImportSuppliers',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Confirm Supplier Import
+   * Confirms and executes the supplier import based on previously validated rows.
+   */
+  public static async ConfirmSupplierImport(body: Record<string, unknown>): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ConfirmSupplierImport',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Download Supplier Import Template
+   * Downloads a blank CSV or Excel template for supplier import.
+   */
+  public static async GetSupplierImportTemplate(format?: string): Promise<IOperationResult<unknown>> {
+    const params: { format?: string } = { format };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ format?: string }, unknown>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetSupplierImportTemplate',
+          parameters: params
+        },
+      });
+    return result;
+  }
 
   /**
    * List Self-Billing Agreements
+   * /PL/: Lista umów samofakturowania. Wymagany parametr settingId. /EN/: List self-billing agreements. settingId is required.
    */
-  public static async ListSbAgreements(settingId: string, supplierId?: string, status?: string, top?: number, skip?: number): Promise<IOperationResult<void>> {
+  public static async ListSbAgreements(settingId: string, supplierId?: string, status?: string, top?: number, skip?: number): Promise<IOperationResult<SbAgreementListResponse>> {
     const params: { settingId: string, supplierId?: string, status?: string, top?: number, skip?: number } = { settingId, supplierId, status, top, skip };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string, supplierId?: string, status?: string, top?: number, skip?: number }, SbAgreementListResponse>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -686,27 +1573,12 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Get Self-Billing Agreement
-   */
-  public static async GetSbAgreement(id: string): Promise<IOperationResult<void>> {
-    const params: { id: string } = { id };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
-      {
-        connectorOperation: {
-          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
-          operationName: 'GetSbAgreement',
-          parameters: params
-        },
-      });
-    return result;
-  }
-
-  /**
    * Create Self-Billing Agreement
+   * /PL/: Tworzy nową umowę samofakturowania. Dostawca musi istnieć i być aktywny. /EN/: Create a new self-billing agreement. Supplier must exist and be active.
    */
-  public static async CreateSbAgreement(body: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { body: Record<string, unknown> } = { body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+  public static async CreateSbAgreement(body: SbAgreementCreate): Promise<IOperationResult<void>> {
+    const params: { body: SbAgreementCreate } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: SbAgreementCreate }, void>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -718,11 +1590,27 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
+   * Get Self-Billing Agreement
+   */
+  public static async GetSbAgreement(id: string): Promise<IOperationResult<SbAgreement>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, SbAgreement>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetSbAgreement',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
    * Update Self-Billing Agreement
    */
-  public static async UpdateSbAgreement(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { id: string, body: Record<string, unknown> } = { id, body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+  public static async UpdateSbAgreement(id: string, body: SbAgreementUpdate): Promise<IOperationResult<SbAgreement>> {
+    const params: { id: string, body: SbAgreementUpdate } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body: SbAgreementUpdate }, SbAgreement>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -735,10 +1623,11 @@ export class DVLP_KSeF_PP_ConnectorService {
 
   /**
    * Terminate Self-Billing Agreement
+   * /PL/: Rozwiązuje umowę samofakturowania. Status zmienia się na Terminated. /EN/: Terminate the agreement. Status changes to Terminated.
    */
-  public static async TerminateSbAgreement(id: string): Promise<IOperationResult<void>> {
+  public static async TerminateSbAgreement(id: string): Promise<IOperationResult<SbAgreement>> {
     const params: { id: string } = { id };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, SbAgreement>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -750,11 +1639,11 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * List Self-Billing Agreement Attachments
+   * List Agreement Attachments
    */
-  public static async ListSbAgreementAttachments(id: string): Promise<IOperationResult<void>> {
+  public static async ListSbAgreementAttachments(id: string): Promise<IOperationResult<Record<string, unknown>>> {
     const params: { id: string } = { id };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -766,11 +1655,12 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Upload Self-Billing Agreement Attachment
+   * Upload Agreement Attachment
+   * Upload a document (e.g., signed agreement PDF) to an agreement.
    */
-  public static async UploadSbAgreementAttachment(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { id: string, body: Record<string, unknown> } = { id, body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+  public static async UploadSbAgreementAttachment(id: string, file: unknown, description?: string): Promise<IOperationResult<void>> {
+    const params: { id: string, file: unknown, description?: string } = { id, file, description };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, file: unknown, description?: string }, void>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -781,14 +1671,13 @@ export class DVLP_KSeF_PP_ConnectorService {
     return result;
   }
 
-  // ── Self-Billing Templates ──
-
   /**
    * List Self-Billing Templates
+   * /PL/: Lista szablonów pozycji samofakturowania. Wymagany parametr settingId. /EN/: List self-billing invoice item templates. settingId is required.
    */
-  public static async ListSbTemplates(settingId: string, supplierId?: string, isActive?: boolean): Promise<IOperationResult<void>> {
+  public static async ListSbTemplates(settingId: string, supplierId?: string, isActive?: boolean): Promise<IOperationResult<SbTemplateListResponse>> {
     const params: { settingId: string, supplierId?: string, isActive?: boolean } = { settingId, supplierId, isActive };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string, supplierId?: string, isActive?: boolean }, SbTemplateListResponse>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -800,27 +1689,11 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Get Self-Billing Template
-   */
-  public static async GetSbTemplate(id: string): Promise<IOperationResult<void>> {
-    const params: { id: string } = { id };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
-      {
-        connectorOperation: {
-          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
-          operationName: 'GetSbTemplate',
-          parameters: params
-        },
-      });
-    return result;
-  }
-
-  /**
    * Create Self-Billing Template
    */
-  public static async CreateSbTemplate(body: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { body: Record<string, unknown> } = { body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+  public static async CreateSbTemplate(body: SbTemplateCreate): Promise<IOperationResult<void>> {
+    const params: { body: SbTemplateCreate } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: SbTemplateCreate }, void>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -832,15 +1705,15 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Update Self-Billing Template
+   * Get Self-Billing Template
    */
-  public static async UpdateSbTemplate(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { id: string, body: Record<string, unknown> } = { id, body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+  public static async GetSbTemplate(id: string): Promise<IOperationResult<SbTemplate>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, SbTemplate>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
-          operationName: 'UpdateSbTemplate',
+          operationName: 'GetSbTemplate',
           parameters: params
         },
       });
@@ -852,7 +1725,7 @@ export class DVLP_KSeF_PP_ConnectorService {
    */
   public static async DeleteSbTemplate(id: string): Promise<IOperationResult<void>> {
     const params: { id: string } = { id };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, void>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -864,11 +1737,28 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
+   * Update Self-Billing Template
+   */
+  public static async UpdateSbTemplate(id: string, body: SbTemplateUpdate): Promise<IOperationResult<SbTemplate>> {
+    const params: { id: string, body: SbTemplateUpdate } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body: SbTemplateUpdate }, SbTemplate>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'UpdateSbTemplate',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
    * Duplicate Self-Billing Template
+   * /PL/: Duplikuje szablon dla innego dostawcy. /EN/: Duplicate a template for another supplier.
    */
   public static async DuplicateSbTemplate(body: Record<string, unknown>): Promise<IOperationResult<void>> {
     const params: { body: Record<string, unknown> } = { body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, void>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -879,14 +1769,13 @@ export class DVLP_KSeF_PP_ConnectorService {
     return result;
   }
 
-  // ── Self-Billing Invoices ──
-
   /**
    * List Self-Billing Invoices
+   * /PL/: Lista faktur samofakturowania. Wymagany parametr settingId. /EN/: List self-billing invoices with filtering. settingId is required.
    */
-  public static async ListSelfBillingInvoices(settingId: string, supplierId?: string, status?: string, dateFrom?: string, dateTo?: string, top?: number, skip?: number): Promise<IOperationResult<void>> {
+  public static async ListSelfBillingInvoices(settingId: string, supplierId?: string, status?: string, dateFrom?: string, dateTo?: string, top?: number, skip?: number): Promise<IOperationResult<SelfBillingInvoiceListResponse>> {
     const params: { settingId: string, supplierId?: string, status?: string, dateFrom?: string, dateTo?: string, top?: number, skip?: number } = { settingId, supplierId, status, dateFrom, dateTo, top, skip };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string, supplierId?: string, status?: string, dateFrom?: string, dateTo?: string, top?: number, skip?: number }, SelfBillingInvoiceListResponse>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -899,10 +1788,11 @@ export class DVLP_KSeF_PP_ConnectorService {
 
   /**
    * Create Self-Billing Invoice
+   * /PL/: Tworzy nową fakturę samofakturowania. Wymagane agreementId lub supplierId. /EN/: Create a self-billing invoice. Either agreementId or supplierId is required.
    */
-  public static async CreateSelfBillingInvoice(body: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { body: Record<string, unknown> } = { body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+  public static async CreateSelfBillingInvoice(body: SelfBillingInvoiceCreate): Promise<IOperationResult<void>> {
+    const params: { body: SelfBillingInvoiceCreate } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: SelfBillingInvoiceCreate }, void>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -915,10 +1805,11 @@ export class DVLP_KSeF_PP_ConnectorService {
 
   /**
    * Preview Self-Billing Invoice
+   * /PL/: Podgląd generowanej faktury bez zapisywania. /EN/: Preview a generated invoice without saving.
    */
-  public static async PreviewSelfBillingInvoice(body: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { body: Record<string, unknown> } = { body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+  public static async PreviewSelfBillingInvoice(body: SelfBillingInvoiceCreate): Promise<IOperationResult<SelfBillingInvoice>> {
+    const params: { body: SelfBillingInvoiceCreate } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: SelfBillingInvoiceCreate }, SelfBillingInvoice>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -931,10 +1822,11 @@ export class DVLP_KSeF_PP_ConnectorService {
 
   /**
    * Generate Self-Billing Invoices
+   * /PL/: Generuje faktury samofakturowania na podstawie szablonów dla wybranego okresu. Zwraca podgląd (preview) do potwierdzenia. /EN/: Generate self-billing invoices from templates for a given period. Returns a preview for confirmation.
    */
-  public static async GenerateSelfBillingInvoices(body: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { body: Record<string, unknown> } = { body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+  public static async GenerateSelfBillingInvoices(body: SelfBillingGenerateRequest): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { body: SelfBillingGenerateRequest } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: SelfBillingGenerateRequest }, Record<string, unknown>>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -946,11 +1838,12 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Confirm Generated Self-Billing
+   * Confirm Generated Self-Billing Invoices
+   * /PL/: Zatwierdza wygenerowane faktury i zapisuje je w Dataverse. /EN/: Confirm and save generated invoices to Dataverse.
    */
-  public static async ConfirmGeneratedSelfBilling(body: Record<string, unknown>): Promise<IOperationResult<void>> {
+  public static async ConfirmGeneratedSelfBilling(body: Record<string, unknown>): Promise<IOperationResult<SelfBillingBatchResult>> {
     const params: { body: Record<string, unknown> } = { body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, SelfBillingBatchResult>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -963,10 +1856,11 @@ export class DVLP_KSeF_PP_ConnectorService {
 
   /**
    * Batch Create Self-Billing Invoices
+   * /PL/: Tworzenie wielu faktur samofakturowania jednocześnie (max 100). /EN/: Create multiple self-billing invoices at once (max 100).
    */
-  public static async BatchCreateSelfBillingInvoices(body: Record<string, unknown>): Promise<IOperationResult<void>> {
+  public static async BatchCreateSelfBillingInvoices(body: Record<string, unknown>): Promise<IOperationResult<SelfBillingBatchResult>> {
     const params: { body: Record<string, unknown> } = { body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, SelfBillingBatchResult>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -978,11 +1872,11 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Update Self-Billing Status
+   * Update Self-Billing Invoice Status
    */
-  public static async UpdateSelfBillingStatus(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
+  public static async UpdateSelfBillingStatus(id: string, body: Record<string, unknown>): Promise<IOperationResult<SelfBillingInvoice>> {
     const params: { id: string, body: Record<string, unknown> } = { id, body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body: Record<string, unknown> }, SelfBillingInvoice>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -994,11 +1888,12 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Submit for Seller Review
+   * Submit Self-Billing Invoice for Seller Review
+   * /PL/: Wysyła fakturę do akceptacji sprzedawcy. Status: Draft → PendingSeller. /EN/: Submit invoice for seller review. Status: Draft → PendingSeller.
    */
-  public static async SubmitForSellerReview(id: string): Promise<IOperationResult<void>> {
+  public static async SubmitForSellerReview(id: string): Promise<IOperationResult<SelfBillingInvoice>> {
     const params: { id: string } = { id };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, SelfBillingInvoice>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -1010,11 +1905,12 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Seller Approve Invoice
+   * Seller Approve Self-Billing Invoice
+   * /PL/: Sprzedawca akceptuje fakturę. Status: PendingSeller → SellerApproved. /EN/: Seller approves the invoice. Status: PendingSeller → SellerApproved.
    */
-  public static async SellerApproveInvoice(id: string): Promise<IOperationResult<void>> {
+  public static async SellerApproveInvoice(id: string): Promise<IOperationResult<SelfBillingInvoice>> {
     const params: { id: string } = { id };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, SelfBillingInvoice>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -1026,11 +1922,12 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Seller Reject Invoice
+   * Seller Reject Self-Billing Invoice
+   * /PL/: Sprzedawca odrzuca fakturę. Status: PendingSeller → SellerRejected. /EN/: Seller rejects the invoice. Status: PendingSeller → SellerRejected.
    */
-  public static async SellerRejectInvoice(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
+  public static async SellerRejectInvoice(id: string, body: Record<string, unknown>): Promise<IOperationResult<SelfBillingInvoice>> {
     const params: { id: string, body: Record<string, unknown> } = { id, body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body: Record<string, unknown> }, SelfBillingInvoice>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -1042,11 +1939,12 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Send Self-Billing to KSeF
+   * Send Self-Billing Invoice to KSeF
+   * /PL/: Wysyła zaakceptowaną fakturę do KSeF. Status: SellerApproved → SentToKsef. /EN/: Send approved invoice to KSeF. Status: SellerApproved → SentToKsef.
    */
-  public static async SendSelfBillingToKsef(id: string): Promise<IOperationResult<void>> {
+  public static async SendSelfBillingToKsef(id: string): Promise<IOperationResult<Record<string, unknown>>> {
     const params: { id: string } = { id };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -1057,14 +1955,115 @@ export class DVLP_KSeF_PP_ConnectorService {
     return result;
   }
 
-  // ── Self-Billing Import ──
+  /**
+   * Get Self-Billing Invoice
+   * Returns a single self-billing invoice by ID.
+   */
+  public static async GetSelfBillingInvoice(id: string): Promise<IOperationResult<SelfBillingInvoice>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, SelfBillingInvoice>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetSelfBillingInvoice',
+          parameters: params
+        },
+      });
+    return result;
+  }
 
   /**
-   * Import Self-Billing File
+   * Delete Self-Billing Invoice
+   * Deletes a self-billing invoice. Only Draft or SellerRejected invoices can be deleted.
    */
-  public static async ImportSelfBillingFile(settingId: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
-    const params: { settingId: string, body: Record<string, unknown> } = { settingId, body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+  public static async DeleteSelfBillingInvoice(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'DeleteSelfBillingInvoice',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Update Self-Billing Invoice
+   * Updates a draft self-billing invoice. Only invoices with Draft status can be modified.
+   */
+  public static async UpdateSelfBillingInvoice(id: string, body: Record<string, unknown>): Promise<IOperationResult<SelfBillingInvoice>> {
+    const params: { id: string, body: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body: Record<string, unknown> }, SelfBillingInvoice>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'UpdateSelfBillingInvoice',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Revert Self-Billing Invoice
+   * Reverts a self-billing invoice back to Draft status. Cannot revert Draft or SentToKsef invoices.
+   */
+  public static async RevertSelfBillingInvoice(id: string, body: Record<string, unknown>): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string, body: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body: Record<string, unknown> }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'RevertSelfBillingInvoice',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * List Self-Billing Invoice Notes
+   * Returns all notes for a self-billing invoice.
+   */
+  public static async ListSbInvoiceNotes(id: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ListSbInvoiceNotes',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Create Self-Billing Invoice Note
+   * Creates a note on a self-billing invoice.
+   */
+  public static async CreateSbInvoiceNote(id: string, body: Record<string, unknown>): Promise<IOperationResult<void>> {
+    const params: { id: string, body: Record<string, unknown> } = { id, body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string, body: Record<string, unknown> }, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'CreateSbInvoiceNote',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Import Self-Billing Invoices from File
+   * /PL/: Import faktur z pliku CSV lub Excel. Zwraca podgląd do potwierdzenia. /EN/: Import invoices from CSV or Excel file. Returns preview for confirmation.
+   */
+  public static async ImportSelfBillingFile(settingId: string, file: unknown): Promise<IOperationResult<SelfBillingImportResult>> {
+    const params: { settingId: string, file: unknown } = { settingId, file };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string, file: unknown }, SelfBillingImportResult>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -1077,10 +2076,11 @@ export class DVLP_KSeF_PP_ConnectorService {
 
   /**
    * Confirm Self-Billing Import
+   * /PL/: Zatwierdza zaimportowane faktury i zapisuje je w Dataverse. /EN/: Confirm and save imported invoices.
    */
-  public static async ConfirmSelfBillingImport(body: Record<string, unknown>): Promise<IOperationResult<void>> {
+  public static async ConfirmSelfBillingImport(body: Record<string, unknown>): Promise<IOperationResult<SelfBillingBatchResult>> {
     const params: { body: Record<string, unknown> } = { body };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, SelfBillingBatchResult>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -1092,15 +2092,271 @@ export class DVLP_KSeF_PP_ConnectorService {
   }
 
   /**
-   * Download Self-Billing Template
+   * Download Self-Billing Import Template
+   * /PL/: Pobierz szablon pliku CSV do importu faktur samofakturowania. /EN/: Download CSV template for self-billing invoice import.
    */
-  public static async DownloadSelfBillingTemplate(format?: string): Promise<IOperationResult<void>> {
+  public static async DownloadSelfBillingTemplate(format?: string): Promise<IOperationResult<unknown>> {
     const params: { format?: string } = { format };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, void>(
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ format?: string }, unknown>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
           operationName: 'DownloadSelfBillingTemplate',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Submit Self-Billing Invoices
+   * Submits multiple draft invoices for seller approval. Invoices with auto-approve agreements move directly to SellerApproved.
+   */
+  public static async SbBatchSubmit(body: Record<string, unknown>): Promise<IOperationResult<BatchResult>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, BatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'SbBatchSubmit',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Approve Self-Billing Invoices
+   * Approves multiple PendingSeller invoices (seller approval).
+   */
+  public static async SbBatchApprove(body: Record<string, unknown>): Promise<IOperationResult<BatchResult>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, BatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'SbBatchApprove',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Reject Self-Billing Invoices
+   * Rejects multiple PendingSeller invoices with a reason.
+   */
+  public static async SbBatchReject(body: Record<string, unknown>): Promise<IOperationResult<BatchResult>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, BatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'SbBatchReject',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Send to KSeF
+   * Sends multiple SellerApproved invoices to KSeF.
+   */
+  public static async SbBatchSendKsef(body: Record<string, unknown>): Promise<IOperationResult<BatchResult>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, BatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'SbBatchSendKsef',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Delete Self-Billing Invoices
+   * Deletes multiple Draft or SellerRejected invoices.
+   */
+  public static async SbBatchDelete(body: Record<string, unknown>): Promise<IOperationResult<BatchResult>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, BatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'SbBatchDelete',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Pending Self-Billing Approvals
+   * Returns self-billing invoices pending seller approval. Non-admin users only see invoices for suppliers where they are the contact.
+   */
+  public static async GetSbApprovalsPending(settingId?: string, all?: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { settingId?: string, all?: string } = { settingId, all };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId?: string, all?: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetSbApprovalsPending',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Deactivate Suppliers
+   * Deactivates multiple suppliers in bulk.
+   */
+  public static async SupplierBatchDeactivate(body: Record<string, unknown>): Promise<IOperationResult<BatchResult>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, BatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'SupplierBatchDeactivate',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Reactivate Suppliers
+   * Reactivates multiple suppliers in bulk.
+   */
+  public static async SupplierBatchReactivate(body: Record<string, unknown>): Promise<IOperationResult<BatchResult>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, BatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'SupplierBatchReactivate',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Mark Invoices as Paid
+   * Mark multiple invoices as paid in bulk.
+   */
+  public static async InvoiceBatchMarkPaid(body: BatchIdsRequest): Promise<IOperationResult<BatchResult>> {
+    const params: { body: BatchIdsRequest } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: BatchIdsRequest }, BatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'InvoiceBatchMarkPaid',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Mark Invoices as Unpaid
+   * Revert payment status of multiple invoices in bulk.
+   */
+  public static async InvoiceBatchMarkUnpaid(body: BatchIdsRequest): Promise<IOperationResult<BatchResult>> {
+    const params: { body: BatchIdsRequest } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: BatchIdsRequest }, BatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'InvoiceBatchMarkUnpaid',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Approve Invoices
+   * Approve multiple invoices in bulk.
+   */
+  public static async InvoiceBatchApprove(body: BatchIdsRequest): Promise<IOperationResult<BatchResult>> {
+    const params: { body: BatchIdsRequest } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: BatchIdsRequest }, BatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'InvoiceBatchApprove',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Reject Invoices
+   * Reject multiple invoices in bulk with a comment.
+   */
+  public static async InvoiceBatchReject(body: Record<string, unknown>): Promise<IOperationResult<BatchResult>> {
+    const params: { body: Record<string, unknown> } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: Record<string, unknown> }, BatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'InvoiceBatchReject',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Delete Invoices
+   * Delete multiple invoices in bulk.
+   */
+  public static async InvoiceBatchDelete(body: BatchIdsRequest): Promise<IOperationResult<BatchResult>> {
+    const params: { body: BatchIdsRequest } = { body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ body: BatchIdsRequest }, BatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'InvoiceBatchDelete',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Test KSeF Token Connectivity
+   * /PL/: Testuje połączenie tokena KSeF — sprawdza Key Vault i dostęp do API. /EN/: Test KSeF token connectivity — checks Key Vault and KSeF API access.
+   */
+  public static async TestSettingToken(id: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'TestSettingToken',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Approvers Overview
+   * /PL/: Przegląd zatwierdzających z Entra ID z danymi o przypisanych centrach MPK. /EN/: Overview of approvers from Entra ID with assigned MPK center data.
+   */
+  public static async GetApproversOverview(settingId?: string): Promise<IOperationResult<Record<string, unknown>>> {
+    const params: { settingId?: string } = { settingId };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId?: string }, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetApproversOverview',
           parameters: params
         },
       });

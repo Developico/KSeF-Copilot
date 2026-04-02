@@ -12,6 +12,13 @@
 console.log('[api-connector] Module loading...')
 
 import { DVLP_KSeF_PP_ConnectorService } from '@/generated'
+import type {
+  SupplierCreate,
+  SbAgreementCreate,
+  SbTemplateCreate,
+  SelfBillingInvoiceCreate,
+  SelfBillingGenerateRequest,
+} from '@/generated/models/DVLP_KSeF_PP_ConnectorModel'
 
 console.log('[api-connector] Service class imported OK, type:', typeof DVLP_KSeF_PP_ConnectorService)
 
@@ -486,7 +493,7 @@ export const connectorApi = {
 
     create: (data: Record<string, unknown>) =>
       safeCall('CreateSupplier', () =>
-        DVLP_KSeF_PP_ConnectorService.CreateSupplier(data)
+        DVLP_KSeF_PP_ConnectorService.CreateSupplier(data as unknown as SupplierCreate)
       ),
 
     update: (id: string, data: Record<string, unknown>) =>
@@ -551,7 +558,7 @@ export const connectorApi = {
 
     create: (data: Record<string, unknown>) =>
       safeCall('CreateSbAgreement', () =>
-        DVLP_KSeF_PP_ConnectorService.CreateSbAgreement(data)
+        DVLP_KSeF_PP_ConnectorService.CreateSbAgreement(data as unknown as SbAgreementCreate)
       ),
 
     update: (id: string, data: Record<string, unknown>) =>
@@ -597,7 +604,7 @@ export const connectorApi = {
 
     create: (data: Record<string, unknown>) =>
       safeCall('CreateSbTemplate', () =>
-        DVLP_KSeF_PP_ConnectorService.CreateSbTemplate(data)
+        DVLP_KSeF_PP_ConnectorService.CreateSbTemplate(data as unknown as SbTemplateCreate)
       ),
 
     update: (id: string, data: Record<string, unknown>) =>
@@ -641,17 +648,17 @@ export const connectorApi = {
 
     create: (data: Record<string, unknown>) =>
       safeCall('CreateSelfBillingInvoice', () =>
-        DVLP_KSeF_PP_ConnectorService.CreateSelfBillingInvoice(data)
+        DVLP_KSeF_PP_ConnectorService.CreateSelfBillingInvoice(data as unknown as SelfBillingInvoiceCreate)
       ),
 
     preview: (data: Record<string, unknown>) =>
       safeCall('PreviewSelfBillingInvoice', () =>
-        DVLP_KSeF_PP_ConnectorService.PreviewSelfBillingInvoice(data)
+        DVLP_KSeF_PP_ConnectorService.PreviewSelfBillingInvoice(data as unknown as SelfBillingInvoiceCreate)
       ),
 
     generate: (data: Record<string, unknown>) =>
       safeCall('GenerateSelfBillingInvoices', () =>
-        DVLP_KSeF_PP_ConnectorService.GenerateSelfBillingInvoices(data)
+        DVLP_KSeF_PP_ConnectorService.GenerateSelfBillingInvoices(data as unknown as SelfBillingGenerateRequest)
       ),
 
     confirmGenerated: (data: Record<string, unknown>) =>
@@ -688,6 +695,57 @@ export const connectorApi = {
       safeCall('SendSelfBillingToKsef', () =>
         DVLP_KSeF_PP_ConnectorService.SendSelfBillingToKsef(id)
       ),
+
+    get: (id: string) =>
+      safeCall('GetSelfBillingInvoice', () =>
+        DVLP_KSeF_PP_ConnectorService.GetSelfBillingInvoice(id)
+      ),
+
+    revertToDraft: (id: string, reason: string) =>
+      safeCall('RevertSelfBillingInvoice', () =>
+        DVLP_KSeF_PP_ConnectorService.RevertSelfBillingInvoice(id, { reason })
+      ),
+
+    batchSubmit: (invoiceIds: string[]) =>
+      safeCall('SbBatchSubmit', () =>
+        DVLP_KSeF_PP_ConnectorService.SbBatchSubmit({ invoiceIds })
+      ),
+
+    batchApprove: (invoiceIds: string[]) =>
+      safeCall('SbBatchApprove', () =>
+        DVLP_KSeF_PP_ConnectorService.SbBatchApprove({ invoiceIds })
+      ),
+
+    batchReject: (invoiceIds: string[], reason: string) =>
+      safeCall('SbBatchReject', () =>
+        DVLP_KSeF_PP_ConnectorService.SbBatchReject({ invoiceIds, reason })
+      ),
+
+    batchSendToKsef: (invoiceIds: string[]) =>
+      safeCall('SbBatchSendKsef', () =>
+        DVLP_KSeF_PP_ConnectorService.SbBatchSendKsef({ invoiceIds })
+      ),
+
+    batchDelete: (invoiceIds: string[]) =>
+      safeCall('SbBatchDelete', () =>
+        DVLP_KSeF_PP_ConnectorService.SbBatchDelete({ invoiceIds })
+      ),
+
+    listNotes: (sbInvoiceId: string) =>
+      safeCall('ListSbInvoiceNotes', () =>
+        DVLP_KSeF_PP_ConnectorService.ListSbInvoiceNotes(sbInvoiceId)
+      ),
+
+    createNote: (sbInvoiceId: string, data: Record<string, unknown>) =>
+      safeCall('CreateSbInvoiceNote', () =>
+        DVLP_KSeF_PP_ConnectorService.CreateSbInvoiceNote(sbInvoiceId, data)
+      ),
+
+    updateNote: (_noteId: string, _data: Record<string, unknown>) =>
+      notAvailable('updateNote (self-billing)'),
+
+    deleteNote: (_noteId: string) =>
+      notAvailable('deleteNote (self-billing)'),
   },
 
   // ── Self-Billing Import ──

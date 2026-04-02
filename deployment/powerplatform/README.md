@@ -13,10 +13,12 @@ powerplatform/
 ├── DevelopicoKSeF_0_2_0_0.zip                          # Solucja v0.2.0 — unmanaged
 ├── DevelopicoKSeF_0_3_0_0.zip                          # Solucja v0.3.0 — unmanaged (samofakturowanie)
 ├── DevelopicoKSeF_0_3_0_1.zip                          # Solucja v0.3.0.1 — szablon numeracji faktur SB
+├── DevelopicoKSeF_0_3_5_0.zip                          # Solucja v0.3.5 — zgodność XML z interpretacją KIS
 ├── KSeFCopilotCustomConnectorbyDevelopico_0_1_0_0.zip  # Custom Connector v0.1.0 — unmanaged
 ├── KSeFCopilotCustomConnectorbyDevelopico_0_2_0_0.zip  # Custom Connector v0.2.0 — unmanaged
 ├── KSeFCopilotCustomConnectorbyDevelopico_0_3_0_0.zip  # Custom Connector v0.3.0 — endpointy SB
 ├── KSeFCopilotCustomConnectorbyDevelopico_0_3_0_1.zip  # Custom Connector v0.3.0.1 — sync z solucją
+├── KSeFCopilotCustomConnectorbyDevelopico_0_3_5_0.zip  # Custom Connector v0.3.5 — sync z solucją v0.3.5
 ├── Provision-FullEnvironment.ps1          # Skrypt provisioningu środowiska
 ├── Provision-MpkSchema.ps1                # Skrypt provisioningu schematu MPK
 ├── Provision-SelfBillingSchema.ps1         # Skrypt provisioningu kolumn SB (szablon numeracji)
@@ -297,6 +299,12 @@ Plik solucji (`.zip`) zawiera:
 | `KSeFCopilotCustomConnectorbyDevelopico_0_1_0_0.zip` | Custom Connector (unmanaged) | v0.1.0 |
 | `DevelopicoKSeF_0_2_0_0.zip` | Solucja Dataverse (unmanaged) | v0.2.0 |
 | `KSeFCopilotCustomConnectorbyDevelopico_0_2_0_0.zip` | Custom Connector (unmanaged) | v0.2.0 |
+| `DevelopicoKSeF_0_3_0_0.zip` | Solucja Dataverse (unmanaged) | v0.3.0 |
+| `KSeFCopilotCustomConnectorbyDevelopico_0_3_0_0.zip` | Custom Connector (unmanaged) | v0.3.0 |
+| `DevelopicoKSeF_0_3_0_1.zip` | Solucja Dataverse (unmanaged) | v0.3.0.1 |
+| `KSeFCopilotCustomConnectorbyDevelopico_0_3_0_1.zip` | Custom Connector (unmanaged) | v0.3.0.1 |
+| `DevelopicoKSeF_0_3_5_0.zip` | Solucja Dataverse (unmanaged) | v0.3.5 |
+| `KSeFCopilotCustomConnectorbyDevelopico_0_3_5_0.zip` | Custom Connector (unmanaged) | v0.3.5 |
 
 ---
 
@@ -307,11 +315,11 @@ Plik solucji (`.zip`) zawiera:
 ```powershell
 # Solucja Dataverse
 pac solution import `
-    --path "deployment\powerplatform\DevelopicoKSeF_0_2_0_0.zip"
+    --path "deployment\powerplatform\DevelopicoKSeF_0_3_5_0.zip"
 
 # Custom Connector
 pac solution import `
-    --path "deployment\powerplatform\KSeFCopilotCustomConnectorbyDevelopico_0_2_0_0.zip"
+    --path "deployment\powerplatform\KSeFCopilotCustomConnectorbyDevelopico_0_3_5_0.zip"
 
 # Sprawdź
 pac solution list
