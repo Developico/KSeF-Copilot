@@ -24,7 +24,7 @@ import { DV, APPROVAL_STATUS, BUDGET_PERIOD } from '../config'
 import { logDataverseInfo } from '../logger'
 import { escapeOData } from '../odata-utils'
 import { mapDvBudgetPeriodToApp } from '../mappers'
-import type { DvInvoice } from '../../../types/dataverse'
+import type { DvInvoice, DvCostDocument } from '../../../types/dataverse'
 import type { BudgetPeriod } from '../../../types/mpk'
 import { mpkCenterService } from './mpk-center-service'
 
@@ -190,7 +190,7 @@ export class BudgetService {
   /**
    * Calculate total utilization for an MPK center within a date range.
    * Sums grossAmountPln ?? grossAmount (D19) for all APPROVED invoices
-   * assigned to this MPK within the period.
+   * AND approved cost documents assigned to this MPK within the period.
    */
   private async calculateUtilization(
     mpkCenterId: string,
@@ -199,28 +199,50 @@ export class BudgetService {
   ): Promise<{ utilized: number; invoiceCount: number }> {
     const inv = DV.invoice
 
-    const conditions = [
+    // --- Invoice utilization ---
+    const invConditions = [
       `${inv.mpkCenterLookup} eq ${escapeOData(mpkCenterId)}`,
       `${inv.approvalStatus} eq ${APPROVAL_STATUS.APPROVED}`,
       `${inv.invoiceDate} ge ${periodStart}`,
       `${inv.invoiceDate} le ${periodEnd}`,
     ]
 
-    const select = [inv.id, inv.grossAmount, inv.grossAmountPln].join(',')
-    const query = `$filter=${conditions.join(' and ')}&$select=${select}`
+    const invSelect = [inv.id, inv.grossAmount, inv.grossAmountPln].join(',')
+    const invQuery = `$filter=${invConditions.join(' and ')}&$select=${invSelect}`
 
-    const records = await dataverseClient.listAll<DvInvoice>(inv.entitySet, query)
+    const invRecords = await dataverseClient.listAll<DvInvoice>(inv.entitySet, invQuery)
 
     let utilized = 0
-    for (const record of records) {
+    for (const record of invRecords) {
       const r = record as unknown as Record<string, unknown>
       const grossPln = r[inv.grossAmountPln] as number | undefined
       const gross = r[inv.grossAmount] as number | undefined
-      // D19: grossAmountPln ?? grossAmount
       utilized += grossPln ?? gross ?? 0
     }
 
-    return { utilized: Math.round(utilized * 100) / 100, invoiceCount: records.length }
+    // --- Cost document utilization ---
+    const cd = DV.costDocument
+    const cdConditions = [
+      `${cd.mpkCenterLookup} eq ${escapeOData(mpkCenterId)}`,
+      `${cd.approvalStatus} eq ${APPROVAL_STATUS.APPROVED}`,
+      `${cd.documentDate} ge ${periodStart}`,
+      `${cd.documentDate} le ${periodEnd}`,
+    ]
+
+    const cdSelect = [cd.id, cd.grossAmount, cd.grossAmountPln].join(',')
+    const cdQuery = `$filter=${cdConditions.join(' and ')}&$select=${cdSelect}`
+
+    const cdRecords = await dataverseClient.listAll<DvCostDocument>(cd.entitySet, cdQuery)
+
+    for (const record of cdRecords) {
+      const r = record as unknown as Record<string, unknown>
+      const grossPln = r[cd.grossAmountPln] as number | undefined
+      const gross = r[cd.grossAmount] as number | undefined
+      utilized += grossPln ?? gross ?? 0
+    }
+
+    const totalCount = invRecords.length + cdRecords.length
+    return { utilized: Math.round(utilized * 100) / 100, invoiceCount: totalCount }
   }
 
   /**

@@ -260,3 +260,116 @@ export const NotificationTypeValues = {
   BudgetExceeded: 3,
   ApprovalDecided: 4,
 } as const
+
+// ============================================================
+// Cost Document Entity
+// ============================================================
+
+export const CostDocumentEntity = {
+  entitySet: process.env.DV_ENTITY_COSTDOCUMENT || 'dvlp_ksefcostdocuments',
+  fields: {
+    id: 'dvlp_ksefcostdocumentid',
+    name: 'dvlp_name',
+    documentType: 'dvlp_documenttype',
+    documentNumber: 'dvlp_documentnumber',
+    documentDate: 'dvlp_documentdate',
+    dueDate: 'dvlp_duedate',
+    description: 'dvlp_description',
+    issuerName: 'dvlp_issuername',
+    issuerNip: 'dvlp_issuernip',
+    issuerAddress: 'dvlp_issueraddress',
+    issuerCity: 'dvlp_issuercity',
+    issuerPostalCode: 'dvlp_issuerpostalcode',
+    issuerCountry: 'dvlp_issuercountry',
+    netAmount: 'dvlp_netamount',
+    vatAmount: 'dvlp_vatamount',
+    grossAmount: 'dvlp_grossamount',
+    currency: 'dvlp_currency',
+    exchangeRate: 'dvlp_exchangerate',
+    grossAmountPln: 'dvlp_grossamountpln',
+    paymentStatus: 'dvlp_paymentstatus',
+    paidAt: 'dvlp_paidat',
+    costCenter: 'dvlp_costcenter',
+    category: 'dvlp_category',
+    project: 'dvlp_project',
+    tags: 'dvlp_tags',
+    status: 'dvlp_status',
+    source: 'dvlp_source',
+    approvalStatus: 'dvlp_approvalstatus',
+    approvedBy: 'dvlp_approvedby',
+    approvedByOid: 'dvlp_approvedbyoid',
+    approvedAt: 'dvlp_approvedat',
+    approvalComment: 'dvlp_approvalcomment',
+    aiMpkSuggestion: 'dvlp_aimpksuggestion',
+    aiCategorySuggestion: 'dvlp_aicategorysuggestion',
+    aiDescription: 'dvlp_aidescription',
+    aiConfidence: 'dvlp_aiconfidence',
+    aiProcessedAt: 'dvlp_aiprocessedat',
+    document: 'dvlp_doc',
+    documentName: 'dvlp_doc_name',
+    notes: 'dvlp_notes',
+    mpkCenterId: '_dvlp_mpkcenterid_value',
+    mpkCenterIdBind: 'dvlp_mpkcenterid@odata.bind',
+    settingId: '_dvlp_settingid_value',
+    settingIdBind: 'dvlp_settingid@odata.bind',
+  },
+}
+
+/**
+ * Cost document type choice values
+ * Must match Dataverse dvlp_costdocumenttype OptionSet
+ */
+export const CostDocumentTypeValues = {
+  Receipt: 100000000,          // Paragon
+  Acknowledgment: 100000001,   // Pokwitowanie
+  ProForma: 100000002,         // Pro forma
+  DebitNote: 100000003,        // Nota księgowa
+  Bill: 100000004,             // Rachunek
+  ContractInvoice: 100000005,  // Umowa zlecenie / o dzieło
+  Other: 100000006,            // Inne
+} as const
+
+export function getCostDocumentTypeKey(
+  value: number | null | undefined
+): 'Receipt' | 'Acknowledgment' | 'ProForma' | 'DebitNote' | 'Bill' | 'ContractInvoice' | 'Other' {
+  if (value === null || value === undefined) return 'Other'
+  const entries = Object.entries(CostDocumentTypeValues)
+  const found = entries.find(([, v]) => v === value)
+  return (found?.[0] as 'Receipt' | 'Acknowledgment' | 'ProForma' | 'DebitNote' | 'Bill' | 'ContractInvoice' | 'Other') || 'Other'
+}
+
+/**
+ * Cost document status choice values
+ */
+export const CostDocumentStatusValues = {
+  Draft: 100000000,
+  Active: 100000001,
+  Cancelled: 100000002,
+} as const
+
+export function getCostDocumentStatusKey(
+  value: number | null | undefined
+): 'Draft' | 'Active' | 'Cancelled' {
+  if (value === null || value === undefined) return 'Draft'
+  const entries = Object.entries(CostDocumentStatusValues)
+  const found = entries.find(([, v]) => v === value)
+  return (found?.[0] as 'Draft' | 'Active' | 'Cancelled') || 'Draft'
+}
+
+/**
+ * Cost document source choice values
+ */
+export const CostDocumentSourceValues = {
+  Manual: 100000000,
+  OCR: 100000001,
+  Import: 100000002,
+} as const
+
+export function getCostDocumentSourceKey(
+  value: number | null | undefined
+): 'Manual' | 'OCR' | 'Import' {
+  if (value === null || value === undefined) return 'Manual'
+  const entries = Object.entries(CostDocumentSourceValues)
+  const found = entries.find(([, v]) => v === value)
+  return (found?.[0] as 'Manual' | 'OCR' | 'Import') || 'Manual'
+}

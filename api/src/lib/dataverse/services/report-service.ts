@@ -9,13 +9,14 @@
  */
 
 import { dataverseClient } from '../client'
-import { DV, APPROVAL_STATUS, INVOICE_SOURCE } from '../config'
+import { DV, APPROVAL_STATUS, INVOICE_SOURCE, COST_DOCUMENT_TYPE } from '../config'
 import { logDataverseInfo } from '../logger'
 import { escapeOData } from '../odata-utils'
 import { mapDvApprovalStatusToApp, mapDvCurrencyToApp } from '../mappers'
+import { getCostDocumentTypeKey } from '../entities'
 import { budgetService } from './budget-service'
 import { mpkCenterService } from './mpk-center-service'
-import type { DvInvoice } from '../../../types/dataverse'
+import type { DvInvoice, DvCostDocument } from '../../../types/dataverse'
 import type { BudgetStatus } from './budget-service'
 import type { AuthUser } from '../../../types/api'
 
@@ -110,6 +111,41 @@ export interface ProcessingPipelineReport {
     avgClassifyDays: number | null
     avgApproveDays: number | null
     avgTotalDays: number | null
+  }
+}
+
+// ── Cost Distribution ──
+
+export interface CostDistributionByType {
+  documentType: string
+  count: number
+  totalGross: number
+  totalNet: number
+  percent: number  // 0–100
+}
+
+export interface CostDistributionByCategory {
+  category: string
+  count: number
+  totalGross: number
+  percent: number
+}
+
+export interface CostDistributionByMonth {
+  month: string  // YYYY-MM
+  byType: Record<string, number>
+  total: number
+}
+
+export interface CostDistributionReport {
+  byType: CostDistributionByType[]
+  byCategory: CostDistributionByCategory[]
+  byMonth: CostDistributionByMonth[]
+  totals: {
+    totalDocuments: number
+    totalGross: number
+    totalNet: number
+    totalVat: number
   }
 }
 
@@ -553,6 +589,89 @@ export class ReportService {
         avgApproveDays: avg(allApprove),
         avgTotalDays: avg(allTotal),
       },
+    }
+  }
+
+  /**
+   * Cost distribution report.
+   * Aggregates cost documents by type, category, and month.
+   */
+  async getCostDistribution(settingId: string): Promise<CostDistributionReport> {
+    logDataverseInfo('ReportService.getCostDistribution', 'Generating cost distribution report', {
+      settingId,
+    })
+
+    const s = DV.costDocument
+    const filter = `${s.settingLookup} eq '${escapeOData(settingId)}'`
+    const select = [s.documentType, s.category, s.documentDate, s.grossAmount, s.netAmount, s.vatAmount].join(',')
+
+    const query = `$filter=${filter}&$select=${select}`
+    const docs = await dataverseClient.listAll<DvCostDocument>(s.entitySet, query)
+    const totalDocuments = docs.length
+    const totalGross = docs.reduce((sum, d) => sum + (Number(d[s.grossAmount as keyof DvCostDocument]) || 0), 0)
+    const totalNet = docs.reduce((sum, d) => sum + (Number(d[s.netAmount as keyof DvCostDocument]) || 0), 0)
+    const totalVat = docs.reduce((sum, d) => sum + (Number(d[s.vatAmount as keyof DvCostDocument]) || 0), 0)
+
+    // ── By document type ──
+    const typeMap = new Map<string, { count: number; totalGross: number; totalNet: number }>()
+    for (const d of docs) {
+      const typeKey = getCostDocumentTypeKey(d[s.documentType as keyof DvCostDocument] as number | undefined) || 'Other'
+      const entry = typeMap.get(typeKey) ?? { count: 0, totalGross: 0, totalNet: 0 }
+      entry.count++
+      entry.totalGross += Number(d[s.grossAmount as keyof DvCostDocument]) || 0
+      entry.totalNet += Number(d[s.netAmount as keyof DvCostDocument]) || 0
+      typeMap.set(typeKey, entry)
+    }
+    const byType: CostDistributionByType[] = Array.from(typeMap.entries())
+      .map(([documentType, v]) => ({
+        documentType,
+        count: v.count,
+        totalGross: v.totalGross,
+        totalNet: v.totalNet,
+        percent: totalGross > 0 ? Math.round((v.totalGross / totalGross) * 10000) / 100 : 0,
+      }))
+      .sort((a, b) => b.totalGross - a.totalGross)
+
+    // ── By category ──
+    const catMap = new Map<string, { count: number; totalGross: number }>()
+    for (const d of docs) {
+      const cat = (d[s.category as keyof DvCostDocument] as string) || 'Uncategorized'
+      const entry = catMap.get(cat) ?? { count: 0, totalGross: 0 }
+      entry.count++
+      entry.totalGross += Number(d[s.grossAmount as keyof DvCostDocument]) || 0
+      catMap.set(cat, entry)
+    }
+    const byCategory: CostDistributionByCategory[] = Array.from(catMap.entries())
+      .map(([category, v]) => ({
+        category,
+        count: v.count,
+        totalGross: v.totalGross,
+        percent: totalGross > 0 ? Math.round((v.totalGross / totalGross) * 10000) / 100 : 0,
+      }))
+      .sort((a, b) => b.totalGross - a.totalGross)
+
+    // ── By month + type (stacked bar) ──
+    const monthMap = new Map<string, { byType: Record<string, number>; total: number }>()
+    for (const d of docs) {
+      const dateVal = d[s.documentDate as keyof DvCostDocument] as string | undefined
+      const month = dateVal ? dateVal.substring(0, 7) : 'Unknown'
+      const typeKey = getCostDocumentTypeKey(d[s.documentType as keyof DvCostDocument] as number | undefined) || 'Other'
+      const gross = Number(d[s.grossAmount as keyof DvCostDocument]) || 0
+
+      const entry = monthMap.get(month) ?? { byType: {}, total: 0 }
+      entry.byType[typeKey] = (entry.byType[typeKey] || 0) + gross
+      entry.total += gross
+      monthMap.set(month, entry)
+    }
+    const byMonth: CostDistributionByMonth[] = Array.from(monthMap.entries())
+      .map(([month, v]) => ({ month, byType: v.byType, total: v.total }))
+      .sort((a, b) => a.month.localeCompare(b.month))
+
+    return {
+      byType,
+      byCategory,
+      byMonth,
+      totals: { totalDocuments, totalGross, totalNet, totalVat },
     }
   }
 }

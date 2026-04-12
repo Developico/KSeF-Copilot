@@ -1,9 +1,8 @@
 /**
  * Approval SLA Check Timer Trigger
  *
- * Runs every hour to find PENDING invoices that have exceeded the SLA
- * configured on their MPK center. Generates notification entries
- * (notification service will be implemented in Phase 5).
+ * Runs every hour to find PENDING invoices and cost documents that have exceeded
+ * the SLA configured on their MPK center. Generates notification entries.
  *
  * Schedule: "0 0 * * * *" = every hour at minute 0
  */
@@ -13,6 +12,7 @@ import { approvalService } from '../lib/dataverse/services'
 import { settingService } from '../lib/dataverse/services'
 import { notificationService } from '../lib/dataverse/services'
 import { mpkCenterService } from '../lib/dataverse/services'
+import { costDocumentService } from '../lib/dataverse/services/cost-document-service'
 
 async function approvalSlaCheckHandler(
   myTimer: Timer,
@@ -71,6 +71,71 @@ async function approvalSlaCheckHandler(
     context.log(`Approval SLA check completed: ${totalOverdue} overdue invoices found`)
   } catch (error) {
     context.error('Approval SLA check failed:', error)
+  }
+
+  // ---------- Cost Document SLA Check ----------
+  try {
+    let totalOverdueCostDocs = 0
+
+    const settings = await settingService.getAll(true)
+    for (const setting of settings) {
+      try {
+        // List cost documents with Pending approval status
+        const result = await costDocumentService.list({
+          settingId: setting.id,
+          approvalStatus: 'Pending',
+        })
+
+        // Cache MPK lookups
+        const mpkCache = new Map<string, { name: string; slaHours?: number }>()
+
+        for (const doc of result.items) {
+          if (!doc.mpkCenterId) continue
+
+          if (!mpkCache.has(doc.mpkCenterId)) {
+            const mpk = await mpkCenterService.getById(doc.mpkCenterId)
+            if (mpk) {
+              mpkCache.set(doc.mpkCenterId, { name: mpk.name, slaHours: mpk.approvalSlaHours })
+            }
+          }
+
+          const mpkInfo = mpkCache.get(doc.mpkCenterId)
+          if (!mpkInfo?.slaHours) continue
+
+          const pendingSince = doc.modifiedOn || doc.createdOn
+          if (!pendingSince) continue
+
+          const hoursElapsed = (Date.now() - new Date(pendingSince).getTime()) / (1000 * 60 * 60)
+
+          if (hoursElapsed > mpkInfo.slaHours) {
+            totalOverdueCostDocs++
+            try {
+              const approvers = await mpkCenterService.getApprovers(doc.mpkCenterId)
+              const recipientIds = approvers.map((a) => a.systemUserId)
+              if (recipientIds.length > 0) {
+                const label = doc.documentNumber || doc.name || doc.id
+                const hoursOverdue = Math.round((hoursElapsed - mpkInfo.slaHours) * 10) / 10
+                await notificationService.createForRecipients(recipientIds, {
+                  settingId: setting.id,
+                  type: 'SlaExceeded',
+                  message: `SLA exceeded: cost document ${label} pending ${hoursOverdue}h (SLA: ${mpkInfo.slaHours}h)`,
+                  costDocumentId: doc.id,
+                  mpkCenterId: doc.mpkCenterId,
+                })
+              }
+            } catch (notifError) {
+              context.warn(`[SLA] Notification failed for cost document ${doc.id}:`, notifError)
+            }
+          }
+        }
+      } catch (settingError) {
+        context.error(`[SLA] Cost doc check failed for setting ${setting.id}:`, settingError)
+      }
+    }
+
+    context.log(`Cost document SLA check completed: ${totalOverdueCostDocs} overdue cost documents found`)
+  } catch (error) {
+    context.error('Cost document SLA check failed:', error)
   }
 }
 

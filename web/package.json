@@ -1,6 +1,6 @@
 {
   "name": "@dvlp-ksef/web",
-  "version": "0.3.5",
+  "version": "1.0.0",
   "private": true,
   "description": "KSeF Copilot — intelligent invoice management",
   "scripts": {

@@ -15,6 +15,7 @@ import {
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
 import { FALLBACK_FORECAST_META, FALLBACK_ANOMALY_META } from '@/lib/forecast-metadata'
+import { useCompanyContext } from '@/contexts/company-context'
 import type {
   DashboardStats,
   ForecastResult,
@@ -63,6 +64,7 @@ import type {
   DvSyncStats,
   DocumentExtractRequest,
   ExtractionResult,
+  CostDocumentExtractionResult,
   KsefTestdataEnvironmentsResponse,
   KsefTestdataPermissionsResponse,
   KsefGrantPermissionsRequest,
@@ -85,6 +87,7 @@ import type {
   ApprovalHistoryReport,
   ApproverPerformanceReport,
   ProcessingPipelineReport,
+  CostDistributionReport,
   AppNotification,
   // Self-Billing
   Supplier,
@@ -109,6 +112,12 @@ import type {
   SupplierImportResult,
   SupplierImportConfirmResult,
   SupplierImportEnrichedRow,
+  // Cost Documents
+  CostDocument,
+  CostDocumentCreate,
+  CostDocumentUpdate,
+  CostDocumentListParams,
+  CostDocumentListResponse,
 } from '@/lib/types'
 
 // ─── Health ──────────────────────────────────────────────────────
@@ -1266,6 +1275,19 @@ export function useExtractDocument(
   })
 }
 
+export function useExtractCostDocument(
+  options?: UseMutationOptions<
+    CostDocumentExtractionResult,
+    Error,
+    DocumentExtractRequest
+  >
+) {
+  return useMutation({
+    mutationFn: (data) => api.documents.extractCost(data),
+    ...options,
+  })
+}
+
 // ─── KSeF Testdata ───────────────────────────────────────────────
 
 export function useKsefTestdataEnvironments(
@@ -1782,6 +1804,18 @@ export function useReportInvoiceProcessing(
   return useQuery({
     queryKey: queryKeys.reportInvoiceProcessing(settingId),
     queryFn: () => api.reports.invoiceProcessing(settingId),
+    enabled: !!settingId,
+    ...options,
+  })
+}
+
+export function useReportCostDistribution(
+  settingId: string,
+  options?: Partial<UseQueryOptions<{ data: CostDistributionReport }>>
+) {
+  return useQuery({
+    queryKey: queryKeys.reportCostDistribution(settingId),
+    queryFn: () => api.reports.costDistribution(settingId),
     enabled: !!settingId,
     ...options,
   })
@@ -2576,3 +2610,108 @@ export function useUploadSbAgreementAttachment(
 }
 
 // ─── SB Import Template Download (removed — templates are now generated client-side) ───
+
+// ─── Cost Documents ──────────────────────────────────────────────
+
+export function useCostDocuments(
+  params?: CostDocumentListParams,
+  options?: Partial<UseQueryOptions<CostDocumentListResponse>>
+) {
+  return useQuery({
+    queryKey: queryKeys.costDocuments(params),
+    queryFn: () => api.costDocuments.list(params),
+    enabled: Boolean(params?.settingId),
+    ...options,
+  })
+}
+
+export function useContextCostDocuments(
+  overrides?: Partial<CostDocumentListParams>
+) {
+  const { selectedCompany } = useCompanyContext()
+  const params: CostDocumentListParams | undefined = selectedCompany?.id
+    ? { settingId: selectedCompany.id, ...overrides }
+    : undefined
+  return useCostDocuments(params, { enabled: Boolean(selectedCompany?.id) })
+}
+
+export function useCostDocument(id: string) {
+  return useQuery({
+    queryKey: queryKeys.costDocument(id),
+    queryFn: () => api.costDocuments.get(id),
+    enabled: Boolean(id),
+  })
+}
+
+export function useCreateCostDocument() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: CostDocumentCreate) => api.costDocuments.create(data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cost-documents'] })
+    },
+  })
+}
+
+export function useUpdateCostDocument() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: CostDocumentUpdate }) =>
+      api.costDocuments.update(id, data),
+    onSuccess: (_d, { id }) => {
+      void qc.invalidateQueries({ queryKey: ['cost-documents'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.costDocument(id) })
+    },
+  })
+}
+
+export function useDeleteCostDocument() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.costDocuments.delete(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cost-documents'] })
+    },
+  })
+}
+
+export function useBatchApproveCostDocuments() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) => api.costDocuments.batchApprove(ids),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cost-documents'] })
+    },
+  })
+}
+
+export function useBatchRejectCostDocuments() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) => api.costDocuments.batchReject(ids),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cost-documents'] })
+    },
+  })
+}
+
+export function useBatchMarkPaidCostDocuments() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) => api.costDocuments.batchMarkPaid(ids),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cost-documents'] })
+    },
+  })
+}
+
+export function useAICostDocCategorize() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { costDocumentId: string }) =>
+      api.costDocuments.aiCategorize(data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cost-documents'] })
+    },
+  })
+}

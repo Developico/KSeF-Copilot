@@ -1,7 +1,7 @@
 /**
  * Document Module
  * 
- * Exports document extraction services for invoice processing.
+ * Exports document extraction services for invoice and cost document processing.
  */
 
 export { extractDocument, resetExtractorClients } from './extractor'
@@ -22,3 +22,14 @@ export {
   isSupportedForExtraction,
   getExtractionType,
 } from './schemas'
+
+// Cost document extraction
+export { extractCostDocument, resetCostDocumentExtractorClients } from './cost-document-extractor'
+export {
+  type ExtractedCostDocumentData,
+  type CostDocumentExtractionResult,
+  type DetectedDocumentType,
+  ExtractedCostDocumentDataSchema,
+  CostDocumentExtractionResultSchema,
+  DetectedDocumentTypeSchema,
+} from './cost-document-schemas'

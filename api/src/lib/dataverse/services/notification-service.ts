@@ -36,6 +36,9 @@ function mapNotificationTypeToApp(value: number | undefined): NotificationType {
     case NOTIFICATION_TYPE.APPROVAL_DECIDED: return 'ApprovalDecided'
     case NOTIFICATION_TYPE.SB_APPROVAL_REQUESTED: return 'SbApprovalRequested'
     case NOTIFICATION_TYPE.SB_APPROVAL_DECIDED: return 'SbApprovalDecided'
+    case NOTIFICATION_TYPE.COST_DOC_APPROVAL_REQUESTED: return 'CostDocApprovalRequested'
+    case NOTIFICATION_TYPE.COST_DOC_APPROVAL_DECIDED: return 'CostDocApprovalDecided'
+    case NOTIFICATION_TYPE.COST_DOC_BUDGET_WARNING: return 'CostDocBudgetWarning'
     default: return 'ApprovalRequested'
   }
 }
@@ -49,6 +52,9 @@ function mapNotificationTypeToDv(type: NotificationType): number {
     case 'ApprovalDecided': return NOTIFICATION_TYPE.APPROVAL_DECIDED
     case 'SbApprovalRequested': return NOTIFICATION_TYPE.SB_APPROVAL_REQUESTED
     case 'SbApprovalDecided': return NOTIFICATION_TYPE.SB_APPROVAL_DECIDED
+    case 'CostDocApprovalRequested': return NOTIFICATION_TYPE.COST_DOC_APPROVAL_REQUESTED
+    case 'CostDocApprovalDecided': return NOTIFICATION_TYPE.COST_DOC_APPROVAL_DECIDED
+    case 'CostDocBudgetWarning': return NOTIFICATION_TYPE.COST_DOC_BUDGET_WARNING
   }
 }
 
@@ -65,6 +71,7 @@ function mapDvToApp(record: DvNotification): Notification {
     isRead: (r[n.isRead] as boolean) || false,
     isDismissed: (r[n.isDismissed] as boolean) || false,
     invoiceId: r[n.invoiceLookup] as string | undefined,
+    costDocumentId: r[n.costDocumentLookup] as string | undefined,
     mpkCenterId: r[n.mpkCenterLookup] as string | undefined,
     createdOn: (r[n.createdOn] as string) || '',
   }
@@ -143,6 +150,9 @@ export class NotificationService {
 
     if (input.invoiceId) {
       body[n.invoiceBind] = `/dvlp_ksefinvoices(${input.invoiceId})`
+    }
+    if (input.costDocumentId) {
+      body[n.costDocumentBind] = `/dvlp_ksefcostdocuments(${input.costDocumentId})`
     }
     if (input.mpkCenterId) {
       body[n.mpkCenterBind] = `/dvlp_ksefmpkcenters(${input.mpkCenterId})`

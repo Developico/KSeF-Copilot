@@ -628,6 +628,40 @@ export interface ProcessingPipelineReport {
   }
 }
 
+// Cost Distribution Report Types
+export interface CostDistributionByType {
+  documentType: string
+  count: number
+  totalGross: number
+  totalNet: number
+  percent: number
+}
+
+export interface CostDistributionByCategory {
+  category: string
+  count: number
+  totalGross: number
+  percent: number
+}
+
+export interface CostDistributionByMonth {
+  month: string
+  byType: Record<string, number>
+  total: number
+}
+
+export interface CostDistributionReport {
+  byType: CostDistributionByType[]
+  byCategory: CostDistributionByCategory[]
+  byMonth: CostDistributionByMonth[]
+  totals: {
+    totalDocuments: number
+    totalGross: number
+    totalNet: number
+    totalVat: number
+  }
+}
+
 // Notification Types
 export type NotificationType =
   | 'ApprovalRequested'
@@ -1359,6 +1393,141 @@ export interface SelfBillingInvoiceUpdateData {
 }
 
 // ============================================================================
+// Cost Document Types
+// ============================================================================
+
+export type CostDocumentType =
+  | 'Receipt'
+  | 'Acknowledgment'
+  | 'ProForma'
+  | 'DebitNote'
+  | 'Bill'
+  | 'ContractInvoice'
+  | 'Other'
+
+export type CostDocumentStatus = 'Draft' | 'Active' | 'Cancelled'
+export type CostDocumentSource = 'Manual' | 'OCR' | 'Import'
+
+export interface CostDocument {
+  id: string
+  name: string
+  documentType: CostDocumentType
+  documentNumber: string
+  documentDate: string
+  dueDate?: string
+  description?: string
+  issuerName: string
+  issuerNip?: string
+  issuerAddress?: string
+  issuerCity?: string
+  issuerPostalCode?: string
+  issuerCountry?: string
+  netAmount: number
+  vatAmount?: number
+  grossAmount: number
+  currency: string
+  exchangeRate?: number
+  grossAmountPln?: number
+  paymentStatus: string
+  paidAt?: string
+  costCenter?: string
+  category?: string
+  project?: string
+  tags?: string
+  status: CostDocumentStatus
+  source: CostDocumentSource
+  approvalStatus?: string
+  approvedBy?: string
+  approvedByOid?: string
+  approvedAt?: string
+  approvalComment?: string
+  aiMpkSuggestion?: string
+  aiCategorySuggestion?: string
+  aiDescription?: string
+  aiConfidence?: number
+  aiProcessedAt?: string
+  documentFileName?: string
+  notes?: string
+  settingId: string
+  mpkCenterId?: string
+  createdOn: string
+  modifiedOn?: string
+}
+
+export interface CostDocumentCreate {
+  documentType: CostDocumentType
+  documentNumber: string
+  documentDate: string
+  dueDate?: string
+  description?: string
+  issuerName: string
+  issuerNip?: string
+  issuerAddress?: string
+  issuerCity?: string
+  issuerPostalCode?: string
+  issuerCountry?: string
+  netAmount?: number
+  vatAmount?: number
+  grossAmount: number
+  currency?: string
+  exchangeRate?: number
+  grossAmountPln?: number
+  costCenter?: string
+  category?: string
+  project?: string
+  tags?: string
+  notes?: string
+  settingId: string
+  mpkCenterId?: string
+}
+
+export interface CostDocumentUpdate {
+  documentType?: CostDocumentType
+  documentNumber?: string
+  documentDate?: string
+  dueDate?: string
+  description?: string
+  issuerName?: string
+  issuerNip?: string
+  grossAmount?: number
+  currency?: string
+  costCenter?: string
+  category?: string
+  project?: string
+  tags?: string
+  notes?: string
+  mpkCenterId?: string
+  approvalStatus?: string
+  paymentStatus?: string
+}
+
+export interface CostDocumentListParams {
+  settingId?: string
+  documentType?: CostDocumentType
+  paymentStatus?: string
+  mpkCenterId?: string
+  approvalStatus?: string
+  status?: CostDocumentStatus
+  search?: string
+  dateFrom?: string
+  dateTo?: string
+  top?: number
+  skip?: number
+}
+
+export interface CostDocumentListResponse {
+  items: CostDocument[]
+  count?: number
+}
+
+export interface CostDocumentSummary {
+  total: number
+  byType: Record<string, number>
+  byStatus: Record<string, number>
+  totalAmount: number
+}
+
+// ============================================================================
 // API client
 // ============================================================================
 
@@ -1861,6 +2030,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+    extractCost: (data: DocumentExtractRequest) =>
+      apiFetch<CostDocumentExtractionResult>('/api/documents/extract-cost', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   },
 
   // KSeF Test Data (for test/demo environments)
@@ -2118,6 +2292,9 @@ export const api = {
 
     invoiceProcessing: (settingId: string) =>
       apiFetch<{ data: ProcessingPipelineReport }>(`/api/reports/invoice-processing?settingId=${encodeURIComponent(settingId)}`),
+
+    costDistribution: (settingId: string) =>
+      apiFetch<{ data: CostDistributionReport }>(`/api/reports/cost-distribution?settingId=${encodeURIComponent(settingId)}`),
   },
 
   // ============================================================================
@@ -2244,6 +2421,64 @@ export const api = {
       apiFetch<void>(`/api/sb-templates/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     duplicate: (id: string) =>
       apiFetch<SbTemplate>(`/api/sb-templates/${encodeURIComponent(id)}/duplicate`, { method: 'POST' }),
+  },
+
+  // ============================================================================
+  // Cost Documents
+  // ============================================================================
+
+  costDocuments: {
+    list: (params?: CostDocumentListParams) => {
+      const sp = new URLSearchParams()
+      if (params?.settingId) sp.append('settingId', params.settingId)
+      if (params?.documentType) sp.append('documentType', params.documentType)
+      if (params?.paymentStatus) sp.append('paymentStatus', params.paymentStatus)
+      if (params?.mpkCenterId) sp.append('mpkCenterId', params.mpkCenterId)
+      if (params?.approvalStatus) sp.append('approvalStatus', params.approvalStatus)
+      if (params?.status) sp.append('status', params.status)
+      if (params?.search) sp.append('search', params.search)
+      if (params?.dateFrom) sp.append('dateFrom', params.dateFrom)
+      if (params?.dateTo) sp.append('dateTo', params.dateTo)
+      if (params?.top) sp.append('top', String(params.top))
+      if (params?.skip) sp.append('skip', String(params.skip))
+      return apiFetch<CostDocumentListResponse>(`/api/cost-documents?${sp}`)
+    },
+    get: (id: string) => apiFetch<CostDocument>(`/api/cost-documents/${encodeURIComponent(id)}`),
+    create: (data: CostDocumentCreate) =>
+      apiFetch<CostDocument>('/api/cost-documents', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: CostDocumentUpdate) =>
+      apiFetch<CostDocument>(`/api/cost-documents/${encodeURIComponent(id)}`, {
+        method: 'PATCH', body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      apiFetch<void>(`/api/cost-documents/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    summary: (settingId: string) =>
+      apiFetch<CostDocumentSummary>(`/api/cost-documents/summary?settingId=${encodeURIComponent(settingId)}`),
+    // AI Categorize
+    aiCategorize: (data: { costDocumentId: string }) =>
+      apiFetch<{ categorization: { mpk?: string; mpkCenterId?: string; category?: string; description?: string; confidence?: number } }>(
+        '/api/cost-documents/ai-categorize', { method: 'POST', body: JSON.stringify(data) }
+      ),
+    // Batch operations
+    batchApprove: (ids: string[]) =>
+      apiFetch<BatchActionResult>('/api/cost-documents/batch/approve', { method: 'POST', body: JSON.stringify({ ids }) }),
+    batchReject: (ids: string[]) =>
+      apiFetch<BatchActionResult>('/api/cost-documents/batch/reject', { method: 'POST', body: JSON.stringify({ ids }) }),
+    batchMarkPaid: (ids: string[]) =>
+      apiFetch<BatchActionResult>('/api/cost-documents/batch/mark-paid', { method: 'POST', body: JSON.stringify({ ids }) }),
+    // Notes
+    listNotes: (id: string) =>
+      apiFetch<{ notes: Note[]; count: number }>(`/api/cost-documents/${encodeURIComponent(id)}/notes`),
+    createNote: (id: string, data: NoteCreate) =>
+      apiFetch<Note>(`/api/cost-documents/${encodeURIComponent(id)}/notes`, {
+        method: 'POST', body: JSON.stringify(data),
+      }),
+    // Attachments
+    listAttachments: (id: string) =>
+      apiFetch<{ attachments: Attachment[]; count: number }>(`/api/cost-documents/${encodeURIComponent(id)}/attachments`),
+    // Import
+    importTemplate: () =>
+      apiFetch<Blob>('/api/cost-documents/import/template', { headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } }),
   },
 
   // ============================================================================
@@ -2538,6 +2773,8 @@ export const queryKeys = {
     ['reports', 'approver-performance', settingId] as const,
   reportInvoiceProcessing: (settingId: string) =>
     ['reports', 'invoice-processing', settingId] as const,
+  reportCostDistribution: (settingId: string) =>
+    ['reports', 'cost-distribution', settingId] as const,
 
   // Suppliers
   suppliers: (params?: SupplierListParams) => ['suppliers', params] as const,
@@ -2562,6 +2799,13 @@ export const queryKeys = {
   selfBillingInvoiceNotes: (id: string) => ['self-billing', 'invoices', id, 'notes'] as const,
   sbPendingApprovals: (settingId?: string) =>
     ['self-billing', 'approvals', 'pending', settingId] as const,
+
+  // Cost Documents
+  costDocuments: (params?: CostDocumentListParams) => ['cost-documents', params] as const,
+  costDocument: (id: string) => ['cost-documents', id] as const,
+  costDocumentSummary: (settingId: string) => ['cost-documents', 'summary', settingId] as const,
+  costDocumentNotes: (id: string) => ['cost-documents', id, 'notes'] as const,
+  costDocumentAttachments: (id: string) => ['cost-documents', id, 'attachments'] as const,
 }
 
 // ============================================================================
@@ -2626,6 +2870,47 @@ export interface DocumentExtractRequest {
   fileName: string
   mimeType: string
   content: string // base64
+}
+
+// ============================================================================
+// Cost Document Extraction Types
+// ============================================================================
+
+export interface ExtractedCostDocumentData {
+  documentType?: CostDocumentType
+  documentNumber?: string
+  issueDate?: string
+  dueDate?: string
+  issuerName?: string
+  issuerNip?: string
+  issuerAddress?: ExtractedAddress
+  issuerBankAccount?: string
+  buyerName?: string
+  buyerNip?: string
+  netAmount?: number
+  vatAmount?: number
+  grossAmount?: number
+  currency?: string
+  items?: ExtractedItem[]
+  paymentMethod?: string
+  bankAccountNumber?: string
+  contractNumber?: string
+  contractDate?: string
+  serviceDescription?: string
+  suggestedMpk?: string
+  suggestedCategory?: string
+  suggestedDescription?: string
+}
+
+export interface CostDocumentExtractionResult {
+  success: boolean
+  data?: ExtractedCostDocumentData
+  confidence: number
+  extractedAt: string
+  sourceType: 'pdf' | 'image'
+  processingTimeMs?: number
+  rawText?: string
+  error?: string
 }
 
 // ============================================================================

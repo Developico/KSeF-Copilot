@@ -20,6 +20,7 @@ import {
   Building2,
   ShieldCheck,
   Receipt,
+  Wallet,
 } from 'lucide-react'
 import { useCompanyContext } from '@/contexts/company-context'
 import { useAuth } from '@/components/auth/auth-provider'
@@ -48,6 +49,7 @@ const navigationSections: NavigationSection[] = [
     items: [
       { nameKey: 'navigation.dashboard', icon: LayoutDashboard, href: '/' },
       { nameKey: 'navigation.invoices', icon: FileText, href: '/invoices' },
+      { nameKey: 'navigation.costs', icon: Wallet, href: '/costs' },
       { nameKey: 'navigation.approvals', icon: ShieldCheck, href: '/approvals' },
     ],
   },

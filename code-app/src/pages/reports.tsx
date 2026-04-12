@@ -51,6 +51,7 @@ import {
 import { BudgetUtilizationTab } from '@/components/reports/budget-utilization-tab'
 import { ApproverPerformanceTab } from '@/components/reports/approver-performance-tab'
 import { InvoiceProcessingTab } from '@/components/reports/invoice-processing-tab'
+import { CostDistributionTab } from '@/components/reports/cost-distribution-tab'
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -377,6 +378,10 @@ export function ReportsPage() {
           <TabsTrigger value="processing" className="gap-1.5">
             <Workflow className="h-4 w-4" />
             {intl.formatMessage({ id: 'reports.processingTab' })}
+          </TabsTrigger>
+          <TabsTrigger value="costDistribution" className="gap-1.5">
+            <Receipt className="h-4 w-4" />
+            {intl.formatMessage({ id: 'reports.costDistributionTab' })}
           </TabsTrigger>
         </TabsList>
 
@@ -748,6 +753,11 @@ export function ReportsPage() {
         {/* ── Processing tab ───────────────────────────────── */}
         <TabsContent value="processing">
           <InvoiceProcessingTab />
+        </TabsContent>
+
+        {/* ── Cost Distribution tab ────────────────────────── */}
+        <TabsContent value="costDistribution">
+          <CostDistributionTab />
         </TabsContent>
       </Tabs>
     </div>

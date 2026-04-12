@@ -17,6 +17,8 @@ export type PromptName =
   | 'categorization'
   | 'vision-extraction'
   | 'pdf-text-extraction'
+  | 'cost-document-vision-extraction'
+  | 'cost-document-pdf-text-extraction'
 
 // Cache for loaded prompts (loaded once at startup)
 const promptCache = new Map<PromptName, string>()

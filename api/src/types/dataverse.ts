@@ -216,6 +216,7 @@ export interface DvNotification {
   dvlp_isread: boolean
   dvlp_isdismissed: boolean
   '_dvlp_invoiceid_value'?: string
+  '_dvlp_costdocumentid_value'?: string
   '_dvlp_mpkcenterid_value'?: string
   createdon: string
 }
@@ -465,4 +466,74 @@ export type DvSbLineItemCreate = Omit<DvSbLineItem,
 
 export type DvSbLineItemUpdate = Partial<Omit<DvSbLineItem,
   'dvlp_ksefselfbillinglineitemid' | 'createdon' | 'modifiedon'
+>>
+
+// ============================================================
+// KSeF Cost Document (dvlp_ksefcostdocument)
+// ============================================================
+
+export interface DvCostDocument {
+  dvlp_ksefcostdocumentid: string
+  dvlp_name: string // Document number (primary name)
+  dvlp_documenttype: number // CostDocumentType OptionSet
+  dvlp_documentnumber: string
+  dvlp_documentdate: string
+  dvlp_duedate?: string
+  dvlp_description?: string
+  // Issuer (counterparty)
+  dvlp_issuername: string
+  dvlp_issuernip?: string
+  dvlp_issueraddress?: string
+  dvlp_issuercity?: string
+  dvlp_issuerpostalcode?: string
+  dvlp_issuercountry?: string
+  // Amounts
+  dvlp_netamount?: number
+  dvlp_vatamount?: number
+  dvlp_grossamount: number
+  dvlp_currency: number // Currency OptionSet
+  dvlp_exchangerate?: number
+  dvlp_grossamountpln?: number
+  // Payment
+  dvlp_paymentstatus: number // PaymentStatus OptionSet
+  dvlp_paidat?: string
+  // Classification
+  dvlp_costcenter?: number // Legacy MPK OptionSet
+  dvlp_category?: string
+  dvlp_project?: string
+  dvlp_tags?: string
+  // Document status
+  dvlp_status: number // CostDocumentStatus OptionSet
+  dvlp_source: number // CostDocumentSource OptionSet
+  // Approval workflow
+  dvlp_approvalstatus?: number
+  dvlp_approvedby?: string
+  dvlp_approvedbyoid?: string
+  dvlp_approvedat?: string
+  dvlp_approvalcomment?: string
+  // AI fields
+  dvlp_aimpksuggestion?: number
+  dvlp_aicategorysuggestion?: string
+  dvlp_aidescription?: string
+  dvlp_aiconfidence?: number
+  dvlp_aiprocessedat?: string
+  // Document (File column)
+  dvlp_doc?: string
+  dvlp_doc_name?: string
+  // Notes (stored as annotation, not a direct field)
+  dvlp_notes?: string
+  // Relations (Lookups)
+  '_dvlp_settingid_value'?: string
+  '_dvlp_mpkcenterid_value'?: string
+  // Standard fields
+  createdon: string
+  modifiedon: string
+}
+
+export type DvCostDocumentCreate = Omit<DvCostDocument,
+  'dvlp_ksefcostdocumentid' | 'createdon' | 'modifiedon'
+>
+
+export type DvCostDocumentUpdate = Partial<Omit<DvCostDocument,
+  'dvlp_ksefcostdocumentid' | 'createdon' | 'modifiedon'
 >>

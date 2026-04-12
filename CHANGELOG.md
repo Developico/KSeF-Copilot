@@ -16,6 +16,44 @@ Projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.0.0] — 2026-06-22
+
+### Dodane — Moduł dokumentów kosztowych
+
+Nowy moduł obsługi 7 typów dokumentów kosztowych (nie-VAT): Paragon, Pokwitowanie, Pro forma, Nota księgowa, Rachunek, Umowa zlecenie/o dzieło, Inne.
+
+#### Warstwa danych (Dataverse)
+- Nowa tabela `dvlp_ksefcostdocument` z 15+ kolumnami
+- Globalny OptionSet `dvlp_costdocumenttype` (7 wartości: 100000000–100000006)
+- Skrypt `Provision-CostDocumentSchema.ps1` — automatyczne tworzenie schematu
+
+#### API (18 endpointów)
+- CRUD: `GET/POST /cost-documents`, `GET/PATCH/DELETE /cost-documents/{id}`
+- Operacje batch: `POST /cost-documents/batch/approve|reject|mark-paid`
+- AI kategoryzacja: `POST /cost-documents/ai-categorize`
+- Notatki: `GET/POST /cost-documents/{id}/notes`
+- Załączniki: `GET/POST /cost-documents/{id}/attachments`
+- Import: `POST /cost-documents/import`, `POST /cost-documents/import/confirm`, `GET /cost-documents/import/template`
+- Raport: `GET /reports/cost-distribution` — rozkład kosztów wg typu, kategorii, miesiąca
+- OCR: ekstrakcja danych z dokumentów via Azure OpenAI
+
+#### Powiadomienia (3 nowe typy)
+- `CostDocApprovalRequested` (7) — wniosek o zatwierdzenie
+- `CostDocApprovalDecided` (8) — decyzja zatwierdzenia/odrzucenia
+- `CostDocBudgetWarning` (9) — ostrzeżenie o przekroczeniu budżetu MPK
+- `approval-sla-check` rozszerzony o dokumenty kosztowe
+
+#### Integracja z budżetami
+- `BudgetService.calculateUtilization()` sumuje koszty z faktur i dokumentów kosztowych
+- Forecast API uwzględnia dokumenty kosztowe w prognozach
+
+### Dodane — UI (Web App + Code App)
+- Strona `/costs` — lista z filtrami, zaznaczanie grupowe, operacje batch, formularz tworzenia, dialog szczegółów, AI kategoryzacja
+- Zakładka „Dokumenty kosztowe" w raportach — 4 KPI, wykres kołowy, top kategorie, stacked bar chart, tabela szczegółów
+- Nowe klucze i18n: `costs` (38 kluczy), `reports.costDistribution` (19 kluczy), `navigation.costs` — PL + EN
+
+---
+
 ## [0.3.5] — 2026-04-01
 
 ### Dodane — Zgodność XML z interpretacją KIS (Self-Billing)

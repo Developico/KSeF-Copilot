@@ -10,6 +10,9 @@ export type NotificationType =
   | 'ApprovalDecided'
   | 'SbApprovalRequested'
   | 'SbApprovalDecided'
+  | 'CostDocApprovalRequested'
+  | 'CostDocApprovalDecided'
+  | 'CostDocBudgetWarning'
 
 export interface Notification {
   id: string
@@ -21,6 +24,7 @@ export interface Notification {
   isRead: boolean
   isDismissed: boolean
   invoiceId?: string
+  costDocumentId?: string
   mpkCenterId?: string
   createdOn: string
 }
@@ -31,5 +35,6 @@ export interface CreateNotificationInput {
   type: NotificationType
   message: string
   invoiceId?: string
+  costDocumentId?: string
   mpkCenterId?: string
 }

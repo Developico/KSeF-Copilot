@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Building2,
   Receipt,
+  Wallet,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -43,6 +44,7 @@ const navigationSections: NavigationSection[] = [
     items: [
       { nameKey: 'navigation.dashboard', icon: LayoutDashboard, href: '/' },
       { nameKey: 'navigation.invoices', icon: FileText, href: '/invoices', allowedRoles: ['User', 'Admin'] },
+      { nameKey: 'navigation.costs', icon: Wallet, href: '/costs', allowedRoles: ['User', 'Admin'] },
       { nameKey: 'navigation.approvals', icon: ShieldCheck, href: '/approvals' },
     ],
   },

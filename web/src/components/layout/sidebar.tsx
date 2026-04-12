@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Building2,
   Receipt,
+  Wallet,
 } from 'lucide-react'
 import { useHasRole, useAuth, type UserRole } from '@/components/auth/auth-provider'
 import { useContextPendingApprovals, useContextPendingSbApprovals } from '@/hooks/use-api'
@@ -47,6 +48,7 @@ const navigationSections: NavigationSection[] = [
     items: [
       { nameKey: 'dashboard', icon: LayoutDashboard, href: '/' },
       { nameKey: 'invoices', icon: FileText, href: '/invoices', allowedRoles: ['User', 'Admin'] },
+      { nameKey: 'costs', icon: Wallet, href: '/costs', allowedRoles: ['User', 'Admin'] },
       { nameKey: 'approvals', icon: ShieldCheck, href: '/approvals' },
     ],
   },
@@ -128,7 +130,7 @@ export function Sidebar({ className }: SidebarProps) {
                   {section.items.map((item) => {
                     const Icon = item.icon
                     const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
-                    const name = t(item.nameKey as 'dashboard' | 'invoices' | 'approvals' | 'reports' | 'forecast' | 'suppliers' | 'selfBilling' | 'sync' | 'settings')
+                    const name = t(item.nameKey as 'dashboard' | 'invoices' | 'costs' | 'approvals' | 'reports' | 'forecast' | 'suppliers' | 'selfBilling' | 'sync' | 'settings')
 
                     if (item.disabled) {
                       return (

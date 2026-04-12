@@ -6,6 +6,30 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.0.0] - 2026-04-12
+
+### 📋 Moduł dokumentów kosztowych
+
+Nowy moduł obsługi 7 typów dokumentów kosztowych (nie-VAT): Paragon, Pokwitowanie, Pro forma, Nota księgowa, Rachunek, Umowa zlecenie/o dzieło, Inne.
+
+#### Warstwa danych i API
+- Nowa tabela Dataverse `dvlp_ksefcostdocument` z pełnym schematem (15+ kolumn)
+- 18 endpointów API: CRUD, operacje batch, AI kategoryzacja, notatki, załączniki, import CSV/Excel, raporty, OCR
+- 3 nowe typy powiadomień: wniosek o zatwierdzenie, decyzja, ostrzeżenie budżetowe
+- Integracja z budżetami MPK i prognozami
+
+#### Frontend
+- Strona kosztów — lista z filtrami, zaznaczanie grupowe, operacje batch
+- Formularz tworzenia dokumentu kosztowego z OCR i AI kategoryzacją
+- Dialog szczegółów dokumentu z notatkami, załącznikami i historią approval
+- Zakładka „Dokumenty kosztowe" w raportach — KPI, wykres kołowy, top kategorie, stacked bar chart
+
+### 🌐 i18n
+
+- Nowe klucze tłumaczeń: `costs` (38 kluczy), `reports.costDistribution` (19 kluczy), `navigation.costs` — PL + EN
+
+---
+
 ## [0.9.4] - 2026-04-01
 
 ### 📋 Samofakturowanie — zgodność XML z interpretacją KIS

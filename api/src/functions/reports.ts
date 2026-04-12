@@ -151,6 +151,39 @@ async function invoiceProcessingHandler(
   }
 }
 
+/**
+ * GET /api/reports/cost-distribution
+ */
+async function costDistributionHandler(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  try {
+    const auth = await verifyAuth(request)
+    if (!auth.success || !auth.user) {
+      return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+    }
+
+    const roleCheck = requireRole(auth.user, 'Reader')
+    if (!roleCheck.success) {
+      return { status: 403, jsonBody: { error: 'Forbidden — requires Reader role' } }
+    }
+
+    const settingId = request.query.get('settingId')
+    if (!settingId) {
+      return { status: 400, jsonBody: { error: 'settingId query parameter is required' } }
+    }
+
+    const report = await reportService.getCostDistribution(settingId)
+
+    return { status: 200, jsonBody: { data: report } }
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    context.error('Failed to generate cost distribution report:', msg)
+    return { status: 500, jsonBody: { error: `Failed to generate report: ${msg}` } }
+  }
+}
+
 // ── Route registrations ──────────────────────────────────────
 
 app.http('reports-budget-utilization', {
@@ -179,4 +212,11 @@ app.http('reports-invoice-processing', {
   authLevel: 'anonymous',
   route: 'reports/invoice-processing',
   handler: invoiceProcessingHandler,
+})
+
+app.http('reports-cost-distribution', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  route: 'reports/cost-distribution',
+  handler: costDistributionHandler,
 })

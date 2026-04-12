@@ -265,9 +265,75 @@ export const DV = {
     isDismissed: 'dvlp_isdismissed',
     invoiceLookup: '_dvlp_invoiceid_value',
     invoiceBind: 'dvlp_invoiceid@odata.bind',
+    costDocumentLookup: '_dvlp_costdocumentid_value',
+    costDocumentBind: 'dvlp_costdocumentid@odata.bind',
     mpkCenterLookup: '_dvlp_mpkcenterid_value',
     mpkCenterBind: 'dvlp_mpkcenterid@odata.bind',
     createdOn: 'createdon',
+  },
+
+  // ============================================================
+  // KSeF Cost Document (dvlp_ksefcostdocument)
+  // ============================================================
+  costDocument: {
+    entitySet: process.env.DV_ENTITY_COSTDOCUMENT || 'dvlp_ksefcostdocuments',
+    id: 'dvlp_ksefcostdocumentid',
+    name: 'dvlp_name',
+    documentType: 'dvlp_documenttype',
+    documentNumber: 'dvlp_documentnumber',
+    documentDate: 'dvlp_documentdate',
+    dueDate: 'dvlp_duedate',
+    description: 'dvlp_description',
+    // Issuer
+    issuerName: 'dvlp_issuername',
+    issuerNip: 'dvlp_issuernip',
+    issuerAddress: 'dvlp_issueraddress',
+    issuerCity: 'dvlp_issuercity',
+    issuerPostalCode: 'dvlp_issuerpostalcode',
+    issuerCountry: 'dvlp_issuercountry',
+    // Amounts
+    netAmount: 'dvlp_netamount',
+    vatAmount: 'dvlp_vatamount',
+    grossAmount: 'dvlp_grossamount',
+    currency: 'dvlp_currency',
+    exchangeRate: 'dvlp_exchangerate',
+    grossAmountPln: 'dvlp_grossamountpln',
+    // Payment
+    paymentStatus: 'dvlp_paymentstatus',
+    paidAt: 'dvlp_paidat',
+    // Classification
+    costCenter: 'dvlp_costcenter',
+    category: 'dvlp_category',
+    project: 'dvlp_project',
+    tags: 'dvlp_tags',
+    // Status & source
+    status: 'dvlp_status',
+    source: 'dvlp_source',
+    // Approval workflow
+    approvalStatus: 'dvlp_approvalstatus',
+    approvedBy: 'dvlp_approvedby',
+    approvedByOid: 'dvlp_approvedbyoid',
+    approvedAt: 'dvlp_approvedat',
+    approvalComment: 'dvlp_approvalcomment',
+    // AI fields
+    aiMpkSuggestion: 'dvlp_aimpksuggestion',
+    aiCategorySuggestion: 'dvlp_aicategorysuggestion',
+    aiDescription: 'dvlp_aidescription',
+    aiConfidence: 'dvlp_aiconfidence',
+    aiProcessedAt: 'dvlp_aiprocessedat',
+    // Document (File column)
+    document: 'dvlp_doc',
+    documentName: 'dvlp_doc_name',
+    // Notes
+    notes: 'dvlp_notes',
+    // Lookups
+    settingLookup: '_dvlp_settingid_value',
+    settingBind: 'dvlp_settingid@odata.bind',
+    mpkCenterLookup: '_dvlp_mpkcenterid_value',
+    mpkCenterBind: 'dvlp_mpkcenterid@odata.bind',
+    // Standard
+    createdOn: 'createdon',
+    modifiedOn: 'modifiedon',
   },
 
   // ============================================================
@@ -569,6 +635,9 @@ export const NOTIFICATION_TYPE = {
   APPROVAL_DECIDED: 4,
   SB_APPROVAL_REQUESTED: 5,
   SB_APPROVAL_DECIDED: 6,
+  COST_DOC_APPROVAL_REQUESTED: 7,
+  COST_DOC_APPROVAL_DECIDED: 8,
+  COST_DOC_BUDGET_WARNING: 9,
 } as const
 
 export const SUPPLIER_STATUS = {
@@ -597,6 +666,28 @@ export const SELF_BILLING_STATUS = {
   SENT_TO_KSEF: 100000005,
 } as const
 
+export const COST_DOCUMENT_TYPE = {
+  RECEIPT: 100000000,         // Paragon
+  ACKNOWLEDGMENT: 100000001,  // Pokwitowanie
+  PRO_FORMA: 100000002,       // Pro forma
+  DEBIT_NOTE: 100000003,      // Nota księgowa
+  BILL: 100000004,            // Rachunek
+  CONTRACT_INVOICE: 100000005, // Umowa zlecenie / o dzieło
+  OTHER: 100000006,           // Inne
+} as const
+
+export const COST_DOCUMENT_STATUS = {
+  DRAFT: 100000000,
+  ACTIVE: 100000001,
+  CANCELLED: 100000002,
+} as const
+
+export const COST_DOCUMENT_SOURCE = {
+  MANUAL: 100000000,
+  OCR: 100000001,
+  IMPORT: 100000002,
+} as const
+
 // Type exports for type-safe usage
 export type KsefEnvironment = typeof KSEF_ENVIRONMENT[keyof typeof KSEF_ENVIRONMENT]
 export type KsefStatus = typeof KSEF_STATUS[keyof typeof KSEF_STATUS]
@@ -617,3 +708,6 @@ export type SupplierStatusValue = typeof SUPPLIER_STATUS[keyof typeof SUPPLIER_S
 export type SupplierSourceValue = typeof SUPPLIER_SOURCE[keyof typeof SUPPLIER_SOURCE]
 export type SbAgreementStatusValue = typeof SB_AGREEMENT_STATUS[keyof typeof SB_AGREEMENT_STATUS]
 export type SelfBillingStatusValue = typeof SELF_BILLING_STATUS[keyof typeof SELF_BILLING_STATUS]
+export type CostDocumentTypeValue = typeof COST_DOCUMENT_TYPE[keyof typeof COST_DOCUMENT_TYPE]
+export type CostDocumentStatusValue = typeof COST_DOCUMENT_STATUS[keyof typeof COST_DOCUMENT_STATUS]
+export type CostDocumentSourceValue = typeof COST_DOCUMENT_SOURCE[keyof typeof COST_DOCUMENT_SOURCE]

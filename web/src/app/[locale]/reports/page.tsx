@@ -36,6 +36,7 @@ import {
   Wallet,
   Users,
   Workflow,
+  Receipt,
 } from 'lucide-react'
 import { useContextInvoices } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
@@ -45,6 +46,7 @@ import { AnimatedKpiCard, AnimatedCardGrid } from '@/components/dashboard/animat
 import { BudgetUtilizationTab } from '@/components/reports/budget-utilization-tab'
 import { ApproverPerformanceTab } from '@/components/reports/approver-performance-tab'
 import { InvoiceProcessingTab } from '@/components/reports/invoice-processing-tab'
+import { CostDistributionTab } from '@/components/reports/cost-distribution-tab'
 
 interface MonthlyData {
   month: string
@@ -446,6 +448,10 @@ export default function ReportsPage() {
             <Workflow className="mr-2 h-4 w-4" />
             {t('tabs.processing')}
           </TabsTrigger>
+          <TabsTrigger value="costDistribution">
+            <Receipt className="mr-2 h-4 w-4" />
+            {t('tabs.costDistribution')}
+          </TabsTrigger>
         </TabsList>
 
         {/* Monthly Chart */}
@@ -731,6 +737,11 @@ export default function ReportsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Cost Distribution Tab */}
+        <TabsContent value="costDistribution" className="mt-4 md:mt-6">
+          <CostDistributionTab />
         </TabsContent>
       </Tabs>
     </div>

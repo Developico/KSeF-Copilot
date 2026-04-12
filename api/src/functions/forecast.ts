@@ -20,6 +20,7 @@ import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { InvoiceEntity } from '../lib/dataverse/entities'
 import { getMpkKey } from '../lib/dataverse/entities'
 import { escapeOData } from '../lib/dataverse/odata-utils'
+import { DV } from '../lib/dataverse/config'
 import {
   generateForecast,
   parseDateToMonth,
@@ -104,6 +105,64 @@ async function fetchInvoicesForForecast(
 
   const response = await dataverseRequest<{ value: Record<string, unknown>[] }>(path)
   return response.value
+}
+
+/**
+ * Fetch cost documents for forecast period (normalized to invoice record shape).
+ */
+async function fetchCostDocumentsForForecast(
+  historyMonths: number,
+  settingId?: string,
+): Promise<Record<string, unknown>[]> {
+  if (!settingId) return [] // Cost documents require settingId
+
+  const cd = DV.costDocument
+  const today = new Date()
+  const fromDate = new Date(today.getFullYear(), today.getMonth() - historyMonths, 1)
+  const fromStr = fromDate.toISOString().split('T')[0]
+
+  const filters: string[] = [
+    `${cd.documentDate} ge ${fromStr}`,
+    `${cd.settingLookup} eq ${settingId}`,
+  ]
+
+  const selectFields = [
+    cd.id, cd.documentDate, cd.netAmount, cd.grossAmount,
+    cd.mpkCenterLookup, cd.category, cd.issuerNip, cd.issuerName,
+  ].join(',')
+
+  const path = `${cd.entitySet}?$select=${selectFields}&$filter=${filters.join(' and ')}&$orderby=${cd.documentDate} asc&$top=5000`
+
+  const response = await dataverseRequest<{ value: Record<string, unknown>[] }>(path)
+
+  // Normalize to the same shape used by invoice fields for aggregation
+  const f = InvoiceEntity.fields
+  return response.value.map(doc => ({
+    [f.id]: doc[cd.id],
+    [f.invoiceDate]: doc[cd.documentDate],
+    [f.netAmount]: doc[cd.netAmount] || 0,
+    [f.grossAmount]: doc[cd.grossAmount] || 0,
+    [f.mpk]: doc[cd.mpkCenterLookup], // MPK center lookup
+    [f.category]: doc[cd.category],
+    [f.supplierNip]: doc[cd.issuerNip],
+    [f.supplierName]: doc[cd.issuerName],
+    _isCostDocument: true,
+  }))
+}
+
+/**
+ * Fetch combined invoices + cost documents for forecast.
+ */
+async function fetchAllForForecast(
+  historyMonths: number,
+  settingId?: string,
+  tenantNip?: string,
+): Promise<Record<string, unknown>[]> {
+  const [invoices, costDocs] = await Promise.all([
+    fetchInvoicesForForecast(historyMonths, settingId, tenantNip),
+    fetchCostDocumentsForForecast(historyMonths, settingId),
+  ])
+  return [...invoices, ...costDocs]
 }
 
 /**
@@ -196,7 +255,7 @@ async function forecastMonthlyHandler(
     const url = new URL(request.url)
     const { horizon, historyMonths, settingId, tenantNip, algorithm, algorithmConfig } = parseForecastParams(url)
 
-    const invoices = await fetchInvoicesForForecast(historyMonths, settingId, tenantNip)
+    const invoices = await fetchAllForForecast(historyMonths, settingId, tenantNip)
     const monthly = aggregateMonthly(invoices)
     const result = generateForecast(monthly, { horizon, algorithm, algorithmConfig })
 
@@ -223,7 +282,7 @@ async function forecastByMpkHandler(
     const url = new URL(request.url)
     const { horizon, historyMonths, settingId, tenantNip, algorithm, algorithmConfig } = parseForecastParams(url)
 
-    const invoices = await fetchInvoicesForForecast(historyMonths, settingId, tenantNip)
+    const invoices = await fetchAllForForecast(historyMonths, settingId, tenantNip)
     const f = InvoiceEntity.fields
     const grouped = aggregateByGroup(invoices, (inv) => getMpkKey(inv[f.mpk] as number) || 'Other')
 
@@ -258,7 +317,7 @@ async function forecastByCategoryHandler(
     const url = new URL(request.url)
     const { horizon, historyMonths, settingId, tenantNip, algorithm, algorithmConfig } = parseForecastParams(url)
 
-    const invoices = await fetchInvoicesForForecast(historyMonths, settingId, tenantNip)
+    const invoices = await fetchAllForForecast(historyMonths, settingId, tenantNip)
     const f = InvoiceEntity.fields
     const grouped = aggregateByGroup(invoices, (inv) => (inv[f.category] as string) || 'Uncategorized')
 
@@ -293,10 +352,8 @@ async function forecastBySupplierHandler(
     const { horizon, historyMonths, settingId, tenantNip, algorithm, algorithmConfig } = parseForecastParams(url)
     const topN = Math.min(20, parseInt(url.searchParams.get('top') || '10', 10))
 
-    const invoices = await fetchInvoicesForForecast(historyMonths, settingId, tenantNip)
+    const invoices = await fetchAllForForecast(historyMonths, settingId, tenantNip)
     const f = InvoiceEntity.fields
-
-    // Find top N suppliers by total amount first
     const supplierTotals = new Map<string, { name: string; total: number }>()
     for (const inv of invoices) {
       const nip = inv[f.supplierNip] as string

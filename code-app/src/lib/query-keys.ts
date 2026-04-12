@@ -5,7 +5,7 @@
  * cache invalidation across the app.
  */
 
-import type { InvoiceListParams, ForecastParams, AnomalyParams, SupplierListParams, SelfBillingInvoiceListParams } from './types'
+import type { InvoiceListParams, ForecastParams, AnomalyParams, SupplierListParams, SelfBillingInvoiceListParams, CostDocumentListParams } from './types'
 
 export const queryKeys = {
   // Health
@@ -131,6 +131,8 @@ export const queryKeys = {
     ['reports', 'approver-performance', settingId] as const,
   reportInvoiceProcessing: (settingId: string) =>
     ['reports', 'invoice-processing', settingId] as const,
+  reportCostDistribution: (settingId: string) =>
+    ['reports', 'cost-distribution', settingId] as const,
 
   // Suppliers
   suppliers: (params?: SupplierListParams) =>
@@ -160,4 +162,10 @@ export const queryKeys = {
     ['self-billing', 'invoices', id] as const,
   selfBillingInvoiceNotes: (id: string) =>
     ['self-billing', 'invoices', id, 'notes'] as const,
+
+  // Cost Documents
+  costDocuments: (params?: CostDocumentListParams) =>
+    ['cost-documents', 'list', params] as const,
+  costDocument: (id: string) =>
+    ['cost-documents', id] as const,
 }

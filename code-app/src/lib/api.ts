@@ -78,6 +78,7 @@ import type {
   // Document extraction
   DocumentExtractRequest,
   ExtractionResult,
+  CostDocumentExtractionResult,
   // KSeF Testdata
   KsefTestdataEnvironmentsResponse,
   KsefTestdataPermissionsResponse,
@@ -102,6 +103,7 @@ import type {
   ApprovalHistoryReport,
   ApproverPerformanceReport,
   ProcessingPipelineReport,
+  CostDistributionReport,
   AppNotification,
   // Self-Billing
   Supplier,
@@ -127,6 +129,12 @@ import type {
   SupplierImportResult,
   SupplierImportConfirmResult,
   SupplierImportEnrichedRow,
+  // Cost Documents
+  CostDocument,
+  CostDocumentCreate,
+  CostDocumentUpdate,
+  CostDocumentListParams,
+  CostDocumentListResponse,
 } from './types'
 
 // Re-export all types so consumers can import from '@/lib/api'
@@ -680,6 +688,11 @@ const _directApi = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+    extractCost: (data: DocumentExtractRequest) =>
+      apiFetch<CostDocumentExtractionResult>('/api/documents/extract-cost', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   },
 
   // ── KSeF Testdata ──
@@ -950,6 +963,11 @@ const _directApi = {
     invoiceProcessing: (settingId: string) =>
       apiFetch<{ data: ProcessingPipelineReport }>(
         `/api/reports/invoice-processing?settingId=${settingId}`
+      ),
+
+    costDistribution: (settingId: string) =>
+      apiFetch<{ data: CostDistributionReport }>(
+        `/api/reports/cost-distribution?settingId=${settingId}`
       ),
   },
 
@@ -1312,6 +1330,57 @@ const _directApi = {
         '/api/self-billing/invoices/import/confirm',
         { method: 'POST', body: JSON.stringify({ settingId, rows }) },
       ),
+  },
+
+  // ── Cost Documents ──
+  costDocuments: {
+    list: (params?: CostDocumentListParams) => {
+      const qs = new URLSearchParams()
+      if (params?.settingId) qs.append('settingId', params.settingId)
+      if (params?.status) qs.append('status', params.status)
+      if (params?.documentType) qs.append('documentType', params.documentType)
+      if (params?.paymentStatus) qs.append('paymentStatus', params.paymentStatus)
+      if (params?.from) qs.append('from', params.from)
+      if (params?.to) qs.append('to', params.to)
+      const query = qs.toString()
+      return apiFetch<CostDocumentListResponse>(
+        `/api/cost-documents${query ? `?${query}` : ''}`,
+      )
+    },
+    get: (id: string) =>
+      apiFetch<CostDocument>(`/api/cost-documents/${id}`),
+    create: (data: CostDocumentCreate) =>
+      apiFetch<CostDocument>('/api/cost-documents', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: CostDocumentUpdate) =>
+      apiFetch<CostDocument>(`/api/cost-documents/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      apiFetch<void>(`/api/cost-documents/${id}`, { method: 'DELETE' }),
+    batchApprove: (ids: string[]) =>
+      apiFetch<BatchActionResult>('/api/cost-documents/batch/approve', {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+      }),
+    batchReject: (ids: string[]) =>
+      apiFetch<BatchActionResult>('/api/cost-documents/batch/reject', {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+      }),
+    batchMarkPaid: (ids: string[]) =>
+      apiFetch<BatchActionResult>('/api/cost-documents/batch/mark-paid', {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+      }),
+    aiCategorize: (data: { costDocumentId: string }) =>
+      apiFetch<CostDocument>('/api/cost-documents/ai-categorize', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   },
 }
 

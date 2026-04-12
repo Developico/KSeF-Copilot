@@ -4,7 +4,7 @@
  * Uses semicolon separator and BOM for Polish Excel compatibility.
  */
 
-import type { Invoice } from './types'
+import type { Invoice, CostDocument } from './types'
 import { formatDate } from './format'
 
 /** CSV field separator — semicolons work better with Polish Excel. */
@@ -116,5 +116,71 @@ export function exportInvoicesToCsv(
   const filename =
     options?.filename ??
     createExportFilename('invoices', options?.startDate, options?.endDate)
+  downloadFile(csv, filename)
+}
+
+/**
+ * Convert an array of cost documents to a CSV string.
+ */
+export function costDocumentsToCsv(
+  documents: CostDocument[],
+  options?: { locale?: string }
+): string {
+  const locale = options?.locale ?? 'pl-PL'
+
+  const headers = [
+    'Document Type',
+    'Document Number',
+    'Document Date',
+    'Due Date',
+    'Issuer',
+    'Issuer NIP',
+    'Net Amount',
+    'VAT Amount',
+    'Gross Amount',
+    'Currency',
+    'Gross Amount PLN',
+    'Payment Status',
+    'Approval Status',
+    'MPK',
+    'Category',
+    'Project',
+    'Source',
+    'Description',
+  ]
+
+  const rows = documents.map((doc) => [
+    escapeField(doc.documentType),
+    escapeField(doc.documentNumber),
+    escapeField(doc.documentDate ? formatDate(doc.documentDate, locale) : ''),
+    escapeField(doc.dueDate ? formatDate(doc.dueDate, locale) : ''),
+    escapeField(doc.issuerName),
+    escapeField(doc.issuerNip),
+    escapeField(doc.netAmount),
+    escapeField(doc.vatAmount),
+    escapeField(doc.grossAmount),
+    escapeField(doc.currency ?? 'PLN'),
+    escapeField(doc.grossAmountPln ?? doc.grossAmount),
+    escapeField(doc.paymentStatus),
+    escapeField(doc.approvalStatus),
+    escapeField(doc.costCenter),
+    escapeField(doc.category),
+    escapeField(doc.project),
+    escapeField(doc.source),
+    escapeField(doc.description),
+  ])
+
+  return BOM + [headers.join(SEP), ...rows.map((r) => r.join(SEP))].join('\n')
+}
+
+/**
+ * Convenience: convert cost documents to CSV and download.
+ */
+export function exportCostDocumentsToCsv(
+  documents: CostDocument[],
+  options?: { filename?: string; locale?: string }
+): void {
+  const csv = costDocumentsToCsv(documents, { locale: options?.locale })
+  const filename = options?.filename ?? createExportFilename('cost-documents')
   downloadFile(csv, filename)
 }

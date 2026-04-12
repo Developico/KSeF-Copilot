@@ -843,6 +843,45 @@ export interface DocumentExtractRequest {
   content: string // base64
 }
 
+// ─── Cost Document Extraction ────────────────────────────────────
+
+export interface ExtractedCostDocumentData {
+  documentType?: CostDocumentType
+  documentNumber?: string
+  issueDate?: string
+  dueDate?: string
+  issuerName?: string
+  issuerNip?: string
+  issuerAddress?: ExtractedAddress
+  issuerBankAccount?: string
+  buyerName?: string
+  buyerNip?: string
+  netAmount?: number
+  vatAmount?: number
+  grossAmount?: number
+  currency?: string
+  items?: ExtractedItem[]
+  paymentMethod?: string
+  bankAccountNumber?: string
+  contractNumber?: string
+  contractDate?: string
+  serviceDescription?: string
+  suggestedMpk?: string
+  suggestedCategory?: string
+  suggestedDescription?: string
+}
+
+export interface CostDocumentExtractionResult {
+  success: boolean
+  data?: ExtractedCostDocumentData
+  confidence: number
+  extractedAt: string
+  sourceType: 'pdf' | 'image'
+  processingTimeMs?: number
+  rawText?: string
+  error?: string
+}
+
 // ─── AI Categorization ───────────────────────────────────────────
 
 export interface AiCategorizationResult {
@@ -1135,6 +1174,40 @@ export interface ProcessingPipelineReport {
     avgClassifyDays: number | null
     avgApproveDays: number | null
     avgTotalDays: number | null
+  }
+}
+
+// Cost Distribution Report
+export interface CostDistributionByType {
+  documentType: string
+  count: number
+  totalGross: number
+  totalNet: number
+  percent: number
+}
+
+export interface CostDistributionByCategory {
+  category: string
+  count: number
+  totalGross: number
+  percent: number
+}
+
+export interface CostDistributionByMonth {
+  month: string
+  byType: Record<string, number>
+  total: number
+}
+
+export interface CostDistributionReport {
+  byType: CostDistributionByType[]
+  byCategory: CostDistributionByCategory[]
+  byMonth: CostDistributionByMonth[]
+  totals: {
+    totalDocuments: number
+    totalGross: number
+    totalNet: number
+    totalVat: number
   }
 }
 
@@ -1509,4 +1582,115 @@ export interface SupplierImportConfirmResult {
   created: number
   failed: number
   results: Array<{ nip: string; supplierId?: string; agreementId?: string; error?: string }>
+}
+
+// ── Cost Documents ──
+
+export type CostDocumentType =
+  | 'Receipt'
+  | 'Acknowledgment'
+  | 'ProForma'
+  | 'DebitNote'
+  | 'Bill'
+  | 'ContractInvoice'
+  | 'Other'
+
+export type CostDocumentStatus = 'Draft' | 'Active' | 'Cancelled'
+export type CostDocumentSource = 'Manual' | 'OCR' | 'Import'
+
+export interface CostDocument {
+  id: string
+  name: string
+  documentType: CostDocumentType
+  documentNumber: string
+  documentDate: string
+  dueDate?: string
+  description?: string
+  issuerName: string
+  issuerNip?: string
+  issuerAddress?: string
+  issuerCity?: string
+  issuerPostalCode?: string
+  issuerCountry?: string
+  netAmount: number
+  vatAmount?: number
+  grossAmount: number
+  currency: string
+  exchangeRate?: number
+  grossAmountPln?: number
+  paymentStatus: string
+  paidAt?: string
+  costCenter?: string
+  category?: string
+  project?: string
+  tags?: string
+  status: CostDocumentStatus
+  source: CostDocumentSource
+  approvalStatus?: string
+  approvedBy?: string
+  approvedByOid?: string
+  approvedAt?: string
+  approvalComment?: string
+  aiMpkSuggestion?: string
+  aiCategorySuggestion?: string
+  aiDescription?: string
+  aiConfidence?: number
+  aiProcessedAt?: string
+  documentFileName?: string
+  notes?: string
+  settingId: string
+  mpkCenterId?: string
+  createdOn: string
+  modifiedOn?: string
+}
+
+export interface CostDocumentCreate {
+  documentType: CostDocumentType
+  documentNumber: string
+  documentDate: string
+  dueDate?: string
+  description?: string
+  issuerName: string
+  issuerNip?: string
+  netAmount?: number
+  vatAmount?: number
+  grossAmount: number
+  currency?: string
+  category?: string
+  project?: string
+  notes?: string
+  settingId: string
+}
+
+export interface CostDocumentUpdate {
+  documentType?: CostDocumentType
+  documentNumber?: string
+  documentDate?: string
+  dueDate?: string
+  description?: string
+  issuerName?: string
+  issuerNip?: string
+  netAmount?: number
+  vatAmount?: number
+  grossAmount?: number
+  currency?: string
+  paymentStatus?: string
+  category?: string
+  project?: string
+  notes?: string
+  status?: CostDocumentStatus
+}
+
+export interface CostDocumentListParams {
+  settingId: string
+  status?: CostDocumentStatus
+  documentType?: CostDocumentType
+  paymentStatus?: string
+  from?: string
+  to?: string
+}
+
+export interface CostDocumentListResponse {
+  items: CostDocument[]
+  count: number
 }

@@ -1,4 +1,4 @@
-import { Invoice } from './api'
+import { Invoice, CostDocument } from './api'
 
 export interface ExportOptions {
   filename?: string
@@ -132,4 +132,73 @@ export function createExportFilename(
   }
   
   return `${prefix}-${formatDatePart(new Date())}.csv`
+}
+
+/**
+ * Converts cost documents to CSV format
+ */
+export function costDocumentsToCsv(documents: CostDocument[], options: ExportOptions = {}): string {
+  const { includeHeaders = true, dateFormat = 'pl' } = options
+
+  const headers = [
+    'Typ dokumentu',
+    'Numer dokumentu',
+    'Data dokumentu',
+    'Termin płatności',
+    'NIP wystawcy',
+    'Nazwa wystawcy',
+    'Kwota netto',
+    'Kwota VAT',
+    'Kwota brutto',
+    'Waluta',
+    'Kwota brutto PLN',
+    'Status płatności',
+    'Data płatności',
+    'Status akceptacji',
+    'MPK',
+    'Kategoria',
+    'Projekt',
+    'Źródło',
+    'Opis',
+  ]
+
+  const rows = documents.map(doc => [
+    escapeCsvField(doc.documentType),
+    escapeCsvField(doc.documentNumber),
+    formatDate(doc.documentDate, dateFormat),
+    formatDate(doc.dueDate, dateFormat),
+    escapeCsvField(doc.issuerNip),
+    escapeCsvField(doc.issuerName),
+    formatAmount(doc.netAmount || 0),
+    formatAmount(doc.vatAmount || 0),
+    formatAmount(doc.grossAmount),
+    escapeCsvField(doc.currency || 'PLN'),
+    formatAmount(doc.grossAmountPln || doc.grossAmount),
+    doc.paymentStatus === 'paid' ? 'Opłacona' : 'Oczekująca',
+    formatDate(doc.paidAt, dateFormat),
+    escapeCsvField(doc.approvalStatus),
+    escapeCsvField(doc.costCenter),
+    escapeCsvField(doc.category),
+    escapeCsvField(doc.project),
+    escapeCsvField(doc.source),
+    escapeCsvField(doc.description),
+  ])
+
+  const csvRows = includeHeaders
+    ? [headers.join(';'), ...rows.map(row => row.join(';'))]
+    : rows.map(row => row.join(';'))
+
+  return '\ufeff' + csvRows.join('\r\n')
+}
+
+/**
+ * Exports cost documents to CSV file and triggers download
+ */
+export function exportCostDocumentsToCsv(documents: CostDocument[], options: ExportOptions = {}): void {
+  const now = new Date()
+  const dateStr = now.toISOString().split('T')[0]
+  const filename = options.filename || `dokumenty-kosztowe-${dateStr}.csv`
+
+  const csvContent = costDocumentsToCsv(documents, options)
+  downloadFile(csvContent, filename, 'text/csv;charset=utf-8')
 }
