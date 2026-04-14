@@ -41,6 +41,7 @@ import {
   AlertCircle,
   CheckCircle,
   DollarSign,
+  FileText,
   RefreshCw,
   Save,
   Settings,
@@ -56,6 +57,7 @@ import {
   useUpdateCompany,
   useDeleteCompany,
   useGenerateTestData,
+  useGenerateCostDocs,
   useCleanupTestData,
   useCleanupTestDataPreview,
 } from '@/hooks/use-api'
@@ -165,7 +167,20 @@ export default function SettingsPage() {
   const [testDataPaidPercent, setTestDataPaidPercent] = useState(30)
   const [testDataClearBefore, setTestDataClearBefore] = useState(false)
 
+  // Cost document generator state
+  const [costDataCount, setCostDataCount] = useState(10)
+  const [costDataPreset, setCostDataPreset] = useState<string>('custom')
+  const [costDataPaidPercent, setCostDataPaidPercent] = useState(40)
+  const [costDataApprovedPercent, setCostDataApprovedPercent] = useState(60)
+  const [costDataFromDate, setCostDataFromDate] = useState(() => {
+    const sixMonthsAgo = new Date()
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+    return sixMonthsAgo.toISOString().split('T')[0]
+  })
+  const [costDataToDate, setCostDataToDate] = useState(() => new Date().toISOString().split('T')[0])
+
   const generateTestDataMutation = useGenerateTestData()
+  const generateCostDocsMutation = useGenerateCostDocs()
   const cleanupTestDataMutation = useCleanupTestData()
   const { data: cleanupPreview, isLoading: cleanupPreviewLoading } = useCleanupTestDataPreview(
     testDataCompany?.nip,
@@ -327,6 +342,55 @@ export default function SettingsPage() {
         variant: 'destructive',
         title: t('generationError'),
         description: isProductionError 
+          ? `${t('productionNotAllowed')}${detectedEnv ? '\n' + t('environmentDetected', { environment: detectedEnv }) : ''}`
+          : errorMessage || tCommon('error'),
+      })
+    }
+  }
+
+  async function handleGenerateCostDocs() {
+    if (!testDataCompany) {
+      toast({
+        variant: 'destructive',
+        title: tCommon('error'),
+        description: t('companyRequired'),
+      })
+      return
+    }
+
+    try {
+      const result = await generateCostDocsMutation.mutateAsync({
+        nip: testDataCompany.nip,
+        companyId: testDataCompany.id,
+        count: costDataPreset && costDataPreset !== 'custom' ? undefined : costDataCount,
+        preset: costDataPreset && costDataPreset !== 'custom' ? costDataPreset : undefined,
+        fromDate: costDataPreset && costDataPreset !== 'custom' ? undefined : costDataFromDate,
+        toDate: costDataPreset && costDataPreset !== 'custom' ? undefined : costDataToDate,
+        paidPercentage: costDataPaidPercent,
+        approvedPercentage: costDataApprovedPercent,
+      })
+
+      toast({
+        variant: 'success',
+        title: t('costDocsGenerated'),
+        description: t('costDocsGeneratedDesc', {
+          created: result.summary.created,
+          paid: result.summary.paid,
+        }),
+      })
+    } catch (error) {
+      console.error('Cost doc generation error:', error)
+
+      const errorMessage = error instanceof Error ? error.message : ''
+      const isProductionError = errorMessage.includes('only allowed for test and demo') ||
+                                errorMessage.includes('production')
+      const envMatch = errorMessage.match(/\(current: ([^)]+)\)/)
+      const detectedEnv = envMatch ? envMatch[1] : null
+
+      toast({
+        variant: 'destructive',
+        title: t('generationError'),
+        description: isProductionError
           ? `${t('productionNotAllowed')}${detectedEnv ? '\n' + t('environmentDetected', { environment: detectedEnv }) : ''}`
           : errorMessage || tCommon('error'),
       })
@@ -904,6 +968,143 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
+          {/* Cost Document Generator */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                {t('costDocGenerator')}
+              </CardTitle>
+              <CardDescription>
+                {t('costDocGeneratorDesc')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Preset Selection */}
+              <div className="space-y-2">
+                <Label>{t('costDocPreset')}</Label>
+                <Select
+                  value={costDataPreset}
+                  onValueChange={setCostDataPreset}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('costDocPresetPlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="custom">{t('costDocCustom')}</SelectItem>
+                    <SelectItem value="quick">Quick (10) — {t('costDocPresetQuick')}</SelectItem>
+                    <SelectItem value="realistic">Realistic (80) — {t('costDocPresetRealistic')}</SelectItem>
+                    <SelectItem value="stress">Stress (500) — {t('costDocPresetStress')}</SelectItem>
+                    <SelectItem value="approval-flow">Approval Flow (20) — {t('costDocPresetApproval')}</SelectItem>
+                    <SelectItem value="budget-test">Budget Test (30) — {t('costDocPresetBudget')}</SelectItem>
+                    <SelectItem value="multi-currency">Multi-Currency (25) — {t('costDocPresetCurrency')}</SelectItem>
+                    <SelectItem value="overdue">Overdue (20) — {t('costDocPresetOverdue')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">{t('costDocPresetDesc')}</p>
+              </div>
+
+              {/* Count & Date Range (only when custom/no preset) */}
+              {(!costDataPreset || costDataPreset === 'custom') && (
+                <>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label>{t('numberOfCostDocs')}</Label>
+                      <span className="text-sm text-muted-foreground">
+                        {t('costDocsRange', { count: costDataCount })}
+                      </span>
+                    </div>
+                    <Slider
+                      value={[costDataCount]}
+                      onValueChange={(v: number[]) => setCostDataCount(v[0])}
+                      min={1}
+                      max={200}
+                      step={1}
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Date Range */}
+                  <div className="space-y-2">
+                    <Label>{t('dateRange')}</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">{t('from')}</label>
+                        <Input
+                          type="date"
+                          value={costDataFromDate}
+                          onChange={(e) => setCostDataFromDate(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">{t('to')}</label>
+                        <Input
+                          type="date"
+                          value={costDataToDate}
+                          onChange={(e) => setCostDataToDate(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Paid Percentage */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>{t('paidPercentage')}</Label>
+                  <span className="text-sm text-muted-foreground">
+                    {costDataPaidPercent}%
+                  </span>
+                </div>
+                <Slider
+                  value={[costDataPaidPercent]}
+                  onValueChange={(v: number[]) => setCostDataPaidPercent(v[0])}
+                  min={0}
+                  max={100}
+                  step={10}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Approved Percentage */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>{t('approvedPercentage')}</Label>
+                  <span className="text-sm text-muted-foreground">
+                    {costDataApprovedPercent}%
+                  </span>
+                </div>
+                <Slider
+                  value={[costDataApprovedPercent]}
+                  onValueChange={(v: number[]) => setCostDataApprovedPercent(v[0])}
+                  min={0}
+                  max={100}
+                  step={10}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">{t('approvedPercentageDesc')}</p>
+              </div>
+
+              {/* Generate Button */}
+              <Button
+                onClick={handleGenerateCostDocs}
+                disabled={!testDataCompany || generateCostDocsMutation.isPending}
+                className="w-full"
+                size="lg"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {generateCostDocsMutation.isPending ? t('generating') : t('generateCostDocs')}
+              </Button>
+
+              {!testDataCompany && (
+                <p className="text-xs text-muted-foreground text-center">
+                  {t('costDocSelectCompanyHint')}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Manage Test Data */}
           <Card>
             <CardHeader>
@@ -946,27 +1147,36 @@ export default function SettingsPage() {
               {cleanupPreview && testDataCompany && (
                 <div className="space-y-3">
                   <div className="text-sm font-medium">{t('currentTestData')}</div>
-                  {cleanupPreview.total === 0 ? (
+                  {cleanupPreview.total === 0 && (cleanupPreview.costDocuments ?? 0) === 0 ? (
                     <p className="text-sm text-muted-foreground">{t('noTestData')}</p>
                   ) : (
                     <div className="space-y-2 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span>{t('testInvoicesFound', { count: cleanupPreview.total })}</span>
-                      </div>
-                      {cleanupPreview.bySource && (
-                        <ul className="space-y-1 text-muted-foreground ml-4">
-                          {Object.entries(cleanupPreview.bySource).map(([source, count]) => (
-                            <li key={source}>
-                              • {source === 'KSeF' ? t('fromKsef', { count }) : t('fromManual', { count })}
-                            </li>
-                          ))}
-                        </ul>
+                      {cleanupPreview.total > 0 && (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <span>{t('testInvoicesFound', { count: cleanupPreview.total })}</span>
+                          </div>
+                          {cleanupPreview.bySource && (
+                            <ul className="space-y-1 text-muted-foreground ml-4">
+                              {Object.entries(cleanupPreview.bySource).map(([source, count]) => (
+                                <li key={source}>
+                                  • {source === 'KSeF' ? t('fromKsef', { count }) : t('fromManual', { count })}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </>
+                      )}
+                      {(cleanupPreview.costDocuments ?? 0) > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span>{t('testCostDocsFound', { count: cleanupPreview.costDocuments })}</span>
+                        </div>
                       )}
                     </div>
                   )}
 
                   {/* Delete Button */}
-                  {cleanupPreview.total > 0 && (
+                  {(cleanupPreview.total > 0 || (cleanupPreview.costDocuments ?? 0) > 0) && (
                     <Button
                       variant="destructive"
                       onClick={handleCleanupTestData}

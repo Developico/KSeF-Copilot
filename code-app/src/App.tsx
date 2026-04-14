@@ -18,6 +18,7 @@ import { SupplierDetailPage } from './pages/supplier-detail'
 import { SelfBillingPage } from './pages/self-billing'
 import { SelfBillingDetailPage } from './pages/self-billing-detail'
 import { CostsPage } from './pages/costs'
+import { CostDetailPage } from './pages/cost-detail'
 
 // ── Error Boundary ───────────────────────────────────────────────
 
@@ -98,6 +99,7 @@ export function App() {
               <Route path="/invoices/new" element={<ManualInvoicePage />} />
               <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
               <Route path="/costs" element={<CostsPage />} />
+              <Route path="/costs/:id" element={<CostDetailPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/approvals" element={<ApprovalsPage />} />
               <Route path="/forecast" element={<ForecastPage />} />

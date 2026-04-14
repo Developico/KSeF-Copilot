@@ -6,6 +6,32 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [1.0.1] - 2026-04-14
+
+### 📋 Dokumenty kosztowe — redesign i strona szczegółów
+
+- **Nowa strona szczegółów** `/costs/[id]` — pełny podgląd dokumentu kosztowego z notatkami, historią zatwierdzeń i nawigacją powrotną
+- **Komponent `<CostNotesSection>`** — sekcja notatek na stronie szczegółów dokumentu kosztowego
+- **Komponent `<CostTypeIcon>`** — ikony typów dokumentów kosztowych w listach i szczegółach
+- **Redesign strony kosztów** — ulepszony układ filtrów, grupowanie, operacje batch, dialog potwierdzenia usunięcia
+- **Zakładka raportów kosztowych** — poprawiony wykres rozkładu kosztów (CHART_COLORS, responsywność)
+
+### 🔄 Synchronizacja KSeF
+
+- **Naprawiony scoping settingId** — wyszukiwanie duplikatów faktur ograniczone do aktywnej firmy (eliminacja fałszywych duplikatów między firmami)
+- **Endpoint orphaned invoices** — `GET/POST /api/ksef/sync/orphans` do diagnostyki i naprawy osieroconych faktur
+- **Naprawa osieroconych korekt** — `linkOrphanedCorrections` z filtrem settingId
+
+### ⚙️ Ustawienia
+
+- **Generator danych testowych dla dokumentów kosztowych** — presety: losowe, budżetowe, sezonowe
+
+### 🌐 i18n
+
+- Nowe klucze tłumaczeń: strona szczegółów dokumentu kosztowego, generator danych testowych, orphaned invoices — PL + EN (71 nowych kluczy)
+
+---
+
 ## [1.0.0] - 2026-04-12
 
 ### 📋 Moduł dokumentów kosztowych

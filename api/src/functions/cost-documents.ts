@@ -52,11 +52,12 @@ export async function listCostDocumentsHandler(
       orderDirection: url.searchParams.get('orderDirection') as 'asc' | 'desc' || 'desc',
     }
 
-    const result = await costDocumentService.list(params)
+    // Use getAll to follow @odata.nextLink and return all matching records
+    const items = await costDocumentService.getAll(params)
 
     return {
       status: 200,
-      jsonBody: { documents: result.items, count: result.count },
+      jsonBody: { items, count: items.length },
     }
   } catch (error) {
     context.error('Failed to list cost documents:', error)

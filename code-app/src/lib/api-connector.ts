@@ -430,6 +430,97 @@ export const connectorApi = {
       ),
   },
 
+  // ── Cost Documents ──
+  costDocuments: {
+    list: async (params?: {
+      settingId?: string
+      documentType?: string
+      paymentStatus?: string
+      approvalStatus?: string
+      status?: string
+      source?: string
+      mpkCenterId?: string
+      mpkCenterIds?: string
+      category?: string
+      fromDate?: string
+      toDate?: string
+      dueDateFrom?: string
+      dueDateTo?: string
+      minAmount?: number
+      maxAmount?: number
+      issuerName?: string
+      issuerNip?: string
+      search?: string
+      top?: number
+      skip?: number
+      orderBy?: string
+      orderDirection?: string
+    }) => {
+      const data = await safeCall('ListCostDocuments', () =>
+        DVLP_KSeF_PP_ConnectorService.ListCostDocuments(
+          params?.settingId, params?.documentType, params?.paymentStatus,
+          params?.approvalStatus, params?.status, params?.source,
+          params?.mpkCenterId, params?.mpkCenterIds, params?.category,
+          params?.fromDate, params?.toDate, params?.dueDateFrom, params?.dueDateTo,
+          params?.minAmount, params?.maxAmount, params?.issuerName, params?.issuerNip,
+          params?.search, params?.top, params?.skip, params?.orderBy, params?.orderDirection
+        )
+      ) as unknown
+      if (data && typeof data === 'object' && 'items' in (data as Record<string, unknown>)) {
+        return data
+      }
+      if (Array.isArray(data)) {
+        return { items: data, count: data.length }
+      }
+      return { items: [], count: 0 }
+    },
+
+    get: (id: string) =>
+      safeCall('GetCostDocument', () =>
+        DVLP_KSeF_PP_ConnectorService.GetCostDocument(id)
+      ),
+
+    create: (data: Record<string, unknown>) =>
+      safeCall('CreateCostDocument', () =>
+        DVLP_KSeF_PP_ConnectorService.CreateCostDocument(data)
+      ),
+
+    update: (id: string, data: Record<string, unknown>) =>
+      safeCall('UpdateCostDocument', () =>
+        DVLP_KSeF_PP_ConnectorService.UpdateCostDocument(id, data)
+      ),
+
+    delete: (id: string) =>
+      safeCall('DeleteCostDocument', () =>
+        DVLP_KSeF_PP_ConnectorService.DeleteCostDocument(id)
+      ),
+
+    summary: (settingId: string) =>
+      safeCall('GetCostDocumentsSummary', () =>
+        DVLP_KSeF_PP_ConnectorService.GetCostDocumentsSummary(settingId)
+      ),
+
+    aiCategorize: (data: Record<string, unknown>) =>
+      safeCall('AiCategorizeCostDocument', () =>
+        DVLP_KSeF_PP_ConnectorService.AiCategorizeCostDocument(data)
+      ),
+
+    batchApprove: (ids: string[]) =>
+      safeCall('BatchApproveCostDocuments', () =>
+        DVLP_KSeF_PP_ConnectorService.BatchApproveCostDocuments({ ids })
+      ),
+
+    batchReject: (ids: string[]) =>
+      safeCall('BatchRejectCostDocuments', () =>
+        DVLP_KSeF_PP_ConnectorService.BatchRejectCostDocuments({ ids })
+      ),
+
+    batchMarkPaid: (ids: string[]) =>
+      safeCall('BatchMarkPaidCostDocuments', () =>
+        DVLP_KSeF_PP_ConnectorService.BatchMarkPaidCostDocuments({ ids })
+      ),
+  },
+
   // ── KSeF Testdata ──
   ksefTestdata: {
     getEnvironments: () =>
@@ -534,8 +625,8 @@ export const connectorApi = {
 
   // ── Self-Billing Agreements ──
   sbAgreements: {
-    list: (params: {
-      settingId: string
+    list: (params?: {
+      settingId?: string
       supplierId?: string
       status?: string
       top?: number
@@ -543,11 +634,11 @@ export const connectorApi = {
     }) =>
       safeCall('ListSbAgreements', () =>
         DVLP_KSeF_PP_ConnectorService.ListSbAgreements(
-          params.settingId,
-          params.supplierId,
-          params.status,
-          params.top,
-          params.skip
+          params?.settingId,
+          params?.supplierId,
+          params?.status,
+          params?.top,
+          params?.skip
         )
       ),
 
@@ -625,8 +716,8 @@ export const connectorApi = {
 
   // ── Self-Billing Invoices ──
   selfBillingInvoices: {
-    list: (params: {
-      settingId: string
+    list: (params?: {
+      settingId?: string
       supplierId?: string
       status?: string
       dateFrom?: string
@@ -636,13 +727,13 @@ export const connectorApi = {
     }) =>
       safeCall('ListSelfBillingInvoices', () =>
         DVLP_KSeF_PP_ConnectorService.ListSelfBillingInvoices(
-          params.settingId,
-          params.supplierId,
-          params.status,
-          params.dateFrom,
-          params.dateTo,
-          params.top,
-          params.skip
+          params?.settingId,
+          params?.supplierId,
+          params?.status,
+          params?.dateFrom,
+          params?.dateTo,
+          params?.top,
+          params?.skip
         )
       ),
 

@@ -118,6 +118,7 @@ async function getCompanySetting(nip: string) {
   }
   
   return {
+    id: setting.dvlp_ksefsettingid as string,
     nip: setting.dvlp_nip,
     companyName: setting.dvlp_companyname || setting.dvlp_name,
     environment: envMap[setting.dvlp_environment] || 'test',
@@ -200,6 +201,36 @@ async function deleteInvoices(invoices: Array<{ dvlp_ksefinvoiceid: string }>) {
   return { deleted, failed }
 }
 
+// Get cost documents for a setting
+const COST_DOC_ENTITY = 'dvlp_ksefcostdocuments'
+
+async function getCostDocuments(settingId: string) {
+  const result = await dvFetch(
+    `/${COST_DOC_ENTITY}?$filter=_dvlp_settingid_value eq ${settingId}&$select=dvlp_ksefcostdocumentid,dvlp_name,dvlp_documentdate,dvlp_grossamount,dvlp_documenttype`
+  )
+  return result.value || []
+}
+
+async function deleteCostDocuments(docs: Array<{ dvlp_ksefcostdocumentid: string }>) {
+  let deleted = 0
+  let failed = 0
+
+  for (const doc of docs) {
+    try {
+      await dvFetch(`/${COST_DOC_ENTITY}(${doc.dvlp_ksefcostdocumentid})`, { method: 'DELETE' })
+      deleted++
+      if (deleted % 10 === 0) {
+        process.stdout.write(`\r   Deleted ${deleted}/${docs.length}`)
+      }
+    } catch (err) {
+      failed++
+      console.error(`\n   Failed to delete ${doc.dvlp_ksefcostdocumentid}:`, err)
+    }
+  }
+
+  return { deleted, failed }
+}
+
 async function main() {
   const options = parseArgs()
   
@@ -239,44 +270,67 @@ async function main() {
   const filter = buildFilter(options.nip, options)
   console.log('📋 Fetching matching invoices...')
   const invoices = await getInvoices(filter)
+  console.log(`   Found ${invoices.length} invoices`)
+
+  // Fetch cost documents for this setting
+  console.log('📋 Fetching cost documents...')
+  const costDocs = await getCostDocuments(company.id)
+  console.log(`   Found ${costDocs.length} cost documents`)
   
-  if (invoices.length === 0) {
-    console.log('   No invoices found matching criteria')
+  if (invoices.length === 0 && costDocs.length === 0) {
+    console.log('\n   No test data found matching criteria')
     console.log('\n' + '='.repeat(60))
     console.log('✅ Nothing to cleanup!\n')
     return
   }
   
-  // Show statistics
-  const stats = await getStats(invoices)
-  console.log(`   Found ${invoices.length} invoices`)
-  console.log(`   💰 Total gross: ${stats.totalAmount.toLocaleString('pl-PL')} PLN`)
-  console.log('\n   By source:')
-  for (const [source, count] of Object.entries(stats.bySource)) {
-    console.log(`      ${source}: ${count}`)
+  // Show invoice statistics
+  if (invoices.length > 0) {
+    const stats = await getStats(invoices)
+    console.log(`\n   📄 Invoices: ${invoices.length}`)
+    console.log(`   💰 Total gross: ${stats.totalAmount.toLocaleString('pl-PL')} PLN`)
+    console.log('\n   By source:')
+    for (const [source, count] of Object.entries(stats.bySource)) {
+      console.log(`      ${source}: ${count}`)
+    }
+    console.log('\n   By month (last 6):')
+    const sortedMonths = Object.entries(stats.byMonth).sort(([a], [b]) => b.localeCompare(a)).slice(0, 6)
+    for (const [month, count] of sortedMonths) {
+      console.log(`      ${month}: ${count}`)
+    }
   }
-  console.log('\n   By month (last 6):')
-  const sortedMonths = Object.entries(stats.byMonth).sort(([a], [b]) => b.localeCompare(a)).slice(0, 6)
-  for (const [month, count] of sortedMonths) {
-    console.log(`      ${month}: ${count}`)
+
+  if (costDocs.length > 0) {
+    console.log(`\n   📑 Cost documents: ${costDocs.length}`)
   }
   console.log()
   
   if (!options.confirm) {
-    console.log('⚠️  DRY-RUN mode: No invoices were deleted')
-    console.log('   Use --confirm flag to actually delete invoices')
+    console.log('⚠️  DRY-RUN mode: No data was deleted')
+    console.log('   Use --confirm flag to actually delete data')
     console.log('\n' + '='.repeat(60))
     console.log('✅ Dry-run completed!\n')
     return
   }
   
-  // Actually delete
-  console.log('🗑️  Deleting invoices...')
-  const result = await deleteInvoices(invoices)
-  
-  console.log(`\n   ✅ Deleted: ${result.deleted}`)
-  if (result.failed > 0) {
-    console.log(`   ❌ Failed: ${result.failed}`)
+  // Actually delete invoices
+  if (invoices.length > 0) {
+    console.log('🗑️  Deleting invoices...')
+    const result = await deleteInvoices(invoices)
+    console.log(`\n   ✅ Invoices deleted: ${result.deleted}`)
+    if (result.failed > 0) {
+      console.log(`   ❌ Failed: ${result.failed}`)
+    }
+  }
+
+  // Actually delete cost documents
+  if (costDocs.length > 0) {
+    console.log('🗑️  Deleting cost documents...')
+    const costResult = await deleteCostDocuments(costDocs)
+    console.log(`\n   ✅ Cost documents deleted: ${costResult.deleted}`)
+    if (costResult.failed > 0) {
+      console.log(`   ❌ Failed: ${costResult.failed}`)
+    }
   }
   
   console.log('\n' + '='.repeat(60))

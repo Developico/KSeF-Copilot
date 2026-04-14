@@ -1001,6 +1001,39 @@ export interface KsefGenerateTestDataResponse {
   error?: string
 }
 
+export interface KsefGenerateCostDocsRequest {
+  nip: string
+  companyId?: string
+  count?: number
+  preset?: string
+  fromDate?: string
+  toDate?: string
+  paidPercentage?: number
+  approvedPercentage?: number
+}
+
+export interface KsefGenerateCostDocsResponse {
+  success: boolean
+  environment: string
+  nip: string
+  summary: {
+    total: number
+    byType: Record<string, number>
+    byCurrency: Record<string, number>
+    byApprovalStatus: Record<string, number>
+    totalGrossPln: number
+    paidCount: number
+    unpaidCount: number
+    withAiCount: number
+    dateRange: { from: string; to: string }
+    created: number
+    paid: number
+    failed: number
+    errors?: string[]
+  }
+  error?: string
+}
+
 // ─── MPK / Budget / Approval / Notification types ────────────────
 
 export type BudgetPeriod = 'Monthly' | 'Quarterly' | 'HalfYearly' | 'Annual'
@@ -1238,6 +1271,8 @@ export interface KsefCleanupPreviewResponse {
   environment: string
   nip: string
   total: number
+  costDocuments: number
+  costDocsByType?: Record<string, number>
   bySource: Record<string, number>
   byMonth: Record<string, number>
   filters?: {
@@ -1266,6 +1301,11 @@ export interface KsefCleanupResponse {
   total: number
   deleted?: number
   failed?: number
+  costDocuments?: {
+    total: number
+    deleted: number
+    failed: number
+  }
   errors?: string[]
   message?: string
 }
@@ -1626,7 +1666,7 @@ export interface CostDocument {
   tags?: string
   status: CostDocumentStatus
   source: CostDocumentSource
-  approvalStatus?: string
+  approvalStatus?: ApprovalStatus
   approvedBy?: string
   approvedByOid?: string
   approvedAt?: string

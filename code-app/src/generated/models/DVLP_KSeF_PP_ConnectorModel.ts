@@ -1223,3 +1223,80 @@ export interface BatchResult {
    error?: string;
  }[];
 }
+
+// ── Cost Document Types ──────────────────────────────────────────
+
+export type CostDocumentType = 'Receipt'|'Acknowledgment'|'ProForma'|'DebitNote'|'Bill'|'ContractInvoice'|'Other';
+export type CostDocumentStatus = 'Draft'|'Active'|'Cancelled';
+export type CostDocumentSource = 'Manual'|'OCR'|'Import';
+export type CostDocApprovalStatus = 'Draft'|'Pending'|'Approved'|'Rejected'|'Cancelled';
+
+export interface CostDocument {
+  id?: string;
+  name?: string;
+  documentType?: CostDocumentType;
+  documentNumber?: string;
+  documentDate?: string;
+  dueDate?: string;
+  description?: string;
+  issuerName?: string;
+  issuerNip?: string;
+  issuerAddress?: string;
+  issuerCity?: string;
+  issuerPostalCode?: string;
+  issuerCountry?: string;
+  netAmount?: number;
+  vatAmount?: number;
+  grossAmount?: number;
+  currency?: string;
+  exchangeRate?: number;
+  grossAmountPln?: number;
+  paymentStatus?: string;
+  paymentDate?: string;
+  mpk?: string;
+  mpkCenterId?: string;
+  category?: string;
+  project?: string;
+  tags?: string;
+  status?: CostDocumentStatus;
+  source?: CostDocumentSource;
+  approvalStatus?: CostDocApprovalStatus;
+  approvedBy?: string;
+  approvedByOid?: string;
+  approvedAt?: string;
+  approvalComment?: string;
+  aiMpkSuggestion?: string;
+  aiCategorySuggestion?: string;
+  aiDescription?: string;
+  aiConfidence?: number;
+  aiProcessedAt?: string;
+  hasDocument?: boolean;
+  documentFileName?: string;
+  notes?: string;
+  settingId?: string;
+  createdOn?: string;
+  modifiedOn?: string;
+}
+
+export interface CostDocumentListResponse {
+  items?: CostDocument[];
+  count?: number;
+}
+
+export interface CostDocumentSummary {
+  total?: number;
+  byType?: Record<string, number>;
+  byStatus?: Record<string, number>;
+  totalAmount?: number;
+}
+
+export interface CostDocBatchIdsRequest {
+  ids: string[];
+}
+
+export interface CostDocBatchResult {
+  total?: number;
+  success?: number;
+  failed?: number;
+  errors?: { id?: string; error?: string }[];
+}

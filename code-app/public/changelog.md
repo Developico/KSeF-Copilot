@@ -6,6 +6,40 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.0.1] - 2026-04-14
+
+### 📋 Dokumenty kosztowe — redesign i strona szczegółów
+
+- **Nowa strona szczegółów** `cost-detail` — pełny podgląd dokumentu kosztowego z nawigacją powrotną
+- **Komponent `<CostTypeIcon>`** — ikony typów dokumentów kosztowych
+- **Redesign strony kosztów** — ulepszony układ filtrów, grupowanie, operacje batch, dialog potwierdzenia usunięcia
+- **Zakładka raportów kosztowych** — poprawiony wykres rozkładu kosztów (CHART_COLORS, responsywność)
+- **Routing** — nowa trasa `/cost-detail/:id` w `App.tsx`
+
+### 🔌 Integracja z konektorem Power Platform
+
+- **10 operacji cost-documents w `dataSourcesInfo.ts`** — ListCostDocuments, CreateCostDocument, GetCostDocumentsSummary, GetCostDocument, UpdateCostDocument, DeleteCostDocument, AiCategorizeCostDocument, BatchApprove/Reject/MarkPaid (naprawia `_buildOperationUrl` crash)
+- **ConnectorService** — 10 nowych metod statycznych dla operacji kosztowych
+- **ConnectorModel** — typy `CostDocument`, `CostDocumentCreate`, `CostDocumentListResponse`, `CostDocumentSummary`
+- **api-connector.ts** — pełna implementacja `costDocuments` (list, get, create, update, delete, summary, aiCategorize, batch operations)
+- **Swagger connector** — 10 nowych operacji + 7 definicji schematów w swagger.yaml
+
+### 🐛 Poprawki
+
+- **Null-safety** w `selfBillingInvoices.list` i `sbAgreements.list` — parametry opcjonalne zamiast wymaganych (naprawia crash kafelków dashboardu bez kontekstu firmy)
+- **Dashboard tiles** — `sb-pipeline-tile` i `activity-feed-tile` używają settingId z `useCompanyContext()` z guardem `enabled`
+- **Redesign strony faktur** — grupowanie po miesiącach, podsumowania kwot w PLN, role-based visibility
+
+### ⚙️ Ustawienia
+
+- **Generator danych testowych dla dokumentów kosztowych** — presety: losowe, budżetowe, sezonowe
+
+### 🌐 i18n
+
+- Nowe klucze tłumaczeń: strona szczegółów, konektor cost-documents, generator danych testowych — PL + EN (43 nowych kluczy)
+
+---
+
 ## [1.0.0] - 2026-04-12
 
 ### 📋 Moduł dokumentów kosztowych

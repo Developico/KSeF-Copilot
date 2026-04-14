@@ -107,12 +107,13 @@ export function useEndSession() {
 
 export function useSyncPreview(params?: {
   nip?: string
+  settingId?: string
   dateFrom?: string
   dateTo?: string
   enabled?: boolean
 }) {
-  const { enabled = true, nip, dateFrom, dateTo } = params || {}
-  const queryParams = { nip, dateFrom, dateTo }
+  const { enabled = true, nip, settingId, dateFrom, dateTo } = params || {}
+  const queryParams = { nip, settingId, dateFrom, dateTo }
 
   return useQuery({
     queryKey: queryKeys.syncPreview(queryParams),
@@ -844,7 +845,7 @@ export function useContextRunSync() {
 
   return useMutation({
     mutationFn: (params?: { dateFrom?: string; dateTo?: string }) =>
-      api.sync.run({ ...params, nip: selectedCompany?.nip }),
+      api.sync.run({ ...params, nip: selectedCompany?.nip, settingId: selectedCompany?.id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
       queryClient.invalidateQueries({ queryKey: ['sync'] })
@@ -864,8 +865,8 @@ export function useContextSyncPreview(params?: {
   const { enabled = true, ...queryParams } = params || {}
 
   return useQuery({
-    queryKey: ['sync', 'preview', 'context', selectedCompany?.nip, queryParams],
-    queryFn: () => api.sync.preview({ ...queryParams, nip: selectedCompany?.nip }),
+    queryKey: ['sync', 'preview', 'context', selectedCompany?.nip, selectedCompany?.id, queryParams],
+    queryFn: () => api.sync.preview({ ...queryParams, nip: selectedCompany?.nip, settingId: selectedCompany?.id }),
     enabled: enabled && !companyLoading && Boolean(selectedCompany),
   })
 }
@@ -963,6 +964,29 @@ export function useGenerateTestData() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+  })
+}
+
+export function useGenerateCostDocs() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: {
+      nip: string
+      companyId?: string
+      count?: number
+      preset?: string
+      fromDate?: string
+      toDate?: string
+      paidPercentage?: number
+      approvedPercentage?: number
+    }) => {
+      return api.ksefTestdata.generateCosts(data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['costDocuments'] })
+      queryClient.invalidateQueries({ queryKey: ['testdata'] })
     },
   })
 }

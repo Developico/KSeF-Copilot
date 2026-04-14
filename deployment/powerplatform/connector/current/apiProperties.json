@@ -1,0 +1,63 @@
+{
+  "properties": {
+    "connectionParameters": {
+      "token": {
+        "type": "oauthSetting",
+        "oAuthSettings": {
+          "identityProvider": "aad",
+          "clientId": "8a234897-06ec-4427-8d7c-ce5c467ea5cc",
+          "scopes": [
+            "api://3d2a67c9-0bd5-4294-938c-fbe97698f404/access_as_user"
+          ],
+          "redirectMode": "GlobalPerConnector",
+          "redirectUrl": "https://global.consent.azure-apim.net/redirect/dvlp-5fdvlp-2dksef-2dpp-2dconnector-5f0ad1af9befb93b50",
+          "properties": {
+            "IsFirstParty": "False",
+            "AzureActiveDirectoryResourceId": "api://3d2a67c9-0bd5-4294-938c-fbe97698f404",
+            "IsOnbehalfofLoginSupported": true
+          },
+          "customParameters": {
+            "LoginUri": {
+              "value": "https://login.microsoftonline.com"
+            },
+            "TenantId": {
+              "value": "common"
+            },
+            "ResourceUri": {
+              "value": "api://3d2a67c9-0bd5-4294-938c-fbe97698f404"
+            },
+            "EnableOnbehalfOfLogin": {
+              "value": "false"
+            }
+          }
+        },
+        "uiDefinition": {
+          "displayName": "OAuth Connection",
+          "description": "OAuth Connection",
+          "constraints": {
+            "required": "true",
+            "hidden": "false"
+          }
+        }
+      },
+      "token:TenantId": {
+        "type": "string",
+        "metadata": {
+          "sourceType": "AzureActiveDirectoryTenant"
+        },
+        "uiDefinition": {
+          "constraints": {
+            "required": "false",
+            "hidden": "true"
+          }
+        }
+      }
+    },
+    "iconBrandColor": "#007ee5",
+    "capabilities": [],
+    "scriptOperations": [],
+    "publisher": "",
+    "stackOwner": "",
+    "policyTemplateInstances": []
+  }
+}

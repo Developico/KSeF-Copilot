@@ -1,0 +1,775 @@
+{
+  "ListCostDocuments": {
+    "path": "/{connectionId}/cost-documents",
+    "method": "GET",
+    "parameters": [
+      {
+        "name": "connectionId",
+        "in": "path",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "settingId",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "documentType",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "paymentStatus",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "approvalStatus",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "status",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "source",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "mpkCenterId",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "mpkCenterIds",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "category",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "fromDate",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "toDate",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "dueDateFrom",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "dueDateTo",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "minAmount",
+        "in": "query",
+        "required": false,
+        "type": "number"
+      },
+      {
+        "name": "maxAmount",
+        "in": "query",
+        "required": false,
+        "type": "number"
+      },
+      {
+        "name": "issuerName",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "issuerNip",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "search",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "top",
+        "in": "query",
+        "required": false,
+        "type": "integer"
+      },
+      {
+        "name": "skip",
+        "in": "query",
+        "required": false,
+        "type": "integer"
+      },
+      {
+        "name": "orderBy",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "orderDirection",
+        "in": "query",
+        "required": false,
+        "type": "string"
+      }
+    ],
+    "responseInfo": {
+      "200": {
+        "type": "object"
+      },
+      "401": {
+        "type": "void"
+      },
+      "403": {
+        "type": "void"
+      }
+    }
+  },
+  "CreateCostDocument": {
+    "path": "/{connectionId}/cost-documents",
+    "method": "POST",
+    "parameters": [
+      {
+        "name": "connectionId",
+        "in": "path",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "settingId",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "documentType",
+        "in": "body",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "documentNumber",
+        "in": "body",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "documentDate",
+        "in": "body",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "dueDate",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "description",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "issuerName",
+        "in": "body",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "issuerNip",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "issuerAddress",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "issuerCity",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "issuerPostalCode",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "issuerCountry",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "netAmount",
+        "in": "body",
+        "required": false,
+        "type": "number"
+      },
+      {
+        "name": "vatAmount",
+        "in": "body",
+        "required": false,
+        "type": "number"
+      },
+      {
+        "name": "grossAmount",
+        "in": "body",
+        "required": true,
+        "type": "number"
+      },
+      {
+        "name": "currency",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "exchangeRate",
+        "in": "body",
+        "required": false,
+        "type": "number"
+      },
+      {
+        "name": "grossAmountPln",
+        "in": "body",
+        "required": false,
+        "type": "number"
+      },
+      {
+        "name": "mpk",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "mpkCenterId",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "category",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "project",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "tags",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "notes",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "aiMpkSuggestion",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "aiCategorySuggestion",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "aiDescription",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "aiConfidence",
+        "in": "body",
+        "required": false,
+        "type": "number"
+      }
+    ],
+    "responseInfo": {
+      "201": {
+        "type": "object"
+      },
+      "400": {
+        "type": "void"
+      },
+      "401": {
+        "type": "void"
+      },
+      "403": {
+        "type": "void"
+      }
+    }
+  },
+  "GetCostDocumentsSummary": {
+    "path": "/{connectionId}/cost-documents/summary",
+    "method": "GET",
+    "parameters": [
+      {
+        "name": "connectionId",
+        "in": "path",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "settingId",
+        "in": "query",
+        "required": true,
+        "type": "string"
+      }
+    ],
+    "responseInfo": {
+      "200": {
+        "type": "object"
+      },
+      "400": {
+        "type": "void"
+      },
+      "401": {
+        "type": "void"
+      },
+      "403": {
+        "type": "void"
+      }
+    }
+  },
+  "GetCostDocument": {
+    "path": "/{connectionId}/cost-documents/{id}",
+    "method": "GET",
+    "parameters": [
+      {
+        "name": "connectionId",
+        "in": "path",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "type": "string"
+      }
+    ],
+    "responseInfo": {
+      "200": {
+        "type": "object"
+      },
+      "401": {
+        "type": "void"
+      },
+      "403": {
+        "type": "void"
+      },
+      "404": {
+        "type": "void"
+      }
+    }
+  },
+  "UpdateCostDocument": {
+    "path": "/{connectionId}/cost-documents/{id}",
+    "method": "PATCH",
+    "parameters": [
+      {
+        "name": "connectionId",
+        "in": "path",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "documentType",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "documentNumber",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "documentDate",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "dueDate",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "description",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "issuerName",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "issuerNip",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "issuerAddress",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "issuerCity",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "issuerPostalCode",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "issuerCountry",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "netAmount",
+        "in": "body",
+        "required": false,
+        "type": "number"
+      },
+      {
+        "name": "vatAmount",
+        "in": "body",
+        "required": false,
+        "type": "number"
+      },
+      {
+        "name": "grossAmount",
+        "in": "body",
+        "required": false,
+        "type": "number"
+      },
+      {
+        "name": "currency",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "exchangeRate",
+        "in": "body",
+        "required": false,
+        "type": "number"
+      },
+      {
+        "name": "grossAmountPln",
+        "in": "body",
+        "required": false,
+        "type": "number"
+      },
+      {
+        "name": "paymentStatus",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "mpk",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "mpkCenterId",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "category",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "project",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "tags",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "notes",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "aiMpkSuggestion",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "aiCategorySuggestion",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "aiDescription",
+        "in": "body",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "name": "aiConfidence",
+        "in": "body",
+        "required": false,
+        "type": "number"
+      }
+    ],
+    "responseInfo": {
+      "200": {
+        "type": "object"
+      },
+      "400": {
+        "type": "void"
+      },
+      "401": {
+        "type": "void"
+      },
+      "403": {
+        "type": "void"
+      },
+      "404": {
+        "type": "void"
+      }
+    }
+  },
+  "DeleteCostDocument": {
+    "path": "/{connectionId}/cost-documents/{id}",
+    "method": "DELETE",
+    "parameters": [
+      {
+        "name": "connectionId",
+        "in": "path",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "type": "string"
+      }
+    ],
+    "responseInfo": {
+      "204": {
+        "type": "void"
+      },
+      "401": {
+        "type": "void"
+      },
+      "403": {
+        "type": "void"
+      },
+      "404": {
+        "type": "void"
+      }
+    }
+  },
+  "AiCategorizeCostDocument": {
+    "path": "/{connectionId}/cost-documents/ai-categorize",
+    "method": "POST",
+    "parameters": [
+      {
+        "name": "connectionId",
+        "in": "path",
+        "required": true,
+        "type": "string"
+      }
+    ],
+    "responseInfo": {
+      "200": {
+        "type": "object"
+      },
+      "401": {
+        "type": "void"
+      },
+      "403": {
+        "type": "void"
+      },
+      "404": {
+        "type": "void"
+      },
+      "429": {
+        "type": "void"
+      }
+    }
+  },
+  "BatchApproveCostDocuments": {
+    "path": "/{connectionId}/cost-documents/batch/approve",
+    "method": "POST",
+    "parameters": [
+      {
+        "name": "connectionId",
+        "in": "path",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "ids",
+        "in": "body",
+        "required": true,
+        "type": "array"
+      }
+    ],
+    "responseInfo": {
+      "200": {
+        "type": "object"
+      },
+      "400": {
+        "type": "void"
+      },
+      "401": {
+        "type": "void"
+      },
+      "403": {
+        "type": "void"
+      }
+    }
+  },
+  "BatchRejectCostDocuments": {
+    "path": "/{connectionId}/cost-documents/batch/reject",
+    "method": "POST",
+    "parameters": [
+      {
+        "name": "connectionId",
+        "in": "path",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "ids",
+        "in": "body",
+        "required": true,
+        "type": "array"
+      }
+    ],
+    "responseInfo": {
+      "200": {
+        "type": "object"
+      },
+      "400": {
+        "type": "void"
+      },
+      "401": {
+        "type": "void"
+      },
+      "403": {
+        "type": "void"
+      }
+    }
+  },
+  "BatchMarkPaidCostDocuments": {
+    "path": "/{connectionId}/cost-documents/batch/mark-paid",
+    "method": "POST",
+    "parameters": [
+      {
+        "name": "connectionId",
+        "in": "path",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "name": "ids",
+        "in": "body",
+        "required": true,
+        "type": "array"
+      }
+    ],
+    "responseInfo": {
+      "200": {
+        "type": "object"
+      },
+      "400": {
+        "type": "void"
+      },
+      "401": {
+        "type": "void"
+      },
+      "403": {
+        "type": "void"
+      }
+    }
+  }
+}

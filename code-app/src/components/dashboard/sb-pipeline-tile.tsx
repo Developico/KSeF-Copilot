@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Receipt, AlertTriangle } from 'lucide-react'
 import { useSelfBillingInvoices, useSbAgreements } from '@/hooks/use-api'
+import { useCompanyContext } from '@/contexts/company-context'
 
 interface SbPipelineTileProps {
   delay?: number
@@ -13,8 +14,16 @@ interface SbPipelineTileProps {
 
 export function SbPipelineTile({ delay = 0 }: SbPipelineTileProps) {
   const intl = useIntl()
-  const { data, isLoading } = useSelfBillingInvoices()
-  const { data: agreementsData } = useSbAgreements()
+  const { selectedCompany } = useCompanyContext()
+  const settingId = selectedCompany?.id
+  const { data, isLoading } = useSelfBillingInvoices(
+    settingId ? { settingId } : undefined,
+    { enabled: !!settingId }
+  )
+  const { data: agreementsData } = useSbAgreements(
+    settingId ? { settingId } : undefined,
+    { enabled: !!settingId }
+  )
 
   const counts = useMemo(() => {
     const c = { Draft: 0, PendingSeller: 0, SellerApproved: 0, SentToKsef: 0 }

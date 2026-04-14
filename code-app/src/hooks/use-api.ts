@@ -73,6 +73,8 @@ import type {
   KsefCreateTestPersonResponse,
   KsefGenerateTestDataRequest,
   KsefGenerateTestDataResponse,
+  KsefGenerateCostDocsRequest,
+  KsefGenerateCostDocsResponse,
   KsefCleanupPreviewResponse,
   KsefCleanupRequest,
   KsefCleanupResponse,
@@ -1357,6 +1359,24 @@ export function useGenerateTestData(
     mutationFn: (data) => api.ksefTestdata.generate(data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['invoices'] })
+    },
+    ...options,
+  })
+}
+
+export function useGenerateCostDocs(
+  options?: UseMutationOptions<
+    KsefGenerateCostDocsResponse,
+    Error,
+    KsefGenerateCostDocsRequest
+  >
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.ksefTestdata.generateCosts(data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['costDocuments'] })
+      void qc.invalidateQueries({ queryKey: ['testdata'] })
     },
     ...options,
   })

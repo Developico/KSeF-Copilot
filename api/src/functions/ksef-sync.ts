@@ -2,7 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { verifyAuth, verifyAuthWithRateLimit, requireRole } from '../lib/auth/middleware'
 import { queryInvoices, getInvoice } from '../lib/ksef/invoices'
 import { parseInvoiceXml } from '../lib/ksef/parser'
-import { createInvoice, invoiceExistsByReference, findParentInvoice, linkOrphanedCorrections, getInvoiceById } from '../lib/dataverse/invoices'
+import { createInvoice, invoiceExistsByReference, findParentInvoice, linkOrphanedCorrections, getInvoiceById, findOrphanedInvoices, relinkInvoicesToSetting } from '../lib/dataverse/invoices'
 import { settingService, sessionService, syncLogService, logDataverseInfo, logDataverseError } from '../lib/dataverse'
 import { supplierService } from '../lib/dataverse/services'
 import { getKsefConfig } from '../lib/ksef/config'
@@ -170,8 +170,8 @@ app.http('ksef-sync', {
         const grossAmount = header.grossAmount ?? header.grossValue ?? 0
         
         try {
-          // Check if already imported - API 2.0 uses 'ksefNumber'
-          const exists = await invoiceExistsByReference(header.ksefNumber)
+          // Check if already imported (scoped to this setting)
+          const exists = await invoiceExistsByReference(header.ksefNumber, settingId)
           
           if (exists) {
             result.skipped++
@@ -399,10 +399,14 @@ app.http('ksef-sync-preview', {
       // API 2.0 uses 'invoices' array
       const invoiceList = queryResult.invoices || []
 
-      // Check which are already imported - API 2.0 uses nested 'seller', 'buyer' objects
+      // Resolve settingId for scoped existence check
+      const url2 = new URL(request.url)
+      const previewSettingId = url2.searchParams.get('settingId') || undefined
+
+      // Check which are already imported (scoped to setting when provided)
       const previews = await Promise.all(
         invoiceList.map(async (header) => {
-          const exists = await invoiceExistsByReference(header.ksefNumber)
+          const exists = await invoiceExistsByReference(header.ksefNumber, previewSettingId)
           // Extract from nested structure (API 2.0) or flat properties (legacy)
           const sellerNip = header.seller?.nip || header.sellerNip || ''
           const sellerName = header.seller?.name || header.sellerName || 'Unknown'
@@ -535,8 +539,8 @@ app.http('ksef-sync-import', {
 
       for (const refNumber of body.referenceNumbers) {
         try {
-          // Check if already imported
-          const exists = await invoiceExistsByReference(refNumber)
+          // Check if already imported (scoped to this setting)
+          const exists = await invoiceExistsByReference(refNumber, settingId)
           
           if (exists) {
             result.skipped++
@@ -722,3 +726,93 @@ function mapParsedTypeToApp(parsed: ParsedInvoiceType): InvoiceTypeEnum {
       return 'VAT'
   }
 }
+
+/**
+ * Diagnose and optionally repair orphaned invoices.
+ * GET  /api/ksef/sync/orphans?settingId=…         → list orphaned invoices
+ * POST /api/ksef/sync/orphans { settingId, invoiceIds } → re-link to correct setting
+ */
+app.http('ksef-sync-orphans', {
+  methods: ['GET', 'POST'],
+  authLevel: 'anonymous',
+  route: 'ksef/sync/orphans',
+  handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    try {
+      const auth = await verifyAuthWithRateLimit(request, { windowMs: 60_000, maxRequests: 10 })
+      if (!auth.success || !auth.user) {
+        if (auth.retryAfterMs) {
+          return { status: 429, jsonBody: { error: 'Rate limit exceeded' }, headers: { 'Retry-After': String(Math.ceil(auth.retryAfterMs / 1000)) } }
+        }
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      const roleCheck = requireRole(auth.user, 'Admin')
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Admin role required' } }
+      }
+
+      if (request.method === 'GET') {
+        // Diagnostic: list orphaned invoices
+        const url = new URL(request.url)
+        const sid = url.searchParams.get('settingId')
+        if (!sid) {
+          return { status: 400, jsonBody: { error: 'settingId query parameter is required' } }
+        }
+
+        const setting = await settingService.getById(sid)
+        if (!setting) {
+          return { status: 404, jsonBody: { error: `Setting not found: ${sid}` } }
+        }
+
+        const orphans = await findOrphanedInvoices(setting.nip, sid)
+
+        return {
+          status: 200,
+          jsonBody: {
+            settingId: sid,
+            nip: setting.nip,
+            settingName: setting.companyName,
+            orphanedCount: orphans.length,
+            orphans,
+          },
+        }
+      }
+
+      // POST: repair orphaned invoices
+      const body = await request.json() as {
+        settingId: string
+        invoiceIds: string[]
+      }
+
+      if (!body.settingId || !body.invoiceIds?.length) {
+        return { status: 400, jsonBody: { error: 'settingId and invoiceIds[] are required' } }
+      }
+
+      const setting = await settingService.getById(body.settingId)
+      if (!setting) {
+        return { status: 404, jsonBody: { error: `Setting not found: ${body.settingId}` } }
+      }
+
+      context.log(`Re-linking ${body.invoiceIds.length} orphaned invoices to setting ${body.settingId} (${setting.companyName})`)
+
+      const relinked = await relinkInvoicesToSetting(body.invoiceIds, body.settingId)
+
+      return {
+        status: 200,
+        jsonBody: {
+          success: true,
+          settingId: body.settingId,
+          relinked,
+        },
+      }
+    } catch (error) {
+      context.error('Orphan diagnostic/repair failed:', error)
+      return {
+        status: 500,
+        jsonBody: {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+      }
+    }
+  },
+})

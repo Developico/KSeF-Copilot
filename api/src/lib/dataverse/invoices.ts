@@ -282,13 +282,75 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
 }
 
 /**
- * Check if invoice exists by KSeF reference number
+ * Check if invoice exists by KSeF reference number.
+ * When settingId is provided, scopes the check to that setting only.
+ * When omitted, performs a global check (legacy behaviour).
  */
-export async function invoiceExistsByReference(referenceNumber: string): Promise<boolean> {
-  const path = `${InvoiceEntity.entitySet}?$filter=${InvoiceEntity.fields.referenceNumber} eq '${escapeOData(referenceNumber)}'&$select=${InvoiceEntity.fields.id}&$top=1`
+export async function invoiceExistsByReference(referenceNumber: string, settingId?: string): Promise<boolean> {
+  let filter = `${InvoiceEntity.fields.referenceNumber} eq '${escapeOData(referenceNumber)}'`
+  if (settingId) {
+    filter += ` and _dvlp_settingid_value eq ${settingId}`
+  }
+  const path = `${InvoiceEntity.entitySet}?$filter=${filter}&$select=${InvoiceEntity.fields.id}&$top=1`
 
   const response = await dataverseRequest<{ value: unknown[] }>(path)
   return response.value.length > 0
+}
+
+/**
+ * Find orphaned invoices for a given NIP that have no settingId or a different settingId.
+ * Returns invoices that exist globally but are NOT linked to the specified setting.
+ */
+export async function findOrphanedInvoices(tenantNip: string, settingId: string): Promise<Array<{
+  id: string
+  referenceNumber: string
+  invoiceNumber: string
+  supplierName: string
+  grossAmount: number
+  invoiceDate: string | null
+  currentSettingId: string | null
+}>> {
+  // Find invoices for this NIP that are NOT linked to the given settingId
+  const filter = `${InvoiceEntity.fields.tenantNip} eq '${escapeOData(tenantNip)}' and _dvlp_settingid_value ne ${settingId}`
+  const select = [
+    InvoiceEntity.fields.id,
+    InvoiceEntity.fields.referenceNumber,
+    InvoiceEntity.fields.invoiceNumber,
+    InvoiceEntity.fields.supplierName,
+    InvoiceEntity.fields.grossAmount,
+    InvoiceEntity.fields.invoiceDate,
+    '_dvlp_settingid_value',
+  ].join(',')
+  const path = `${InvoiceEntity.entitySet}?$filter=${filter}&$select=${select}&$orderby=${InvoiceEntity.fields.invoiceDate} desc`
+
+  const response = await dataverseRequest<{ value: Array<Record<string, unknown>> }>(path)
+  return response.value.map(row => ({
+    id: row[InvoiceEntity.fields.id] as string,
+    referenceNumber: (row[InvoiceEntity.fields.referenceNumber] as string) || '',
+    invoiceNumber: (row[InvoiceEntity.fields.invoiceNumber] as string) || '',
+    supplierName: (row[InvoiceEntity.fields.supplierName] as string) || '',
+    grossAmount: (row[InvoiceEntity.fields.grossAmount] as number) || 0,
+    invoiceDate: (row[InvoiceEntity.fields.invoiceDate] as string) || null,
+    currentSettingId: (row['_dvlp_settingid_value'] as string) || null,
+  }))
+}
+
+/**
+ * Re-link orphaned invoices to the correct settingId.
+ * Patches each invoice's dvlp_settingid lookup to point to the given setting.
+ */
+export async function relinkInvoicesToSetting(invoiceIds: string[], settingId: string): Promise<number> {
+  let updated = 0
+  for (const id of invoiceIds) {
+    await dataverseRequest(`${InvoiceEntity.entitySet}(${id})`, {
+      method: 'PATCH',
+      body: {
+        'dvlp_settingid@odata.bind': `/dvlp_ksefsettings(${settingId})`,
+      },
+    })
+    updated++
+  }
+  return updated
 }
 
 /**

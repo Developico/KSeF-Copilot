@@ -11,6 +11,10 @@ import type { BatchCategorizeResult } from '../models/DVLP_KSeF_PP_ConnectorMode
 import type { BatchIdsRequest } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { BatchResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { BulkApproveResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { CostDocument } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { CostDocumentListResponse } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { CostDocumentSummary } from '../models/DVLP_KSeF_PP_ConnectorModel';
+import type { CostDocBatchResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { DashboardStats } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { DetailedHealth } from '../models/DVLP_KSeF_PP_ConnectorModel';
 import type { EnvironmentsResult } from '../models/DVLP_KSeF_PP_ConnectorModel';
@@ -1559,9 +1563,9 @@ export class DVLP_KSeF_PP_ConnectorService {
    * List Self-Billing Agreements
    * /PL/: Lista umów samofakturowania. Wymagany parametr settingId. /EN/: List self-billing agreements. settingId is required.
    */
-  public static async ListSbAgreements(settingId: string, supplierId?: string, status?: string, top?: number, skip?: number): Promise<IOperationResult<SbAgreementListResponse>> {
-    const params: { settingId: string, supplierId?: string, status?: string, top?: number, skip?: number } = { settingId, supplierId, status, top, skip };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string, supplierId?: string, status?: string, top?: number, skip?: number }, SbAgreementListResponse>(
+  public static async ListSbAgreements(settingId?: string, supplierId?: string, status?: string, top?: number, skip?: number): Promise<IOperationResult<SbAgreementListResponse>> {
+    const params: { settingId?: string, supplierId?: string, status?: string, top?: number, skip?: number } = { settingId, supplierId, status, top, skip };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId?: string, supplierId?: string, status?: string, top?: number, skip?: number }, SbAgreementListResponse>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -1773,9 +1777,9 @@ export class DVLP_KSeF_PP_ConnectorService {
    * List Self-Billing Invoices
    * /PL/: Lista faktur samofakturowania. Wymagany parametr settingId. /EN/: List self-billing invoices with filtering. settingId is required.
    */
-  public static async ListSelfBillingInvoices(settingId: string, supplierId?: string, status?: string, dateFrom?: string, dateTo?: string, top?: number, skip?: number): Promise<IOperationResult<SelfBillingInvoiceListResponse>> {
-    const params: { settingId: string, supplierId?: string, status?: string, dateFrom?: string, dateTo?: string, top?: number, skip?: number } = { settingId, supplierId, status, dateFrom, dateTo, top, skip };
-    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string, supplierId?: string, status?: string, dateFrom?: string, dateTo?: string, top?: number, skip?: number }, SelfBillingInvoiceListResponse>(
+  public static async ListSelfBillingInvoices(settingId?: string, supplierId?: string, status?: string, dateFrom?: string, dateTo?: string, top?: number, skip?: number): Promise<IOperationResult<SelfBillingInvoiceListResponse>> {
+    const params: { settingId?: string, supplierId?: string, status?: string, dateFrom?: string, dateTo?: string, top?: number, skip?: number } = { settingId, supplierId, status, dateFrom, dateTo, top, skip };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId?: string, supplierId?: string, status?: string, dateFrom?: string, dateTo?: string, top?: number, skip?: number }, SelfBillingInvoiceListResponse>(
       {
         connectorOperation: {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
@@ -2358,6 +2362,173 @@ export class DVLP_KSeF_PP_ConnectorService {
           tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
           operationName: 'GetApproversOverview',
           parameters: params
+        },
+      });
+    return result;
+  }
+
+  // ── Cost Documents ──────────────────────────────────────────────
+
+  /**
+   * List Cost Documents
+   */
+  public static async ListCostDocuments(
+    settingId?: string, documentType?: string, paymentStatus?: string, approvalStatus?: string,
+    status?: string, source?: string, mpkCenterId?: string, mpkCenterIds?: string,
+    category?: string, fromDate?: string, toDate?: string, dueDateFrom?: string, dueDateTo?: string,
+    minAmount?: number, maxAmount?: number, issuerName?: string, issuerNip?: string,
+    search?: string, top?: number, skip?: number, orderBy?: string, orderDirection?: string
+  ): Promise<IOperationResult<CostDocumentListResponse>> {
+    const params = {
+      settingId, documentType, paymentStatus, approvalStatus, status, source,
+      mpkCenterId, mpkCenterIds, category, fromDate, toDate, dueDateFrom, dueDateTo,
+      minAmount, maxAmount, issuerName, issuerNip, search, top, skip, orderBy, orderDirection,
+    };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<typeof params, CostDocumentListResponse>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'ListCostDocuments',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Cost Document
+   */
+  public static async GetCostDocument(id: string): Promise<IOperationResult<CostDocument>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, CostDocument>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetCostDocument',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Create Cost Document
+   */
+  public static async CreateCostDocument(body: Record<string, unknown>): Promise<IOperationResult<CostDocument>> {
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<Record<string, unknown>, CostDocument>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'CreateCostDocument',
+          parameters: body
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Update Cost Document
+   */
+  public static async UpdateCostDocument(id: string, body: Record<string, unknown>): Promise<IOperationResult<CostDocument>> {
+    const params = { id, ...body };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<Record<string, unknown>, CostDocument>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'UpdateCostDocument',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Delete Cost Document
+   */
+  public static async DeleteCostDocument(id: string): Promise<IOperationResult<void>> {
+    const params: { id: string } = { id };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ id: string }, void>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'DeleteCostDocument',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Get Cost Documents Summary
+   */
+  public static async GetCostDocumentsSummary(settingId: string): Promise<IOperationResult<CostDocumentSummary>> {
+    const params: { settingId: string } = { settingId };
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ settingId: string }, CostDocumentSummary>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'GetCostDocumentsSummary',
+          parameters: params
+        },
+      });
+    return result;
+  }
+
+  /**
+   * AI Categorize Cost Document
+   */
+  public static async AiCategorizeCostDocument(body: Record<string, unknown>): Promise<IOperationResult<Record<string, unknown>>> {
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<Record<string, unknown>, Record<string, unknown>>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'AiCategorizeCostDocument',
+          parameters: body
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Approve Cost Documents
+   */
+  public static async BatchApproveCostDocuments(body: { ids: string[] }): Promise<IOperationResult<CostDocBatchResult>> {
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ ids: string[] }, CostDocBatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'BatchApproveCostDocuments',
+          parameters: body
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Reject Cost Documents
+   */
+  public static async BatchRejectCostDocuments(body: { ids: string[] }): Promise<IOperationResult<CostDocBatchResult>> {
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ ids: string[] }, CostDocBatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'BatchRejectCostDocuments',
+          parameters: body
+        },
+      });
+    return result;
+  }
+
+  /**
+   * Batch Mark Paid Cost Documents
+   */
+  public static async BatchMarkPaidCostDocuments(body: { ids: string[] }): Promise<IOperationResult<CostDocBatchResult>> {
+    const result = await DVLP_KSeF_PP_ConnectorService.client.executeAsync<{ ids: string[] }, CostDocBatchResult>(
+      {
+        connectorOperation: {
+          tableName: DVLP_KSeF_PP_ConnectorService.dataSourceName,
+          operationName: 'BatchMarkPaidCostDocuments',
+          parameters: body
         },
       });
     return result;

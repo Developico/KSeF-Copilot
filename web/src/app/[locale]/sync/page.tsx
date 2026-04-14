@@ -83,6 +83,7 @@ export default function SyncPage() {
     refetch: refetchPreview,
   } = useSyncPreview({ 
     nip,
+    settingId,
     dateFrom, 
     dateTo, 
     enabled: Boolean(sessionData?.session) && Boolean(nip),

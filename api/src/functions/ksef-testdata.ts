@@ -477,13 +477,33 @@ app.http('ksef-testdata-environments', {
 // Import for cleanup and generation functionality
 import { listAllInvoices, bulkDeleteInvoices, countInvoices, createInvoice, updateInvoice } from '../lib/dataverse/invoices'
 import { settingService } from '../lib/dataverse/services/setting-service'
+import { costDocumentService } from '../lib/dataverse/services/cost-document-service'
 import { supplierService } from '../lib/dataverse/services/supplier-service'
 import { sbAgreementService } from '../lib/dataverse/services/sb-agreement-service'
 import { sbTemplateService } from '../lib/dataverse/services/sb-template-service'
 import { generateInvoices, calculateSummary, type GenerateInvoicesOptions, type GeneratedInvoice } from '../lib/testdata'
+import {
+  generateCostDocuments,
+  generateCostDocumentsFromPreset,
+  calculateCostDocumentSummary,
+  type GenerateCostDocumentsOptions,
+  type GeneratedCostDocument,
+} from '../lib/testdata'
+import { PRESETS as COST_DOC_PRESETS } from '../lib/testdata/cost-document-templates'
 import { InvoiceSource, PaymentStatus } from '../types/invoice'
+import { CostDocumentType } from '../types/cost-document'
 import { SupplierStatus, SupplierSource, type SupplierCreate } from '../types/supplier'
 import { SbAgreementStatus, type SbAgreementCreate, type SbTemplateCreate } from '../types/self-billing'
+import { dataverseClient } from '../lib/dataverse/client'
+import {
+  PAYMENT_STATUS,
+  APPROVAL_STATUS,
+  COST_DOCUMENT_TYPE,
+  COST_DOCUMENT_STATUS,
+  COST_DOCUMENT_SOURCE,
+  CURRENCY,
+} from '../lib/dataverse/config'
+import { MpkValues } from '../lib/dataverse/entities'
 
 /**
  * Cleanup test invoices from Dataverse (TEST and DEMO environments only)
@@ -570,7 +590,7 @@ app.http('ksef-testdata-cleanup', {
       if (dryRun) {
         // Just count matching records
         const invoices = await listAllInvoices(filterParams)
-        const total = invoices.length
+        const costDocs = await costDocumentService.getAll({ settingId: companySetting.id })
 
         return {
           status: 200,
@@ -579,8 +599,9 @@ app.http('ksef-testdata-cleanup', {
             dryRun: true,
             environment,
             nip,
-            total,
-            message: `Found ${total} invoices matching criteria. Set dryRun=false to delete them.`,
+            total: invoices.length,
+            costDocuments: costDocs.length,
+            message: `Found ${invoices.length} invoices and ${costDocs.length} cost documents. Set dryRun=false to delete them.`,
             filters: filterParams,
           },
         }
@@ -590,11 +611,22 @@ app.http('ksef-testdata-cleanup', {
       const result = await bulkDeleteInvoices(filterParams, {
         batchSize: 50,
         onProgress: (deleted, failed, total) => {
-          context.log(`Cleanup progress: ${deleted}/${total} deleted, ${failed} failed`)
+          context.log(`Invoice cleanup progress: ${deleted}/${total} deleted, ${failed} failed`)
         },
       })
 
-      context.log(`Cleanup completed: ${result.deleted} deleted, ${result.failed} failed out of ${result.total}`)
+      // Also delete cost documents
+      const costResult = await costDocumentService.bulkDelete(
+        { settingId: companySetting.id },
+        {
+          batchSize: 50,
+          onProgress: (deleted, failed, total) => {
+            context.log(`Cost doc cleanup progress: ${deleted}/${total} deleted, ${failed} failed`)
+          },
+        },
+      )
+
+      context.log(`Cleanup completed: invoices ${result.deleted}/${result.total}, cost docs ${costResult.deleted}/${costResult.total}`)
 
       return {
         status: 200,
@@ -606,7 +638,12 @@ app.http('ksef-testdata-cleanup', {
           total: result.total,
           deleted: result.deleted,
           failed: result.failed,
-          errors: result.errors.slice(0, 10), // Return first 10 errors
+          costDocuments: {
+            total: costResult.total,
+            deleted: costResult.deleted,
+            failed: costResult.failed,
+          },
+          errors: [...result.errors, ...costResult.errors].slice(0, 10),
         },
       }
     } catch (error) {
@@ -681,6 +718,9 @@ app.http('ksef-testdata-cleanup-preview', {
       // Get all invoices to count (uses pagination)
       const invoices = await listAllInvoices(filterParams)
 
+      // Get cost documents count for this setting
+      const costDocs = await costDocumentService.getAll({ settingId: companySetting.id })
+
       // Group by source for better visibility
       const bySource = invoices.reduce((acc, inv) => {
         const src = inv.source || 'Unknown'
@@ -695,6 +735,13 @@ app.http('ksef-testdata-cleanup-preview', {
         return acc
       }, {} as Record<string, number>)
 
+      // Group cost docs by type
+      const costDocsByType = costDocs.reduce((acc, doc) => {
+        const type = doc.documentType || 'Unknown'
+        acc[type] = (acc[type] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
+
       return {
         status: 200,
         jsonBody: {
@@ -702,6 +749,8 @@ app.http('ksef-testdata-cleanup-preview', {
           environment,
           nip,
           total: invoices.length,
+          costDocuments: costDocs.length,
+          costDocsByType,
           bySource,
           byMonth: Object.entries(byMonth)
             .sort(([a], [b]) => b.localeCompare(a))
@@ -945,6 +994,260 @@ app.http('ksef-testdata-generate', {
       }
     } catch (error) {
       context.error('Failed to generate test invoices:', error)
+      return {
+        status: 500,
+        jsonBody: {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+      }
+    }
+  },
+})
+
+// ============================================================
+// Generate Cost Documents
+// ============================================================
+
+const COST_DOC_TYPE_MAP: Record<string, number> = {
+  Receipt: COST_DOCUMENT_TYPE.RECEIPT,
+  Acknowledgment: COST_DOCUMENT_TYPE.ACKNOWLEDGMENT,
+  ProForma: COST_DOCUMENT_TYPE.PRO_FORMA,
+  DebitNote: COST_DOCUMENT_TYPE.DEBIT_NOTE,
+  Bill: COST_DOCUMENT_TYPE.BILL,
+  ContractInvoice: COST_DOCUMENT_TYPE.CONTRACT_INVOICE,
+  Other: COST_DOCUMENT_TYPE.OTHER,
+}
+
+const COST_DOC_STATUS_MAP: Record<string, number> = {
+  Draft: COST_DOCUMENT_STATUS.DRAFT,
+  Active: COST_DOCUMENT_STATUS.ACTIVE,
+  Cancelled: COST_DOCUMENT_STATUS.CANCELLED,
+}
+
+const COST_DOC_SOURCE_MAP: Record<string, number> = {
+  Manual: COST_DOCUMENT_SOURCE.MANUAL,
+  OCR: COST_DOCUMENT_SOURCE.OCR,
+  Import: COST_DOCUMENT_SOURCE.IMPORT,
+}
+
+const COST_CURRENCY_MAP: Record<string, number> = {
+  PLN: CURRENCY.PLN,
+  USD: CURRENCY.USD,
+  EUR: CURRENCY.EUR,
+}
+
+const COST_APPROVAL_MAP: Record<string, number> = {
+  Draft: APPROVAL_STATUS.DRAFT,
+  Pending: APPROVAL_STATUS.PENDING,
+  Approved: APPROVAL_STATUS.APPROVED,
+  Rejected: APPROVAL_STATUS.REJECTED,
+}
+
+/**
+ * Generate test cost documents in Dataverse (TEST and DEMO environments only)
+ * POST /api/ksef/testdata/generate-costs
+ *
+ * Body: {
+ *   nip: string,                 // Required: NIP of the company
+ *   companyId?: string,          // Optional: KsefSetting ID
+ *   count?: number,              // Optional: Number of documents (default: 10, max: 500)
+ *   preset?: string,             // Optional: Preset name (overrides count/dates/etc.)
+ *   fromDate?: string,           // Optional: Start date (YYYY-MM-DD, default: 6 months ago)
+ *   toDate?: string,             // Optional: End date (YYYY-MM-DD, default: today)
+ *   paidPercentage?: number,     // Optional: % paid (0-100, default: 40)
+ *   approvedPercentage?: number, // Optional: % approved (0-100, default: 60)
+ * }
+ */
+app.http('ksef-testdata-generate-costs', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  route: 'ksef/testdata/generate-costs',
+  handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
+    try {
+      const auth = await verifyAuth(request)
+      if (!auth.success || !auth.user) {
+        return { status: 401, jsonBody: { error: auth.error || 'Unauthorized' } }
+      }
+
+      const roleCheck = requireRole(auth.user, 'Admin')
+      if (!roleCheck.success) {
+        return { status: 403, jsonBody: { error: 'Forbidden: Admin role required' } }
+      }
+
+      const body = await request.json() as {
+        nip: string
+        companyId?: string
+        count?: number
+        preset?: string
+        fromDate?: string
+        toDate?: string
+        paidPercentage?: number
+        approvedPercentage?: number
+      }
+
+      if (!body.nip) {
+        return { status: 400, jsonBody: { error: 'NIP is required' } }
+      }
+
+      // Validate preset name if provided
+      if (body.preset && !COST_DOC_PRESETS[body.preset]) {
+        return {
+          status: 400,
+          jsonBody: {
+            error: `Unknown preset "${body.preset}". Available: ${Object.keys(COST_DOC_PRESETS).join(', ')}`,
+          },
+        }
+      }
+
+      // Validate count
+      const count = Math.min(Math.max(body.count || 10, 1), 500)
+
+      // Get company setting
+      const settings = await settingService.getAll()
+      const companySetting = body.companyId
+        ? settings.find(s => s.id === body.companyId)
+        : settings.find(s => s.nip === body.nip)
+
+      if (!companySetting) {
+        return {
+          status: 404,
+          jsonBody: { error: `Company with NIP ${body.nip} not found in settings` },
+        }
+      }
+
+      const environment = companySetting.environment
+      const envLower = environment?.toLowerCase()
+      if (envLower !== 'test' && envLower !== 'demo') {
+        return {
+          status: 400,
+          jsonBody: {
+            error: `Test data generation is only allowed for test and demo environments (current: ${environment})`,
+            environment,
+          },
+        }
+      }
+
+      // Parse dates
+      const fromDate = body.fromDate ? new Date(body.fromDate) : undefined
+      const toDate = body.toDate ? new Date(body.toDate) : undefined
+
+      if (fromDate && isNaN(fromDate.getTime())) {
+        return { status: 400, jsonBody: { error: 'Invalid fromDate format. Use YYYY-MM-DD' } }
+      }
+      if (toDate && isNaN(toDate.getTime())) {
+        return { status: 400, jsonBody: { error: 'Invalid toDate format. Use YYYY-MM-DD' } }
+      }
+
+      // Generate documents using preset or direct options
+      let generatedDocs: GeneratedCostDocument[]
+
+      if (body.preset) {
+        const overrides: Partial<GenerateCostDocumentsOptions> = {}
+        if (body.count) overrides.count = count
+        if (fromDate) overrides.fromDate = fromDate
+        if (toDate) overrides.toDate = toDate
+        if (body.paidPercentage !== undefined) overrides.paidPercentage = body.paidPercentage
+        if (body.approvedPercentage !== undefined) overrides.approvedPercentage = body.approvedPercentage
+        generatedDocs = generateCostDocumentsFromPreset(body.preset, overrides)
+      } else {
+        generatedDocs = generateCostDocuments({
+          count,
+          fromDate,
+          toDate: toDate ?? new Date(),
+          paidPercentage: body.paidPercentage,
+          approvedPercentage: body.approvedPercentage,
+        })
+      }
+
+      const summary = calculateCostDocumentSummary(generatedDocs)
+      context.log(`Generating ${generatedDocs.length} cost documents for NIP: ${body.nip}, environment: ${environment}`)
+
+      // Write to Dataverse
+      let created = 0
+      let paid = 0
+      let failed = 0
+      const errors: string[] = []
+      const ENTITY_SET = 'dvlp_ksefcostdocuments'
+
+      for (const doc of generatedDocs) {
+        try {
+          const docStatus = doc.targetApprovalStatus === 'Approved' ? 'Active' : 'Draft'
+
+          // Dataverse cost document columns are text (Edm.String), not choice/option-set,
+          // so we must send string representations of the option-set integer values.
+          const toStr = (v: number) => String(v)
+
+          const payload: Record<string, unknown> = {
+            'dvlp_settingid@odata.bind': `/dvlp_ksefsettings(${companySetting.id})`,
+            dvlp_name: doc.documentNumber,
+            dvlp_documenttype: toStr(COST_DOC_TYPE_MAP[doc.documentType] ?? COST_DOCUMENT_TYPE.OTHER),
+            dvlp_documentnumber: doc.documentNumber,
+            dvlp_documentdate: doc.documentDate,
+            dvlp_description: doc.description,
+            dvlp_issuername: doc.issuerName,
+            dvlp_netamount: doc.netAmount,
+            dvlp_vatamount: doc.vatAmount,
+            dvlp_grossamount: doc.grossAmount,
+            dvlp_currency: toStr(COST_CURRENCY_MAP[doc.currency ?? 'PLN'] ?? CURRENCY.PLN),
+            dvlp_paymentstatus: toStr(doc.shouldBePaid ? PAYMENT_STATUS.PAID : PAYMENT_STATUS.PENDING),
+            dvlp_status: toStr(COST_DOC_STATUS_MAP[docStatus] ?? COST_DOCUMENT_STATUS.DRAFT),
+            dvlp_source: toStr(COST_DOCUMENT_SOURCE.MANUAL),
+            dvlp_approvalstatus: toStr(COST_APPROVAL_MAP[doc.targetApprovalStatus] ?? APPROVAL_STATUS.DRAFT),
+            dvlp_category: doc.category,
+            dvlp_tags: doc.tags,
+            dvlp_notes: doc.notes,
+          }
+
+          if (doc.dueDate) payload.dvlp_duedate = doc.dueDate
+          if (doc.issuerNip) payload.dvlp_issuernip = doc.issuerNip
+          if (doc.issuerAddress) payload.dvlp_issueraddress = doc.issuerAddress
+          if (doc.issuerCity) payload.dvlp_issuercity = doc.issuerCity
+          if (doc.issuerPostalCode) payload.dvlp_issuerpostalcode = doc.issuerPostalCode
+          if (doc.issuerCountry) payload.dvlp_issuercountry = doc.issuerCountry
+          if (doc.exchangeRate) payload.dvlp_exchangerate = doc.exchangeRate
+          if (doc.grossAmountPln) payload.dvlp_grossamountpln = doc.grossAmountPln
+          if (doc.shouldBePaid && doc.suggestedPaymentDate) {
+            payload.dvlp_paidat = doc.suggestedPaymentDate
+          }
+          // dvlp_costcenter was removed from Dataverse; MPK is now a lookup (dvlp_mpkcenterid)
+          // Skip mpk for test data — lookup IDs are not available here
+          if (doc.aiDescription) payload.dvlp_aidescription = doc.aiDescription
+          if (doc.aiCategorySuggestion) payload.dvlp_aicategorysuggestion = doc.aiCategorySuggestion
+          if (doc.aiConfidence !== undefined) payload.dvlp_aiconfidence = doc.aiConfidence
+          if (doc.aiMpkSuggestion && MpkValues[doc.aiMpkSuggestion as keyof typeof MpkValues] !== undefined) {
+            payload.dvlp_aimpksuggestion = toStr(MpkValues[doc.aiMpkSuggestion as keyof typeof MpkValues])
+          }
+
+          await dataverseClient.create(ENTITY_SET, payload)
+          created++
+          if (doc.shouldBePaid) paid++
+        } catch (error) {
+          failed++
+          errors.push(error instanceof Error ? error.message : 'Unknown error')
+          context.error('Failed to create cost document:', error)
+        }
+      }
+
+      context.log(`Cost doc generation completed: ${created} created, ${paid} paid, ${failed} failed`)
+
+      return {
+        status: 200,
+        jsonBody: {
+          success: true,
+          environment,
+          nip: body.nip,
+          summary: {
+            ...summary,
+            created,
+            paid,
+            failed,
+            errors: errors.slice(0, 10),
+          },
+        },
+      }
+    } catch (error) {
+      context.error('Failed to generate cost documents:', error)
       return {
         status: 500,
         jsonBody: {

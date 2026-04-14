@@ -1,15 +1,20 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, Fragment } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useIntl } from 'react-intl'
 import {
   Card, CardContent,
   Badge, Skeleton, Button, Input, Checkbox,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui'
 import {
-  Plus, RefreshCw, Eye, Loader2,
+  Wallet, Plus, RefreshCw, Eye, Loader2,
   ArrowUp, ArrowDown, CheckCircle, XCircle, CreditCard,
-  Sparkles, Trash2, Download,
+  Sparkles, Trash2, Download, Calendar, Building2,
+  ChevronDown, ChevronRight,
 } from 'lucide-react'
 import {
   CostDocumentFilters,
@@ -17,17 +22,21 @@ import {
   type CostDocumentFilterValues,
   type CostGroupBy,
 } from '@/components/costs/cost-document-filters'
+import { CostTypeIcon } from '@/components/costs/cost-type-icon'
+import { ApprovalStatusBadge } from '@/components/invoices/approval-status-badge'
 import {
   useContextCostDocuments,
   useCreateCostDocument,
   useDeleteCostDocument,
+  useUpdateCostDocument,
   useBatchApproveCostDocuments,
   useBatchRejectCostDocuments,
   useBatchMarkPaidCostDocuments,
   useAICostDocCategorize,
 } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
-import { formatCurrency } from '@/lib/format'
+import { useHasRole } from '@/components/auth/auth-provider'
+import { formatCurrency, formatDate } from '@/lib/format'
 import { exportCostDocumentsToCsv } from '@/lib/export'
 import { CostDocumentScannerModal } from '@/components/costs/cost-document-scanner-modal'
 import { toast } from 'sonner'
@@ -41,29 +50,26 @@ const COST_DOCUMENT_TYPES: CostDocumentType[] = [
   'Receipt', 'Acknowledgment', 'ProForma', 'DebitNote', 'Bill', 'ContractInvoice', 'Other',
 ]
 
-const STATUS_COLORS: Record<string, string> = {
-  Draft: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
-  Active: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  Cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-}
-
-const APPROVAL_STATUS_COLORS: Record<string, string> = {
-  Draft: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
-  Pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  Approved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  Rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-}
-
-const PAYMENT_STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+interface CostDocumentGroup {
+  key: string
+  label: string
+  documents: CostDocument[]
+  totalGross: number
+  isPartialPln: boolean
 }
 
 type SortCol = 'documentDate' | 'grossAmount' | 'issuerName'
 
+const MONTH_NAMES_PL = [
+  'styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec',
+  'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień',
+]
+
 export function CostsPage() {
   const intl = useIntl()
+  const navigate = useNavigate()
   const { selectedCompany } = useCompanyContext()
+  const isAdmin = useHasRole('Admin')
   const t = (id: string) => intl.formatMessage({ id })
 
   // State
@@ -73,15 +79,15 @@ export function CostsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [createOpen, setCreateOpen] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
-  const [detailDoc, setDetailDoc] = useState<CostDocument | null>(null)
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [bulkAction, setBulkAction] = useState<'approve' | 'reject' | 'markPaid' | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [groupBy, setGroupBy] = useState<CostGroupBy>('date')
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
   // Data
   const { data, isLoading, refetch } = useContextCostDocuments()
   const deleteMutation = useDeleteCostDocument()
+  const updateMutation = useUpdateCostDocument()
   const batchApproveMutation = useBatchApproveCostDocuments()
   const batchRejectMutation = useBatchRejectCostDocuments()
   const batchMarkPaidMutation = useBatchMarkPaidCostDocuments()
@@ -151,6 +157,77 @@ export function CostsPage() {
     })
   }, [filtered, sortColumn, sortDirection])
 
+  // Grouping
+  const groupedDocuments = useMemo<CostDocumentGroup[]>(() => {
+    if (groupBy === 'none') {
+      return [{
+        key: 'all',
+        label: t('costs.title'),
+        documents: sorted,
+        totalGross: sorted.reduce((sum, d) => sum + (d.currency === 'PLN' ? d.grossAmount : (d.grossAmountPln ?? d.grossAmount)), 0),
+        isPartialPln: sorted.some(d => d.currency !== 'PLN' && !d.grossAmountPln),
+      }]
+    }
+    const groups: Record<string, CostDocumentGroup> = {}
+    for (const doc of sorted) {
+      let key: string
+      let label: string
+      switch (groupBy) {
+        case 'date': {
+          const date = doc.documentDate ? new Date(doc.documentDate) : null
+          if (date) {
+            const year = date.getFullYear()
+            const month = date.getMonth()
+            key = `${year}-${String(month + 1).padStart(2, '0')}`
+            label = `${MONTH_NAMES_PL[month]} ${year}`
+          } else {
+            key = 'unknown'
+            label = '-'
+          }
+          break
+        }
+        case 'mpk':
+          key = doc.costCenter || 'brak'
+          label = doc.costCenter || '-'
+          break
+        case 'category':
+          key = doc.category || 'brak'
+          label = doc.category || '-'
+          break
+        default:
+          key = 'all'
+          label = t('common.all')
+      }
+      if (!groups[key]) {
+        groups[key] = { key, label, documents: [], totalGross: 0, isPartialPln: false }
+      }
+      groups[key].documents.push(doc)
+      const plnValue = doc.currency === 'PLN' ? doc.grossAmount : (doc.grossAmountPln ?? doc.grossAmount)
+      groups[key].totalGross += plnValue
+      if (doc.currency !== 'PLN' && !doc.grossAmountPln) groups[key].isPartialPln = true
+    }
+    const sortedGroups = Object.values(groups)
+    if (groupBy === 'date') {
+      sortedGroups.sort((a, b) => b.key.localeCompare(a.key))
+    } else {
+      sortedGroups.sort((a, b) => {
+        if (a.key === 'brak') return 1
+        if (b.key === 'brak') return -1
+        return a.label.localeCompare(b.label, 'pl')
+      })
+    }
+    return sortedGroups
+  }, [sorted, groupBy, t])
+
+  const toggleGroupCollapse = useCallback((key: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
+
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true)
     try {
@@ -178,15 +255,23 @@ export function CostsPage() {
     setSelectedIds(ids.length > 0 && ids.every(id => selectedIds.has(id)) ? new Set() : new Set(ids))
   }
 
-  const handleDelete = async () => {
-    if (!deleteConfirmId) return
+  const handleDelete = async (id: string) => {
     try {
-      await deleteMutation.mutateAsync(deleteConfirmId)
+      await deleteMutation.mutateAsync(id)
       toast.success(t('costs.deleted'))
     } catch {
       toast.error(t('common.error'))
     }
-    setDeleteConfirmId(null)
+  }
+
+  const handleTogglePaymentStatus = async (id: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'paid' ? 'pending' : 'paid'
+    try {
+      await updateMutation.mutateAsync({ id, data: { paymentStatus: newStatus } })
+      toast.success(newStatus === 'paid' ? t('costs.markAsPaid') : t('costs.markAsUnpaid'))
+    } catch {
+      toast.error(t('common.error'))
+    }
   }
 
   const handleBulkAction = async () => {
@@ -226,13 +311,18 @@ export function CostsPage() {
     <div className="p-4 md:p-6 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {t('costs.title')}
-          </h1>
-          <p className="text-muted-foreground">
-            {t('costs.subtitle')}
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Wallet className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {t('costs.title')}
+            </h1>
+            <p className="text-muted-foreground">
+              {t('costs.subtitle')}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={() => setScannerOpen(true)}>
@@ -286,16 +376,17 @@ export function CostsPage() {
       ) : sorted.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-muted-foreground">{t('costs.noDocuments')}</CardContent></Card>
       ) : (
-        <div className="rounded-md border overflow-x-auto">
+        <Card>
+          <CardContent className="p-0">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="w-[40px] p-2">
+                <th className="w-10 p-2">
                   <Checkbox checked={sorted.length > 0 && sorted.every(d => selectedIds.has(d.id))} onCheckedChange={toggleSelectAll} />
                 </th>
-                <th className="p-2 text-left font-medium">{t('costs.colType')}</th>
                 <th className="p-2 text-left font-medium">{t('costs.colNumber')}</th>
-                <th className="p-2 text-left font-medium cursor-pointer select-none" onClick={() => toggleSort('documentDate')}>
+                <th className="p-2 text-left font-medium hidden lg:table-cell cursor-pointer select-none" onClick={() => toggleSort('documentDate')}>
                   {t('costs.colDate')}<SortIcon col="documentDate" />
                 </th>
                 <th className="p-2 text-left font-medium cursor-pointer select-none" onClick={() => toggleSort('issuerName')}>
@@ -304,75 +395,208 @@ export function CostsPage() {
                 <th className="p-2 text-right font-medium cursor-pointer select-none" onClick={() => toggleSort('grossAmount')}>
                   {t('costs.colAmount')}<SortIcon col="grossAmount" />
                 </th>
-                <th className="p-2 text-left font-medium">{t('costs.colStatus')}</th>
-                <th className="p-2 text-left font-medium">{t('costs.colApproval')}</th>
-                <th className="p-2 text-left font-medium">{t('costs.colPayment')}</th>
-                <th className="p-2 text-right font-medium">{t('common.actions')}</th>
+                <th className="p-2 text-left font-medium hidden xl:table-cell">{t('costs.colMpk')}</th>
+                <th className="p-2 text-left font-medium hidden xl:table-cell">{t('costs.colCategory')}</th>
+                <th className="p-2 text-left font-medium hidden lg:table-cell">{t('costs.colApproval')}</th>
+                <th className="p-2 text-center font-medium">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
-              {sorted.map(doc => (
-                <tr key={doc.id} className={`border-b hover:bg-muted/30 transition-colors ${selectedIds.has(doc.id) ? 'bg-primary/5' : ''}`}>
-                  <td className="p-2">
-                    <Checkbox checked={selectedIds.has(doc.id)} onCheckedChange={() => toggleSelect(doc.id)} />
-                  </td>
-                  <td className="p-2">
-                    <Badge variant="outline" className="text-xs">
-                      {t(`costs.docType.${doc.documentType}`)}
-                    </Badge>
-                  </td>
-                  <td className="p-2 font-medium">{doc.documentNumber}</td>
-                  <td className="p-2">{doc.documentDate}</td>
-                  <td className="p-2 max-w-[200px] truncate">{doc.issuerName}</td>
-                  <td className="p-2 text-right font-medium">
-                    {formatCurrency(doc.grossAmount, doc.currency || 'PLN')}
-                  </td>
-                  <td className="p-2">
-                    <Badge className={STATUS_COLORS[doc.status] || ''}>{doc.status}</Badge>
-                  </td>
-                  <td className="p-2">
-                    {doc.approvalStatus && (
-                      <Badge className={APPROVAL_STATUS_COLORS[doc.approvalStatus] || ''}>{doc.approvalStatus}</Badge>
-                    )}
-                  </td>
-                  <td className="p-2">
-                    <Badge className={PAYMENT_STATUS_COLORS[doc.paymentStatus] || ''}>{doc.paymentStatus}</Badge>
-                  </td>
-                  <td className="p-2 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => setDetailDoc(doc)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleAICategorize(doc.id)}
-                        disabled={aiCategorizeMutation.isPending}>
-                        <Sparkles className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => setDeleteConfirmId(doc.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
+              {groupedDocuments.map(group => (
+                <Fragment key={`group-container-${group.key}`}>
+                  {/* Group header row */}
+                  {groupBy !== 'none' && (
+                    <tr
+                      key={`group-${group.key}`}
+                      className="bg-muted/50 hover:bg-muted/70 cursor-pointer border-b"
+                      onClick={() => toggleGroupCollapse(group.key)}
+                    >
+                      <td colSpan={9} className="p-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {collapsedGroups.has(group.key) ? (
+                              <ChevronRight className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                            <span className="font-semibold">{group.label}</span>
+                            <Badge variant="secondary">
+                              {group.documents.length} {t('costs.documentsCount')}
+                            </Badge>
+                          </div>
+                          <span className="font-semibold">
+                            {group.isPartialPln ? '~ ' : ''}{formatCurrency(group.totalGross, 'PLN')}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {/* Document rows */}
+                  {!collapsedGroups.has(group.key) && group.documents.map(doc => (
+                    <tr
+                      key={doc.id}
+                      className={`border-b cursor-pointer hover:bg-muted/50 transition-colors ${selectedIds.has(doc.id) ? 'bg-primary/5' : ''}`}
+                      onDoubleClick={() => navigate(`/costs/${doc.id}`)}
+                    >
+                      <td className="p-2 w-10" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox checked={selectedIds.has(doc.id)} onCheckedChange={() => toggleSelect(doc.id)} />
+                      </td>
+                      <td className="p-2">
+                        <div className="flex items-center gap-2">
+                          <CostTypeIcon type={doc.documentType} className="h-4 w-4 hidden sm:block" />
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium text-sm">{doc.documentNumber}</span>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 leading-tight">
+                                {t(`costs.docType.${doc.documentType}`)}
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground lg:hidden">
+                              {formatDate(doc.documentDate)}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-2 hidden lg:table-cell">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          {formatDate(doc.documentDate)}
+                        </div>
+                      </td>
+                      <td className="p-2">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-muted-foreground hidden md:block" />
+                          <div>
+                            <div className="font-medium text-sm truncate max-w-[150px] md:max-w-[200px]">{doc.issuerName}</div>
+                            {doc.issuerNip && (
+                              <div className="text-xs text-muted-foreground hidden sm:block">
+                                NIP: {doc.issuerNip}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-2 text-right font-medium text-sm">
+                        <div>
+                          <span className={doc.grossAmount < 0 ? 'text-red-600 dark:text-red-400' : ''}>
+                            {formatCurrency(doc.grossAmount, doc.currency || 'PLN')}
+                          </span>
+                          {doc.currency && doc.currency !== 'PLN' && doc.grossAmountPln && (
+                            <div className="text-xs text-muted-foreground">
+                              {formatCurrency(doc.grossAmountPln, 'PLN')}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-2 hidden xl:table-cell">
+                        {doc.costCenter ? (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {doc.costCenter}
+                          </Badge>
+                        ) : doc.aiMpkSuggestion ? (
+                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            {doc.aiMpkSuggestion}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">—</span>
+                        )}
+                      </td>
+                      <td className="p-2 hidden xl:table-cell">
+                        {doc.category ? (
+                          <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
+                            {doc.category}
+                          </Badge>
+                        ) : doc.aiCategorySuggestion ? (
+                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            {doc.aiCategorySuggestion}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">—</span>
+                        )}
+                      </td>
+                      <td className="p-2 hidden lg:table-cell">
+                        <ApprovalStatusBadge status={doc.approvalStatus} />
+                      </td>
+                      <td className="p-2">
+                        <div className="flex items-center justify-center gap-1">
+                          {isAdmin ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => { e.stopPropagation(); handleTogglePaymentStatus(doc.id, doc.paymentStatus) }}
+                              disabled={updateMutation.isPending}
+                              title={doc.paymentStatus === 'paid' ? t('costs.markAsUnpaid') : t('costs.markAsPaid')}
+                            >
+                              <CheckCircle
+                                className={`h-5 w-5 transition-colors ${doc.paymentStatus === 'paid' ? 'text-green-500 fill-green-100' : 'text-gray-300'}`}
+                              />
+                            </Button>
+                          ) : (
+                            <span className="inline-flex items-center justify-center h-8 w-8">
+                              <CheckCircle
+                                className={`h-5 w-5 ${doc.paymentStatus === 'paid' ? 'text-green-500 fill-green-100' : 'text-gray-300'}`}
+                              />
+                            </span>
+                          )}
+                          <Button variant="ghost" size="icon" asChild>
+                            <Link to={`/costs/${doc.id}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          {isAdmin ? (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  title={t('common.delete')}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>{t('costs.deleteConfirmTitle')}</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    {t('costs.deleteConfirmDesc')}
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDelete(doc.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    {t('common.delete')}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          ) : (
+                            <span className="w-10 h-10 inline-block" />
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Delete confirmation */}
-      <Dialog open={deleteConfirmId !== null} onOpenChange={() => setDeleteConfirmId(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{t('common.delete')}</DialogTitle></DialogHeader>
-          <p>{t('costs.deleteConfirmMessage')}</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>{t('common.cancel')}</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
-              {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              {t('common.delete')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Showing count */}
+      {sorted.length > 0 && (
+        <div className="text-sm text-muted-foreground text-center">
+          {t('costs.showingCount')}: {sorted.length}
+        </div>
+      )}
 
       {/* Bulk action confirmation */}
       <Dialog open={bulkAction !== null} onOpenChange={() => setBulkAction(null)}>
@@ -404,15 +628,6 @@ export function CostsPage() {
         onCreated={() => { setCreateOpen(false); void refetch() }}
       />
 
-      {/* Detail dialog */}
-      <Dialog open={detailDoc !== null} onOpenChange={() => setDetailDoc(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{detailDoc?.documentNumber}</DialogTitle>
-          </DialogHeader>
-          {detailDoc && <CostDocumentDetail doc={detailDoc} />}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
@@ -545,51 +760,4 @@ function CostDocumentCreateDialog({
   )
 }
 
-// ── Detail Component ─────────────────────────────────────────────
 
-function CostDocumentDetail({ doc }: { doc: CostDocument }) {
-  const intl = useIntl()
-  const t = (id: string) => intl.formatMessage({ id })
-
-  const fields = [
-    { label: t('costs.colType'), value: t(`costs.docType.${doc.documentType}`) },
-    { label: t('costs.colNumber'), value: doc.documentNumber },
-    { label: t('costs.colDate'), value: doc.documentDate },
-    { label: t('costs.dueDate'), value: doc.dueDate || '-' },
-    { label: t('costs.colIssuer'), value: doc.issuerName },
-    { label: t('costs.issuerNip'), value: doc.issuerNip || '-' },
-    { label: t('costs.netAmount'), value: formatCurrency(doc.netAmount, doc.currency || 'PLN') },
-    { label: t('costs.vatAmount'), value: doc.vatAmount ? formatCurrency(doc.vatAmount, doc.currency || 'PLN') : '-' },
-    { label: t('costs.colAmount'), value: formatCurrency(doc.grossAmount, doc.currency || 'PLN') },
-    { label: t('costs.colStatus'), value: doc.status },
-    { label: t('costs.colApproval'), value: doc.approvalStatus || '-' },
-    { label: t('costs.colPayment'), value: doc.paymentStatus },
-    { label: t('costs.category'), value: doc.category || '-' },
-    { label: t('costs.project'), value: doc.project || '-' },
-    { label: t('costs.description'), value: doc.description || '-' },
-  ]
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        {fields.map(f => (
-          <div key={f.label}>
-            <p className="text-xs text-muted-foreground">{f.label}</p>
-            <p className="text-sm font-medium">{f.value}</p>
-          </div>
-        ))}
-      </div>
-      {doc.aiDescription && (
-        <div className="p-3 bg-muted rounded-md">
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <Sparkles className="h-3 w-3" />{t('costs.aiDescription')}
-          </p>
-          <p className="text-sm mt-1">{doc.aiDescription}</p>
-          {doc.aiConfidence && (
-            <p className="text-xs text-muted-foreground mt-1">{t('costs.aiConfidence')}: {Math.round(doc.aiConfidence * 100)}%</p>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}

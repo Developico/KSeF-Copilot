@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, Fragment } from 'react'
 import { useIntl } from 'react-intl'
 import { Link, useNavigate } from 'react-router-dom'
 import {
@@ -7,16 +7,15 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
   AlertDialogTitle, AlertDialogTrigger,
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
-  DropdownMenuTrigger,
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui'
 import {
   FileText, AlertCircle, ArrowUpDown, ChevronUp, ChevronDown,
   RefreshCw, Eye, Plus, ScanLine, Download,
-  MoreHorizontal, CheckCircle, XCircle, Trash2,
+  CheckCircle, XCircle, Trash2,
   Paperclip, StickyNote, CornerDownRight, Ban,
+  Calendar, Building2, Sparkles, ChevronRight,
 } from 'lucide-react'
 import { useInvoices, useMarkInvoiceAsPaid, useUpdateInvoice, useDeleteInvoice, useBatchMarkPaidInvoices, useBatchMarkUnpaidInvoices, useBatchApproveInvoices, useBatchRejectInvoices, useBatchDeleteInvoices } from '@/hooks/use-api'
 import { useCompanyContext } from '@/contexts/company-context'
@@ -31,6 +30,7 @@ import {
 import { DocumentScannerModal } from '@/components/invoices/document-scanner-modal'
 import { ApprovalStatusBadge } from '@/components/invoices/approval-status-badge'
 import { InvoicePagination } from '@/components/invoices/invoice-pagination'
+import { useHasRole } from '@/components/auth/auth-provider'
 import { toast } from 'sonner'
 import type { Invoice, InvoiceListParams, BatchActionResult } from '@/lib/types'
 
@@ -38,30 +38,6 @@ type SortField = 'invoiceDate' | 'grossAmount' | 'supplierName' | 'dueDate'
 type SortDir = 'asc' | 'desc'
 
 const PAGE_SIZE = 25
-
-function PaymentBadge({ status, dueDate }: { status: Invoice['paymentStatus']; dueDate?: string }) {
-  const intl = useIntl()
-  if (status === 'paid') {
-    return (
-      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-        {intl.formatMessage({ id: 'invoices.paid' })}
-      </Badge>
-    )
-  }
-  const isOverdue = dueDate && new Date(dueDate) < new Date()
-  if (isOverdue) {
-    return (
-      <Badge variant="destructive" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-        {intl.formatMessage({ id: 'invoices.overdue' })}
-      </Badge>
-    )
-  }
-  return (
-    <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-      {intl.formatMessage({ id: 'invoices.pending' })}
-    </Badge>
-  )
-}
 
 // ============================================================================
 // Correction nesting — place corrective invoices right after their parent
@@ -122,9 +98,11 @@ function groupInvoices(
   invoices: Invoice[],
   groupBy: GroupBy,
   intl: ReturnType<typeof useIntl>
-): { key: string; label: string; invoices: Invoice[] }[] {
+): { key: string; label: string; invoices: Invoice[]; totalGross: number; isPartialPln: boolean }[] {
   if (groupBy === 'none') {
-    return [{ key: '__all', label: '', invoices }]
+    const total = invoices.reduce((s, inv) => s + (inv.grossAmountPln ?? inv.grossAmount), 0)
+    const isPartialPln = invoices.some(inv => inv.currency !== 'PLN' && !inv.grossAmountPln)
+    return [{ key: '__all', label: '', invoices, totalGross: total, isPartialPln }]
   }
 
   const groups = new Map<string, Invoice[]>()
@@ -156,11 +134,17 @@ function groupInvoices(
       if (b === '__none') return -1
       return a.localeCompare(b)
     })
-    .map(([key, invs]) => ({
-      key,
-      label: key === '__none' ? noneLabel : key,
-      invoices: invs,
-    }))
+    .map(([key, invs]) => {
+      const total = invs.reduce((s, inv) => s + (inv.grossAmountPln ?? inv.grossAmount), 0)
+      const isPartialPln = invs.some(inv => inv.currency !== 'PLN' && !inv.grossAmountPln)
+      return {
+        key,
+        label: key === '__none' ? noneLabel : key,
+        invoices: invs,
+        totalGross: total,
+        isPartialPln,
+      }
+    })
 }
 
 /** Client-side description status filter. */
@@ -186,6 +170,7 @@ export function InvoicesPage() {
   const intl = useIntl()
   const navigate = useNavigate()
   const { selectedCompany, isLoading: companyLoading } = useCompanyContext()
+  const isAdmin = useHasRole('Admin')
 
   const [filters, setFilters] = useState<InvoiceFilterValues>(DEFAULT_FILTERS)
   const [currentPage, setCurrentPage] = useState(0)
@@ -454,13 +439,18 @@ export function InvoicesPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {intl.formatMessage({ id: 'invoices.title' })}
-          </h1>
-          <p className="text-muted-foreground">
-            {intl.formatMessage({ id: 'invoices.subtitle' })}
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <FileText className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {intl.formatMessage({ id: 'invoices.title' })}
+            </h1>
+            <p className="text-muted-foreground">
+              {intl.formatMessage({ id: 'invoices.subtitle' })}
+            </p>
+          </div>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => setScannerOpen(true)}>
@@ -563,7 +553,7 @@ export function InvoicesPage() {
           </div>
 
           {groups.map((group) => (
-            <div key={group.key}>
+            <Fragment key={group.key}>
               {/* Group header (collapsible) */}
               {filters.groupBy !== 'none' && (
                 <button
@@ -571,15 +561,18 @@ export function InvoicesPage() {
                   className="flex items-center gap-2 mb-2 mt-4 w-full text-left hover:opacity-80 transition-opacity"
                 >
                   {collapsedGroups.has(group.key) ? (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                   ) : (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
                   )}
                   <Badge variant="outline" className="text-sm font-medium px-3 py-1">
                     {group.label}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
                     ({group.invoices.length})
+                  </span>
+                  <span className="ml-auto text-sm font-semibold">
+                    {group.isPartialPln ? '~ ' : ''}{formatCurrency(group.totalGross, 'PLN')}
                   </span>
                 </button>
               )}
@@ -599,7 +592,7 @@ export function InvoicesPage() {
                           aria-label={intl.formatMessage({ id: 'invoices.bulk.selectAll' })}
                         />
                       </th>
-                      <th className="text-left p-3 font-medium">
+                      <th className="text-left p-3 font-medium hidden lg:table-cell">
                         <button onClick={() => toggleSort('invoiceDate')} className="inline-flex items-center hover:text-foreground">
                           {intl.formatMessage({ id: 'invoices.invoiceDate' })}
                           <SortIcon field="invoiceDate" />
@@ -620,22 +613,19 @@ export function InvoicesPage() {
                           <SortIcon field="grossAmount" />
                         </button>
                       </th>
-                      <th className="text-left p-3 font-medium">
+                      <th className="text-left p-3 font-medium hidden xl:table-cell">
                         {intl.formatMessage({ id: 'invoices.mpk' })}
                       </th>
-                      <th className="text-left p-3 font-medium">
+                      <th className="text-left p-3 font-medium hidden xl:table-cell">
                         {intl.formatMessage({ id: 'invoices.category' })}
                       </th>
-                      <th className="text-left p-3 font-medium">
+                      <th className="text-left p-3 font-medium hidden lg:table-cell">
                         {intl.formatMessage({ id: 'invoices.approvalColumn' })}
                       </th>
                       <th className="text-center p-3 font-medium whitespace-nowrap">
                         {intl.formatMessage({ id: 'invoices.selfBillingColumn' })}
                       </th>
-                      <th className="text-center p-3 font-medium">
-                        {intl.formatMessage({ id: 'invoices.paymentStatus' })}
-                      </th>
-                      <th className="p-3 text-right font-medium">
+                      <th className="p-3 text-center font-medium">
                         {intl.formatMessage({ id: 'common.actions' })}
                       </th>
                     </tr>
@@ -650,7 +640,12 @@ export function InvoicesPage() {
                             aria-label={inv.invoiceNumber}
                           />
                         </td>
-                        <td className="p-3 whitespace-nowrap">{formatDate(inv.invoiceDate)}</td>
+                        <td className="p-3 whitespace-nowrap hidden lg:table-cell">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            {formatDate(inv.invoiceDate)}
+                          </div>
+                        </td>
                         <td className="p-3 font-mono text-xs">
                           <div className="flex items-center gap-1.5">
                             {isCorrection && (
@@ -668,20 +663,33 @@ export function InvoicesPage() {
                               </Badge>
                             )}
                           </div>
+                          <div className="text-xs text-muted-foreground lg:hidden">
+                            {formatDate(inv.invoiceDate)}
+                          </div>
                         </td>
                         <td className="p-3 max-w-48" title={inv.supplierName}>
-                          <div className="flex items-center gap-1.5">
-                            <span className="truncate">{inv.supplierName}</span>
-                            {inv.hasAttachments && (
-                              <span title={`${inv.attachmentCount ?? 0} attachment(s)`}>
-                                <Paperclip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              </span>
-                            )}
-                            {inv.hasNotes && (
-                              <span title={`${inv.noteCount ?? 0} note(s)`}>
-                                <StickyNote className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              </span>
-                            )}
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-muted-foreground hidden md:block shrink-0" />
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="truncate font-medium text-sm">{inv.supplierName}</span>
+                                {inv.hasAttachments && (
+                                  <span title={`${inv.attachmentCount ?? 0} attachment(s)`}>
+                                    <Paperclip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  </span>
+                                )}
+                                {inv.hasNotes && (
+                                  <span title={`${inv.noteCount ?? 0} note(s)`}>
+                                    <StickyNote className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  </span>
+                                )}
+                              </div>
+                              {inv.supplierNip && (
+                                <div className="text-xs text-muted-foreground hidden sm:block">
+                                  NIP: {inv.supplierNip}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className={`p-3 text-right font-medium whitespace-nowrap ${inv.grossAmount < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
@@ -698,9 +706,35 @@ export function InvoicesPage() {
                             </TooltipProvider>
                           ) : formatCurrency(inv.grossAmount, inv.currency)}
                         </td>
-                        <td className="p-3 text-muted-foreground">{inv.mpkCenterName || inv.mpk || '—'}</td>
-                        <td className="p-3 text-muted-foreground">{inv.category ?? '—'}</td>
-                        <td className="p-3">
+                        <td className="p-3 hidden xl:table-cell">
+                          {(inv.mpkCenterName || inv.mpk) ? (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-200">
+                              {inv.mpkCenterName || inv.mpk}
+                            </Badge>
+                          ) : inv.aiMpkSuggestion ? (
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-200 gap-1">
+                              <Sparkles className="h-3 w-3" />
+                              {inv.aiMpkSuggestion}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </td>
+                        <td className="p-3 hidden xl:table-cell">
+                          {inv.category ? (
+                            <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:border-teal-200">
+                              {inv.category}
+                            </Badge>
+                          ) : inv.aiCategorySuggestion ? (
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-200 gap-1">
+                              <Sparkles className="h-3 w-3" />
+                              {inv.aiCategorySuggestion}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </td>
+                        <td className="p-3 hidden lg:table-cell">
                           <ApprovalStatusBadge status={inv.approvalStatus} />
                         </td>
                         <td className="p-3 text-center">
@@ -711,16 +745,72 @@ export function InvoicesPage() {
                           )}
                         </td>
                         <td className="p-3 text-center">
-                          <PaymentBadge status={inv.paymentStatus} dueDate={inv.dueDate} />
-                        </td>
-                        <td className="p-3 text-right">
-                          <InvoiceRowActions
-                            invoice={inv}
-                            intl={intl}
-                            onMarkAsPaid={handleMarkAsPaid}
-                            onMarkAsUnpaid={handleMarkAsUnpaid}
-                            onDelete={handleDelete}
-                          />
+                          <div className="flex items-center justify-center gap-1">
+                            {isAdmin ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => { e.stopPropagation(); inv.paymentStatus === 'paid' ? handleMarkAsUnpaid(inv.id) : handleMarkAsPaid(inv.id) }}
+                                disabled={markPaidMutation.isPending || updateInvoiceMutation.isPending}
+                                title={inv.paymentStatus === 'paid' ? intl.formatMessage({ id: 'invoices.markAsUnpaid' }) : intl.formatMessage({ id: 'invoices.markAsPaid' })}
+                              >
+                                <CheckCircle
+                                  className={`h-5 w-5 transition-colors ${inv.paymentStatus === 'paid' ? 'text-green-500 fill-green-100' : 'text-gray-300'}`}
+                                />
+                              </Button>
+                            ) : (
+                              <span className="inline-flex items-center justify-center h-8 w-8">
+                                <CheckCircle
+                                  className={`h-5 w-5 ${inv.paymentStatus === 'paid' ? 'text-green-500 fill-green-100' : 'text-gray-300'}`}
+                                />
+                              </span>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                              <Link to={`/invoices/${inv.id}`}>
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            {isAdmin ? (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    title={intl.formatMessage({ id: 'common.delete' })}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      {intl.formatMessage({ id: 'invoices.deleteConfirmTitle' })}
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      {intl.formatMessage(
+                                        { id: 'invoices.deleteConfirmDesc' },
+                                        { number: inv.invoiceNumber }
+                                      )}
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>{intl.formatMessage({ id: 'common.cancel' })}</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDelete(inv.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      {intl.formatMessage({ id: 'common.delete' })}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            ) : (
+                              <span className="w-8 h-8 inline-block" />
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -775,17 +865,32 @@ export function InvoicesPage() {
                                 </TooltipProvider>
                               ) : formatCurrency(inv.grossAmount, inv.currency)}
                             </p>
-                            <div className="mt-1">
-                              <PaymentBadge status={inv.paymentStatus} dueDate={inv.dueDate} />
-                            </div>
                           </div>
-                          <InvoiceRowActions
-                            invoice={inv}
-                            intl={intl}
-                            onMarkAsPaid={handleMarkAsPaid}
-                            onMarkAsUnpaid={handleMarkAsUnpaid}
-                            onDelete={handleDelete}
-                          />
+                          <div className="flex items-center gap-0.5">
+                            {isAdmin ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => inv.paymentStatus === 'paid' ? handleMarkAsUnpaid(inv.id) : handleMarkAsPaid(inv.id)}
+                              >
+                                <CheckCircle
+                                  className={`h-4 w-4 transition-colors ${inv.paymentStatus === 'paid' ? 'text-green-500 fill-green-100' : 'text-gray-300'}`}
+                                />
+                              </Button>
+                            ) : (
+                              <span className="inline-flex items-center justify-center h-7 w-7">
+                                <CheckCircle
+                                  className={`h-4 w-4 ${inv.paymentStatus === 'paid' ? 'text-green-500 fill-green-100' : 'text-gray-300'}`}
+                                />
+                              </span>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                              <Link to={`/invoices/${inv.id}`}>
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          </div>
                         </div>
                       </div>
                       {(inv.mpkCenterName || inv.mpk || inv.category || inv.isSelfBilling) && (
@@ -810,7 +915,7 @@ export function InvoicesPage() {
               </div>
               </>
               )}
-            </div>
+            </Fragment>
           ))}
 
           {/* Pagination */}
@@ -959,78 +1064,4 @@ export function InvoicesPage() {
   )
 }
 
-/* ------------------------------------------------------------------ */
-/*  Inline row actions — view / mark paid/unpaid / delete              */
-/* ------------------------------------------------------------------ */
-
-interface InvoiceRowActionsProps {
-  invoice: Invoice
-  intl: ReturnType<typeof useIntl>
-  onMarkAsPaid: (id: string) => void
-  onMarkAsUnpaid: (id: string) => void
-  onDelete: (id: string) => void
-}
-
-function InvoiceRowActions({ invoice, intl, onMarkAsPaid, onMarkAsUnpaid, onDelete }: InvoiceRowActionsProps) {
-  return (
-    <AlertDialog>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <Link to={`/invoices/${invoice.id}`} className="flex items-center gap-2">
-              <Eye className="h-4 w-4" />
-              {intl.formatMessage({ id: 'invoices.viewDetails' })}
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {invoice.paymentStatus === 'paid' ? (
-            <DropdownMenuItem onClick={() => onMarkAsUnpaid(invoice.id)}>
-              <XCircle className="h-4 w-4 mr-2" />
-              {intl.formatMessage({ id: 'invoices.markAsUnpaid' })}
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem onClick={() => onMarkAsPaid(invoice.id)}>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              {intl.formatMessage({ id: 'invoices.markAsPaid' })}
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuSeparator />
-          <AlertDialogTrigger asChild>
-            <DropdownMenuItem className="text-destructive focus:text-destructive">
-              <Trash2 className="h-4 w-4 mr-2" />
-              {intl.formatMessage({ id: 'common.delete' })}
-            </DropdownMenuItem>
-          </AlertDialogTrigger>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            {intl.formatMessage({ id: 'invoices.deleteConfirmTitle' })}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {intl.formatMessage(
-              { id: 'invoices.deleteConfirmDesc' },
-              { number: invoice.invoiceNumber }
-            )}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{intl.formatMessage({ id: 'common.cancel' })}</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => onDelete(invoice.id)}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            {intl.formatMessage({ id: 'common.delete' })}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  )
-}
+/* End of InvoicesPage */

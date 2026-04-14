@@ -9,6 +9,13 @@ import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Slider } from '@/components/ui/slider'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Building2,
   Plus,
   Trash2,
@@ -22,6 +29,7 @@ import {
   Beaker,
   Activity,
   CircleDot,
+  FileText,
 } from 'lucide-react'
 import {
   useCompanies,
@@ -30,6 +38,7 @@ import {
   useUpdateCompany,
   useTestToken,
   useGenerateTestData,
+  useGenerateCostDocs,
   useKsefCleanupPreview,
   useKsefCleanup,
   useHealthDetailed,
@@ -479,6 +488,7 @@ function CompaniesTab() {
 function TestDataTab({ nip, companyId }: { nip?: string; companyId?: string }) {
   const intl = useIntl()
   const generateTestData = useGenerateTestData()
+  const generateCostDocs = useGenerateCostDocs()
   const cleanupMutation = useKsefCleanup()
 
   const [count, setCount] = useState(10)
@@ -486,6 +496,18 @@ function TestDataTab({ nip, companyId }: { nip?: string; companyId?: string }) {
   const [toDate, setToDate] = useState('')
   const [paidPct, setPaidPct] = useState(50)
   const [ksefPct, setKsefPct] = useState(70)
+
+  // Cost doc state
+  const [costCount, setCostCount] = useState(10)
+  const [costPreset, setCostPreset] = useState<string>('custom')
+  const [costPaidPct, setCostPaidPct] = useState(40)
+  const [costApprovedPct, setCostApprovedPct] = useState(60)
+  const [costFromDate, setCostFromDate] = useState(() => {
+    const d = new Date()
+    d.setMonth(d.getMonth() - 6)
+    return d.toISOString().split('T')[0]
+  })
+  const [costToDate, setCostToDate] = useState(() => new Date().toISOString().split('T')[0])
 
   const { data: cleanupPreview, refetch: fetchCleanup } = useKsefCleanupPreview(
     nip ?? '',
@@ -513,6 +535,20 @@ function TestDataTab({ nip, companyId }: { nip?: string; companyId?: string }) {
       companyId,
       fromDate: fromDate || undefined,
       toDate: toDate || undefined,
+    })
+  }
+
+  function handleGenerateCostDocs() {
+    if (!nip) return
+    generateCostDocs.mutate({
+      nip,
+      companyId,
+      count: costPreset && costPreset !== 'custom' ? undefined : costCount,
+      preset: costPreset && costPreset !== 'custom' ? costPreset : undefined,
+      fromDate: costPreset && costPreset !== 'custom' ? undefined : (costFromDate || undefined),
+      toDate: costPreset && costPreset !== 'custom' ? undefined : (costToDate || undefined),
+      paidPercentage: costPaidPct,
+      approvedPercentage: costApprovedPct,
     })
   }
 
@@ -666,6 +702,165 @@ function TestDataTab({ nip, companyId }: { nip?: string; companyId?: string }) {
               </div>
             )}
 
+            <Separator />
+
+            {/* Cost Document Generator */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                <h3 className="text-sm font-semibold">
+                  {intl.formatMessage({ id: 'settings.costDocGenerator' })}
+                </h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {intl.formatMessage({ id: 'settings.costDocGeneratorDesc' })}
+              </p>
+
+              {/* Preset select */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  {intl.formatMessage({ id: 'settings.costDocPreset' })}
+                </label>
+                <Select value={costPreset} onValueChange={setCostPreset}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={intl.formatMessage({ id: 'settings.costDocPresetPlaceholder' })} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="custom">{intl.formatMessage({ id: 'settings.costDocCustom' })}</SelectItem>
+                    <SelectItem value="quick">Quick (10)</SelectItem>
+                    <SelectItem value="realistic">Realistic (80)</SelectItem>
+                    <SelectItem value="stress">Stress (500)</SelectItem>
+                    <SelectItem value="approval-flow">Approval Flow (20)</SelectItem>
+                    <SelectItem value="budget-test">Budget Test (30)</SelectItem>
+                    <SelectItem value="multi-currency">Multi-Currency (25)</SelectItem>
+                    <SelectItem value="overdue">Overdue (20)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Count & Date Range (only when custom) */}
+              {(!costPreset || costPreset === 'custom') && (
+                <>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium">
+                        {intl.formatMessage({ id: 'settings.costDocCount' })}
+                      </label>
+                      <span className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{costCount}</span>
+                    </div>
+                    <Slider
+                      min={1}
+                      max={200}
+                      step={1}
+                      value={[costCount]}
+                      onValueChange={([v]) => setCostCount(v)}
+                    />
+                  </div>
+
+                  {/* Date Range */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">
+                        {intl.formatMessage({ id: 'sync.dateFrom' })}
+                      </label>
+                      <input
+                        type="date"
+                        value={costFromDate}
+                        onChange={(e) => setCostFromDate(e.target.value)}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        aria-label={intl.formatMessage({ id: 'sync.dateFrom' })}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">
+                        {intl.formatMessage({ id: 'sync.dateTo' })}
+                      </label>
+                      <input
+                        type="date"
+                        value={costToDate}
+                        onChange={(e) => setCostToDate(e.target.value)}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        aria-label={intl.formatMessage({ id: 'sync.dateTo' })}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Paid percentage */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">
+                    {intl.formatMessage({ id: 'settings.paidPercentage' })}
+                  </label>
+                  <span className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{costPaidPct}%</span>
+                </div>
+                <Slider
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={[costPaidPct]}
+                  onValueChange={([v]) => setCostPaidPct(v)}
+                />
+              </div>
+
+              {/* Approved percentage */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">
+                    {intl.formatMessage({ id: 'settings.approvedPercentage' })}
+                  </label>
+                  <span className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{costApprovedPct}%</span>
+                </div>
+                <Slider
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={[costApprovedPct]}
+                  onValueChange={([v]) => setCostApprovedPct(v)}
+                />
+              </div>
+
+              {/* Generate cost docs button */}
+              <Button
+                onClick={handleGenerateCostDocs}
+                disabled={generateCostDocs.isPending}
+              >
+                {generateCostDocs.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                {intl.formatMessage({ id: 'settings.generateCostDocs' })}
+              </Button>
+
+              {/* Cost doc result */}
+              {generateCostDocs.isSuccess && generateCostDocs.data && (
+                <div className="rounded-md border border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800 p-4">
+                  <div className="flex items-center gap-2 text-green-700 dark:text-green-300 mb-2">
+                    <CheckCircle2 className="h-5 w-5" />
+                    <span className="font-medium">
+                      {intl.formatMessage({ id: 'settings.costDocsGenerated' })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-green-600 dark:text-green-400">
+                    {intl.formatMessage(
+                      { id: 'settings.costDocsGeneratedDesc' },
+                      {
+                        created: generateCostDocs.data.summary.created,
+                        paid: generateCostDocs.data.summary.paid,
+                      }
+                    )}
+                  </p>
+                </div>
+              )}
+
+              {generateCostDocs.isError && (
+                <div className="flex items-center gap-2 text-destructive text-sm">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>{generateCostDocs.error.message}</span>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
             {/* Cleanup preview */}
             {cleanupPreview && (
               <div className="rounded-md border p-4 space-y-2">
@@ -686,6 +881,14 @@ function TestDataTab({ nip, companyId }: { nip?: string; companyId?: string }) {
                       </Badge>
                     ))}
                   </div>
+                )}
+                {(cleanupPreview.costDocuments ?? 0) > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {intl.formatMessage(
+                      { id: 'settings.cleanupCostDocsDesc' },
+                      { total: cleanupPreview.costDocuments }
+                    )}
+                  </p>
                 )}
                 {cleanupPreview.warning && (
                   <div className="flex items-center gap-2 text-amber-600 text-sm">

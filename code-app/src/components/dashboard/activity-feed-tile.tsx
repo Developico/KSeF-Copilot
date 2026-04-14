@@ -73,7 +73,10 @@ export function ActivityFeedTile({ delay = 0 }: ActivityFeedTileProps) {
   const { data: approvalsData, isLoading: appLoading } = usePendingApprovals(
     selectedCompany?.id ?? '',
   )
-  const { data: sbData, isLoading: sbLoading } = useSelfBillingInvoices()
+  const { data: sbData, isLoading: sbLoading } = useSelfBillingInvoices(
+    selectedCompany?.id ? { settingId: selectedCompany.id } : undefined,
+    { enabled: !!selectedCompany?.id }
+  )
 
   const isLoading = invLoading && appLoading && sbLoading
 

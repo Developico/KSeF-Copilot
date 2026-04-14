@@ -31,13 +31,14 @@ import {
 import { formatCurrencyCompact } from '@/lib/format'
 
 const CHART_COLORS = [
-  'hsl(var(--chart-1))',
-  'hsl(var(--chart-2))',
-  'hsl(var(--chart-3))',
-  'hsl(var(--chart-4))',
-  'hsl(var(--chart-5))',
-  '#8884d8',
-  '#82ca9d',
+  '#3b82f6',
+  '#10b981',
+  '#f59e0b',
+  '#8b5cf6',
+  '#ef4444',
+  '#ec4899',
+  '#06b6d4',
+  '#84cc16',
 ]
 
 function formatCurrency(amount: number, locale: string) {
@@ -78,6 +79,13 @@ export function CostDistributionTab() {
 
   const { byType, byCategory, byMonth, totals } = report
 
+  const avgGross = totals.totalDocuments > 0
+    ? Math.round(totals.totalGross / totals.totalDocuments)
+    : 0
+  const vatPercent = totals.totalGross > 0
+    ? ((totals.totalVat / totals.totalGross) * 100).toFixed(1)
+    : '0'
+
   // Pie chart data
   const pieData = byType.map((entry, i) => ({
     name: entry.documentType,
@@ -97,29 +105,45 @@ export function CostDistributionTab() {
   return (
     <div className="space-y-4 md:space-y-6">
       {/* KPI Cards */}
-      <AnimatedCardGrid cols={4}>
+      <AnimatedCardGrid className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <AnimatedKpiCard
           title={t('totalDocuments')}
-          value={totals.totalDocuments.toString()}
+          value={totals.totalDocuments}
+          format="number"
           icon={FileText}
+          iconColor="#3b82f6"
+          borderColor="#3b82f6"
+          subtitle={`${byType.length} ${t('documentTypes')}`}
           delay={0}
         />
         <AnimatedKpiCard
           title={t('totalGross')}
-          value={formatCurrency(totals.totalGross, locale)}
+          value={totals.totalGross}
+          format="currency"
           icon={Coins}
+          iconColor="#10b981"
+          valueColor="#16a34a"
+          borderColor="#10b981"
+          subtitle={`${t('average')} ${formatCurrency(avgGross, locale)}`}
           delay={0.1}
         />
         <AnimatedKpiCard
           title={t('totalNet')}
-          value={formatCurrency(totals.totalNet, locale)}
+          value={totals.totalNet}
+          format="currency"
           icon={TrendingUp}
+          iconColor="#8b5cf6"
+          borderColor="#8b5cf6"
           delay={0.2}
         />
         <AnimatedKpiCard
           title={t('totalVat')}
-          value={formatCurrency(totals.totalVat, locale)}
+          value={totals.totalVat}
+          format="currency"
           icon={Receipt}
+          iconColor="#f59e0b"
+          borderColor="#f59e0b"
+          subtitle={`${vatPercent}% ${t('ofGross')}`}
           delay={0.3}
         />
       </AnimatedCardGrid>
@@ -132,7 +156,7 @@ export function CostDistributionTab() {
             <CardDescription>{t('byTypeDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height={380}>
               <PieChart>
                 <Pie
                   data={pieData}
@@ -140,7 +164,9 @@ export function CostDistributionTab() {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={100}
+                  outerRadius="80%"
+                  innerRadius="35%"
+                  paddingAngle={2}
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 >
                   {pieData.map((entry, i) => (
@@ -150,6 +176,7 @@ export function CostDistributionTab() {
                 <Tooltip
                   formatter={(value: number) => formatCurrency(value, locale)}
                 />
+                <Legend />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -163,19 +190,19 @@ export function CostDistributionTab() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {byCategory.slice(0, 10).map((cat) => (
+              {byCategory.slice(0, 10).map((cat, idx) => (
                 <div key={cat.category} className="space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium truncate">{cat.category}</span>
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-xs">{cat.count}</Badge>
-                      <span className="text-sm font-medium">{formatCurrency(cat.totalGross, locale)}</span>
+                      <span className="text-sm font-semibold">{formatCurrency(cat.totalGross, locale)}</span>
                     </div>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-primary rounded-full transition-all"
-                      style={{ width: `${cat.percent}%` }}
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${cat.percent}%`, backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
                     />
                   </div>
                   <div className="text-xs text-muted-foreground text-right">

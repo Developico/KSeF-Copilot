@@ -88,6 +88,8 @@ import type {
   KsefCreateTestPersonResponse,
   KsefGenerateTestDataRequest,
   KsefGenerateTestDataResponse,
+  KsefGenerateCostDocsRequest,
+  KsefGenerateCostDocsResponse,
   KsefCleanupPreviewResponse,
   KsefCleanupRequest,
   KsefCleanupResponse,
@@ -723,6 +725,12 @@ const _directApi = {
     generate: (data: KsefGenerateTestDataRequest) =>
       apiFetch<KsefGenerateTestDataResponse>(
         '/api/ksef/testdata/generate',
+        { method: 'POST', body: JSON.stringify(data) }
+      ),
+
+    generateCosts: (data: KsefGenerateCostDocsRequest) =>
+      apiFetch<KsefGenerateCostDocsResponse>(
+        '/api/ksef/testdata/generate-costs',
         { method: 'POST', body: JSON.stringify(data) }
       ),
 

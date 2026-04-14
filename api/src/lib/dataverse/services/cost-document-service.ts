@@ -331,6 +331,57 @@ export class CostDocumentService {
       throw error
     }
   }
+
+  /**
+   * Bulk delete cost documents matching filters
+   */
+  async bulkDelete(
+    filters: CostDocumentListParams,
+    options?: {
+      batchSize?: number
+      onProgress?: (deleted: number, failed: number, total: number) => void
+    },
+  ): Promise<{ deleted: number; failed: number; total: number; errors: string[] }> {
+    const { batchSize = 50, onProgress } = options || {}
+
+    logDataverseInfo('CostDocumentService.bulkDelete', 'Starting bulk delete', { filters })
+
+    const allDocs = await this.getAll(filters)
+    const total = allDocs.length
+
+    let deleted = 0
+    let failed = 0
+    const errors: string[] = []
+
+    for (let i = 0; i < allDocs.length; i += batchSize) {
+      const batch = allDocs.slice(i, i + batchSize)
+
+      const results = await Promise.allSettled(
+        batch.map(doc => this.delete(doc.id)),
+      )
+
+      for (let j = 0; j < results.length; j++) {
+        const result = results[j]
+        if (result.status === 'fulfilled') {
+          deleted++
+        } else {
+          failed++
+          errors.push(`Failed to delete ${batch[j].id}: ${result.reason?.message || 'Unknown error'}`)
+        }
+      }
+
+      if (onProgress) {
+        onProgress(deleted, failed, total)
+      }
+
+      if (i + batchSize < allDocs.length) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+    }
+
+    logDataverseInfo('CostDocumentService.bulkDelete', `Bulk delete completed: ${deleted}/${total}`, { deleted, failed })
+    return { deleted, failed, total, errors }
+  }
 }
 
 export const costDocumentService = new CostDocumentService()
