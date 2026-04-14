@@ -351,22 +351,7 @@ export function CostsPage() {
         onGroupByChange={setGroupBy}
       />
 
-      {/* Bulk actions */}
-      {selectedIds.size > 0 && (
-        <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
-          <span className="text-sm font-medium">{selectedIds.size} {t('costs.selected')}</span>
-          <Button size="sm" variant="outline" onClick={() => setBulkAction('approve')}>
-            <CheckCircle className="h-4 w-4 mr-1" />{t('costs.approve')}
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setBulkAction('reject')}>
-            <XCircle className="h-4 w-4 mr-1" />{t('costs.reject')}
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setBulkAction('markPaid')}>
-            <CreditCard className="h-4 w-4 mr-1" />{t('costs.markPaid')}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={clearSelection}>{t('common.cancel')}</Button>
-        </div>
-      )}
+
 
       {/* Table */}
       {isLoading ? (
@@ -463,11 +448,11 @@ export function CostsPage() {
                           {formatDate(doc.documentDate)}
                         </div>
                       </td>
-                      <td className="p-2">
+                      <td className="p-2 max-w-48" title={doc.issuerName}>
                         <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-muted-foreground hidden md:block" />
-                          <div>
-                            <div className="font-medium text-sm truncate max-w-[150px] md:max-w-[200px]">{doc.issuerName}</div>
+                          <Building2 className="h-4 w-4 text-muted-foreground hidden md:block shrink-0" />
+                          <div className="min-w-0">
+                            <div className="font-medium text-sm truncate">{doc.issuerName}</div>
                             {doc.issuerNip && (
                               <div className="text-xs text-muted-foreground hidden sm:block">
                                 NIP: {doc.issuerNip}
@@ -627,6 +612,27 @@ export function CostsPage() {
         onClose={() => setCreateOpen(false)}
         onCreated={() => { setCreateOpen(false); void refetch() }}
       />
+
+      {/* Bulk action floating toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-background border rounded-lg shadow-lg px-4 py-3 flex items-center gap-3 flex-wrap max-w-[95vw]">
+          <span className="text-sm font-medium whitespace-nowrap">
+            {intl.formatMessage({ id: 'costs.selected' }, { count: selectedIds.size })}
+          </span>
+          <div className="h-4 w-px bg-border" />
+          <Button size="sm" variant="outline" onClick={() => setBulkAction('approve')}>
+            <CheckCircle className="h-3.5 w-3.5 mr-1.5" />{t('costs.approve')}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setBulkAction('reject')}>
+            <XCircle className="h-3.5 w-3.5 mr-1.5" />{t('costs.reject')}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setBulkAction('markPaid')}>
+            <CreditCard className="h-3.5 w-3.5 mr-1.5" />{t('costs.markPaid')}
+          </Button>
+          <div className="h-4 w-px bg-border" />
+          <Button size="sm" variant="ghost" onClick={clearSelection}>{t('common.cancel')}</Button>
+        </div>
+      )}
 
     </div>
   )
