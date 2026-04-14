@@ -318,6 +318,14 @@
     "groupByMpk": "MPK",
     "groupByCategory": "Kategoria",
     "noGrouping": "Brak grupowania",
+    "searchPlaceholder": "Szukaj...",
+    "source": "Źródło",
+    "sourceAll": "Wszystkie",
+    "sourceManual": "Ręczne",
+    "grossAmountPln": "Kwota brutto (PLN)",
+    "nipOrName": "NIP lub nazwa",
+    "selectMpk": "Wybierz MPK",
+    "selectCategory": "Wybierz kategorię",
     "ascending": "Rosnąco",
     "descending": "Malejąco",
     "noDate": "Brak daty",
@@ -1087,6 +1095,7 @@
       "description": "Wartość brutto faktur w poszczególnych miesiącach",
       "detailsTitle": "Szczegóły miesięczne",
       "grossValue": "Wartość brutto",
+      "currentMonth": "Aktualny miesiąc",
       "noInvoices": "Brak faktur w wybranym okresie"
     },
     "monthSelector": {

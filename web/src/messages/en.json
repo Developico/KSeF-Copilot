@@ -318,6 +318,14 @@
     "groupByMpk": "Cost center",
     "groupByCategory": "Category",
     "noGrouping": "No grouping",
+    "searchPlaceholder": "Search...",
+    "source": "Source",
+    "sourceAll": "All",
+    "sourceManual": "Manual",
+    "grossAmountPln": "Gross amount (PLN)",
+    "nipOrName": "Tax ID or name",
+    "selectMpk": "Select cost center",
+    "selectCategory": "Select category",
     "ascending": "Ascending",
     "descending": "Descending",
     "noDate": "No date",
@@ -1087,6 +1095,7 @@
       "description": "Gross invoice value by month",
       "detailsTitle": "Monthly details",
       "grossValue": "Gross value",
+      "currentMonth": "Current month",
       "noInvoices": "No invoices in selected period"
     },
     "monthSelector": {

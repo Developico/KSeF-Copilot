@@ -59,6 +59,7 @@ import { useCompanyContext } from '@/contexts/company-context'
 import { useHasRole } from '@/components/auth/auth-provider'
 import {
   useContextCostDocuments,
+  useContextMpkCenters,
   useCreateCostDocument,
   useDeleteCostDocument,
   useUpdateCostDocument,
@@ -138,6 +139,7 @@ export default function CostsPage() {
 
   // Data hooks
   const { data, isLoading, refetch } = useContextCostDocuments()
+  const { data: mpkCentersData } = useContextMpkCenters()
   const deleteMutation = useDeleteCostDocument()
   const updateMutation = useUpdateCostDocument()
   const batchApproveMutation = useBatchApproveCostDocuments()
@@ -151,8 +153,11 @@ export default function CostsPage() {
   const availableMpks = useMemo(() => {
     const set = new Set<string>()
     for (const d of allDocuments) if (d.costCenter) set.add(d.costCenter)
-    return Array.from(set).sort()
-  }, [allDocuments])
+    mpkCentersData?.mpkCenters?.forEach(mc => {
+      if (mc.name) set.add(mc.name)
+    })
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pl'))
+  }, [allDocuments, mpkCentersData])
 
   const availableCategories = useMemo(() => {
     const set = new Set<string>()

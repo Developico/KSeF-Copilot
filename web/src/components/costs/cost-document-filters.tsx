@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useTranslations } from 'next-intl'
-import { format } from 'date-fns'
-import { pl } from 'date-fns/locale'
+import { useTranslations, useLocale } from 'next-intl'
+
 import {
   Filter,
   X,
@@ -34,12 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import { Calendar as CalendarComponent } from '@/components/ui/calendar'
+import { DatePickerInput } from '@/components/ui/date-picker-input'
 import {
   Collapsible,
   CollapsibleContent,
@@ -111,6 +105,7 @@ export function CostDocumentFilters({
 }: CostDocumentFiltersProps) {
   const t = useTranslations('costs')
   const tCommon = useTranslations('common')
+  const appLocale = useLocale()
   const [isExpanded, setIsExpanded] = useState(false)
 
   // Counts for status pills
@@ -331,44 +326,24 @@ export function CostDocumentFilters({
                 {t('documentDate')}
               </Label>
               <div className="flex gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="flex-1 justify-start text-left font-normal h-9 px-3">
-                      {filters.fromDate
-                        ? format(new Date(filters.fromDate), 'dd.MM.yyyy', { locale: pl })
-                        : tCommon('from')}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={filters.fromDate ? new Date(filters.fromDate) : undefined}
-                      onSelect={(date: Date | undefined) =>
-                        update({ fromDate: date?.toISOString().split('T')[0] })
-                      }
-                      locale={pl}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="flex-1 justify-start text-left font-normal h-9 px-3">
-                      {filters.toDate
-                        ? format(new Date(filters.toDate), 'dd.MM.yyyy', { locale: pl })
-                        : tCommon('to')}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={filters.toDate ? new Date(filters.toDate) : undefined}
-                      onSelect={(date: Date | undefined) =>
-                        update({ toDate: date?.toISOString().split('T')[0] })
-                      }
-                      locale={pl}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DatePickerInput
+                  value={filters.fromDate}
+                  onChange={(v) => update({ fromDate: v })}
+                  placeholder={tCommon('from')}
+                  locale={appLocale}
+                  minDate={new Date(2020, 0)}
+                  maxDate={new Date(2030, 11)}
+                  className="flex-1"
+                />
+                <DatePickerInput
+                  value={filters.toDate}
+                  onChange={(v) => update({ toDate: v })}
+                  placeholder={tCommon('to')}
+                  locale={appLocale}
+                  minDate={new Date(2020, 0)}
+                  maxDate={new Date(2030, 11)}
+                  className="flex-1"
+                />
               </div>
             </div>
 
@@ -379,44 +354,24 @@ export function CostDocumentFilters({
                 {t('dueDate')}
               </Label>
               <div className="flex gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="flex-1 justify-start text-left font-normal h-9 px-3">
-                      {filters.dueDateFrom
-                        ? format(new Date(filters.dueDateFrom), 'dd.MM.yyyy', { locale: pl })
-                        : tCommon('from')}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={filters.dueDateFrom ? new Date(filters.dueDateFrom) : undefined}
-                      onSelect={(date: Date | undefined) =>
-                        update({ dueDateFrom: date?.toISOString().split('T')[0] })
-                      }
-                      locale={pl}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="flex-1 justify-start text-left font-normal h-9 px-3">
-                      {filters.dueDateTo
-                        ? format(new Date(filters.dueDateTo), 'dd.MM.yyyy', { locale: pl })
-                        : tCommon('to')}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={filters.dueDateTo ? new Date(filters.dueDateTo) : undefined}
-                      onSelect={(date: Date | undefined) =>
-                        update({ dueDateTo: date?.toISOString().split('T')[0] })
-                      }
-                      locale={pl}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DatePickerInput
+                  value={filters.dueDateFrom}
+                  onChange={(v) => update({ dueDateFrom: v })}
+                  placeholder={tCommon('from')}
+                  locale={appLocale}
+                  minDate={new Date(2020, 0)}
+                  maxDate={new Date(2030, 11)}
+                  className="flex-1"
+                />
+                <DatePickerInput
+                  value={filters.dueDateTo}
+                  onChange={(v) => update({ dueDateTo: v })}
+                  placeholder={tCommon('to')}
+                  locale={appLocale}
+                  minDate={new Date(2020, 0)}
+                  maxDate={new Date(2030, 11)}
+                  className="flex-1"
+                />
               </div>
             </div>
 

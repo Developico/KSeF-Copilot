@@ -38,6 +38,10 @@ function Calendar({
       formatters={{
         formatMonthDropdown: (date) =>
           date.toLocaleString("default", { month: "short" }),
+        ...(captionLayout === "dropdown" ? {
+          formatWeekdayName: (date: Date) =>
+            date.toLocaleString("default", { weekday: "narrow" }),
+        } : {}),
         ...formatters,
       }}
       classNames={{
@@ -62,11 +66,12 @@ function Calendar({
           defaultClassNames.button_next
         ),
         month_caption: cn(
-          "flex h-[--cell-size] w-full items-center justify-center px-[--cell-size]",
+          "flex h-[--cell-size] w-full items-center justify-center",
+          captionLayout === "dropdown" ? "px-1" : "px-[--cell-size]",
           defaultClassNames.month_caption
         ),
         dropdowns: cn(
-          "flex h-[--cell-size] w-full items-center justify-center gap-1.5 text-sm font-medium",
+          "flex h-[--cell-size] w-full items-center justify-center gap-2 text-sm font-medium",
           defaultClassNames.dropdowns
         ),
         dropdown_root: cn(

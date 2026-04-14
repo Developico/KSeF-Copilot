@@ -155,7 +155,9 @@ export default function ReportsPage() {
       else m.pendingCount++
     })
     
-    return Object.values(months)
+    // Sort by monthKey to ensure Jan–Dec order (Object.values puts integer-index
+    // keys "10","11","12" before zero-padded string keys "01"–"09")
+    return Object.values(months).sort((a, b) => a.monthKey.localeCompare(b.monthKey))
   }, [invoices, selectedYear, locale])
 
   // Top suppliers
@@ -467,11 +469,13 @@ export default function ReportsPage() {
               {/* Simple Bar Chart */}
               <div className="space-y-4">
                 <div className="flex items-end gap-1 md:gap-2 h-48 md:h-64">
-                  {monthlyData.map((m) => (
+                  {monthlyData.map((m) => {
+                    const isCurrentMonth = m.monthKey === (new Date().getMonth() + 1).toString().padStart(2, '0') && selectedYear === new Date().getFullYear().toString()
+                    return (
                     <div key={m.monthKey} className="flex-1 flex flex-col items-center">
                       <div className="w-full flex flex-col items-center justify-end h-36 md:h-48">
                         <div 
-                          className="w-full max-w-6 md:max-w-8 bg-primary rounded-t transition-all hover:bg-primary/80"
+                          className={`w-full max-w-6 md:max-w-8 rounded-t transition-all ${isCurrentMonth ? 'bg-orange-500 hover:bg-orange-400' : 'bg-primary hover:bg-primary/80'}`}
                           style={{ 
                             height: `${(m.totalGross / maxMonthlyGross) * 100}%`,
                             minHeight: m.totalGross > 0 ? '4px' : '0'
@@ -479,9 +483,10 @@ export default function ReportsPage() {
                           title={formatCurrency(m.totalGross)}
                         />
                       </div>
-                      <span className="text-[10px] md:text-xs text-muted-foreground mt-1 md:mt-2">{m.month}</span>
+                      <span className={`text-[10px] md:text-xs mt-1 md:mt-2 ${isCurrentMonth ? 'text-orange-500 font-semibold' : 'text-muted-foreground'}`}>{m.month}</span>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
                 
                 {/* Legend */}
@@ -490,6 +495,12 @@ export default function ReportsPage() {
                     <div className="w-3 h-3 bg-primary rounded" />
                     <span>{t('monthly.grossValue')}</span>
                   </div>
+                  {selectedYear === new Date().getFullYear().toString() && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-orange-500 rounded" />
+                      <span>{t('monthly.currentMonth')}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { format } from 'date-fns'
-import { pl } from 'date-fns/locale'
+import { useTranslations, useLocale } from 'next-intl'
+
 import {
   Filter,
   X,
@@ -14,7 +14,6 @@ import {
   Tag,
   DollarSign,
   Folder,
-  ArrowUpDown,
   FileText,
 } from 'lucide-react'
 
@@ -29,12 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import { Calendar as CalendarComponent } from '@/components/ui/calendar'
+import { DatePickerInput } from '@/components/ui/date-picker-input'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Collapsible,
@@ -68,23 +62,6 @@ export interface InvoiceFiltersProps {
 }
 
 // ============================================================================
-// Constants
-// ============================================================================
-
-const SOURCES = [
-  { value: 'all', label: 'Wszystkie' },
-  { value: 'KSeF', label: 'KSeF' },
-  { value: 'Manual', label: 'Ręczne' },
-]
-
-const SORT_OPTIONS = [
-  { value: 'invoiceDate', label: 'Data faktury' },
-  { value: 'dueDate', label: 'Termin płatności' },
-  { value: 'grossAmount', label: 'Kwota brutto' },
-  { value: 'supplierName', label: 'Dostawca' },
-]
-
-// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -101,6 +78,9 @@ export function InvoiceFilters({
   sortDirection,
   onSortDirectionChange,
 }: InvoiceFiltersProps) {
+  const t = useTranslations('invoices')
+  const tCommon = useTranslations('common')
+  const appLocale = useLocale()
   const [isExpanded, setIsExpanded] = useState(false)
 
   // Count active filters (excluding payment status which is handled by quick buttons)
@@ -141,7 +121,7 @@ export function InvoiceFilters({
         <div className="relative flex-1 min-w-[180px] lg:min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Szukaj..."
+            placeholder={t('searchPlaceholder')}
             className="pl-9 h-9"
             value={filters.search || ''}
             onChange={(e) => updateFilter('search', e.target.value || undefined)}
@@ -151,7 +131,7 @@ export function InvoiceFilters({
         {/* Grouping - if handlers provided */}
         {onGroupByChange && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground hidden sm:inline">Grupuj:</span>
+            <span className="text-sm text-muted-foreground hidden sm:inline">{t('groupBy')}:</span>
             <Select value={groupBy || 'date'} onValueChange={(v) => onGroupByChange(v as GroupBy)}>
               <SelectTrigger className="w-[120px] lg:w-[140px] h-9">
                 <SelectValue />
@@ -160,25 +140,25 @@ export function InvoiceFilters({
                 <SelectItem value="date">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-3.5 w-3.5" />
-                    <span>Miesiąc</span>
+                    <span>{t('groupByDate')}</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="mpk">
                   <div className="flex items-center gap-2">
                     <Folder className="h-3.5 w-3.5" />
-                    <span>MPK</span>
+                    <span>{t('mpk')}</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="category">
                   <div className="flex items-center gap-2">
                     <Tag className="h-3.5 w-3.5" />
-                    <span>Kategoria</span>
+                    <span>{t('category')}</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="none">
                   <div className="flex items-center gap-2">
                     <FileText className="h-3.5 w-3.5" />
-                    <span>Brak</span>
+                    <span>{t('noGrouping')}</span>
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -191,7 +171,7 @@ export function InvoiceFilters({
           <CollapsibleTrigger asChild>
             <Button variant="outline" size="sm" className="gap-1 h-9">
               <Filter className="h-4 w-4" />
-              <span className="hidden md:inline">Filtry</span>
+              <span className="hidden md:inline">{t('filters')}</span>
               {activeFilterCount > 0 && (
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5">
                   {activeFilterCount}
@@ -210,7 +190,7 @@ export function InvoiceFilters({
         {activeFilterCount > 0 && (
           <Button variant="ghost" size="sm" className="h-9" onClick={clearFilters}>
             <X className="h-4 w-4 mr-1" />
-            <span className="hidden sm:inline">Wyczyść</span>
+            <span className="hidden sm:inline">{t('clearFilters')}</span>
           </Button>
         )}
       </div>
@@ -224,47 +204,27 @@ export function InvoiceFilters({
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                Data faktury
+                {t('invoiceDate')}
               </Label>
               <div className="flex gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="flex-1 justify-start text-left font-normal h-9 px-3">
-                      {filters.fromDate
-                        ? format(new Date(filters.fromDate), 'dd.MM.yyyy', { locale: pl })
-                        : 'Od'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={filters.fromDate ? new Date(filters.fromDate) : undefined}
-                      onSelect={(date: Date | undefined) =>
-                        updateFilter('fromDate', date?.toISOString().split('T')[0])
-                      }
-                      locale={pl}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="flex-1 justify-start text-left font-normal h-9 px-3">
-                      {filters.toDate
-                        ? format(new Date(filters.toDate), 'dd.MM.yyyy', { locale: pl })
-                        : 'Do'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={filters.toDate ? new Date(filters.toDate) : undefined}
-                      onSelect={(date: Date | undefined) =>
-                        updateFilter('toDate', date?.toISOString().split('T')[0])
-                      }
-                      locale={pl}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DatePickerInput
+                  value={filters.fromDate}
+                  onChange={(v) => updateFilter('fromDate', v)}
+                  placeholder={tCommon('from')}
+                  locale={appLocale}
+                  minDate={new Date(2020, 0)}
+                  maxDate={new Date(2030, 11)}
+                  className="flex-1"
+                />
+                <DatePickerInput
+                  value={filters.toDate}
+                  onChange={(v) => updateFilter('toDate', v)}
+                  placeholder={tCommon('to')}
+                  locale={appLocale}
+                  minDate={new Date(2020, 0)}
+                  maxDate={new Date(2030, 11)}
+                  className="flex-1"
+                />
               </div>
             </div>
 
@@ -272,47 +232,27 @@ export function InvoiceFilters({
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                Termin płatności
+                {t('dueDate')}
               </Label>
               <div className="flex gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="flex-1 justify-start text-left font-normal h-9 px-3">
-                      {filters.dueDateFrom
-                        ? format(new Date(filters.dueDateFrom), 'dd.MM.yyyy', { locale: pl })
-                        : 'Od'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={filters.dueDateFrom ? new Date(filters.dueDateFrom) : undefined}
-                      onSelect={(date: Date | undefined) =>
-                        updateFilter('dueDateFrom', date?.toISOString().split('T')[0])
-                      }
-                      locale={pl}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="flex-1 justify-start text-left font-normal h-9 px-3">
-                      {filters.dueDateTo
-                        ? format(new Date(filters.dueDateTo), 'dd.MM.yyyy', { locale: pl })
-                        : 'Do'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={filters.dueDateTo ? new Date(filters.dueDateTo) : undefined}
-                      onSelect={(date: Date | undefined) =>
-                        updateFilter('dueDateTo', date?.toISOString().split('T')[0])
-                      }
-                      locale={pl}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DatePickerInput
+                  value={filters.dueDateFrom}
+                  onChange={(v) => updateFilter('dueDateFrom', v)}
+                  placeholder={tCommon('from')}
+                  locale={appLocale}
+                  minDate={new Date(2020, 0)}
+                  maxDate={new Date(2030, 11)}
+                  className="flex-1"
+                />
+                <DatePickerInput
+                  value={filters.dueDateTo}
+                  onChange={(v) => updateFilter('dueDateTo', v)}
+                  placeholder={tCommon('to')}
+                  locale={appLocale}
+                  minDate={new Date(2020, 0)}
+                  maxDate={new Date(2030, 11)}
+                  className="flex-1"
+                />
               </div>
             </div>
 
@@ -320,12 +260,12 @@ export function InvoiceFilters({
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
-                Kwota brutto (PLN)
+                {t('grossAmountPln')}
               </Label>
               <div className="flex gap-2">
                 <Input
                   type="number"
-                  placeholder="Od"
+                  placeholder={tCommon('from')}
                   className="h-9"
                   value={filters.minAmount || ''}
                   onChange={(e) =>
@@ -334,7 +274,7 @@ export function InvoiceFilters({
                 />
                 <Input
                   type="number"
-                  placeholder="Do"
+                  placeholder={tCommon('to')}
                   className="h-9"
                   value={filters.maxAmount || ''}
                   onChange={(e) =>
@@ -348,10 +288,10 @@ export function InvoiceFilters({
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
-                Dostawca
+                {t('supplier')}
               </Label>
               <Input
-                placeholder="NIP lub nazwa"
+                placeholder={t('nipOrName')}
                 className="h-9"
                 value={filters.supplierName || filters.supplierNip || ''}
                 onChange={(e) => {
@@ -373,17 +313,17 @@ export function InvoiceFilters({
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Folder className="h-4 w-4" />
-                MPK
+                {t('mpk')}
               </Label>
               <Select
                 value={filters.mpk || 'all'}
                 onValueChange={(v) => updateFilter('mpk', v === 'all' ? undefined : v)}
               >
                 <SelectTrigger className="h-9 w-full">
-                  <SelectValue placeholder="Wybierz MPK" />
+                  <SelectValue placeholder={t('selectMpk')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Wszystkie</SelectItem>
+                  <SelectItem value="all">{tCommon('all')}</SelectItem>
                   {availableMpks.map((mpk) => (
                     <SelectItem key={mpk} value={mpk}>
                       {mpk}
@@ -397,17 +337,17 @@ export function InvoiceFilters({
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Tag className="h-4 w-4" />
-                Kategoria
+                {t('category')}
               </Label>
               <Select
                 value={filters.category || 'all'}
                 onValueChange={(v) => updateFilter('category', v === 'all' ? undefined : v)}
               >
                 <SelectTrigger className="h-9 w-full">
-                  <SelectValue placeholder="Wybierz kategorię" />
+                  <SelectValue placeholder={t('selectCategory')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Wszystkie</SelectItem>
+                  <SelectItem value="all">{tCommon('all')}</SelectItem>
                   {availableCategories.map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {cat}
@@ -421,21 +361,19 @@ export function InvoiceFilters({
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
-                Źródło
+                {t('source')}
               </Label>
               <Select
                 value={filters.source || 'all'}
                 onValueChange={(v) => updateFilter('source', v === 'all' ? undefined : v as 'KSeF' | 'Manual')}
               >
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Źródło" />
+                  <SelectValue placeholder={t('source')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {SOURCES.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>
-                      {s.label}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all">{t('sourceAll')}</SelectItem>
+                  <SelectItem value="KSeF">KSeF</SelectItem>
+                  <SelectItem value="Manual">{t('sourceManual')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

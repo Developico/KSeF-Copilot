@@ -163,15 +163,29 @@ export function ReportsPage() {
     void refetch()
   }, [refetch])
 
-  // Chart data
-  const monthlyChartData = useMemo(
-    () =>
-      (stats?.monthly ?? []).map((m) => ({
-        ...m,
-        name: formatMonth(m.month),
-      })),
-    [stats?.monthly],
-  )
+  // Chart data — fill all 12 months for the selected year so the chart
+  // always shows Jan–Dec, even months without invoices
+  const monthlyChartData = useMemo(() => {
+    const year = selectedYear
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    const dataMap = new Map((stats?.monthly ?? []).map((m) => [m.month, m]))
+    const now = new Date()
+    const currentMonthIndex = now.getMonth()
+    const isCurrentYear = year === String(now.getFullYear())
+    return monthNames.map((name, i) => {
+      const key = `${year}-${String(i + 1).padStart(2, '0')}`
+      const existing = dataMap.get(key)
+      return {
+        month: key,
+        name,
+        netAmount: existing?.netAmount ?? 0,
+        vatAmount: existing?.vatAmount ?? 0,
+        grossAmount: existing?.grossAmount ?? 0,
+        invoiceCount: existing?.invoiceCount ?? 0,
+        isCurrent: isCurrentYear && i === currentMonthIndex,
+      }
+    })
+  }, [stats?.monthly, selectedYear])
 
   const mpkChartData = useMemo(
     () =>
@@ -447,7 +461,20 @@ export function ReportsPage() {
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={monthlyChartData}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                        <XAxis
+                          dataKey="name"
+                          tick={(props: Record<string, unknown>) => {
+                            const x = props.x as number
+                            const y = props.y as number
+                            const payload = props.payload as { value: string; index: number }
+                            const isCurrent = monthlyChartData[payload.index]?.isCurrent
+                            return (
+                              <text x={x} y={y + 12} textAnchor="middle" fontSize={12} fill={isCurrent ? '#f97316' : 'currentColor'} fontWeight={isCurrent ? 700 : 400}>
+                                {payload.value}
+                              </text>
+                            )
+                          }}
+                        />
                         <YAxis
                           tick={{ fontSize: 12 }}
                           tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
@@ -462,8 +489,16 @@ export function ReportsPage() {
                               : String(name),
                           ]}
                         />
-                        <Bar dataKey="grossAmount" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="netAmount" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="grossAmount" radius={[4, 4, 0, 0]}>
+                          {monthlyChartData.map((entry, idx) => (
+                            <Cell key={idx} fill={entry.isCurrent ? '#f97316' : '#3b82f6'} />
+                          ))}
+                        </Bar>
+                        <Bar dataKey="netAmount" radius={[4, 4, 0, 0]}>
+                          {monthlyChartData.map((entry, idx) => (
+                            <Cell key={idx} fill={entry.isCurrent ? '#fb923c' : '#10b981'} />
+                          ))}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
