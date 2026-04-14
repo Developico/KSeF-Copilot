@@ -76,7 +76,7 @@ Documentation improvements are always welcome! This includes:
 ### Prerequisites
 
 - **Node.js 20+** - [Download](https://nodejs.org/)
-- **pnpm 9+** - `npm install -g pnpm`
+- **npm 10+** - Included with Node.js
 - **Azure CLI** - [Install](https://docs.microsoft.com/cli/azure/install-azure-cli)
 - **Azure Functions Core Tools v4** - [Install](https://docs.microsoft.com/azure/azure-functions/functions-run-local)
 
@@ -93,7 +93,7 @@ cd KSeFCopilot
 git remote add upstream https://github.com/Developico/KSeFCopilot.git
 
 # 4. Install dependencies
-pnpm install
+npm install
 
 # 5. Copy environment templates
 cp .env.example .env.local
@@ -103,23 +103,23 @@ cp web/.env.example web/.env.local
 # 6. Configure your local environment (see docs/AZURE_RESOURCES_SETUP.md)
 
 # 7. Start development servers
-pnpm dev
+npm run dev
 ```
 
 ### Running Tests
 
 ```bash
 # Run all tests
-pnpm test
+npm test
 
 # Run tests in watch mode
-pnpm test:watch
+npm run test:watch
 
 # Type checking
-pnpm typecheck
+npm run typecheck
 
 # Linting
-pnpm lint
+npm run lint
 ```
 
 ## Project Structure
@@ -275,9 +275,9 @@ git rebase upstream/main
 
 4. **Run the full test suite**:
    ```bash
-   pnpm typecheck
-   pnpm lint
-   pnpm test
+   npm run typecheck
+   npm run lint
+   npm test
    ```
 
 5. **Update documentation** if needed

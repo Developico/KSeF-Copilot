@@ -2,8 +2,8 @@
 
 > Przewodnik po dokumentacji integracji z Krajowym Systemem e-Faktur (KSeF)
 
-**Ostatnia aktualizacja:** 2026-03-20
-**Wersja dokumentacji:** 3.2
+**Ostatnia aktualizacja:** 2026-04-14
+**Wersja dokumentacji:** 4.0
 
 ---
 
@@ -51,6 +51,7 @@ Zalecana ścieżka czytania:
 | [Analiza kosztów](./pl/ANALIZA_KOSZTOW.md) | Analiza kosztów rozwiązania w Azure |
 | [Role i uprawnienia](./pl/ROLE.md) | Model RBAC — role Admin/User/Approver, macierz dostępu |
 | [Konektor samofakturowania](./pl/SAMOFAKTUROWANIE_CONNECTOR.md) | Operacje konektora Self-Billing, przykłady Power Automate, Copilot Studio |
+| [Konektor — dokumenty kosztowe](./COST_DOCUMENTS_CONNECTOR.md) | Operacje konektora dla dokumentów kosztowych (10 operacji) |
 
 ### English versions
 
@@ -68,6 +69,7 @@ Zalecana ścieżka czytania:
 | [Cost Analysis (EN)](./en/COST_ANALYSIS.md) | Azure cost analysis — English version |
 | [Roles & Permissions (EN)](./en/ROLES.md) | RBAC model — Admin/User/Approver roles, access matrix |
 | [Self-Billing Connector (EN)](./en/SELF_BILLING_CONNECTOR.md) | Self-Billing connector operations, Power Automate examples, Copilot Studio |
+| [Cost Documents Connector](./COST_DOCUMENTS_CONNECTOR.md) | Cost document connector operations (10 operations) |
 
 ---
 

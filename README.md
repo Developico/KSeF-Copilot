@@ -77,6 +77,18 @@ EN [English version](README.en.md)
 - 🔄 **Workflow statusów** — Draft → PendingSeller → SellerApproved → SentToKsef
 - 📄 **Zgodność XML z interpretacją KIS** *(v0.3.5)* — zatwierdzanie na podstawie pliku XML, metadane DodatkowyOpis, podgląd faktury w formacie tabelarycznym, druk/PDF, auto-approve
 
+### Dokumenty kosztowe *(v1.0.0)*
+- 📄 **7 typów dokumentów** — Paragon, Pokwitowanie, Pro forma, Nota księgowa, Rachunek, Umowa zlecenie/o dzieło, Inne
+- ✏️ **Pełne CRUD** — lista z filtrami (typ, status, data, wyszukiwanie), tworzenie, edycja, usuwanie
+- ✅ **Operacje grupowe** — zatwierdzanie, odrzucanie, oznaczanie jako opłacone (batch)
+- 🤖 **AI kategoryzacja** — automatyczna klasyfikacja MPK + kategoria via Azure OpenAI
+- 📷 **OCR** — ekstrakcja danych z paragonów i rachunków (Azure OpenAI Vision)
+- 📥 **Import CSV/XLSX** — podgląd, walidacja, potwierdzenie, szablon do pobrania
+- 📎 **Notatki i załączniki** — per dokument kosztowy
+- 🔔 **Powiadomienia** — 3 nowe typy (wniosek o zatwierdzenie, decyzja, ostrzeżenie budżetowe)
+- 💰 **Integracja z budżetami** — koszty z faktur i dokumentów kosztowych uwzględnione łącznie
+- 📊 **Raport rozkładu kosztów** — KPI, wykres kołowy, top kategorie, stacked bar chart, tabela szczegółów
+
 
 ## 🏗️ Architektura
 
@@ -223,8 +235,8 @@ sequenceDiagram
 
 | Artefakt | Opis | Wersja | Ścieżka |
 |----------|------|--------|---------|
-| **Solucja Dataverse** | Tabele, Model-Driven App, Code Component, Security Roles, Option Sets | 0.2.0 | [`deployment/powerplatform/`](deployment/powerplatform/) |
-| **Custom Connector** | Konektor OpenAPI do REST API | 0.2.0 | [`deployment/powerplatform/`](deployment/powerplatform/) |
+| **Solucja Dataverse** | Tabele, Model-Driven App, Code Component, Security Roles, Option Sets | 1.0.0.1 | [`deployment/powerplatform/DevelopicoKSeF_1_0_0_1.zip`](deployment/powerplatform/DevelopicoKSeF_1_0_0_1.zip) |
+| **Custom Connector** | Konektor OpenAPI do REST API (faktury, koszty, samofakturowanie) | 1.0.0.1 | [`deployment/powerplatform/KSeFCopilotCustomConnectorbyDevelopico_1_0_0_1.zip`](deployment/powerplatform/KSeFCopilotCustomConnectorbyDevelopico_1_0_0_1.zip) |
 | **Swagger (OpenAPI)** | Definicja endpointów API | 1.0 | [`deployment/powerplatform/connector/`](deployment/powerplatform/connector/) |
 
 > Instrukcja importu: [Power Platform README](deployment/powerplatform/README.md)

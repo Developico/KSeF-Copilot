@@ -16,7 +16,21 @@ Projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [1.0.0] — 2026-06-22
+## [1.0.1] — 2026-04-14
+
+### Naprawione
+- Pasek akcji grupowych na stronie kosztów — zmiana z inline na pływający toolbar (fixed bottom), spójny z widokiem faktur
+- Obcinanie długich nazw dostawców (truncate + tooltip) na liście kosztów
+- Poprawki typecheck (rzutowanie `ApprovalStatus`, `CostDocumentType`, formatery recharts)
+- Poprawki testów CI (mock cost documents w `BudgetService`, mock `useGenerateCostDocs` w settings)
+
+### Eksport solucji
+- `DevelopicoKSeF_1_0_0_1.zip` — solucja Dataverse v1.0.0.1
+- `KSeFCopilotCustomConnectorbyDevelopico_1_0_0_1.zip` — Custom Connector v1.0.0.1
+
+---
+
+## [1.0.0] — 2026-04-12
 
 ### Dodane — Moduł dokumentów kosztowych
 
@@ -241,7 +255,11 @@ Implementacja wymagań interpretacji KIS z 27.02.2026 (0112-KDIL1-3.4012.874.202
 - `GET /invoices/{id}/notes` (`ListInvoiceNotes`) — pobieranie notatek przypisanych do faktury
 - Nowe schematy odpowiedzi: `InvoiceListResponse`, `Note`, `KsefSyncResult`
 
-[Nieudostępnione]: https://github.com/Developico/KSeFCopilot/compare/v0.3.5...HEAD
+[Nieudostępnione]: https://github.com/Developico/KSeFCopilot/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/Developico/KSeFCopilot/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/Developico/KSeFCopilot/compare/v0.3.5...v1.0.0
+[0.3.5]: https://github.com/Developico/KSeFCopilot/compare/v0.3.0.1...v0.3.5
+[0.3.0.1]: https://github.com/Developico/KSeFCopilot/compare/v0.3.0...v0.3.0.1
 [0.3.0]: https://github.com/Developico/KSeFCopilot/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Developico/KSeFCopilot/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Developico/KSeFCopilot/releases/tag/v0.1.0
