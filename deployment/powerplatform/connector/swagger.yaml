@@ -4913,10 +4913,6 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden — requires Admin role
-
-  # ================================================================
-  # Cost Documents — CRUD
-  # ================================================================
   /cost-documents:
     get:
       operationId: ListCostDocuments

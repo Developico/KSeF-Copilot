@@ -152,11 +152,13 @@ describe('BudgetService.getBudgetStatus', () => {
     const getById = vi.spyOn(MpkCenterService.prototype, 'getById')
       .mockResolvedValueOnce(mpkWithBudget)
 
-    // Return 2 approved invoices totaling 3000 PLN
-    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
-      makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 1500 }),
-      makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 1500 }),
-    ])
+    // Return 2 approved invoices totaling 3000 PLN, then empty cost documents
+    vi.mocked(dataverseClient.listAll)
+      .mockResolvedValueOnce([
+        makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 1500 }),
+        makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 1500 }),
+      ])
+      .mockResolvedValueOnce([]) // cost documents
 
     const status = await svc.getBudgetStatus('mpk-001')
 
@@ -203,9 +205,11 @@ describe('BudgetService.getBudgetStatus', () => {
     const getById = vi.spyOn(MpkCenterService.prototype, 'getById')
       .mockResolvedValueOnce(mpkWithBudget)
 
-    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
-      makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 8000 }),
-    ])
+    vi.mocked(dataverseClient.listAll)
+      .mockResolvedValueOnce([
+        makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 8000 }),
+      ])
+      .mockResolvedValueOnce([]) // cost documents
 
     const status = await svc.getBudgetStatus('mpk-001')
 
@@ -222,9 +226,11 @@ describe('BudgetService.getBudgetStatus', () => {
     const getById = vi.spyOn(MpkCenterService.prototype, 'getById')
       .mockResolvedValueOnce(mpkWithBudget)
 
-    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
-      makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 12000 }),
-    ])
+    vi.mocked(dataverseClient.listAll)
+      .mockResolvedValueOnce([
+        makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 12000 }),
+      ])
+      .mockResolvedValueOnce([]) // cost documents
 
     const status = await svc.getBudgetStatus('mpk-001')
 
@@ -241,12 +247,14 @@ describe('BudgetService.getBudgetStatus', () => {
     const getById = vi.spyOn(MpkCenterService.prototype, 'getById')
       .mockResolvedValueOnce(mpkWithBudget)
 
-    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
-      makeApprovedInvoice({
-        [DV.invoice.grossAmountPln]: undefined,
-        [DV.invoice.grossAmount]: 5000,
-      }),
-    ])
+    vi.mocked(dataverseClient.listAll)
+      .mockResolvedValueOnce([
+        makeApprovedInvoice({
+          [DV.invoice.grossAmountPln]: undefined,
+          [DV.invoice.grossAmount]: 5000,
+        }),
+      ])
+      .mockResolvedValueOnce([]) // cost documents
 
     const status = await svc.getBudgetStatus('mpk-001')
     expect(status!.utilized).toBe(5000)
@@ -273,7 +281,9 @@ describe('BudgetService.getBudgetSummary', () => {
 
     vi.mocked(dataverseClient.listAll)
       .mockResolvedValueOnce([makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 2000 })])
+      .mockResolvedValueOnce([]) // cost documents for mpk-001
       .mockResolvedValueOnce([makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 10000 })])
+      .mockResolvedValueOnce([]) // cost documents for mpk-003
 
     const summary = await svc.getBudgetSummary('setting-001')
 
@@ -312,9 +322,11 @@ describe('BudgetService.checkBudgetOnApproval', () => {
       .mockResolvedValueOnce(mpkWithBudget)
 
     // Current utilization: 9000
-    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
-      makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 9000 }),
-    ])
+    vi.mocked(dataverseClient.listAll)
+      .mockResolvedValueOnce([
+        makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 9000 }),
+      ])
+      .mockResolvedValueOnce([]) // cost documents
 
     // Invoice being approved: 2000
     vi.mocked(dataverseClient.getById).mockResolvedValueOnce(
@@ -340,9 +352,11 @@ describe('BudgetService.checkBudgetOnApproval', () => {
       .mockResolvedValueOnce(mpkWithBudget)
 
     // Current utilization: 7000
-    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
-      makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 7000 }),
-    ])
+    vi.mocked(dataverseClient.listAll)
+      .mockResolvedValueOnce([
+        makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 7000 }),
+      ])
+      .mockResolvedValueOnce([]) // cost documents
 
     // Invoice: 1500 → total 8500 = 85%
     vi.mocked(dataverseClient.getById).mockResolvedValueOnce(
@@ -384,8 +398,10 @@ describe('BudgetService.handleMpkChange', () => {
       .mockResolvedValueOnce(mpkWithQuarterlyBudget)  // new MPK
 
     vi.mocked(dataverseClient.listAll)
-      .mockResolvedValueOnce([makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 3000 })])   // old
-      .mockResolvedValueOnce([makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 20000 })])  // new
+      .mockResolvedValueOnce([makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 3000 })])   // old invoices
+      .mockResolvedValueOnce([]) // old cost documents
+      .mockResolvedValueOnce([makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 20000 })])  // new invoices
+      .mockResolvedValueOnce([]) // new cost documents
 
     const result = await svc.handleMpkChange('mpk-001', 'mpk-003')
 
@@ -406,6 +422,7 @@ describe('BudgetService.handleMpkChange', () => {
 
     vi.mocked(dataverseClient.listAll)
       .mockResolvedValueOnce([makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 1000 })])
+      .mockResolvedValueOnce([]) // cost documents
 
     const result = await svc.handleMpkChange('mpk-002', 'mpk-001')
 
@@ -429,10 +446,12 @@ describe('BudgetService.recalculateAfterCorrection', () => {
 
     // Two invoices: one regular (5000) and one corrective (-1000)
     // Net utilization: 4000
-    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
-      makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 5000 }),
-      makeApprovedInvoice({ [DV.invoice.grossAmountPln]: -1000 }), // corrective
-    ])
+    vi.mocked(dataverseClient.listAll)
+      .mockResolvedValueOnce([
+        makeApprovedInvoice({ [DV.invoice.grossAmountPln]: 5000 }),
+        makeApprovedInvoice({ [DV.invoice.grossAmountPln]: -1000 }), // corrective
+      ])
+      .mockResolvedValueOnce([]) // cost documents
 
     const status = await svc.recalculateAfterCorrection('mpk-001')
 

@@ -56,6 +56,7 @@ import { CostTypeIcon } from '@/components/costs/cost-type-icon'
 import { CostNotesSection } from '@/components/costs/cost-notes-section'
 import { CurrencyDisplay } from '@/components/invoices/currency-amount'
 import { ApprovalStatusBadge } from '@/components/invoices/invoice-approval-section'
+import type { ApprovalStatus, CostDocumentType } from '@/lib/api'
 import {
   useCostDocument,
   useUpdateCostDocument,
@@ -233,7 +234,7 @@ export default function CostDocumentDetailPage({ params }: PageProps) {
           documentNumber: editDocNumber,
           documentDate: editDocDate,
           dueDate: editDueDate || undefined,
-          documentType: editDocType as typeof doc.documentType,
+          documentType: editDocType as CostDocumentType,
         },
       })
       setIsEditingDocument(false)
@@ -383,7 +384,7 @@ export default function CostDocumentDetailPage({ params }: PageProps) {
         {/* Approval */}
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">{t('colApproval')}</span>
-          <ApprovalStatusBadge status={doc.approvalStatus} />
+          <ApprovalStatusBadge status={doc.approvalStatus as ApprovalStatus} />
           {doc.approvedBy && (
             <span className="text-xs text-muted-foreground">
               {doc.approvedBy}{doc.approvedAt ? ` · ${formatDate(doc.approvedAt)}` : ''}

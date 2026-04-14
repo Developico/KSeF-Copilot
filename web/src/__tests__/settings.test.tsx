@@ -129,6 +129,10 @@ vi.mock('@/hooks/use-api', () => ({
     data: { data: [], count: 0 },
     isLoading: false,
   }),
+  useGenerateCostDocs: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/hooks/use-toast', () => ({

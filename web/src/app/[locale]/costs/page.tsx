@@ -54,6 +54,7 @@ import {
 import { CostTypeIcon } from '@/components/costs/cost-type-icon'
 import { InvoiceAmountCell } from '@/components/invoices/currency-amount'
 import { ApprovalStatusBadge } from '@/components/invoices/invoice-approval-section'
+import type { ApprovalStatus } from '@/lib/api'
 import { useCompanyContext } from '@/contexts/company-context'
 import { useHasRole } from '@/components/auth/auth-provider'
 import {
@@ -573,7 +574,7 @@ export default function CostsPage() {
                         )}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
-                        <ApprovalStatusBadge status={doc.approvalStatus} />
+                        <ApprovalStatusBadge status={doc.approvalStatus as ApprovalStatus} />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-center gap-1">

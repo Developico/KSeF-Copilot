@@ -167,14 +167,14 @@ export function CostDistributionTab() {
                   outerRadius="80%"
                   innerRadius="35%"
                   paddingAngle={2}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                 >
                   {pieData.map((entry, i) => (
                     <Cell key={i} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value: number) => formatCurrency(value, locale)}
+                  formatter={(value) => formatCurrency(Number(value ?? 0), locale)}
                 />
                 <Legend />
               </PieChart>
@@ -231,7 +231,7 @@ export function CostDistributionTab() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis tickFormatter={(v: number) => formatCurrency(v, locale)} />
-                <Tooltip formatter={(value: number) => formatCurrency(value, locale)} />
+                <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0), locale)} />
                 <Legend />
                 {allTypes.map((type, i) => (
                   <Bar
