@@ -102,6 +102,18 @@ Kluczowe dokumenty wdrożeniowe:
 
 ---
 
+## Dokumentacja dla Klienta (onboarding)
+
+Dokumenty przeznaczone dla Klienta końcowego w procesie wdrożenia KSeF Copilot.
+
+| Dokument | Opis |
+|----------|------|
+| [Wymagania wdrożeniowe](./client-onboarding-requirements.md) | Kwestionariusz dla Klienta — zestawienie informacji, dostępów i decyzji biznesowych niezbędnych do rozpoczęcia wdrożenia. Obejmuje: dane firmy, dostęp do KSeF, środowisko Azure i Dataverse, identyfikację wizualną, użytkowników, MPK, budżety, workflow zatwierdzeń, konfigurację modułów opcjonalnych i harmonogram |
+
+> **Kiedy używać:** Przed rozpoczęciem wdrożenia u nowego Klienta. Dokument przekazywany jest Klientowi do wypełnienia — stanowi podstawę do konfiguracji środowiska i planowania faz wdrożenia. W razie potrzeby zespół Developico pomaga Klientowi w przygotowaniu wymaganych informacji.
+
+---
+
 ## Dokumenty w katalogu głównym
 
 | Dokument | Opis |
