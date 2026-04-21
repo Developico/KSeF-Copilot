@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState, useCallback } from 'react'
+import { use, useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/i18n/navigation'
@@ -320,6 +320,53 @@ export default function CostDocumentDetailPage({ params }: PageProps) {
     }
   }
 
+  const attachments = attachmentsData?.attachments ?? []
+  const primaryAttachment = attachments[0]
+  const [primaryAttachmentContent, setPrimaryAttachmentContent] = useState<string | null>(null)
+  const [primaryAttachmentLoading, setPrimaryAttachmentLoading] = useState(false)
+
+  useEffect(() => {
+    let active = true
+
+    const loadPrimaryAttachment = async () => {
+      if (!primaryAttachment?.id) {
+        if (active) {
+          setPrimaryAttachmentContent(null)
+          setPrimaryAttachmentLoading(false)
+        }
+        return
+      }
+
+      try {
+        if (active) {
+          setPrimaryAttachmentLoading(true)
+        }
+        const response = await api.costDocuments.downloadAttachment(primaryAttachment.id)
+        if (active) {
+          setPrimaryAttachmentContent(response.content)
+        }
+      } catch {
+        if (active) {
+          setPrimaryAttachmentContent(null)
+        }
+      } finally {
+        if (active) {
+          setPrimaryAttachmentLoading(false)
+        }
+      }
+    }
+
+    void loadPrimaryAttachment()
+
+    return () => {
+      active = false
+    }
+  }, [primaryAttachment?.id])
+
+  const primaryAttachmentDataUrl = primaryAttachmentContent && primaryAttachment?.mimeType
+    ? `data:${primaryAttachment.mimeType};base64,${primaryAttachmentContent}`
+    : null
+
   // --- Loading / Not found ---
 
   if (isLoading) {
@@ -359,8 +406,6 @@ export default function CostDocumentDetailPage({ params }: PageProps) {
       </div>
     )
   }
-
-  const attachments = attachmentsData?.attachments ?? []
 
   return (
     <div className="space-y-4">
@@ -663,7 +708,7 @@ export default function CostDocumentDetailPage({ params }: PageProps) {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <p className="text-xs text-muted-foreground">MPK</p>
                     {doc.costCenter ? (
@@ -687,10 +732,6 @@ export default function CostDocumentDetailPage({ params }: PageProps) {
                     ) : (
                       <p className="text-sm text-muted-foreground">—</p>
                     )}
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">{t('project')}</p>
-                    <p className="text-sm">{doc.project || '—'}</p>
                   </div>
                 </div>
                 {doc.description && (
@@ -929,10 +970,32 @@ export default function CostDocumentDetailPage({ params }: PageProps) {
                 </div>
               </CardHeader>
               <CardContent>
-                {doc.documentFileName ? (
-                  <div className="rounded-md border bg-muted/50 p-4 text-center">
-                    <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm font-medium">{doc.documentFileName}</p>
+                {primaryAttachment ? (
+                  <div className="rounded-md border bg-muted/50 p-2 overflow-hidden">
+                    {primaryAttachmentLoading ? (
+                      <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Loading...
+                      </div>
+                    ) : primaryAttachmentDataUrl && primaryAttachment.mimeType?.startsWith('image/') ? (
+                      <img
+                        src={primaryAttachmentDataUrl}
+                        alt={primaryAttachment.fileName}
+                        className="w-full h-48 object-contain rounded"
+                      />
+                    ) : primaryAttachmentDataUrl && primaryAttachment.mimeType === 'application/pdf' ? (
+                      <iframe
+                        src={primaryAttachmentDataUrl}
+                        title={primaryAttachment.fileName}
+                        className="w-full h-48 rounded"
+                      />
+                    ) : (
+                      <div className="h-48 flex flex-col items-center justify-center text-muted-foreground">
+                        <FileText className="h-10 w-10 mb-2" />
+                        <p className="text-xs">Preview unavailable</p>
+                      </div>
+                    )}
+                    <p className="text-xs font-medium mt-2 truncate px-1">{primaryAttachment.fileName}</p>
                   </div>
                 ) : (
                   <div className="rounded-md border border-dashed bg-muted/30 p-8 text-center">

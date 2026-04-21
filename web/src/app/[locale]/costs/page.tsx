@@ -803,15 +803,9 @@ function CostDocumentCreateDialog({
             <label className="text-sm font-medium">{t('description')}</label>
             <Input value={form.description || ''} onChange={e => update('description', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-sm font-medium">{t('category')}</label>
-              <Input value={form.category || ''} onChange={e => update('category', e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">{t('project')}</label>
-              <Input value={form.project || ''} onChange={e => update('project', e.target.value)} />
-            </div>
+          <div>
+            <label className="text-sm font-medium">{t('category')}</label>
+            <Input value={form.category || ''} onChange={e => update('category', e.target.value)} />
           </div>
           <div>
             <label className="text-sm font-medium">{t('notes')}</label>

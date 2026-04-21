@@ -29,7 +29,14 @@ export const ExtractedAddressSchema = z.object({
   street: z.string().max(200).optional(),
   buildingNumber: z.string().max(20).optional(),
   apartmentNumber: z.string().max(20).optional(),
-  postalCode: z.string().max(10).optional(),
+  postalCode: z.preprocess(
+    (value) => {
+      if (typeof value !== 'string') return value
+      const trimmed = value.trim()
+      return trimmed.length > 20 ? trimmed.slice(0, 20) : trimmed
+    },
+    z.string().max(20).optional(),
+  ),
   city: z.string().max(100).optional(),
   country: z.string().max(50).optional().default('Polska'),
 })

@@ -81,6 +81,30 @@ const DOCUMENT_TYPE_OPTIONS: { value: CostDocumentType; label: string }[] = [
   { value: 'Other', label: 'Other' },
 ]
 
+function normalizeDateInput(value?: string): string | undefined {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+
+  // Already ISO date
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
+
+  // Common OCR output format: DD/MM/YYYY or DD-MM-YYYY
+  const match = trimmed.match(/^(\d{2})[./-](\d{2})[./-](\d{4})$/)
+  if (match) {
+    const [, dd, mm, yyyy] = match
+    return `${yyyy}-${mm}-${dd}`
+  }
+
+  return trimmed
+}
+
+function normalizeNip(value?: string): string | undefined {
+  if (!value) return undefined
+  const digits = value.replace(/\D/g, '')
+  return digits.length === 10 ? digits : undefined
+}
+
 // ============================================================================
 // Component
 // ============================================================================
@@ -100,6 +124,8 @@ export function CostDocumentScannerModal({
   const [step, setStep] = useState<ModalStep>('upload')
   const [isDragging, setIsDragging] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [fileDataUrl, setFileDataUrl] = useState<string | null>(null)
+  const [fileBase64, setFileBase64] = useState<string | null>(null)
   const [extractionResult, setExtractionResult] = useState<CostDocumentExtractionResult | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -115,6 +141,7 @@ export function CostDocumentScannerModal({
   const extractMutation = useMutation({
     mutationFn: async (file: File) => {
       const base64 = await fileToBase64(file)
+      setFileBase64(base64)
       return api.documents.extractCost({
         fileName: file.name,
         mimeType: file.type,
@@ -156,6 +183,8 @@ export function CostDocumentScannerModal({
   const resetState = useCallback(() => {
     setStep('upload')
     setUploadedFile(null)
+    setFileDataUrl(null)
+    setFileBase64(null)
     setExtractionResult(null)
     setErrorMessage(null)
     setFormData({ documentType: 'Receipt', currency: 'PLN' })
@@ -189,6 +218,12 @@ export function CostDocumentScannerModal({
     }
     setUploadedFile(file)
     setStep('processing')
+
+    // Keep a local preview for processing/review steps.
+    const reader = new FileReader()
+    reader.onload = (e) => setFileDataUrl(e.target?.result as string)
+    reader.readAsDataURL(file)
+
     extractMutation.mutate(file)
   }, [validateFile, toast, tCommon, extractMutation])
 
@@ -210,6 +245,8 @@ export function CostDocumentScannerModal({
     setStep('upload')
     setErrorMessage(null)
     setExtractionResult(null)
+    setFileDataUrl(null)
+    setFileBase64(null)
   }, [])
 
   // Create cost document from form
@@ -218,21 +255,57 @@ export function CostDocumentScannerModal({
       toast({ description: t('fillRequired'), variant: 'destructive' })
       return
     }
+    const payload: CostDocumentCreate = {
+      documentType: formData.documentType as CostDocumentType,
+      documentNumber: formData.documentNumber!,
+      documentDate: normalizeDateInput(formData.documentDate) || formData.documentDate!,
+      issuerName: formData.issuerName!,
+      grossAmount: Number(formData.grossAmount),
+      currency: formData.currency || 'PLN',
+      ...(selectedCompany?.id ? { settingId: selectedCompany.id } : {}),
+      ...(normalizeDateInput(formData.dueDate) ? { dueDate: normalizeDateInput(formData.dueDate) } : {}),
+      ...(normalizeNip(formData.issuerNip) ? { issuerNip: normalizeNip(formData.issuerNip) } : {}),
+      ...(typeof formData.netAmount === 'number' ? { netAmount: formData.netAmount } : {}),
+      ...(typeof formData.vatAmount === 'number' ? { vatAmount: formData.vatAmount } : {}),
+      ...(formData.description?.trim() ? { description: formData.description.trim() } : {}),
+      ...(formData.category?.trim() ? { category: formData.category.trim() } : {}),
+    }
+
+    let created: Awaited<ReturnType<typeof createMutation.mutateAsync>>
     try {
-      await createMutation.mutateAsync({
-        ...formData,
-        settingId: selectedCompany?.id || '',
-        documentType: formData.documentType as CostDocumentType,
-        documentNumber: formData.documentNumber!,
-        documentDate: formData.documentDate!,
-        issuerName: formData.issuerName!,
-        grossAmount: Number(formData.grossAmount),
-      })
-      toast({ description: t('created') })
-      handleOpenChange(false)
+      created = await createMutation.mutateAsync(payload)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : tCommon('error')
+      toast({ title: tCommon('error'), description: message, variant: 'destructive' })
+      return
+    }
+
+    // Persist OCR source file as cost-document attachment, but do not fail creation on attachment errors.
+    if (uploadedFile && fileBase64) {
+      try {
+        await api.costDocuments.uploadAttachment(created.id, {
+          fileName: uploadedFile.name,
+          mimeType: uploadedFile.type,
+          content: fileBase64,
+        })
+      } catch (error) {
+        console.error('[Cost OCR] Attachment upload failed:', error)
+      }
+    }
+
+    // Trigger AI classification automatically, but do not block successful create.
+    try {
+      await api.costDocuments.aiCategorize({ costDocumentId: created.id })
+    } catch (error) {
+      console.error('[Cost OCR] AI categorization failed:', error)
+    }
+
+    toast({ description: t('created') })
+    handleOpenChange(false)
+    try {
       onCreated?.()
-    } catch {
-      toast({ description: tCommon('error'), variant: 'destructive' })
+    } catch (error) {
+      console.error('[Cost OCR] onCreated callback failed after successful create:', error)
     }
   }
 
@@ -310,17 +383,31 @@ export function CostDocumentScannerModal({
 
           {/* Processing step */}
           {step === 'processing' && (
-            <div className="py-12 text-center">
-              <Loader2 className="h-16 w-16 mx-auto text-primary animate-spin mb-4" />
-              <h3 className="text-lg font-medium mb-2">
-                {t('scanner.analyzing', { name: uploadedFile?.name ?? '' })}
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                {uploadedFile?.type === 'application/pdf'
-                  ? t('scanner.extractingPdf')
-                  : t('scanner.extractingImage')}
-              </p>
-              <Progress value={undefined} className="w-64 mx-auto h-2" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+              <div className="rounded-lg border bg-muted/30 overflow-hidden min-h-[260px]">
+                {fileDataUrl && uploadedFile?.type !== 'application/pdf' ? (
+                  <img src={fileDataUrl} alt={uploadedFile?.name || 'scan'} className="w-full h-full object-contain" />
+                ) : fileDataUrl ? (
+                  <iframe src={fileDataUrl} title={uploadedFile?.name || 'scan'} className="w-full h-full min-h-[260px]" />
+                ) : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                    {uploadedFile?.name || '—'}
+                  </div>
+                )}
+              </div>
+
+              <div className="py-6 text-center flex flex-col justify-center">
+                <Loader2 className="h-16 w-16 mx-auto text-primary animate-spin mb-4" />
+                <h3 className="text-lg font-medium mb-2">
+                  {t('scanner.analyzing', { name: uploadedFile?.name ?? '' })}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {uploadedFile?.type === 'application/pdf'
+                    ? t('scanner.extractingPdf')
+                    : t('scanner.extractingImage')}
+                </p>
+                <Progress value={undefined} className="w-64 mx-auto h-2" />
+              </div>
             </div>
           )}
 
@@ -341,8 +428,21 @@ export function CostDocumentScannerModal({
 
               <Separator />
 
-              <ScrollArea className="max-h-[50vh]">
-                <div className="grid gap-3 pr-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="rounded-lg border bg-muted/30 overflow-hidden min-h-[360px]">
+                  {fileDataUrl && uploadedFile?.type !== 'application/pdf' ? (
+                    <img src={fileDataUrl} alt={uploadedFile?.name || 'scan'} className="w-full h-full object-contain" />
+                  ) : fileDataUrl ? (
+                    <iframe src={fileDataUrl} title={uploadedFile?.name || 'scan'} className="w-full h-full min-h-[360px]" />
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                      {uploadedFile?.name || '—'}
+                    </div>
+                  )}
+                </div>
+
+                <ScrollArea className="max-h-[50vh]">
+                  <div className="grid gap-3 pr-4">
                   {/* Document type */}
                   <div>
                     <Label>{t('colType')}</Label>
@@ -466,7 +566,8 @@ export function CostDocumentScannerModal({
                     </div>
                   </div>
                 </div>
-              </ScrollArea>
+                </ScrollArea>
+              </div>
 
               <Separator />
 

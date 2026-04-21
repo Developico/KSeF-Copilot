@@ -6,6 +6,29 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [1.0.2] - 2026-04-21
+
+### 🧾 OCR dokumentów kosztowych — stabilizacja end-to-end
+
+- **Naprawa walidacji OCR** — normalizacja danych wejściowych (daty, NIP, kwoty, waluta) przed walidacją API, co eliminuje błędy 400 dla części skanów
+- **Podgląd skanu w OCR** — utrzymany podgląd obrazu/PDF w procesie ekstrakcji i w kroku review
+- **Bezpieczne tworzenie dokumentu** — po udanym zapisie dokumentu operacje wtórne (upload załącznika, AI kategoryzacja) nie cofają już utworzenia rekordu
+- **Lepsze komunikaty błędów** — frontend pokazuje czytelne `details` z API zamiast nieczytelnych obiektów
+
+### 🗄️ Zgodność z Dataverse
+
+- **Usunięcie nieistniejących pól PATCH** — upload załącznika do kosztów nie aktualizuje już pól `dvlp_hasdocument` / `dvlp_documentfilename` (których nie ma w części środowisk)
+- **MPK jako tekst** — mapowanie MPK/AI MPK zgodne ze schematem tekstowym; obsłużone także rekordy historyczne z numerem OptionSet zapisanym jako string
+- **Generator danych testowych** — nowe dokumenty kosztowe zapisują AI MPK jako etykietę tekstową, nie wartość numeryczną
+
+### 🧩 UI/UX i widoki kosztów
+
+- **Naprawa Rules of Hooks** — strona szczegółów kosztu (`/costs/[id]`) nie zgłasza już błędu kolejności hooków przy otwieraniu właściwości
+- **Widoczność nowych rekordów** — OCR create zawsze przypisuje `settingId` aktywnej firmy, dzięki czemu dokument pojawia się na liście kontekstowej
+- **Uproszczenie formularzy** — usunięte pole `Project` z formularzy i widoku szczegółów dokumentów kosztowych
+
+---
+
 ## [1.0.1] - 2026-04-14
 
 ### 📋 Dokumenty kosztowe — redesign i strona szczegółów

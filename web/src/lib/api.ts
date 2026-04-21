@@ -949,7 +949,12 @@ async function apiFetch<T>(
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }))
     const msg = error.error || `API error: ${response.status}`
-    throw new Error(error.details ? `${msg}: ${error.details}` : msg)
+    const details = error.details
+      ? typeof error.details === 'string'
+        ? error.details
+        : JSON.stringify(error.details)
+      : ''
+    throw new Error(details ? `${msg}: ${details}` : msg)
   }
 
   // Handle 204 No Content
@@ -1477,7 +1482,7 @@ export interface CostDocumentCreate {
   project?: string
   tags?: string
   notes?: string
-  settingId: string
+  settingId?: string
   mpkCenterId?: string
 }
 
@@ -2482,6 +2487,17 @@ export const api = {
     // Attachments
     listAttachments: (id: string) =>
       apiFetch<{ attachments: Attachment[]; count: number }>(`/api/cost-documents/${encodeURIComponent(id)}/attachments`),
+    uploadAttachment: (id: string, data: AttachmentUpload) =>
+      apiFetch<Attachment>(`/api/cost-documents/${encodeURIComponent(id)}/attachments`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    downloadAttachment: (attachmentId: string) =>
+      apiFetch<{ content: string }>(`/api/attachments/${attachmentId}/download`),
+    deleteAttachment: (attachmentId: string) =>
+      apiFetch<void>(`/api/attachments/${attachmentId}`, {
+        method: 'DELETE',
+      }),
     // Import
     importTemplate: () =>
       apiFetch<Blob>('/api/cost-documents/import/template', { headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } }),

@@ -215,9 +215,16 @@ export async function apiFetch<T>(
     const errorBody = await response
       .json()
       .catch(() => ({ error: 'Unknown error' }))
+    const details = (errorBody as { details?: unknown }).details
+    const detailsText = details
+      ? typeof details === 'string'
+        ? details
+        : JSON.stringify(details)
+      : ''
     throw new Error(
-      (errorBody as { error?: string }).error ||
-        `API error: ${response.status}`
+      detailsText
+        ? `${(errorBody as { error?: string }).error || `API error: ${response.status}`}: ${detailsText}`
+        : (errorBody as { error?: string }).error || `API error: ${response.status}`
     )
   }
 

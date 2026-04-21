@@ -503,8 +503,6 @@ import {
   COST_DOCUMENT_SOURCE,
   CURRENCY,
 } from '../lib/dataverse/config'
-import { MpkValues } from '../lib/dataverse/entities'
-
 /**
  * Cleanup test invoices from Dataverse (TEST and DEMO environments only)
  * DELETE /api/ksef/testdata/cleanup
@@ -1215,8 +1213,8 @@ app.http('ksef-testdata-generate-costs', {
           if (doc.aiDescription) payload.dvlp_aidescription = doc.aiDescription
           if (doc.aiCategorySuggestion) payload.dvlp_aicategorysuggestion = doc.aiCategorySuggestion
           if (doc.aiConfidence !== undefined) payload.dvlp_aiconfidence = doc.aiConfidence
-          if (doc.aiMpkSuggestion && MpkValues[doc.aiMpkSuggestion as keyof typeof MpkValues] !== undefined) {
-            payload.dvlp_aimpksuggestion = toStr(MpkValues[doc.aiMpkSuggestion as keyof typeof MpkValues])
+          if (doc.aiMpkSuggestion) {
+            payload.dvlp_aimpksuggestion = doc.aiMpkSuggestion
           }
 
           await dataverseClient.create(ENTITY_SET, payload)

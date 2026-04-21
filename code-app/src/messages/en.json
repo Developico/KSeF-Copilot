@@ -66,6 +66,7 @@
   "navigation": {
     "dashboard": "Dashboard",
     "invoices": "Invoices",
+    "costs": "Other Costs",
     "reports": "Reports",
     "forecast": "Forecast",
     "sync": "Synchronization",

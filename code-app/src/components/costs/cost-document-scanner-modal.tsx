@@ -42,6 +42,28 @@ const DOCUMENT_TYPE_OPTIONS: { value: CostDocumentType; label: string }[] = [
   { value: 'Other', label: 'Other' },
 ]
 
+function normalizeDateInput(value?: string): string | undefined {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
+
+  const match = trimmed.match(/^(\d{2})[./-](\d{2})[./-](\d{4})$/)
+  if (match) {
+    const [, dd, mm, yyyy] = match
+    return `${yyyy}-${mm}-${dd}`
+  }
+
+  return trimmed
+}
+
+function normalizeNip(value?: string): string | undefined {
+  if (!value) return undefined
+  const digits = value.replace(/\D/g, '')
+  return digits.length === 10 ? digits : undefined
+}
+
 interface CostDocumentScannerModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -171,21 +193,39 @@ export function CostDocumentScannerModal({
       toast.error(intl.formatMessage({ id: 'costs.fillRequired' }))
       return
     }
+
+    const payload: CostDocumentCreate = {
+      documentType: formData.documentType as CostDocumentType,
+      documentNumber: formData.documentNumber!,
+      documentDate: normalizeDateInput(formData.documentDate) || formData.documentDate!,
+      issuerName: formData.issuerName!,
+      grossAmount: Number(formData.grossAmount),
+      currency: formData.currency || 'PLN',
+      ...(selectedCompany?.id ? { settingId: selectedCompany.id } : {}),
+      ...(normalizeDateInput(formData.dueDate) ? { dueDate: normalizeDateInput(formData.dueDate) } : {}),
+      ...(normalizeNip(formData.issuerNip) ? { issuerNip: normalizeNip(formData.issuerNip) } : {}),
+      ...(typeof formData.netAmount === 'number' ? { netAmount: formData.netAmount } : {}),
+      ...(typeof formData.vatAmount === 'number' ? { vatAmount: formData.vatAmount } : {}),
+      ...(formData.description?.trim() ? { description: formData.description.trim() } : {}),
+      ...(formData.category?.trim() ? { category: formData.category.trim() } : {}),
+    }
+
     try {
-      await createMutation.mutateAsync({
-        ...formData,
-        settingId: selectedCompany?.id || '',
-        documentType: formData.documentType as CostDocumentType,
-        documentNumber: formData.documentNumber!,
-        documentDate: formData.documentDate!,
-        issuerName: formData.issuerName!,
-        grossAmount: Number(formData.grossAmount),
-      })
-      toast.success(intl.formatMessage({ id: 'costs.created' }))
-      handleClose()
+      await createMutation.mutateAsync(payload)
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : intl.formatMessage({ id: 'common.error' })
+      toast.error(message)
+      return
+    }
+
+    toast.success(intl.formatMessage({ id: 'costs.created' }))
+    handleClose()
+    try {
       onCreated?.()
-    } catch {
-      toast.error(intl.formatMessage({ id: 'common.error' }))
+    } catch (error) {
+      console.error('[Cost OCR] onCreated callback failed after successful create:', error)
     }
   }
 
@@ -420,21 +460,12 @@ export function CostDocumentScannerModal({
                   onChange={e => updateForm('description', e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">{intl.formatMessage({ id: 'costs.category' })}</Label>
-                  <Input
-                    value={formData.category || ''}
-                    onChange={e => updateForm('category', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">{intl.formatMessage({ id: 'costs.project' })}</Label>
-                  <Input
-                    value={formData.project || ''}
-                    onChange={e => updateForm('project', e.target.value)}
-                  />
-                </div>
+              <div>
+                <Label className="text-xs">{intl.formatMessage({ id: 'costs.category' })}</Label>
+                <Input
+                  value={formData.category || ''}
+                  onChange={e => updateForm('category', e.target.value)}
+                />
               </div>
 
               <Separator />

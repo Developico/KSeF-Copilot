@@ -66,6 +66,10 @@ export async function uploadCostDocumentAttachment(data: CostDocumentAttachmentC
     throw new Error('Failed to create attachment: No ID returned')
   }
 
+  // Some Dataverse schemas do not expose additional metadata columns
+  // (for example dvlp_hasdocument / dvlp_documentfilename). The annotation
+  // itself is the source of truth, so we intentionally skip extra PATCH here.
+
   return {
     id: createdId,
     invoiceId: costDocumentId,

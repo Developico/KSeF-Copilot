@@ -18,15 +18,36 @@ import { mapDvCurrencyToApp, mapAppCurrencyToDv } from './mappers'
 // Helpers
 // ============================================================
 
-function mapDvCostCenterToMpk(value: number | undefined): string | undefined {
-  if (value === undefined) return undefined
-  const entry = Object.entries(MpkValues).find(([, v]) => v === value)
-  return entry ? entry[0] : 'Other'
+function mapDvCostCenterToMpk(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return undefined
+
+    // Some records store legacy option-set numeric values as text, e.g. "100000009".
+    if (/^\d+$/.test(trimmed)) {
+      const numericValue = Number(trimmed)
+      const entry = Object.entries(MpkValues).find(([, v]) => v === numericValue)
+      return entry ? entry[0] : trimmed
+    }
+
+    return trimmed
+  }
+  if (typeof value === 'number') {
+    const entry = Object.entries(MpkValues).find(([, v]) => v === value)
+    return entry ? entry[0] : 'Other'
+  }
+  return undefined
 }
 
-function mapMpkToDvCostCenter(mpk: string | undefined): number | undefined {
+function mapMpkToDvCostCenter(mpk: string | undefined): string | number | undefined {
   if (mpk === undefined) return undefined
-  return MpkValues[mpk as keyof typeof MpkValues] ?? MpkValues.Other
+
+  // Current Dataverse schema expects string in dvlp_costcenter/dvlp_aimpksuggestion.
+  // Keep backward compatibility with legacy option-set labels when possible.
+  const trimmed = mpk.trim()
+  if (!trimmed) return undefined
+  return trimmed
 }
 
 function mapDvPaymentStatusToApp(value: number | undefined): string {
@@ -99,7 +120,7 @@ export function mapDvCostDocumentToApp(raw: DvCostDocument): CostDocument {
     paymentStatus: mapDvPaymentStatusToApp(raw[s.paymentStatus as keyof DvCostDocument] as number | undefined),
     paymentDate: raw[s.paidAt as keyof DvCostDocument] as string | undefined,
     // Classification
-    mpk: mapDvCostCenterToMpk(raw[s.costCenter as keyof DvCostDocument] as number | undefined),
+    mpk: mapDvCostCenterToMpk(raw[s.costCenter as keyof DvCostDocument]),
     mpkCenterId: raw[s.mpkCenterLookup as keyof DvCostDocument] as string | undefined,
     category: raw[s.category as keyof DvCostDocument] as string | undefined,
     project: raw[s.project as keyof DvCostDocument] as string | undefined,
@@ -114,7 +135,7 @@ export function mapDvCostDocumentToApp(raw: DvCostDocument): CostDocument {
     approvedAt: raw[s.approvedAt as keyof DvCostDocument] as string | undefined,
     approvalComment: raw[s.approvalComment as keyof DvCostDocument] as string | undefined,
     // AI
-    aiMpkSuggestion: mapDvCostCenterToMpk(raw[s.aiMpkSuggestion as keyof DvCostDocument] as number | undefined),
+    aiMpkSuggestion: mapDvCostCenterToMpk(raw[s.aiMpkSuggestion as keyof DvCostDocument]),
     aiCategorySuggestion: raw[s.aiCategorySuggestion as keyof DvCostDocument] as string | undefined,
     aiDescription: raw[s.aiDescription as keyof DvCostDocument] as string | undefined,
     aiConfidence: raw[s.aiConfidence as keyof DvCostDocument] as number | undefined,

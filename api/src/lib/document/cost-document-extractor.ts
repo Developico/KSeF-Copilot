@@ -84,7 +84,40 @@ function parseResponse(content: string): ExtractedCostDocumentData {
     jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
   }
   const parsed = JSON.parse(jsonStr)
-  return ExtractedCostDocumentDataSchema.partial().parse(parsed) as ExtractedCostDocumentData
+  const sanitized = sanitizeExtractedCostDocumentData(parsed)
+  return ExtractedCostDocumentDataSchema.partial().parse(sanitized) as ExtractedCostDocumentData
+}
+
+function normalizePostalCode(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+
+  const raw = value.trim()
+  if (!raw) return undefined
+
+  // Prefer an explicit postal-code token if OCR mixed whole address into this field.
+  const plMatch = raw.match(/\b\d{2}-\d{3}\b/)
+  if (plMatch) return plMatch[0]
+
+  const genericMatch = raw.match(/\b[A-Za-z0-9][A-Za-z0-9\- ]{2,19}\b/)
+  return (genericMatch?.[0] || raw).slice(0, 20)
+}
+
+function sanitizeExtractedCostDocumentData(parsed: unknown): unknown {
+  if (!parsed || typeof parsed !== 'object') return parsed
+
+  const result = parsed as Record<string, unknown>
+  const issuerAddress = result.issuerAddress
+  if (!issuerAddress || typeof issuerAddress !== 'object') return result
+
+  const issuer = { ...(issuerAddress as Record<string, unknown>) }
+  const normalizedPostalCode = normalizePostalCode(issuer.postalCode)
+
+  if (normalizedPostalCode !== undefined) {
+    issuer.postalCode = normalizedPostalCode
+  }
+
+  result.issuerAddress = issuer
+  return result
 }
 
 /**

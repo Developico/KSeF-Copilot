@@ -1699,7 +1699,7 @@ export interface CostDocumentCreate {
   category?: string
   project?: string
   notes?: string
-  settingId: string
+  settingId?: string
 }
 
 export interface CostDocumentUpdate {

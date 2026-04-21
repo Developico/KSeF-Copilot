@@ -4,6 +4,68 @@ import { verifyAuth, requireRole } from '../lib/auth/middleware'
 import { CostDocumentCreateSchema, CostDocumentUpdateSchema } from '../types/cost-document'
 import type { CostDocumentListParams, CostDocumentType, CostDocumentSource, CostDocumentStatus } from '../types/cost-document'
 
+function normalizeDateInput(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
+
+  const match = trimmed.match(/^(\d{2})[./-](\d{2})[./-](\d{4})$/)
+  if (match) {
+    const [, dd, mm, yyyy] = match
+    return `${yyyy}-${mm}-${dd}`
+  }
+
+  return trimmed
+}
+
+function normalizeNip(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const digits = value.replace(/\D/g, '')
+  return digits.length === 10 ? digits : undefined
+}
+
+function normalizeCurrency(value: unknown): 'PLN' | 'EUR' | 'USD' | undefined {
+  if (typeof value !== 'string') return undefined
+  const upper = value.trim().toUpperCase()
+  if (upper === 'PLN' || upper === 'EUR' || upper === 'USD') return upper
+  return undefined
+}
+
+function normalizeNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const normalized = value.replace(',', '.').trim()
+    if (!normalized) return undefined
+    const num = Number(normalized)
+    return Number.isFinite(num) ? num : undefined
+  }
+  return undefined
+}
+
+function normalizeCostCreateBody(body: unknown): unknown {
+  if (!body || typeof body !== 'object') return body
+
+  const data = body as Record<string, unknown>
+  const documentDate = normalizeDateInput(data.documentDate)
+  const dueDate = normalizeDateInput(data.dueDate)
+  const issuerNip = normalizeNip(data.issuerNip)
+  const currency = normalizeCurrency(data.currency)
+
+  return {
+    ...data,
+    ...(documentDate ? { documentDate } : {}),
+    ...(dueDate ? { dueDate } : {}),
+    ...(issuerNip ? { issuerNip } : {}),
+    ...(currency ? { currency } : {}),
+    ...(normalizeNumber(data.grossAmount) !== undefined ? { grossAmount: normalizeNumber(data.grossAmount) } : {}),
+    ...(normalizeNumber(data.netAmount) !== undefined ? { netAmount: normalizeNumber(data.netAmount) } : {}),
+    ...(normalizeNumber(data.vatAmount) !== undefined ? { vatAmount: normalizeNumber(data.vatAmount) } : {}),
+    ...(typeof data.settingId === 'string' && data.settingId.trim() ? { settingId: data.settingId.trim() } : {}),
+  }
+}
+
 /**
  * GET /api/cost-documents - List cost documents with filtering
  */
@@ -128,11 +190,19 @@ export async function createCostDocumentHandler(
     }
 
     const body = await request.json()
-    const parseResult = CostDocumentCreateSchema.safeParse(body)
+    const normalizedBody = normalizeCostCreateBody(body)
+    const parseResult = CostDocumentCreateSchema.safeParse(normalizedBody)
     if (!parseResult.success) {
+      const details = parseResult.error.issues
+        .map(issue => `${issue.path.join('.') || 'root'}: ${issue.message}`)
+        .join('; ')
       return {
         status: 400,
-        jsonBody: { error: 'Invalid request body', details: parseResult.error.flatten() },
+        jsonBody: {
+          error: 'Invalid request body',
+          details,
+          validation: parseResult.error.flatten(),
+        },
       }
     }
 

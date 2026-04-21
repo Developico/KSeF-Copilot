@@ -498,7 +498,7 @@ export interface DvCostDocument {
   dvlp_paymentstatus: number // PaymentStatus OptionSet
   dvlp_paidat?: string
   // Classification
-  dvlp_costcenter?: number // Legacy MPK OptionSet
+  dvlp_costcenter?: number | string // Legacy OptionSet or current text field
   dvlp_category?: string
   dvlp_project?: string
   dvlp_tags?: string
@@ -512,7 +512,7 @@ export interface DvCostDocument {
   dvlp_approvedat?: string
   dvlp_approvalcomment?: string
   // AI fields
-  dvlp_aimpksuggestion?: number
+  dvlp_aimpksuggestion?: number | string
   dvlp_aicategorysuggestion?: string
   dvlp_aidescription?: string
   dvlp_aiconfidence?: number
