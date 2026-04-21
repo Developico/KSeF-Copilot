@@ -18,6 +18,8 @@ import type {
   SbTemplateCreate,
   SelfBillingInvoiceCreate,
   SelfBillingGenerateRequest,
+  MpkCenterCreate,
+  MpkCenterUpdate,
 } from '@/generated/models/DVLP_KSeF_PP_ConnectorModel'
 
 console.log('[api-connector] Service class imported OK, type:', typeof DVLP_KSeF_PP_ConnectorService)
@@ -404,6 +406,187 @@ export const connectorApi = {
     get: (_id: string) => notAvailable('dvSessions.get'),
     terminate: (_id: string) => notAvailable('dvSessions.terminate'),
     cleanup: () => notAvailable('dvSessions.cleanup'),
+  },
+
+  // ── MPK Centers / Approvers / Budget ──
+  mpkCenters: {
+    list: async (settingId: string) => {
+      const data = await safeCall('ListMpkCenters', () =>
+        DVLP_KSeF_PP_ConnectorService.ListMpkCenters(settingId)
+      ) as unknown
+      if (data && typeof data === 'object' && 'mpkCenters' in (data as Record<string, unknown>)) {
+        return data
+      }
+      if (Array.isArray(data)) {
+        return { mpkCenters: data, count: data.length }
+      }
+      return { mpkCenters: [], count: 0 }
+    },
+
+    get: async (id: string) => {
+      const data = await safeCall('GetMpkCenter', () =>
+        DVLP_KSeF_PP_ConnectorService.GetMpkCenter(id)
+      ) as unknown
+      if (data && typeof data === 'object' && 'mpkCenter' in (data as Record<string, unknown>)) {
+        return data
+      }
+      return { mpkCenter: data }
+    },
+
+    create: async (data: Record<string, unknown>) => {
+      const res = await safeCall('CreateMpkCenter', () =>
+        DVLP_KSeF_PP_ConnectorService.CreateMpkCenter(data as unknown as MpkCenterCreate)
+      ) as unknown
+      if (res && typeof res === 'object' && 'mpkCenter' in (res as Record<string, unknown>)) {
+        return res
+      }
+      return { mpkCenter: res }
+    },
+
+    update: async (id: string, data: Record<string, unknown>) => {
+      const res = await safeCall('UpdateMpkCenter', () =>
+        DVLP_KSeF_PP_ConnectorService.UpdateMpkCenter(id, data as unknown as MpkCenterUpdate)
+      ) as unknown
+      if (res && typeof res === 'object' && 'mpkCenter' in (res as Record<string, unknown>)) {
+        return res
+      }
+      return { mpkCenter: res }
+    },
+
+    deactivate: (id: string) =>
+      safeCall('DeactivateMpkCenter', () =>
+        DVLP_KSeF_PP_ConnectorService.DeactivateMpkCenter(id)
+      ),
+
+    getApprovers: async (id: string) => {
+      const data = await safeCall('ListMpkApprovers', () =>
+        DVLP_KSeF_PP_ConnectorService.ListMpkApprovers(id)
+      ) as unknown
+      if (data && typeof data === 'object' && 'approvers' in (data as Record<string, unknown>)) {
+        return data
+      }
+      if (Array.isArray(data)) {
+        return { approvers: data, count: data.length }
+      }
+      return { approvers: [], count: 0 }
+    },
+
+    setApprovers: async (id: string, systemUserIds: string[]) => {
+      const data = await safeCall('SetMpkApprovers', () =>
+        DVLP_KSeF_PP_ConnectorService.SetMpkApprovers(id, { systemUserIds })
+      ) as unknown
+      if (data && typeof data === 'object' && 'approvers' in (data as Record<string, unknown>)) {
+        return data
+      }
+      if (Array.isArray(data)) {
+        return { approvers: data, count: data.length }
+      }
+      return { approvers: [], count: 0 }
+    },
+
+    getBudgetStatus: async (id: string) => {
+      const data = await safeCall('GetMpkBudgetStatus', () =>
+        DVLP_KSeF_PP_ConnectorService.GetMpkBudgetStatus(id)
+      ) as unknown
+      if (data && typeof data === 'object' && 'data' in (data as Record<string, unknown>)) {
+        return data
+      }
+      return { data }
+    },
+
+    applyApproval: (id: string, scope: 'unprocessed' | 'decided' | 'all', dryRun?: boolean) =>
+      safeCall('ApplyApprovalToMpk', () =>
+        DVLP_KSeF_PP_ConnectorService.ApplyApprovalToMpk(id, { scope, dryRun })
+      ),
+
+    revokeApproval: (id: string, scope: 'pending' | 'decided' | 'all', dryRun?: boolean) =>
+      safeCall('RevokeApprovalFromMpk', () =>
+        DVLP_KSeF_PP_ConnectorService.RevokeApprovalFromMpk(id, { scope, dryRun })
+      ),
+  },
+
+  // ── Users ──
+  users: {
+    list: async (_settingId: string) => {
+      const data = await safeCall('ListSystemUsers', () =>
+        DVLP_KSeF_PP_ConnectorService.ListSystemUsers()
+      ) as unknown
+      if (data && typeof data === 'object' && 'users' in (data as Record<string, unknown>)) {
+        return data
+      }
+      if (Array.isArray(data)) {
+        return { users: data, count: data.length }
+      }
+      return { users: [], count: 0 }
+    },
+  },
+
+  // ── Approver Overview ──
+  approverOverview: {
+    get: (settingId: string) =>
+      safeCall('GetApproversOverview', () =>
+        DVLP_KSeF_PP_ConnectorService.GetApproversOverview(settingId)
+      ),
+  },
+
+  // ── Budget ──
+  budget: {
+    summary: async (settingId: string) => {
+      const data = await safeCall('GetBudgetSummary', () =>
+        DVLP_KSeF_PP_ConnectorService.GetBudgetSummary(settingId)
+      ) as unknown
+      if (data && typeof data === 'object' && 'data' in (data as Record<string, unknown>)) {
+        return data
+      }
+      if (Array.isArray(data)) {
+        return { data, count: data.length }
+      }
+      return { data: [], count: 0 }
+    },
+  },
+
+  // ── Notifications ──
+  notifications: {
+    list: async (settingId: string, options?: { unreadOnly?: boolean; top?: number }) => {
+      const data = await safeCall('GetNotifications', () =>
+        DVLP_KSeF_PP_ConnectorService.GetNotifications(settingId, options?.unreadOnly, options?.top)
+      ) as unknown
+      if (data && typeof data === 'object' && 'data' in (data as Record<string, unknown>)) {
+        return data
+      }
+      if (Array.isArray(data)) {
+        return { data, count: data.length }
+      }
+      return { data: [], count: 0 }
+    },
+
+    markRead: (id: string) =>
+      safeCall('MarkNotificationRead', () =>
+        DVLP_KSeF_PP_ConnectorService.MarkNotificationRead(id)
+      ),
+
+    dismiss: (id: string) =>
+      safeCall('DismissNotification', () =>
+        DVLP_KSeF_PP_ConnectorService.DismissNotification(id)
+      ),
+
+    markAllRead: (settingId: string) =>
+      safeCall('MarkAllNotificationsRead', () =>
+        DVLP_KSeF_PP_ConnectorService.MarkAllNotificationsRead(settingId)
+      ),
+
+    unreadCount: async (settingId: string) => {
+      const data = await safeCall('GetUnreadNotificationCount', () =>
+        DVLP_KSeF_PP_ConnectorService.GetUnreadNotificationCount(settingId)
+      ) as unknown
+      if (data && typeof data === 'object' && 'count' in (data as Record<string, unknown>)) {
+        return data
+      }
+      if (typeof data === 'number') {
+        return { count: data }
+      }
+      return { count: 0 }
+    },
   },
 
   // ── Dataverse Sync ──
