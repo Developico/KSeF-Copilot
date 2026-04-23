@@ -219,6 +219,14 @@ export interface DvNotification {
   '_dvlp_costdocumentid_value'?: string
   '_dvlp_mpkcenterid_value'?: string
   createdon: string
+  // Deduplication fields (added by Provision-NotificationDeduplicationColumns.ps1)
+  dvlp_groupkey?: string
+  dvlp_objecttype?: string
+  dvlp_isactive?: boolean
+  dvlp_occurrencecount?: number
+  dvlp_firsttriggeredon?: string
+  dvlp_lasttriggeredon?: string
+  dvlp_lasthoursoverdue?: number
 }
 
 // ============================================================

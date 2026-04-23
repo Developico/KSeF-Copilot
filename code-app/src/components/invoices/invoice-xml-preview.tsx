@@ -290,10 +290,8 @@ export function InvoiceXmlPreview({
   }
 
   const handleDownloadXml = () => {
-    if (downloadUrl) {
-      window.open(downloadUrl, '_blank')
-      return
-    }
+    // Always build a blob from the in-memory xml string so the download
+    // does not require a separate authenticated HTTP request.
     const blob = new Blob([xml], { type: 'application/xml' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -362,7 +360,7 @@ export function InvoiceXmlPreview({
             </div>
             <div>
               <p className="text-xs text-muted-foreground">{t('invoiceDate')}</p>
-              <p className="font-medium">{data.invoiceDate}</p>
+              <p className="font-medium">{data.invoiceDate.substring(0, 10)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">{t('saleDate')}</p>
@@ -511,7 +509,7 @@ export function InvoiceXmlPreview({
                 {data.dueDate && (
                   <div>
                     <span className="text-muted-foreground">{t('dueDate')}: </span>
-                    <span className="font-medium">{data.dueDate}</span>
+                    <span className="font-medium">{data.dueDate.substring(0, 10)}</span>
                   </div>
                 )}
                 {data.paymentMethod && (

@@ -270,6 +270,14 @@ export const DV = {
     mpkCenterLookup: '_dvlp_mpkcenterid_value',
     mpkCenterBind: 'dvlp_mpkcenterid@odata.bind',
     createdOn: 'createdon',
+    // Deduplication fields
+    groupKey: 'dvlp_groupkey',
+    objectType: 'dvlp_objecttype',
+    isActive: 'dvlp_isactive',
+    occurrenceCount: 'dvlp_occurrencecount',
+    firstTriggeredOn: 'dvlp_firsttriggeredon',
+    lastTriggeredOn: 'dvlp_lasttriggeredon',
+    lastHoursOverdue: 'dvlp_lasthoursoverdue',
   },
 
   // ============================================================

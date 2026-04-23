@@ -33,6 +33,9 @@ async function approvalSlaCheckHandler(
       try {
         const overdueInvoices = await approvalService.checkSla(setting.id)
 
+        // Track groupKeys that are still active this run — used for cleanup sweep
+        const activeInvoiceGroupKeys: string[] = []
+
         if (overdueInvoices.length > 0) {
           totalOverdue += overdueInvoices.length
           context.log(`[SLA] Setting ${setting.id}: ${overdueInvoices.length} overdue invoices`, {
@@ -44,18 +47,23 @@ async function approvalSlaCheckHandler(
             })),
           })
 
-          // 7.4: Create SLA_EXCEEDED notifications for approvers
+          // Upsert one SlaExceeded alert per (invoice × approver) — no duplicates per run
           for (const invoice of overdueInvoices) {
             try {
               const approvers = await mpkCenterService.getApprovers(invoice.mpkCenterId)
-              const recipientIds = approvers.map((a) => a.systemUserId)
-              if (recipientIds.length > 0) {
-                await notificationService.createForRecipients(recipientIds, {
+              for (const approver of approvers) {
+                const groupKey = `sla:invoice:${invoice.invoiceId}:recipient:${approver.systemUserId}`
+                activeInvoiceGroupKeys.push(groupKey)
+                await notificationService.upsertRecurringNotification({
+                  recipientId: approver.systemUserId,
                   settingId: setting.id,
                   type: 'SlaExceeded',
+                  objectType: 'invoice',
+                  groupKey,
                   message: `SLA exceeded: ${invoice.invoiceNumber} pending ${invoice.hoursOverdue}h (SLA: ${invoice.slaHours}h)`,
                   invoiceId: invoice.invoiceId,
                   mpkCenterId: invoice.mpkCenterId,
+                  lastHoursOverdue: invoice.hoursOverdue,
                 })
               }
             } catch (notifError) {
@@ -63,6 +71,9 @@ async function approvalSlaCheckHandler(
             }
           }
         }
+
+        // Deactivate alerts for invoices no longer overdue
+        await notificationService.deactivateByGroupKeys(setting.id, 'SlaExceeded', activeInvoiceGroupKeys, 'invoice')
       } catch (settingError) {
         context.error(`[SLA] Failed for setting ${setting.id}:`, settingError)
       }
@@ -89,6 +100,9 @@ async function approvalSlaCheckHandler(
         // Cache MPK lookups
         const mpkCache = new Map<string, { name: string; slaHours?: number }>()
 
+        // Track groupKeys still active this run
+        const activeCostDocGroupKeys: string[] = []
+
         for (const doc of result.items) {
           if (!doc.mpkCenterId) continue
 
@@ -111,16 +125,21 @@ async function approvalSlaCheckHandler(
             totalOverdueCostDocs++
             try {
               const approvers = await mpkCenterService.getApprovers(doc.mpkCenterId)
-              const recipientIds = approvers.map((a) => a.systemUserId)
-              if (recipientIds.length > 0) {
+              for (const approver of approvers) {
                 const label = doc.documentNumber || doc.name || doc.id
                 const hoursOverdue = Math.round((hoursElapsed - mpkInfo.slaHours) * 10) / 10
-                await notificationService.createForRecipients(recipientIds, {
+                const groupKey = `sla:cost-document:${doc.id}:recipient:${approver.systemUserId}`
+                activeCostDocGroupKeys.push(groupKey)
+                await notificationService.upsertRecurringNotification({
+                  recipientId: approver.systemUserId,
                   settingId: setting.id,
                   type: 'SlaExceeded',
+                  objectType: 'cost-document',
+                  groupKey,
                   message: `SLA exceeded: cost document ${label} pending ${hoursOverdue}h (SLA: ${mpkInfo.slaHours}h)`,
                   costDocumentId: doc.id,
                   mpkCenterId: doc.mpkCenterId,
+                  lastHoursOverdue: hoursOverdue,
                 })
               }
             } catch (notifError) {
@@ -128,6 +147,9 @@ async function approvalSlaCheckHandler(
             }
           }
         }
+
+        // Deactivate alerts for cost docs no longer overdue
+        await notificationService.deactivateByGroupKeys(setting.id, 'SlaExceeded', activeCostDocGroupKeys, 'cost-document')
       } catch (settingError) {
         context.error(`[SLA] Cost doc check failed for setting ${setting.id}:`, settingError)
       }

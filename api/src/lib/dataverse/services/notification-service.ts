@@ -20,6 +20,7 @@ import type { DvNotification } from '../../../types/dataverse'
 import type {
   Notification,
   NotificationType,
+  NotificationObjectType,
   CreateNotificationInput,
 } from '../../../types/notification'
 
@@ -74,6 +75,13 @@ function mapDvToApp(record: DvNotification): Notification {
     costDocumentId: r[n.costDocumentLookup] as string | undefined,
     mpkCenterId: r[n.mpkCenterLookup] as string | undefined,
     createdOn: (r[n.createdOn] as string) || '',
+    groupKey: r[n.groupKey] as string | undefined,
+    objectType: r[n.objectType] as NotificationObjectType | undefined,
+    isActive: r[n.isActive] as boolean | undefined,
+    occurrenceCount: r[n.occurrenceCount] as number | undefined,
+    firstTriggeredOn: r[n.firstTriggeredOn] as string | undefined,
+    lastTriggeredOn: r[n.lastTriggeredOn] as string | undefined,
+    lastHoursOverdue: r[n.lastHoursOverdue] as number | undefined,
   }
 }
 
@@ -203,6 +211,168 @@ export class NotificationService {
 
     const records = await dataverseClient.listAll<DvNotification>(n.entitySet, query)
     return records.length
+  }
+
+  /**
+   * Find the single active recurring notification by groupKey.
+   * Returns null when no matching active record exists.
+   */
+  async findActiveByGroupKey(
+    recipientId: string,
+    settingId: string,
+    groupKey: string,
+  ): Promise<Notification | null> {
+    const n = DV.notification
+    const conditions = [
+      `${n.recipientLookup} eq ${escapeOData(recipientId)}`,
+      `${n.settingLookup} eq ${escapeOData(settingId)}`,
+      `${n.groupKey} eq ${escapeOData(groupKey)}`,
+      `${n.isActive} eq true`,
+    ]
+    const query = `$filter=${conditions.join(' and ')}&$top=1`
+    const records = await dataverseClient.listAll<DvNotification>(n.entitySet, query)
+    return records.length > 0 ? mapDvToApp(records[0]) : null
+  }
+
+  /**
+   * Create-or-update a recurring alert.
+   * - If an active record with the same groupKey exists: increments occurrenceCount,
+   *   updates lastTriggeredOn, lastHoursOverdue, and message.
+   * - Otherwise: creates a new record with isActive=true, occurrenceCount=1.
+   * The isRead flag is never reset so the user keeps control over read state.
+   */
+  async upsertRecurringNotification(
+    input: CreateNotificationInput & { groupKey: string },
+  ): Promise<Notification> {
+    const n = DV.notification
+    const now = new Date().toISOString()
+
+    const existing = await this.findActiveByGroupKey(
+      input.recipientId,
+      input.settingId,
+      input.groupKey,
+    )
+
+    if (existing) {
+      const patch: Record<string, unknown> = {
+        [n.occurrenceCount]: (existing.occurrenceCount ?? 0) + 1,
+        [n.lastTriggeredOn]: now,
+        [n.message]: input.message,
+      }
+      if (input.lastHoursOverdue !== undefined) {
+        patch[n.lastHoursOverdue] = input.lastHoursOverdue
+      }
+      await dataverseClient.update(n.entitySet, existing.id, patch)
+
+      logDataverseInfo('NotificationService.upsertRecurringNotification', 'Updated existing alert', {
+        id: existing.id,
+        groupKey: input.groupKey,
+        occurrenceCount: patch[n.occurrenceCount],
+      })
+
+      return { ...existing, ...patch, lastTriggeredOn: now }
+    }
+
+    // New alert — create with full dedup metadata
+    const typeDv = mapNotificationTypeToDv(input.type)
+    const name = `${input.type}: ${input.message.substring(0, 80)}`
+
+    const body: Record<string, unknown> = {
+      [n.name]: name,
+      [n.type]: typeDv,
+      [n.message]: input.message,
+      [n.isRead]: false,
+      [n.isDismissed]: false,
+      [n.groupKey]: input.groupKey,
+      [n.isActive]: true,
+      [n.occurrenceCount]: 1,
+      [n.firstTriggeredOn]: now,
+      [n.lastTriggeredOn]: now,
+      [n.recipientBind]: `/systemusers(${input.recipientId})`,
+      [n.settingBind]: `/dvlp_ksefsettings(${input.settingId})`,
+    }
+    if (input.objectType) {
+      body[n.objectType] = input.objectType
+    }
+    if (input.lastHoursOverdue !== undefined) {
+      body[n.lastHoursOverdue] = input.lastHoursOverdue
+    }
+    if (input.invoiceId) {
+      body[n.invoiceBind] = `/dvlp_ksefinvoices(${input.invoiceId})`
+    }
+    if (input.costDocumentId) {
+      body[n.costDocumentBind] = `/dvlp_ksefcostdocuments(${input.costDocumentId})`
+    }
+    if (input.mpkCenterId) {
+      body[n.mpkCenterBind] = `/dvlp_ksefmpkcenters(${input.mpkCenterId})`
+    }
+
+    const record = await dataverseClient.create<DvNotification>(n.entitySet, body)
+
+    logDataverseInfo('NotificationService.upsertRecurringNotification', 'Created new alert', {
+      groupKey: input.groupKey,
+      type: input.type,
+      recipientId: input.recipientId,
+    })
+
+    return mapDvToApp(record)
+  }
+
+  /**
+   * Deactivate recurring alerts for a setting+type whose groupKeys are no
+   * longer in the provided active set. Called at the end of each timer run
+   * to close alerts for objects that are no longer overdue.
+   * Pass objectType to scope deactivation to only invoice or cost-document records.
+   */
+  async deactivateByGroupKeys(
+    settingId: string,
+    type: NotificationType,
+    activeGroupKeys: string[],
+    objectType?: NotificationObjectType,
+  ): Promise<number> {
+    const n = DV.notification
+    const typeDv = mapNotificationTypeToDv(type)
+    const activeSet = new Set(activeGroupKeys)
+
+    // Fetch all active records of this type (and optionally objectType) for the setting
+    const conditions = [
+      `${n.settingLookup} eq ${escapeOData(settingId)}`,
+      `${n.type} eq ${typeDv}`,
+      `${n.isActive} eq true`,
+      `${n.isDismissed} eq false`,
+    ]
+    if (objectType) {
+      conditions.push(`${n.objectType} eq ${escapeOData(objectType)}`)
+    }
+    const query = `$filter=${conditions.join(' and ')}&$select=${n.id},${n.groupKey}`
+    const records = await dataverseClient.listAll<DvNotification>(n.entitySet, query)
+
+    const toDeactivate = records.filter(r => {
+      const raw = r as unknown as Record<string, unknown>
+      const key = raw[n.groupKey] as string | undefined
+      return key && !activeSet.has(key)
+    })
+
+    let deactivated = 0
+    for (const record of toDeactivate) {
+      try {
+        const raw = record as unknown as Record<string, unknown>
+        const id = raw[n.id] as string
+        await dataverseClient.update(n.entitySet, id, { [n.isActive]: false })
+        deactivated++
+      } catch (error) {
+        logDataverseError('NotificationService.deactivateByGroupKeys', error)
+      }
+    }
+
+    if (deactivated > 0) {
+      logDataverseInfo('NotificationService.deactivateByGroupKeys', `Deactivated ${deactivated} resolved alerts`, {
+        settingId,
+        type,
+      })
+    }
+
+    return deactivated
   }
 
   /**

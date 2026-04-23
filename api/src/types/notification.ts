@@ -14,6 +14,8 @@ export type NotificationType =
   | 'CostDocApprovalDecided'
   | 'CostDocBudgetWarning'
 
+export type NotificationObjectType = 'invoice' | 'cost-document'
+
 export interface Notification {
   id: string
   name: string
@@ -27,6 +29,14 @@ export interface Notification {
   costDocumentId?: string
   mpkCenterId?: string
   createdOn: string
+  // Deduplication fields
+  groupKey?: string
+  objectType?: NotificationObjectType
+  isActive?: boolean
+  occurrenceCount?: number
+  firstTriggeredOn?: string
+  lastTriggeredOn?: string
+  lastHoursOverdue?: number
 }
 
 export interface CreateNotificationInput {
@@ -37,4 +47,8 @@ export interface CreateNotificationInput {
   invoiceId?: string
   costDocumentId?: string
   mpkCenterId?: string
+  // Deduplication fields — present only for recurring timer-generated alerts
+  groupKey?: string
+  objectType?: NotificationObjectType
+  lastHoursOverdue?: number
 }

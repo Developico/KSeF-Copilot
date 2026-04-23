@@ -20,16 +20,20 @@ import { cn } from '@/lib/utils'
 function notificationIcon(type: NotificationType) {
   switch (type) {
     case 'ApprovalRequested':
+    case 'CostDocApprovalRequested':
       return <FileText className="h-4 w-4 text-blue-500" />
     case 'SlaExceeded':
       return <Clock className="h-4 w-4 text-orange-500" />
     case 'BudgetWarning80':
+    case 'CostDocBudgetWarning':
       return <AlertTriangle className="h-4 w-4 text-yellow-500" />
     case 'BudgetExceeded':
       return <DollarSign className="h-4 w-4 text-red-500" />
     case 'ApprovalDecided':
+    case 'CostDocApprovalDecided':
       return <Check className="h-4 w-4 text-green-500" />
     case 'SbApprovalRequested':
+    case 'SbApprovalDecided':
       return <FileText className="h-4 w-4 text-emerald-500" />
     default:
       return <Bell className="h-4 w-4 text-muted-foreground" />
@@ -106,8 +110,9 @@ function localizeMessage(
 }
 
 function getNotificationHref(notification: AppNotification): string | null {
+  if (notification.costDocumentId) return `/cost-documents/${notification.costDocumentId}`
   if (!notification.invoiceId) return null
-  const isSb = notification.type === 'SbApprovalRequested'
+  const isSb = notification.type === 'SbApprovalRequested' || notification.type === 'SbApprovalDecided'
   return isSb ? `/self-billing/${notification.invoiceId}` : `/invoices/${notification.invoiceId}`
 }
 
@@ -274,9 +279,16 @@ function NotificationItem({
         <p className={cn('text-sm leading-snug', !notification.isRead && 'font-medium')}>
           {localizeMessage(notification.type, notification.message, t)}
         </p>
-        <p className="text-xs text-muted-foreground mt-1">
-          {timeAgo(notification.createdOn, t)}
-        </p>
+        <div className="flex items-center gap-2 mt-1">
+          <p className="text-xs text-muted-foreground">
+            {timeAgo(notification.lastTriggeredOn ?? notification.createdOn, t)}
+          </p>
+          {(notification.occurrenceCount ?? 0) > 1 && (
+            <span className="text-xs text-orange-500 font-medium">
+              {t('retriggered', { count: notification.occurrenceCount })}
+            </span>
+          )}
+        </div>
       </div>
       <div className="flex shrink-0 gap-1">
         {!notification.isRead && (

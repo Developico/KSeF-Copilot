@@ -6,6 +6,23 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.0.3] - 2026-04-23
+
+### 🧾 Podgląd samofaktur — poprawki UI
+
+- **Pobieranie XML bez błędu autoryzacji** — przycisk „Download XML" generuje teraz plik bezpośrednio z załadowanej treści XML (blob), zamiast otwierać osobne żądanie HTTP wymagające nagłówka Bearer
+- **Formatowanie dat** — pola `Invoice Date` i `Due Date` (sekcja PŁATNOŚĆ) w podglądzie faktury wyświetlają wyłącznie datę (`2026-04-30`) zamiast pełnego ciągu ISO (`2026-04-30T00:00:00Z`)
+- **Brak poziomego paska przewijania** — tabela pozycji faktury otoczona jest `overflow-x-auto`, dzięki czemu nie powoduje już przewijania całej strony
+
+### 🔔 Powiadomienia SLA — deduplicacja (backend)
+
+- **Nowe kolumny Dataverse** — schemat `dvlp_ksefnotification` rozszerzony o pola deduplicacji: `dvlp_groupkey`, `dvlp_objecttype`, `dvlp_isactive`, `dvlp_occurrencecount`, `dvlp_firsttriggeredon`, `dvlp_lasttriggeredon`, `dvlp_lasthoursoverdue`
+- **Upsert zamiast create** — timer SLA używa teraz `upsertRecurringNotification()`: dla istniejącego aktywnego alertu zwiększa licznik i aktualizuje `lastHoursOverdue` bez resetowania flagi `isRead`
+- **Dezaktywacja nieaktualnych alertów** — po każdym przebiegu timera alerty SLA dla faktur/dokumentów kosztowych, które nie przekraczają już terminu, są automatycznie oznaczane jako nieaktywne (`isActive = false`)
+- **Izolacja typów obiektów** — parametr `objectType` zapobiega wzajemnemu kasowaniu alertów dla faktur i dokumentów kosztowych
+
+---
+
 ## [1.0.2] - 2026-04-21
 
 ### 🧾 OCR dokumentów kosztowych — poprawki stabilności

@@ -289,3 +289,185 @@ describe('Notification type mapping', () => {
     }
   })
 })
+
+// ============================================================================
+// NotificationService.findActiveByGroupKey
+// ============================================================================
+
+describe('NotificationService.findActiveByGroupKey', () => {
+  it('should return null when no active record exists for groupKey', async () => {
+    const svc = createService()
+    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([])
+
+    const result = await svc.findActiveByGroupKey('user-001', 'setting-001', 'sla:invoice:inv-001:recipient:user-001')
+
+    expect(result).toBeNull()
+    const query = vi.mocked(dataverseClient.listAll).mock.calls[0][1] as string
+    expect(query).toContain(`${n.groupKey} eq`)
+    expect(query).toContain(`${n.isActive} eq true`)
+  })
+
+  it('should return the active notification when found', async () => {
+    const svc = createService()
+    const groupKey = 'sla:invoice:inv-001:recipient:user-001'
+    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
+      makeDvNotification({
+        [n.groupKey]: groupKey,
+        [n.isActive]: true,
+        [n.occurrenceCount]: 3,
+        [n.type]: NOTIFICATION_TYPE.SLA_EXCEEDED,
+      }),
+    ])
+
+    const result = await svc.findActiveByGroupKey('user-001', 'setting-001', groupKey)
+
+    expect(result).not.toBeNull()
+    expect(result!.groupKey).toBe(groupKey)
+    expect(result!.occurrenceCount).toBe(3)
+  })
+})
+
+// ============================================================================
+// NotificationService.upsertRecurringNotification
+// ============================================================================
+
+describe('NotificationService.upsertRecurringNotification', () => {
+  const groupKey = 'sla:invoice:inv-001:recipient:user-001'
+  const baseInput = {
+    recipientId: 'user-001',
+    settingId: 'setting-001',
+    type: 'SlaExceeded' as const,
+    objectType: 'invoice' as const,
+    groupKey,
+    message: 'SLA exceeded: FV/001 pending 2h (SLA: 24h)',
+    invoiceId: 'inv-001',
+    lastHoursOverdue: 2,
+  }
+
+  it('should create a new record when no active alert exists', async () => {
+    const svc = createService()
+    // findActiveByGroupKey returns empty
+    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([])
+    vi.mocked(dataverseClient.create).mockResolvedValueOnce(
+      makeDvNotification({
+        [n.type]: NOTIFICATION_TYPE.SLA_EXCEEDED,
+        [n.groupKey]: groupKey,
+        [n.isActive]: true,
+        [n.occurrenceCount]: 1,
+      })
+    )
+
+    await svc.upsertRecurringNotification(baseInput)
+
+    expect(dataverseClient.create).toHaveBeenCalledOnce()
+    const payload = vi.mocked(dataverseClient.create).mock.calls[0][1] as Record<string, unknown>
+    expect(payload[n.groupKey]).toBe(groupKey)
+    expect(payload[n.isActive]).toBe(true)
+    expect(payload[n.occurrenceCount]).toBe(1)
+    expect(payload[n.objectType]).toBe('invoice')
+  })
+
+  it('should update existing record and increment occurrenceCount', async () => {
+    const svc = createService()
+    // findActiveByGroupKey returns an existing record with occurrenceCount=3
+    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
+      makeDvNotification({
+        [n.type]: NOTIFICATION_TYPE.SLA_EXCEEDED,
+        [n.groupKey]: groupKey,
+        [n.isActive]: true,
+        [n.occurrenceCount]: 3,
+      }),
+    ])
+    vi.mocked(dataverseClient.update).mockResolvedValueOnce(undefined)
+
+    await svc.upsertRecurringNotification(baseInput)
+
+    expect(dataverseClient.create).not.toHaveBeenCalled()
+    expect(dataverseClient.update).toHaveBeenCalledWith(
+      n.entitySet,
+      'notif-001',
+      expect.objectContaining({
+        [n.occurrenceCount]: 4,
+        [n.lastHoursOverdue]: 2,
+      })
+    )
+  })
+
+  it('should NOT reset isRead when updating existing record', async () => {
+    const svc = createService()
+    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
+      makeDvNotification({
+        [n.type]: NOTIFICATION_TYPE.SLA_EXCEEDED,
+        [n.groupKey]: groupKey,
+        [n.isActive]: true,
+        [n.isRead]: true, // user has already read this
+        [n.occurrenceCount]: 1,
+      }),
+    ])
+    vi.mocked(dataverseClient.update).mockResolvedValueOnce(undefined)
+
+    await svc.upsertRecurringNotification(baseInput)
+
+    const patch = vi.mocked(dataverseClient.update).mock.calls[0][2] as Record<string, unknown>
+    // isRead must NOT be touched in the PATCH
+    expect(patch[n.isRead]).toBeUndefined()
+  })
+})
+
+// ============================================================================
+// NotificationService.deactivateByGroupKeys
+// ============================================================================
+
+describe('NotificationService.deactivateByGroupKeys', () => {
+  it('should deactivate records whose groupKeys are not in the active set', async () => {
+    const svc = createService()
+
+    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
+      makeDvNotification({ [n.id]: 'notif-stale', [n.groupKey]: 'sla:invoice:inv-OLD:recipient:user-001', [n.isActive]: true }),
+      makeDvNotification({ [n.id]: 'notif-active', [n.groupKey]: 'sla:invoice:inv-001:recipient:user-001', [n.isActive]: true }),
+    ])
+    vi.mocked(dataverseClient.update).mockResolvedValue(undefined)
+
+    const deactivated = await svc.deactivateByGroupKeys(
+      'setting-001',
+      'SlaExceeded',
+      ['sla:invoice:inv-001:recipient:user-001'], // only inv-001 is still active
+    )
+
+    expect(deactivated).toBe(1)
+    expect(dataverseClient.update).toHaveBeenCalledWith(
+      n.entitySet,
+      'notif-stale',
+      { [n.isActive]: false }
+    )
+    // notif-active must NOT be deactivated
+    expect(dataverseClient.update).not.toHaveBeenCalledWith(
+      n.entitySet,
+      'notif-active',
+      expect.anything()
+    )
+  })
+
+  it('should filter by objectType when provided', async () => {
+    const svc = createService()
+    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([])
+
+    await svc.deactivateByGroupKeys('setting-001', 'SlaExceeded', [], 'cost-document')
+
+    const query = vi.mocked(dataverseClient.listAll).mock.calls[0][1] as string
+    expect(query).toContain(`${n.objectType} eq`)
+  })
+
+  it('should return 0 when all alerts are still active', async () => {
+    const svc = createService()
+    const activeKey = 'sla:invoice:inv-001:recipient:user-001'
+    vi.mocked(dataverseClient.listAll).mockResolvedValueOnce([
+      makeDvNotification({ [n.groupKey]: activeKey, [n.isActive]: true }),
+    ])
+
+    const deactivated = await svc.deactivateByGroupKeys('setting-001', 'SlaExceeded', [activeKey])
+
+    expect(deactivated).toBe(0)
+    expect(dataverseClient.update).not.toHaveBeenCalled()
+  })
+})

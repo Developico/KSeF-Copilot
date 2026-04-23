@@ -189,7 +189,7 @@ export function SbInvoiceDetailContent({ sbInvoiceId }: SbInvoiceDetailContentPr
   // Loading
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-32 w-full" />
@@ -200,7 +200,7 @@ export function SbInvoiceDetailContent({ sbInvoiceId }: SbInvoiceDetailContentPr
   // Error / not found
   if (error || !invoice) {
     return (
-      <div className="max-w-4xl mx-auto p-6 space-y-4">
+      <div className="space-y-4">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           {tCommon('back')}
@@ -361,7 +361,7 @@ export function SbInvoiceDetailContent({ sbInvoiceId }: SbInvoiceDetailContentPr
   )
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

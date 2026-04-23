@@ -670,6 +670,12 @@ export type NotificationType =
   | 'BudgetExceeded'
   | 'ApprovalDecided'
   | 'SbApprovalRequested'
+  | 'SbApprovalDecided'
+  | 'CostDocApprovalRequested'
+  | 'CostDocApprovalDecided'
+  | 'CostDocBudgetWarning'
+
+export type NotificationObjectType = 'invoice' | 'cost-document'
 
 export interface AppNotification {
   id: string
@@ -681,8 +687,17 @@ export interface AppNotification {
   isRead: boolean
   isDismissed: boolean
   invoiceId?: string
+  costDocumentId?: string
   mpkCenterId?: string
   createdOn: string
+  // Deduplication fields
+  groupKey?: string
+  objectType?: NotificationObjectType
+  isActive?: boolean
+  occurrenceCount?: number
+  firstTriggeredOn?: string
+  lastTriggeredOn?: string
+  lastHoursOverdue?: number
 }
 
 export interface TokenTestResult {
