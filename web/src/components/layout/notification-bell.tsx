@@ -285,7 +285,7 @@ function NotificationItem({
           </p>
           {(notification.occurrenceCount ?? 0) > 1 && (
             <span className="text-xs text-orange-500 font-medium">
-              {t('retriggered', { count: notification.occurrenceCount })}
+              {t('retriggered', { count: notification.occurrenceCount ?? 0 })}
             </span>
           )}
         </div>
