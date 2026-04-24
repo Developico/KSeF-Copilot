@@ -1355,6 +1355,7 @@ const _directApi = {
       if (params?.status) qs.append('status', params.status)
       if (params?.documentType) qs.append('documentType', params.documentType)
       if (params?.paymentStatus) qs.append('paymentStatus', params.paymentStatus)
+      if (params?.approvalStatus) qs.append('approvalStatus', params.approvalStatus)
       if (params?.from) qs.append('from', params.from)
       if (params?.to) qs.append('to', params.to)
       const query = qs.toString()

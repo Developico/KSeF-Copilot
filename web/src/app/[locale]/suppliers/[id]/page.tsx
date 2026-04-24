@@ -9,6 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -134,6 +138,64 @@ export default function SupplierDetailPage({ params }: PageProps) {
   const { data: dvUsersData } = useContextDvUsers()
   const [contactPickerOpen, setContactPickerOpen] = useState(false)
   const [contactSearch, setContactSearch] = useState('')
+
+  // Edit supplier state
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [editForm, setEditForm] = useState({
+    name: '',
+    shortName: '',
+    email: '',
+    phone: '',
+    bankAccount: '',
+    street: '',
+    city: '',
+    postalCode: '',
+    paymentTermsDays: '',
+  })
+
+  function openEditDialog() {
+    if (!supplier) return
+    setEditForm({
+      name: supplier.name ?? '',
+      shortName: supplier.shortName ?? '',
+      email: supplier.email ?? '',
+      phone: supplier.phone ?? '',
+      bankAccount: supplier.bankAccount ?? '',
+      street: supplier.street ?? '',
+      city: supplier.city ?? '',
+      postalCode: supplier.postalCode ?? '',
+      paymentTermsDays: supplier.paymentTermsDays != null ? String(supplier.paymentTermsDays) : '',
+    })
+    setShowEditDialog(true)
+  }
+
+  async function handleEditSubmit() {
+    if (!editForm.name.trim()) return
+    const days = editForm.paymentTermsDays !== '' ? parseInt(editForm.paymentTermsDays, 10) : null
+    try {
+      await updateSupplierMutation.mutateAsync({
+        id,
+        data: {
+          name: editForm.name.trim(),
+          shortName: editForm.shortName.trim() || null,
+          email: editForm.email.trim() || null,
+          phone: editForm.phone.trim() || null,
+          bankAccount: editForm.bankAccount.trim() || null,
+          street: editForm.street.trim() || null,
+          city: editForm.city.trim() || null,
+          postalCode: editForm.postalCode.trim() || null,
+          paymentTermsDays: !isNaN(days as number) && days !== null ? days : null,
+        },
+      })
+      setShowEditDialog(false)
+      toast({ description: t('editSuccess'), variant: 'success' })
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        description: error instanceof Error ? error.message : t('editError'),
+      })
+    }
+  }
 
   const agreements = agreementsData?.agreements ?? []
   const activeAgreement = agreements.find((a) => a.status === 'Active')
@@ -495,7 +557,15 @@ export default function SupplierDetailPage({ params }: PageProps) {
         {/* Supplier info */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>{t('details')}</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>{t('details')}</CardTitle>
+              {isAdmin && (
+                <Button variant="outline" size="sm" onClick={openEditDialog}>
+                  <Pencil className="h-4 w-4 mr-1" />
+                  {tCommon('edit')}
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-2 gap-4 text-sm">
@@ -540,6 +610,16 @@ export default function SupplierDetailPage({ params }: PageProps) {
               <div>
                 <dt className="text-muted-foreground">{t('source')}</dt>
                 <dd>{supplier.source}</dd>
+              </div>
+              {supplier.vatStatusDate && (
+                <div>
+                  <dt className="text-muted-foreground">{t('vatRefreshedAt')}</dt>
+                  <dd>{formatDate(supplier.vatStatusDate)}</dd>
+                </div>
+              )}
+              <div>
+                <dt className="text-muted-foreground">{t('createdOn')}</dt>
+                <dd>{formatDate(supplier.createdOn)}</dd>
               </div>
             </dl>
           </CardContent>
@@ -1317,6 +1397,112 @@ export default function SupplierDetailPage({ params }: PageProps) {
 
       {/* Notes */}
       <SupplierNotesSection supplierId={id} isReadOnly={!isAdmin} />
+
+      {/* Edit supplier dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t('editTitle')}</DialogTitle>
+            <DialogDescription>{t('editDescription')}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-name">{t('name')}</Label>
+                <Input
+                  id="edit-name"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-shortName">{t('shortName')}</Label>
+                <Input
+                  id="edit-shortName"
+                  value={editForm.shortName}
+                  onChange={(e) => setEditForm(f => ({ ...f, shortName: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-email">{t('email')}</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm(f => ({ ...f, email: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-phone">{t('phone')}</Label>
+                <Input
+                  id="edit-phone"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-bankAccount">{t('bankAccount')}</Label>
+              <Input
+                id="edit-bankAccount"
+                value={editForm.bankAccount}
+                onChange={(e) => setEditForm(f => ({ ...f, bankAccount: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-street">{tCommon('street')}</Label>
+              <Input
+                id="edit-street"
+                value={editForm.street}
+                onChange={(e) => setEditForm(f => ({ ...f, street: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-city">{t('city')}</Label>
+                <Input
+                  id="edit-city"
+                  value={editForm.city}
+                  onChange={(e) => setEditForm(f => ({ ...f, city: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-postalCode">{t('postalCode')}</Label>
+                <Input
+                  id="edit-postalCode"
+                  value={editForm.postalCode}
+                  onChange={(e) => setEditForm(f => ({ ...f, postalCode: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-paymentTermsDays">{t('paymentTermsDays')}</Label>
+              <Input
+                id="edit-paymentTermsDays"
+                type="number"
+                min={0}
+                max={365}
+                value={editForm.paymentTermsDays}
+                onChange={(e) => setEditForm(f => ({ ...f, paymentTermsDays: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              {tCommon('cancel')}
+            </Button>
+            <Button
+              onClick={handleEditSubmit}
+              disabled={!editForm.name.trim() || updateSupplierMutation.isPending}
+            >
+              {updateSupplierMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {tCommon('save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

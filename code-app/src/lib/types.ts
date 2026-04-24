@@ -1726,6 +1726,7 @@ export interface CostDocumentListParams {
   status?: CostDocumentStatus
   documentType?: CostDocumentType
   paymentStatus?: string
+  approvalStatus?: ApprovalStatus
   from?: string
   to?: string
 }

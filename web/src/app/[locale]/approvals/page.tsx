@@ -38,6 +38,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   ShieldCheck, ShieldX, ShieldAlert, Clock, AlertTriangle, Loader2,
   HandCoins, Building2, Calendar, Search, RefreshCw, CheckCircle, XCircle,
+  Sparkles, Receipt,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useHasRole } from '@/components/auth/auth-provider'
@@ -51,11 +52,14 @@ import {
   useApproveSelfBillingInvoice,
   useRejectSelfBillingInvoice,
   useContextSelfBillingInvoices,
+  useContextCostDocuments,
+  useBatchApproveCostDocuments,
+  useBatchRejectCostDocuments,
 } from '@/hooks/use-api'
 import { ApprovalStatusBadge } from '@/components/invoices/invoice-approval-section'
 import type { PendingApproval, ApprovalHistoryEntry, ApprovalStatus, SelfBillingInvoice } from '@/lib/api'
 
-type ViewType = 'pending' | 'history' | 'sb-pending' | 'sb-history'
+type ViewType = 'pending' | 'history' | 'costs-pending' | 'costs-history' | 'sb-pending' | 'sb-history'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -109,6 +113,7 @@ export default function ApprovalsPage() {
   const tCommon = useTranslations('common')
   const tApproval = useTranslations('invoices.approval')
   const tSb = useTranslations('selfBilling')
+  const tCosts = useTranslations('costs')
   const locale = useLocale()
   const isAdmin = useHasRole('Admin')
   const { toast } = useToast()
@@ -140,7 +145,47 @@ export default function ApprovalsPage() {
   }, [sbApprovedData, sbRejectedData])
   const sbHistoryCount = allSbHistoryItems.length
 
-  // SB mutations
+  // Cost documents data
+  const { data: costsPendingData, isLoading: costsPendingLoading, refetch: refetchCostsPending } =
+    useContextCostDocuments({ approvalStatus: 'Pending' })
+  const allCostsPendingItems = costsPendingData?.items ?? []
+  const costsPendingCount = allCostsPendingItems.length
+
+  const { data: costsHistoryData, isLoading: costsHistoryLoading } =
+    useContextCostDocuments({ approvalStatus: 'Approved' })
+  const allCostsHistoryItems = costsHistoryData?.items ?? []
+
+  // Cost mutations
+  const costApproveMutation = useBatchApproveCostDocuments()
+  const costRejectMutation = useBatchRejectCostDocuments()
+  const [costActionDialog, setCostActionDialog] = useState<{
+    type: 'approve' | 'reject'
+    id: string
+    documentNumber: string
+  } | null>(null)
+
+  const closeCostDialog = useCallback(() => {
+    setCostActionDialog(null)
+  }, [])
+
+  const handleCostConfirm = useCallback(async () => {
+    if (!costActionDialog) return
+    try {
+      if (costActionDialog.type === 'approve') {
+        await costApproveMutation.mutateAsync([costActionDialog.id])
+        toast({ title: tApproval('approvedSuccess') })
+      } else {
+        await costRejectMutation.mutateAsync([costActionDialog.id])
+        toast({ title: tApproval('rejectedSuccess') })
+      }
+      closeCostDialog()
+      refetchCostsPending()
+    } catch {
+      toast({ title: tApproval('approveError'), variant: 'destructive' })
+    }
+  }, [costActionDialog, costApproveMutation, costRejectMutation, toast, tApproval, closeCostDialog, refetchCostsPending])
+
+  const isCostMutating = costApproveMutation.isPending || costRejectMutation.isPending
   const sbApproveMutation = useApproveSelfBillingInvoice()
   const sbRejectMutation = useRejectSelfBillingInvoice()
 
@@ -213,6 +258,26 @@ export default function ApprovalsPage() {
         inv.supplierNip?.includes(q)
     )
   }, [allSbHistoryItems, search])
+
+  const costsPendingItems = useMemo(() => {
+    if (!search) return allCostsPendingItems
+    const q = search.toLowerCase()
+    return allCostsPendingItems.filter(
+      (doc) =>
+        doc.documentNumber?.toLowerCase().includes(q) ||
+        doc.issuerName?.toLowerCase().includes(q)
+    )
+  }, [allCostsPendingItems, search])
+
+  const costsHistoryItems = useMemo(() => {
+    if (!search) return allCostsHistoryItems
+    const q = search.toLowerCase()
+    return allCostsHistoryItems.filter(
+      (doc) =>
+        doc.documentNumber?.toLowerCase().includes(q) ||
+        doc.issuerName?.toLowerCase().includes(q)
+    )
+  }, [allCostsHistoryItems, search])
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -318,8 +383,9 @@ export default function ApprovalsPage() {
 
   const handleRefresh = useCallback(async () => {
     if (view === 'pending') await refetchPending()
+    else if (view === 'costs-pending') await refetchCostsPending()
     else if (view === 'sb-pending') await refetchSbPending()
-  }, [view, refetchPending, refetchSbPending])
+  }, [view, refetchPending, refetchCostsPending, refetchSbPending])
 
   return (
     <div className="space-y-4">
@@ -372,6 +438,35 @@ export default function ApprovalsPage() {
                   {historySummary.approved + historySummary.rejected}
                 </Badge>
               )}
+            </Button>
+
+            <div className="h-6 w-px bg-border mx-1 hidden lg:block" />
+
+            {/* --- Other Costs section --- */}
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-1">{t('costsSection')}</span>
+            <Button
+              variant={view === 'costs-pending' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 gap-1 lg:gap-1.5"
+              onClick={() => setView('costs-pending')}
+            >
+              <Receipt className="h-3.5 w-3.5 text-orange-500" />
+              <span className="hidden sm:inline">{t('pendingTab')}</span>
+              {costsPendingCount > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 px-1.5">{costsPendingCount}</Badge>
+              )}
+              {costsPendingCount === 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5">0</Badge>
+              )}
+            </Button>
+            <Button
+              variant={view === 'costs-history' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 gap-1 lg:gap-1.5"
+              onClick={() => setView('costs-history')}
+            >
+              <ShieldAlert className="h-3.5 w-3.5 text-orange-400" />
+              <span className="hidden md:inline">{t('historyTab')}</span>
             </Button>
 
             <div className="h-6 w-px bg-border mx-1 hidden lg:block" />
@@ -511,7 +606,7 @@ export default function ApprovalsPage() {
                       <TableHead>{t('invoiceNumber')}</TableHead>
                       <TableHead>{t('supplier')}</TableHead>
                       <TableHead className="text-right">{t('amount')}</TableHead>
-                      <TableHead>{t('mpkCenter')}</TableHead>
+                      <TableHead>{t('mpk')}</TableHead>
                       <TableHead>{t('pendingSince')}</TableHead>
                       <TableHead>{t('slaDeadline')}</TableHead>
                       <TableHead className="text-right">{t('actions')}</TableHead>
@@ -543,14 +638,23 @@ export default function ApprovalsPage() {
                               {item.invoiceNumber}
                             </Link>
                           </TableCell>
-                          <TableCell className="max-w-50 truncate">
-                            {item.supplierName}
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-muted-foreground hidden md:block shrink-0" />
+                              <div className="font-medium text-sm truncate max-w-[150px] md:max-w-[200px]">{item.supplierName}</div>
+                            </div>
                           </TableCell>
                           <TableCell className="text-right font-mono">
                             {formatAmount(item.grossAmount, item.currency, locale)}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">{item.mpkCenterName ?? '—'}</Badge>
+                            {item.mpkCenterName ? (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
+                                {item.mpkCenterName}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             <Clock className="inline h-3 w-3 mr-1" />
@@ -642,7 +746,7 @@ export default function ApprovalsPage() {
                       <TableHead>{t('invoiceNumber')}</TableHead>
                       <TableHead>{t('supplier')}</TableHead>
                       <TableHead className="text-right">{t('amount')}</TableHead>
-                      <TableHead>{t('mpkCenter')}</TableHead>
+                      <TableHead>{t('mpk')}</TableHead>
                       <TableHead>{t('status')}</TableHead>
                       <TableHead>{t('decidedBy')}</TableHead>
                       <TableHead>{t('decidedAt')}</TableHead>
@@ -660,15 +764,20 @@ export default function ApprovalsPage() {
                             {entry.invoiceNumber}
                           </Link>
                         </TableCell>
-                        <TableCell className="max-w-50 truncate">
-                          {entry.supplierName}
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-muted-foreground hidden md:block shrink-0" />
+                            <div className="font-medium text-sm truncate max-w-[150px] md:max-w-[200px]">{entry.supplierName}</div>
+                          </div>
                         </TableCell>
                         <TableCell className="text-right font-mono">
                           {formatAmount(entry.grossAmount, entry.currency, locale)}
                         </TableCell>
                         <TableCell>
                           {entry.mpkCenterName ? (
-                            <Badge variant="outline">{entry.mpkCenterName}</Badge>
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
+                              {entry.mpkCenterName}
+                            </Badge>
                           ) : (
                             '—'
                           )}
@@ -904,8 +1013,204 @@ export default function ApprovalsPage() {
       )}
 
       {/* ================================================================ */}
-      {/* SB Approve Dialog                                                */}
+      {/* Costs Pending View                                               */}
       {/* ================================================================ */}
+      {view === 'costs-pending' && (
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="p-0">
+              {costsPendingLoading ? (
+                <div className="p-6 space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : costsPendingItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <Receipt className="h-12 w-12 mb-4 opacity-40" />
+                  <p>{t('noCostsPending')}</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('documentNumber')}</TableHead>
+                      <TableHead>{t('documentType')}</TableHead>
+                      <TableHead>
+                        <Building2 className="inline h-3 w-3 mr-1" />
+                        {t('issuer')}
+                      </TableHead>
+                      <TableHead className="text-right">{t('amount')}</TableHead>
+                      <TableHead>{t('mpk')}</TableHead>
+                      <TableHead className="text-right">{t('actions')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {costsPendingItems.map((doc) => {
+                      const mpkValue = doc.costCenter || doc.aiMpkSuggestion
+                      const isAi = !!doc.aiMpkSuggestion && (!doc.costCenter || doc.costCenter === doc.aiMpkSuggestion)
+                      return (
+                        <TableRow key={doc.id}>
+                          <TableCell>
+                            <Link
+                              href={`/costs/${doc.id}`}
+                              className="font-medium text-foreground hover:underline"
+                            >
+                              {doc.documentNumber}
+                            </Link>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {tCosts(`docType.${doc.documentType}`)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-48 truncate">{doc.issuerName}</TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatAmount(doc.grossAmount, doc.currency ?? 'PLN', locale)}
+                          </TableCell>
+                          <TableCell>
+                            {mpkValue ? (
+                              isAi ? (
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800 gap-1">
+                                  <Sparkles className="h-3 w-3" />{mpkValue}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
+                                  {mpkValue}
+                                </Badge>
+                              )
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-green-700 border-green-200 hover:bg-green-50"
+                                onClick={() => setCostActionDialog({ type: 'approve', id: doc.id, documentNumber: doc.documentNumber })}
+                                disabled={isCostMutating}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                {tApproval('approve')}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-700 border-red-200 hover:bg-red-50"
+                                onClick={() => setCostActionDialog({ type: 'reject', id: doc.id, documentNumber: doc.documentNumber })}
+                                disabled={isCostMutating}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                {tApproval('reject')}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ================================================================ */}
+      {/* Costs History View                                               */}
+      {/* ================================================================ */}
+      {view === 'costs-history' && (
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="p-0">
+              {costsHistoryLoading ? (
+                <div className="p-6 space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : costsHistoryItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <Receipt className="h-12 w-12 mb-4 opacity-40" />
+                  <p>{t('noCostsHistory')}</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('documentNumber')}</TableHead>
+                      <TableHead>{t('documentType')}</TableHead>
+                      <TableHead>
+                        <Building2 className="inline h-3 w-3 mr-1" />
+                        {t('issuer')}
+                      </TableHead>
+                      <TableHead className="text-right">{t('amount')}</TableHead>
+                      <TableHead>{t('mpk')}</TableHead>
+                      <TableHead>{t('status')}</TableHead>
+                      <TableHead>{t('decidedBy')}</TableHead>
+                      <TableHead>{t('decidedAt')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {costsHistoryItems.map((doc) => {
+                      const mpkValue = doc.costCenter || doc.aiMpkSuggestion
+                      const isAi = !!doc.aiMpkSuggestion && (!doc.costCenter || doc.costCenter === doc.aiMpkSuggestion)
+                      return (
+                        <TableRow key={doc.id}>
+                          <TableCell>
+                            <Link
+                              href={`/costs/${doc.id}`}
+                              className="font-medium text-foreground hover:underline"
+                            >
+                              {doc.documentNumber}
+                            </Link>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {tCosts(`docType.${doc.documentType}`)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-48 truncate">{doc.issuerName}</TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatAmount(doc.grossAmount, doc.currency ?? 'PLN', locale)}
+                          </TableCell>
+                          <TableCell>
+                            {mpkValue ? (
+                              isAi ? (
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800 gap-1">
+                                  <Sparkles className="h-3 w-3" />{mpkValue}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
+                                  {mpkValue}
+                                </Badge>
+                              )
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <ApprovalStatusBadge status={doc.approvalStatus as ApprovalStatus} />
+                          </TableCell>
+                          <TableCell className="text-sm">{doc.approvedBy ?? '—'}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {formatDate(doc.approvedAt, locale)}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ================================================================ */}
+      {/* SB Approve Dialog                                                */}
       <Dialog open={!!sbApproveDialog} onOpenChange={(open) => !open && setSbApproveDialog(null)}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
@@ -1061,6 +1366,41 @@ export default function ApprovalsPage() {
               {isMutating
                 ? tApproval('processing')
                 : actionDialog?.type === 'reject'
+                  ? tApproval('reject')
+                  : tApproval('approve')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* ================================================================ */}
+      {/* Cost Action Dialog (Approve / Reject)                           */}
+      {/* ================================================================ */}
+      <Dialog open={!!costActionDialog} onOpenChange={(open) => !open && closeCostDialog()}>
+        <DialogContent className="sm:max-w-100">
+          <DialogHeader>
+            <DialogTitle>
+              {costActionDialog?.type === 'approve' ? tApproval('approveTitle') : tApproval('rejectTitle')}
+            </DialogTitle>
+            <DialogDescription>
+              {costActionDialog?.documentNumber}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeCostDialog}>
+              {tApproval('cancel')}
+            </Button>
+            <Button
+              onClick={handleCostConfirm}
+              disabled={isCostMutating}
+              className={
+                costActionDialog?.type === 'reject'
+                  ? 'bg-destructive hover:bg-destructive/90'
+                  : ''
+              }
+            >
+              {isCostMutating
+                ? tApproval('processing')
+                : costActionDialog?.type === 'reject'
                   ? tApproval('reject')
                   : tApproval('approve')}
             </Button>

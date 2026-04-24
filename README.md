@@ -12,13 +12,9 @@ EN [English version](README.en.md)
 
 [![KSeF Copilot — demonstracja webinaru](https://img.youtube.com/vi/MDGhP9tcLQk/maxresdefault.jpg)](https://youtu.be/MDGhP9tcLQk)
 
-## 🎬 Co nowego w v0.2.0
+## 🎬 Co nowego w v1.0.4
 
-[![KSeF Copilot v0.2.0 — wideo promocyjne](https://img.youtube.com/vi/dzGFUU8Y_JE/maxresdefault.jpg)](https://youtu.be/dzGFUU8Y_JE)
-
-## 🎬 Co nowego w v0.3.0
-
-[![KSeF Copilot v0.3.0 — nowości](https://img.youtube.com/vi/JXMyhx1slTY/maxresdefault.jpg)](https://youtu.be/JXMyhx1slTY)
+[![KSeF Copilot v1.0.4 — nowości](https://img.youtube.com/vi/jfI-3vnx72s/maxresdefault.jpg)](https://youtu.be/jfI-3vnx72s)
 
 ---
 

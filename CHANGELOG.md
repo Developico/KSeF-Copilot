@@ -18,6 +18,8 @@ Projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.0.1] — 2026-04-14
 
+[![KSeF Copilot v1.0.4 — nowości](https://img.youtube.com/vi/jfI-3vnx72s/maxresdefault.jpg)](https://youtu.be/jfI-3vnx72s)
+
 ### Naprawione
 - Pasek akcji grupowych na stronie kosztów — zmiana z inline na pływający toolbar (fixed bottom), spójny z widokiem faktur
 - Obcinanie długich nazw dostawców (truncate + tooltip) na liście kosztów

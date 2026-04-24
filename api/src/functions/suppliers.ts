@@ -19,6 +19,7 @@
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { verifyAuth, requireRole } from '../lib/auth/middleware'
+import { validateNip } from '../lib/vat'
 import { supplierService } from '../lib/dataverse/services/supplier-service'
 import { invoiceService } from '../lib/dataverse/services/invoice-service'
 import { settingService } from '../lib/dataverse/services/setting-service'
@@ -547,10 +548,32 @@ app.http('suppliers-refresh-vat', {
         return { status: 404, jsonBody: { error: 'Supplier not found' } }
       }
 
+      if (!supplier.nip) {
+        return { status: 422, jsonBody: { error: 'Supplier has no NIP — cannot refresh VAT data' } }
+      }
+
+      // DEV/demo mode: skip external VAT API call, just update vatStatusDate
+      if (process.env.DEV_SKIP_VAT_API === 'true') {
+        context.log(`DEV_SKIP_VAT_API: skipping WL API call for NIP ${supplier.nip}, updating vatStatusDate only`)
+        const updated = await supplierService.update(id, {
+          vatStatusDate: new Date().toISOString(),
+        })
+        return { status: 200, jsonBody: { supplier: updated, vatStatus: supplier.vatStatus ?? null } }
+      }
+
+      if (!validateNip(supplier.nip)) {
+        return { status: 422, jsonBody: { error: `NIP ${supplier.nip} has an invalid checksum — cannot query VAT registry` } }
+      }
+
       const vatApiUrl = `https://wl-api.mf.gov.pl/api/search/nip/${encodeURIComponent(supplier.nip)}?date=${new Date().toISOString().split('T')[0]}`
       const response = await fetch(vatApiUrl)
 
       if (!response.ok) {
+        const errText = await response.text().catch(() => '')
+        context.warn(`VAT API returned ${response.status} for NIP ${supplier.nip}: ${errText}`)
+        if (response.status === 404) {
+          return { status: 404, jsonBody: { error: `NIP ${supplier.nip} not found in VAT registry` } }
+        }
         return { status: 502, jsonBody: { error: 'VAT API request failed', statusCode: response.status } }
       }
 

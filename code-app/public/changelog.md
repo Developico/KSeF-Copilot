@@ -6,6 +6,25 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.0.4] - 2026-04-24
+
+### ✅ Akceptacje — dokumenty kosztowe (nowe widoki)
+
+- **Zakładka „Inne Koszty"** — strona Akceptacji zawiera teraz dwie nowe zakładki: oczekujące i historia dla dokumentów kosztowych (analogicznie do faktur i samofaktur)
+- **Tabela dokumentów kosztowych** — kolumny: numer dokumentu, typ, wystawca, kwota brutto, MPK, akcje (zatwierdzenie/odrzucenie)
+- **Odznaki MPK** — kolor niebieski dla MPK ustawionych przez użytkownika, fioletowy (ze Sparkles) dla przypisanych przez AI
+- **Okno potwierdzenia akcji** — Zatwierdź / Odrzuć pojedynczy dokument kosztowy
+- **Kolumna Dostawca** — ikona Building2 i pogrubiona nazwa dostawcy (analogicznie do widoku Faktur)
+- **Odznaki MPK w akceptacjach faktur** — ujednolicono styl na niebieski
+
+### 🔧 Odświeżanie danych VAT — poprawki
+
+- **Obsługa trybu demo (`DEV_SKIP_VAT_API`)** — gdy środowisko Azure Functions ma ustawioną flagę `DEV_SKIP_VAT_API=true`, wywołanie „Odśwież dane VAT" pomija zewnętrzne API rejestru i aktualizuje tylko datę ostatniej weryfikacji dostawcy na dzisiejszą
+- **Walidacja NIP przed wywołaniem WL API** — nieprawidłowa suma kontrolna NIP zwraca zrozumiały błąd 422 zamiast 502
+- **Lepsza obsługa błędów WL API** — kod 404 z zewnętrznego API (NIP nieznany w rejestrze) zwraca czytelny komunikat; nieoczekiwane błędy logowane jako ostrzeżenia
+
+---
+
 ## [1.0.3] - 2026-04-23
 
 ### 🧾 Podgląd samofaktur — poprawki UI

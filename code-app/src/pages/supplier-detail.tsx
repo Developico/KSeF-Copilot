@@ -3,10 +3,11 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useIntl } from 'react-intl'
 import {
   Card, CardContent, CardHeader, CardTitle,
-  Badge, Skeleton, Button, Separator, Input,
+  Badge, Skeleton, Button, Separator, Input, Label, Textarea,
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
   AlertDialogTitle, AlertDialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   DropdownMenuTrigger,
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
@@ -271,6 +272,64 @@ export function SupplierDetailPage() {
   const handleMarkAsUnpaid = (invoiceId: string) => updateInvoiceMutation.mutate({ id: invoiceId, data: { paymentStatus: 'pending' } })
   const handleDelete = (invoiceId: string) => deleteInvoiceMutation.mutate(invoiceId)
 
+  // Edit supplier state
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [editForm, setEditForm] = useState({
+    name: '',
+    shortName: '',
+    email: '',
+    phone: '',
+    bankAccount: '',
+    street: '',
+    city: '',
+    postalCode: '',
+    paymentTermsDays: '',
+  })
+
+  function openEditDialog() {
+    if (!supplier) return
+    setEditForm({
+      name: supplier.name ?? '',
+      shortName: supplier.shortName ?? '',
+      email: supplier.email ?? '',
+      phone: supplier.phone ?? '',
+      bankAccount: supplier.bankAccount ?? '',
+      street: supplier.street ?? '',
+      city: supplier.city ?? '',
+      postalCode: supplier.postalCode ?? '',
+      paymentTermsDays: supplier.paymentTermsDays != null ? String(supplier.paymentTermsDays) : '',
+    })
+    setShowEditDialog(true)
+  }
+
+  function handleEditSubmit() {
+    if (!id || !editForm.name.trim()) return
+    const days = editForm.paymentTermsDays !== '' ? parseInt(editForm.paymentTermsDays, 10) : null
+    updateMutation.mutate(
+      {
+        id,
+        data: {
+          name: editForm.name.trim(),
+          shortName: editForm.shortName.trim() || null,
+          email: editForm.email.trim() || null,
+          phone: editForm.phone.trim() || null,
+          bankAccount: editForm.bankAccount.trim() || null,
+          street: editForm.street.trim() || null,
+          city: editForm.city.trim() || null,
+          postalCode: editForm.postalCode.trim() || null,
+          paymentTermsDays: !isNaN(days as number) && days !== null ? days : null,
+        },
+      },
+      {
+        onSuccess: () => {
+          setShowEditDialog(false)
+          toast.success(intl.formatMessage({ id: 'suppliers.editSuccess' }))
+        },
+        onError: (err) => toast.error(err.message),
+      }
+    )
+  }
+
   const [showAgreementForm, setShowAgreementForm] = useState(false)
   const [editingAgreement, setEditingAgreement] = useState(false)
   const [agreementForm, setAgreementForm] = useState({
@@ -357,10 +416,16 @@ export function SupplierDetailPage() {
         {/* Supplier details */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Building2 className="h-4 w-4" />
-              {intl.formatMessage({ id: 'suppliers.details' })}
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Building2 className="h-4 w-4" />
+                {intl.formatMessage({ id: 'suppliers.details' })}
+              </CardTitle>
+              <Button variant="outline" size="sm" onClick={openEditDialog}>
+                <Pencil className="h-4 w-4 mr-1" />
+                {intl.formatMessage({ id: 'common.edit' })}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <DetailRow label={intl.formatMessage({ id: 'suppliers.name' })} value={supplier.name} />
@@ -378,6 +443,11 @@ export function SupplierDetailPage() {
             <DetailRow
               label={intl.formatMessage({ id: 'suppliers.vatVerifiedAt' })}
               value={supplier.vatStatusDate ? formatDate(supplier.vatStatusDate) : undefined}
+            />
+            <Separator />
+            <DetailRow
+              label={intl.formatMessage({ id: 'suppliers.createdOn' })}
+              value={supplier.createdOn ? formatDate(supplier.createdOn) : undefined}
             />
           </CardContent>
         </Card>
@@ -925,6 +995,116 @@ export function SupplierDetailPage() {
 
       {/* Attachments */}
       <SupplierAttachmentsSection supplierId={id ?? ''} />
+
+      {/* Edit supplier dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {intl.formatMessage({ id: 'suppliers.editTitle' })}
+            </DialogTitle>
+            <DialogDescription>
+              {intl.formatMessage({ id: 'suppliers.editDescription' })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-name">{intl.formatMessage({ id: 'suppliers.name' })}</Label>
+                <Input
+                  id="edit-name"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-shortName">{intl.formatMessage({ id: 'suppliers.shortName' })}</Label>
+                <Input
+                  id="edit-shortName"
+                  value={editForm.shortName}
+                  onChange={(e) => setEditForm(f => ({ ...f, shortName: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-email">{intl.formatMessage({ id: 'suppliers.email' })}</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm(f => ({ ...f, email: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-phone">{intl.formatMessage({ id: 'suppliers.phone' })}</Label>
+                <Input
+                  id="edit-phone"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-bankAccount">{intl.formatMessage({ id: 'suppliers.bankAccount' })}</Label>
+              <Input
+                id="edit-bankAccount"
+                value={editForm.bankAccount}
+                onChange={(e) => setEditForm(f => ({ ...f, bankAccount: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-street">{intl.formatMessage({ id: 'common.street' })}</Label>
+              <Input
+                id="edit-street"
+                value={editForm.street}
+                onChange={(e) => setEditForm(f => ({ ...f, street: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-city">{intl.formatMessage({ id: 'suppliers.city' })}</Label>
+                <Input
+                  id="edit-city"
+                  value={editForm.city}
+                  onChange={(e) => setEditForm(f => ({ ...f, city: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-postalCode">{intl.formatMessage({ id: 'suppliers.postalCode' })}</Label>
+                <Input
+                  id="edit-postalCode"
+                  value={editForm.postalCode}
+                  onChange={(e) => setEditForm(f => ({ ...f, postalCode: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-paymentTermsDays">{intl.formatMessage({ id: 'suppliers.paymentTermsDays' })}</Label>
+              <Input
+                id="edit-paymentTermsDays"
+                type="number"
+                min={0}
+                max={365}
+                value={editForm.paymentTermsDays}
+                onChange={(e) => setEditForm(f => ({ ...f, paymentTermsDays: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              {intl.formatMessage({ id: 'common.cancel' })}
+            </Button>
+            <Button
+              onClick={handleEditSubmit}
+              disabled={!editForm.name.trim() || updateMutation.isPending}
+            >
+              {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {intl.formatMessage({ id: 'common.save' })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -536,32 +536,38 @@ export default function CostsPage() {
                         />
                       </TableCell>
                       <TableCell className="hidden xl:table-cell">
-                        {doc.costCenter ? (
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            {doc.costCenter}
-                          </Badge>
-                        ) : doc.aiMpkSuggestion ? (
-                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
-                            <Sparkles className="h-3 w-3" />
-                            {doc.aiMpkSuggestion}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">—</span>
-                        )}
+                        {(() => {
+                          const value = doc.costCenter || doc.aiMpkSuggestion
+                          const isAi = !!doc.aiMpkSuggestion && (!doc.costCenter || doc.costCenter === doc.aiMpkSuggestion)
+                          if (!value) return <span className="text-muted-foreground text-sm">—</span>
+                          return isAi ? (
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
+                              <Sparkles className="h-3 w-3" />
+                              {value}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                              {value}
+                            </Badge>
+                          )
+                        })()}
                       </TableCell>
                       <TableCell className="hidden xl:table-cell">
-                        {doc.category ? (
-                          <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
-                            {doc.category}
-                          </Badge>
-                        ) : doc.aiCategorySuggestion ? (
-                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
-                            <Sparkles className="h-3 w-3" />
-                            {doc.aiCategorySuggestion}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">—</span>
-                        )}
+                        {(() => {
+                          const value = doc.category || doc.aiCategorySuggestion
+                          const isAi = !!doc.aiCategorySuggestion && (!doc.category || doc.category === doc.aiCategorySuggestion)
+                          if (!value) return <span className="text-muted-foreground text-sm">—</span>
+                          return isAi ? (
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
+                              <Sparkles className="h-3 w-3" />
+                              {value}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
+                              {value}
+                            </Badge>
+                          )
+                        })()}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
                         <ApprovalStatusBadge status={doc.approvalStatus as ApprovalStatus} />

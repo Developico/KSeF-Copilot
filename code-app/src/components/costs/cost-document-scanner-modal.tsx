@@ -32,14 +32,14 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 
 type Step = 'upload' | 'processing' | 'preview' | 'error'
 
-const DOCUMENT_TYPE_OPTIONS: { value: CostDocumentType; label: string }[] = [
-  { value: 'Receipt', label: 'Receipt' },
-  { value: 'Acknowledgment', label: 'Acknowledgment' },
-  { value: 'ProForma', label: 'Pro Forma' },
-  { value: 'DebitNote', label: 'Debit Note' },
-  { value: 'Bill', label: 'Bill' },
-  { value: 'ContractInvoice', label: 'Contract Invoice' },
-  { value: 'Other', label: 'Other' },
+const DOCUMENT_TYPE_OPTIONS: CostDocumentType[] = [
+  'Receipt',
+  'Acknowledgment',
+  'ProForma',
+  'DebitNote',
+  'Bill',
+  'ContractInvoice',
+  'Other',
 ]
 
 function normalizeDateInput(value?: string): string | undefined {
@@ -357,8 +357,10 @@ export function CostDocumentScannerModal({
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {DOCUMENT_TYPE_OPTIONS.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    {DOCUMENT_TYPE_OPTIONS.map(type => (
+                      <SelectItem key={type} value={type}>
+                        {intl.formatMessage({ id: `costs.docType.${type}` })}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

@@ -1346,32 +1346,39 @@ export default function InvoicesPage() {
                       />
                     </TableCell>
                     <TableCell className="hidden xl:table-cell">
-                      {(invoice.mpkCenterName || invoice.mpk) ? (
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                          {invoice.mpkCenterName || invoice.mpk}
-                        </Badge>
-                      ) : invoice.aiMpkSuggestion ? (
-                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
-                          <Sparkles className="h-3 w-3" />
-                          {invoice.aiMpkSuggestion}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
-                      )}
+                      {(() => {
+                        const displayMpk = invoice.mpkCenterName || invoice.mpk
+                        const value = displayMpk || invoice.aiMpkSuggestion
+                        const isAi = !!invoice.aiMpkSuggestion && (!displayMpk || displayMpk === invoice.aiMpkSuggestion)
+                        if (!value) return <span className="text-muted-foreground text-sm">—</span>
+                        return isAi ? (
+                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            {value}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {value}
+                          </Badge>
+                        )
+                      })()}
                     </TableCell>
                     <TableCell className="hidden xl:table-cell">
-                      {invoice.category ? (
-                        <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
-                          {invoice.category}
-                        </Badge>
-                      ) : invoice.aiCategorySuggestion ? (
-                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
-                          <Sparkles className="h-3 w-3" />
-                          {invoice.aiCategorySuggestion}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
-                      )}
+                      {(() => {
+                        const value = invoice.category || invoice.aiCategorySuggestion
+                        const isAi = !!invoice.aiCategorySuggestion && (!invoice.category || invoice.category === invoice.aiCategorySuggestion)
+                        if (!value) return <span className="text-muted-foreground text-sm">—</span>
+                        return isAi ? (
+                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            {value}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
+                            {value}
+                          </Badge>
+                        )
+                      })()}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       <ApprovalStatusBadge status={invoice.approvalStatus} />

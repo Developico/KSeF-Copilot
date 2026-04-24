@@ -12,6 +12,7 @@ import {
 import {
   ShieldCheck, ShieldX, ShieldAlert, Clock, AlertTriangle,
   HandCoins, Building2, Calendar, Search, RefreshCw, CheckCircle, XCircle,
+  Sparkles, Receipt,
 } from 'lucide-react'
 import { useAuth } from '@/components/auth/auth-provider'
 import { useCompanyContext } from '@/contexts/company-context'
@@ -24,13 +25,16 @@ import {
   useSelfBillingInvoices,
   useApproveSelfBillingInvoice,
   useRejectSelfBillingInvoice,
+  useCostDocuments,
+  useBatchApproveCostDocuments,
+  useBatchRejectCostDocuments,
 } from '@/hooks/use-api'
 import { ApprovalStatusBadge } from '@/components/invoices/approval-status-badge'
 import { formatCurrency } from '@/lib/format'
 import { toast } from 'sonner'
-import type { PendingApproval, SelfBillingInvoice } from '@/lib/types'
+import type { PendingApproval, SelfBillingInvoice, CostDocument } from '@/lib/types'
 
-type ViewType = 'pending' | 'history' | 'sb-pending' | 'sb-history'
+type ViewType = 'pending' | 'history' | 'costs-pending' | 'costs-history' | 'sb-pending' | 'sb-history'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -104,6 +108,32 @@ export function ApprovalsPage() {
   }, [sbApprovedData, sbRejectedData])
   const sbHistoryCount = allSbHistoryItems.length
 
+  // Cost Documents Pending Approval
+  const { data: costsPendingData, isLoading: costsPendingLoading, refetch: refetchCostsPending } = useCostDocuments(
+    settingId ? { settingId, approvalStatus: 'Pending' } : undefined,
+    { enabled: !!settingId }
+  )
+  const allCostsPendingItems = costsPendingData?.items ?? []
+  const costsPendingCount = allCostsPendingItems.length
+
+  // Cost Documents Approval History (Approved + Rejected)
+  const { data: costsApprovedData, isLoading: costsApprovedLoading } = useCostDocuments(
+    settingId ? { settingId, approvalStatus: 'Approved' } : undefined,
+    { enabled: !!settingId }
+  )
+  const { data: costsRejectedData, isLoading: costsRejectedLoading } = useCostDocuments(
+    settingId ? { settingId, approvalStatus: 'Rejected' } : undefined,
+    { enabled: !!settingId }
+  )
+  const costsHistoryLoading = costsApprovedLoading || costsRejectedLoading
+  const allCostsHistoryItems = useMemo(() => {
+    const items = [
+      ...(costsApprovedData?.items ?? []),
+      ...(costsRejectedData?.items ?? []),
+    ]
+    return items.sort((a, b) => new Date(b.approvedAt ?? b.modifiedOn ?? b.createdOn).getTime() - new Date(a.approvedAt ?? a.modifiedOn ?? a.createdOn).getTime())
+  }, [costsApprovedData, costsRejectedData])
+
   // SB mutations
   const sbApproveMutation = useApproveSelfBillingInvoice()
   const sbRejectMutation = useRejectSelfBillingInvoice()
@@ -111,6 +141,18 @@ export function ApprovalsPage() {
   // SB reject dialog
   const [sbRejectDialog, setSbRejectDialog] = useState<{ id: string; invoiceNumber: string } | null>(null)
   const [sbRejectReason, setSbRejectReason] = useState('')
+
+  // Cost document mutations
+  const costApproveMutation = useBatchApproveCostDocuments()
+  const costRejectMutation = useBatchRejectCostDocuments()
+
+  // Cost doc action dialog
+  const [costActionDialog, setCostActionDialog] = useState<{
+    type: 'approve' | 'reject'
+    id: string
+    documentNumber: string
+  } | null>(null)
+  const [costComment, setCostComment] = useState('')
 
   // Auto-switch to SB tab when no regular pending but SB pending exists
   const autoSwitched = useRef(false)
@@ -173,6 +215,26 @@ export function ApprovalsPage() {
         inv.supplierNip?.includes(q)
     )
   }, [allSbHistoryItems, search])
+
+  const costsPendingItems = useMemo(() => {
+    if (!search) return allCostsPendingItems
+    const q = search.toLowerCase()
+    return allCostsPendingItems.filter(
+      (doc) =>
+        doc.documentNumber?.toLowerCase().includes(q) ||
+        doc.issuerName?.toLowerCase().includes(q)
+    )
+  }, [allCostsPendingItems, search])
+
+  const costsHistoryItems = useMemo(() => {
+    if (!search) return allCostsHistoryItems
+    const q = search.toLowerCase()
+    return allCostsHistoryItems.filter(
+      (doc) =>
+        doc.documentNumber?.toLowerCase().includes(q) ||
+        doc.issuerName?.toLowerCase().includes(q)
+    )
+  }, [allCostsHistoryItems, search])
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -288,15 +350,40 @@ export function ApprovalsPage() {
     }
   }, [sbRejectDialog, sbRejectReason, sbRejectMutation, intl, refetchSbPending])
 
+  // Cost doc approve / reject handlers
+  const handleCostConfirm = useCallback(async () => {
+    if (!costActionDialog) return
+    try {
+      if (costActionDialog.type === 'approve') {
+        await costApproveMutation.mutateAsync([costActionDialog.id])
+        toast.success(intl.formatMessage({ id: 'approval.approved' }))
+      } else {
+        await costRejectMutation.mutateAsync([costActionDialog.id])
+        toast.success(intl.formatMessage({ id: 'approval.rejected' }))
+      }
+      setCostActionDialog(null)
+      setCostComment('')
+      refetchCostsPending()
+    } catch {
+      toast.error(
+        costActionDialog.type === 'approve'
+          ? intl.formatMessage({ id: 'approvals.approveError' })
+          : intl.formatMessage({ id: 'approvals.rejectError' })
+      )
+    }
+  }, [costActionDialog, costApproveMutation, costRejectMutation, intl, refetchCostsPending])
+
   // Refresh all data
   const handleRefresh = useCallback(() => {
     refetchPending()
     refetchSbPending()
-  }, [refetchPending, refetchSbPending])
+    refetchCostsPending()
+  }, [refetchPending, refetchSbPending, refetchCostsPending])
 
   const isMutating =
     approveMutation.isPending || rejectMutation.isPending || bulkApproveMutation.isPending
   const isSbMutating = sbApproveMutation.isPending || sbRejectMutation.isPending
+  const isCostMutating = costApproveMutation.isPending || costRejectMutation.isPending
 
   return (
     <div className="space-y-6">
@@ -351,6 +438,34 @@ export function ApprovalsPage() {
           variant={view === 'history' ? 'secondary' : 'ghost'}
           size="sm"
           onClick={() => setView('history')}
+        >
+          {intl.formatMessage({ id: 'approvals.historyTab' })}
+        </Button>
+
+        <div className="mx-1 h-6 w-px bg-border" />
+
+        {/* INNE KOSZTY section */}
+        <span className="px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {intl.formatMessage({ id: 'approvals.costsSection' })}
+        </span>
+        <Button
+          variant={view === 'costs-pending' ? 'secondary' : 'ghost'}
+          size="sm"
+          className="gap-1.5"
+          onClick={() => setView('costs-pending')}
+        >
+          <Receipt className="h-4 w-4" />
+          {intl.formatMessage({ id: 'approvals.pendingTab' })}
+          {costsPendingCount > 0 && (
+            <Badge variant="destructive" className="text-[10px] h-5 min-w-5 px-1">
+              {costsPendingCount}
+            </Badge>
+          )}
+        </Button>
+        <Button
+          variant={view === 'costs-history' ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => setView('costs-history')}
         >
           {intl.formatMessage({ id: 'approvals.historyTab' })}
         </Button>
@@ -442,7 +557,7 @@ export function ApprovalsPage() {
                           {intl.formatMessage({ id: 'approvals.amount' })}
                         </th>
                         <th className="text-left p-3 font-medium">
-                          {intl.formatMessage({ id: 'approvals.mpkCenter' })}
+                          {intl.formatMessage({ id: 'approvals.mpk' })}
                         </th>
                         <th className="text-left p-3 font-medium">
                           {intl.formatMessage({ id: 'approvals.pendingSince' })}
@@ -480,7 +595,15 @@ export function ApprovalsPage() {
                             {formatCurrency(item.grossAmount, item.currency)}
                           </td>
                           <td className="p-3">
-                            <Badge variant="outline">{item.mpkCenterName ?? '—'}</Badge>
+                            {(() => {
+                              const value = item.mpkCenterName
+                              if (!value) return <span className="text-muted-foreground text-sm">—</span>
+                              return (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
+                                  {value}
+                                </Badge>
+                              )
+                            })()}
                           </td>
                           <td className="p-3 text-sm text-muted-foreground">
                             <Clock className="inline h-3 w-3 mr-1" />
@@ -608,7 +731,7 @@ export function ApprovalsPage() {
                           {intl.formatMessage({ id: 'approvals.amount' })}
                         </th>
                         <th className="text-left p-3 font-medium">
-                          {intl.formatMessage({ id: 'approvals.mpkCenter' })}
+                          {intl.formatMessage({ id: 'approvals.mpk' })}
                         </th>
                         <th className="text-left p-3 font-medium">
                           {intl.formatMessage({ id: 'approvals.status' })}
@@ -641,9 +764,11 @@ export function ApprovalsPage() {
                           </td>
                           <td className="p-3">
                             {entry.mpkCenterName ? (
-                              <Badge variant="outline">{entry.mpkCenterName}</Badge>
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
+                                {entry.mpkCenterName}
+                              </Badge>
                             ) : (
-                              '—'
+                              <span className="text-muted-foreground text-sm">—</span>
                             )}
                           </td>
                           <td className="p-3">
@@ -665,6 +790,221 @@ export function ApprovalsPage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* Costs Pending View                                              */}
+      {/* ============================================================== */}
+      {view === 'costs-pending' && (
+        <Card>
+          <CardContent className="p-0">
+            {costsPendingLoading ? (
+              <div className="p-6 space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : costsPendingItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <Receipt className="h-12 w-12 mb-4 opacity-40" />
+                <p>{intl.formatMessage({ id: 'approvals.noCostsPending' })}</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left p-3 font-medium">
+                        {intl.formatMessage({ id: 'approvals.documentNumber' })}
+                      </th>
+                      <th className="text-left p-3 font-medium">
+                        {intl.formatMessage({ id: 'approvals.documentType' })}
+                      </th>
+                      <th className="text-left p-3 font-medium">
+                        <Building2 className="inline h-3 w-3 mr-1" />
+                        {intl.formatMessage({ id: 'approvals.issuer' })}
+                      </th>
+                      <th className="text-right p-3 font-medium">
+                        {intl.formatMessage({ id: 'approvals.amount' })}
+                      </th>
+                      <th className="text-left p-3 font-medium">
+                        {intl.formatMessage({ id: 'approvals.mpk' })}
+                      </th>
+                      <th className="text-right p-3 font-medium">
+                        {intl.formatMessage({ id: 'approvals.actions' })}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {costsPendingItems.map((doc) => (
+                      <tr key={doc.id} className="border-b hover:bg-muted/30 transition-colors">
+                        <td className="p-3">
+                          <Link
+                            to={`/costs/${doc.id}`}
+                            className="font-medium text-primary hover:underline"
+                          >
+                            {doc.documentNumber}
+                          </Link>
+                        </td>
+                        <td className="p-3">
+                          <Badge variant="outline" className="text-xs">
+                            {intl.formatMessage({ id: `costs.docType.${doc.documentType}` })}
+                          </Badge>
+                        </td>
+                        <td className="p-3 max-w-48 truncate">{doc.issuerName}</td>
+                        <td className="p-3 text-right font-mono">
+                          {formatCurrency(doc.grossAmount, doc.currency)}
+                        </td>
+                        <td className="p-3">
+                          {(() => {
+                            const value = doc.costCenter || doc.aiMpkSuggestion
+                            const isAi = !!doc.aiMpkSuggestion && (!doc.costCenter || doc.costCenter === doc.aiMpkSuggestion)
+                            if (!value) return <span className="text-muted-foreground text-sm">—</span>
+                            return isAi ? (
+                              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800 gap-1">
+                                <Sparkles className="h-3 w-3" />{value}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
+                                {value}
+                              </Badge>
+                            )
+                          })()}
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-green-700 border-green-200 hover:bg-green-50"
+                              onClick={() => setCostActionDialog({ type: 'approve', id: doc.id, documentNumber: doc.documentNumber })}
+                              disabled={isCostMutating}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              {intl.formatMessage({ id: 'approval.approve' })}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-700 border-red-200 hover:bg-red-50"
+                              onClick={() => setCostActionDialog({ type: 'reject', id: doc.id, documentNumber: doc.documentNumber })}
+                              disabled={isCostMutating}
+                            >
+                              <XCircle className="h-4 w-4 mr-1" />
+                              {intl.formatMessage({ id: 'approval.reject' })}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ============================================================== */}
+      {/* Costs History View                                              */}
+      {/* ============================================================== */}
+      {view === 'costs-history' && (
+        <Card>
+          <CardContent className="p-0">
+            {costsHistoryLoading ? (
+              <div className="p-6 space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : costsHistoryItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <Receipt className="h-12 w-12 mb-4 opacity-40" />
+                <p>{intl.formatMessage({ id: 'approvals.noCostsHistory' })}</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left p-3 font-medium">
+                        {intl.formatMessage({ id: 'approvals.documentNumber' })}
+                      </th>
+                      <th className="text-left p-3 font-medium">
+                        {intl.formatMessage({ id: 'approvals.documentType' })}
+                      </th>
+                      <th className="text-left p-3 font-medium">
+                        <Building2 className="inline h-3 w-3 mr-1" />
+                        {intl.formatMessage({ id: 'approvals.issuer' })}
+                      </th>
+                      <th className="text-right p-3 font-medium">
+                        {intl.formatMessage({ id: 'approvals.amount' })}
+                      </th>
+                      <th className="text-left p-3 font-medium">
+                        {intl.formatMessage({ id: 'approvals.mpk' })}
+                      </th>
+                      <th className="text-left p-3 font-medium">
+                        {intl.formatMessage({ id: 'approvals.status' })}
+                      </th>
+                      <th className="text-left p-3 font-medium">
+                        {intl.formatMessage({ id: 'approval.decidedBy' })}
+                      </th>
+                      <th className="text-left p-3 font-medium">
+                        {intl.formatMessage({ id: 'approval.decidedAt' })}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {costsHistoryItems.map((doc) => (
+                      <tr key={doc.id} className="border-b hover:bg-muted/30 transition-colors">
+                        <td className="p-3">
+                          <Link
+                            to={`/costs/${doc.id}`}
+                            className="font-medium text-primary hover:underline"
+                          >
+                            {doc.documentNumber}
+                          </Link>
+                        </td>
+                        <td className="p-3">
+                          <Badge variant="outline" className="text-xs">
+                            {intl.formatMessage({ id: `costs.docType.${doc.documentType}` })}
+                          </Badge>
+                        </td>
+                        <td className="p-3 max-w-48 truncate">{doc.issuerName}</td>
+                        <td className="p-3 text-right font-mono">
+                          {formatCurrency(doc.grossAmount, doc.currency)}
+                        </td>
+                        <td className="p-3">
+                          {(() => {
+                            const value = doc.costCenter || doc.aiMpkSuggestion
+                            const isAi = !!doc.aiMpkSuggestion && (!doc.costCenter || doc.costCenter === doc.aiMpkSuggestion)
+                            if (!value) return <span className="text-muted-foreground text-sm">—</span>
+                            return isAi ? (
+                              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800 gap-1">
+                                <Sparkles className="h-3 w-3" />{value}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
+                                {value}
+                              </Badge>
+                            )
+                          })()}
+                        </td>
+                        <td className="p-3">
+                          <ApprovalStatusBadge status={doc.approvalStatus as 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Cancelled'} />
+                        </td>
+                        <td className="p-3 text-sm">{doc.approvedBy ?? '—'}</td>
+                        <td className="p-3 text-sm text-muted-foreground">
+                          {formatShortDate(doc.approvedAt)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* ============================================================== */}
@@ -910,6 +1250,48 @@ export function ApprovalsPage() {
               {isMutating
                 ? intl.formatMessage({ id: 'approvals.processing' })
                 : actionDialog?.type === 'reject'
+                  ? intl.formatMessage({ id: 'approval.reject' })
+                  : intl.formatMessage({ id: 'approval.approve' })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ================================================================ */}
+      {/* Cost Document Action Dialog (Approve / Reject)                  */}
+      {/* ================================================================ */}
+      <Dialog open={!!costActionDialog} onOpenChange={(open) => { if (!open) { setCostActionDialog(null); setCostComment('') } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {costActionDialog?.type === 'approve'
+                ? intl.formatMessage({ id: 'approvals.approveTitle' })
+                : intl.formatMessage({ id: 'approvals.rejectTitle' })}
+            </DialogTitle>
+            <DialogDescription>
+              {costActionDialog?.documentNumber}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>{intl.formatMessage({ id: 'approvals.commentLabel' })}</Label>
+            <Input
+              value={costComment}
+              onChange={(e) => setCostComment(e.target.value)}
+              placeholder={intl.formatMessage({ id: 'approval.commentPlaceholder' })}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setCostActionDialog(null); setCostComment('') }}>
+              {intl.formatMessage({ id: 'common.cancel' })}
+            </Button>
+            <Button
+              onClick={handleCostConfirm}
+              disabled={isCostMutating}
+              className={costActionDialog?.type === 'reject' ? 'bg-destructive hover:bg-destructive/90' : ''}
+            >
+              {isCostMutating
+                ? intl.formatMessage({ id: 'approvals.processing' })
+                : costActionDialog?.type === 'reject'
                   ? intl.formatMessage({ id: 'approval.reject' })
                   : intl.formatMessage({ id: 'approval.approve' })}
             </Button>
