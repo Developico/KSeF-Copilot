@@ -42,20 +42,23 @@ export function SignInScreen({ productName = "KSeF Copilot" }: SignInScreenProps
         </div>
       )}
       
-      <div className={`w-full max-w-md rounded-xl border bg-card/50 backdrop-blur-sm shadow-sm p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+      <div className={`w-full max-w-md rounded-xl border border-t-4 border-t-[#0891b2] bg-card/50 backdrop-blur-sm shadow-sm p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className="flex flex-col items-center space-y-4 text-center">
           <div className="h-14 w-14 relative rounded-lg ring-1 ring-border/40 overflow-hidden shadow-sm bg-background">
             <Image src="/developico-logo.png" alt="Developico" fill className="object-contain p-2" priority />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold tracking-widest uppercase text-white bg-[#0891b2]">
+              {productName}
+            </span>
             <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Welcome Back</h1>
-            <p className="text-sm text-muted-foreground">Sign in to access {productName}</p>
+            <p className="text-sm text-muted-foreground">Sign in with your organization account</p>
           </div>
         </div>
         <div>
           <Button
             onClick={handleSignIn}
-            className="w-full gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white transition-all duration-150 disabled:opacity-70 disabled:cursor-not-allowed shadow-sm hover:shadow active:translate-y-[1px]"
+            className="w-full gap-2 bg-[#0891b2] hover:bg-[#0e7490] text-white transition-all duration-150 disabled:opacity-70 disabled:cursor-not-allowed shadow-sm hover:shadow active:translate-y-[1px]"
             size="lg"
             disabled={loading}
           >

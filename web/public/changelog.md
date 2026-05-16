@@ -6,6 +6,13 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ---
 
+## [1.0.5] - 2026-05-16
+
+### 🎨 Wizualne
+- **Ekran logowania — kolorystyka aplikacji**: Dodano cyjanowy pasek (4 px, górna krawędź karty) oraz odznakę `KSEF COPILOT` w kolorze cyjanowym nad tytułem. Aplikacja jest teraz natychmiast rozróżnialna od innych narzędzi Developico przy zachowaniu spójnego układu
+- **Kolor przycisku logowania**: Zmieniony z generycznego niebieskiego (`#2563eb`) na cyjanowy (`#0891b2`) — zgodny z kolorem akcentowym aplikacji
+- **Favicon**: Gradient zaktualizowany na cyjanowy (`#0891b2` → `#22d3ee`)
+
 ## [1.0.4] - 2026-04-24
 
 ### ✅ Akceptacje — dokumenty kosztowe (nowe widoki)
